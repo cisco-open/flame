@@ -1,16 +1,16 @@
-# App specification
+# Job specification
 
-An ML app runs within a scope of namespace. In other words, all the ML components should be described within a namespace.
-A namespace is an abstracted container for an ML app. Hence, a namespace must be globally unique.
+An ML job runs within a scope of namespace. In other words, all the ML components should be described within a namespace.
+A namespace is an abstracted container for an ML job. Hence, a namespace must be globally unique.
 A namespace consists of roles (ML components) and channels (link between components).
 A role is an abstraction entity that interacts with the other role connected via a channel.
-The incarnation of a role is specific to application.
+The incarnation of a role is specific to job.
 
-## App
+## Job
 
-The follwoing shows a basic schema for an app.
+The follwoing shows a basic schema for a job.
 ```
-type: app
+type: job
 namespace: <name>
 priority:
   - trainingScore: <min_accuracy_or_score>
@@ -42,7 +42,7 @@ channels:
 With the skeleton schema above, many ML scenarios can be supported.
 The following shows a typical federated learning scenario.
 ```
-type: app
+type: job
 namespace: federated_learning
 priority:
   - trainingScore: 0.95
@@ -65,7 +65,7 @@ channels:
 
 Distributed ML scenario can be expressed as follows.
 ```
-type: app
+type: job
 namespace: distributed_learning
 roles:
   - trainer
@@ -79,7 +79,7 @@ channels:
 
 A hybrid scenario combined with federated and distributed learning looks like the following.
 ```
-type: app
+type: job
 namespace: hybrid_learning
 roles:
   - aggregator
@@ -126,9 +126,9 @@ configuration:
 	max: <disk_size_in_gb>
 ```
 When provision type is specified as `dynamic`, instances for the role operate in runtime environments
-under control of different authorities. Then, those instances can join and leave the app (i.e, the app's namespace) over time.
+under control of different authorities. Then, those instances can join and leave the job (i.e, the job's namespace) over time.
 For example, the `dynamic` provision type is effective when a trainer will run on edge devices whose owner is not
-an ML app engineer. In case of `dynamic` provision, `count` and `location` properties are ignored.
+an ML engineer. In case of `dynamic` provision, `count` and `location` properties are ignored.
 The `resources` property may not be respected depending on runtime environment's state.
 
 The following example shows a specification for aggregator role.
