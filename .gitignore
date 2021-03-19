@@ -16,3 +16,6 @@
 
 # emacs backup file
 *~
+
+# vagrant related
+.vagrant
