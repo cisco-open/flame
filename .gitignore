@@ -17,5 +17,15 @@
 # emacs backup file
 *~
 
+# python
+*.pyc
+__pycache__
+
 # vagrant related
 .vagrant
+
+# yapf backup file
+yapf*.py
+
+# etc
+*.bak

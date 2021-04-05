@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package registry;
+
+message Record {
+  string job = 1;
+  string channel = 2;
+  string role = 3;
+}
+
+message UidEndpoints {
+  repeated string uid = 1;
+  repeated string endpoint = 2;
+}
+
+message Get {
+  uint32 req_seq = 1;
+  repeated Record record = 2;
+}
+
+message Set {
+  uint32 req_seq = 1;
+  string uid = 2;
+  string endpoint = 3;
+  repeated Record record = 4;
+}
+
+message Response {
+  Status status = 1;
+  enum Status {
+    OK = 0;
+    MALFORMED_MESSAGE = 1;
+    TIMEOUT = 2;
+    WRONG_TYPE = 3;
+  }
+  uint32 req_seq = 2;
+  map<string, registry.UidEndpoints> role_to_uidep = 3;
+}
