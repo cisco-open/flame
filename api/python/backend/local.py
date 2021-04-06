@@ -22,6 +22,7 @@ class LocalBackend(AbstractBackend):
     _initialized = False
     _endpoints = None
     _queue = None
+    _manager = None
 
     _loop = None
     _thread = None
@@ -85,7 +86,9 @@ class LocalBackend(AbstractBackend):
             msg = msg_pb2.Notify()
             any_msg.Unpack(msg)
             print('>>> Notify', msg)
-            # TODO: update channel associated with end_id
+
+            # the following line may not be thread-safe
+            self._manager.update(msg.channel_name, msg.end_id)
 
         elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
             msg = msg_pb2.Data()
@@ -161,6 +164,9 @@ class LocalBackend(AbstractBackend):
 
     def endpoint(self):
         return self._backend
+
+    def set_channel_manager(self, manager):
+        self._manager = manager
 
     def connect(self, end_id, endpoint):
         if end_id in self._endpoints:

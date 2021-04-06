@@ -14,6 +14,7 @@ class ChannelManager(object):
 
         self.registry_client = LocalRegistryClient()
         self.backend = provider.get(backend)
+        self.backend.set_channel_manager(self)
 
     def join(self, name):
         '''
@@ -90,7 +91,7 @@ class ChannelManager(object):
 
         return self.channels[name]
 
-    def _update(self, name, end_id):
+    def update(self, name, end_id):
         '''
         add an end ID to a channel with 'name'
         '''
