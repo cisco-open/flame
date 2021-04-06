@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+package backend;
+
+message Connect {
+  string end_id = 1;
+}
+
+message Notify {
+  string end_id = 1;
+  string channel_name = 2;
+}
+
+message Data {
+  string end_id = 1;
+  string channel_name = 2;
+  bytes payload = 3;
+}

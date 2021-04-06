@@ -1,9 +1,8 @@
 import asyncio
 
+from common.comm import _recv_msg, _send_msg
+from common.constants import UNIX_SOCKET_PATH
 from proto import registry_msg_pb2 as msg_pb2
-
-from .comm import _recv_msg, _send_msg
-from .constants import UNIX_SOCKET_PATH
 
 
 class JobState(object):
@@ -95,6 +94,9 @@ class LocalRegistry(object):
 
             else:
                 print('unknown message')
+
+        writer.close()
+        await writer.wait_closed()
 
         print('connection closed')
 

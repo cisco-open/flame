@@ -11,14 +11,14 @@ class PointToPointBackend(AbstractBackend):
     def endpoint(self):
         pass
 
-    def connect(self, peer, path):
+    def connect(self, end_id, endpoint):
         pass
 
     def close(self):
         pass
 
-    def send(self, peer, msg):
+    def send(self, end_id, msg):
         pass
 
-    def recv(self, peer):
+    def recv(self, end_id):
         pass

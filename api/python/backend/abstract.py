@@ -15,7 +15,7 @@ class AbstractBackend:
         pass
 
     @abstractmethod
-    def connect(self, peer, path):
+    def connect(self, end_id, endpoint):
         pass
 
     @abstractmethod
@@ -23,9 +23,9 @@ class AbstractBackend:
         pass
 
     @abstractmethod
-    def send(self, peer, msg):
+    def send(self, end_id, msg):
         pass
 
     @abstractmethod
-    def recv(self, peer):
+    def recv(self, end_id):
         pass

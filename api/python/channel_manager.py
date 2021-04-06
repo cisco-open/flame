@@ -1,10 +1,11 @@
 from backend.local import LocalBackend
+from backends import provider
 from channel import Channel
 from registry.local_client import LocalRegistryClient
 
 
 class ChannelManager(object):
-    def __init__(self, job, role, channels_roles):
+    def __init__(self, backend, job, role, channels_roles):
         self.job = job
         self.role = role
         self.channels_roles = channels_roles
@@ -12,7 +13,7 @@ class ChannelManager(object):
         self.channels = {}
 
         self.registry_client = LocalRegistryClient()
-        self.backend = LocalBackend()
+        self.backend = provider.get(backend)
 
     def join(self, name):
         '''
@@ -32,9 +33,9 @@ class ChannelManager(object):
         role_map = self.channels_roles[name]
 
         channel_info = self.registry_client.get(self.job, name)
-        for role, peer_id, endpoint in channel_info:
+        for role, end_id, endpoint in channel_info:
             # the same backend id; skip
-            if peer_id is self.backend.id():
+            if end_id is self.backend.id():
                 continue
 
             proceed = False
@@ -45,10 +46,13 @@ class ChannelManager(object):
                 continue
 
             # connect to endpoint
-            self.backend.connect(peer_id, endpoint)
+            self.backend.connect(end_id, endpoint)
+
+            # notify end_id of the channel handled by the backend
+            self.backend.notify(end_id, name)
 
             # update channel
-            self.channels[name].add(peer_id)
+            self.channels[name].add(end_id)
 
         return ret
 
@@ -86,9 +90,9 @@ class ChannelManager(object):
 
         return self.channels[name]
 
-    def _update(self, name, peer):
+    def _update(self, name, end_id):
         '''
-        add peer to a channel with 'name'
+        add an end ID to a channel with 'name'
         '''
         if not self.join_done(name):
             # didn't join the channel yet
@@ -96,4 +100,4 @@ class ChannelManager(object):
 
         channel = self.channels[name]
 
-        channel.add(peer)
+        channel.add(end_id)

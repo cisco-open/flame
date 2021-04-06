@@ -2,11 +2,11 @@ import struct
 
 from google.protobuf.any_pb2 import Any
 
-from .constants import HEADER_LEN
+from .constants import MSG_LEN_FIELD_SIZE
 
 
 async def _recv_msg(reader):
-    data = await reader.read(HEADER_LEN)
+    data = await reader.read(MSG_LEN_FIELD_SIZE)
     if len(data) == 0:
         return None
 
