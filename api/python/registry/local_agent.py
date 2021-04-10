@@ -5,7 +5,7 @@ from common.constants import UNIX_SOCKET_PATH
 from proto import registry_msg_pb2 as msg_pb2
 
 
-class LocalRegistryClient(object):
+class LocalRegistryAgent(object):
     def __init__(self):
         self.reader = None
         self.writer = None
@@ -85,14 +85,21 @@ class LocalRegistryClient(object):
         self.reader = reader
         self.writer = writer
 
+    async def close(self):
+        if self.writer.is_closing():
+            return
+
+        self.writer.close()
+        await self.writer.wait_closed()
+
 
 async def main():
-    client = LocalRegistryClient()
-    await client.connect()
-    await client.register('job1', 'ch1', 'role1', 'uid1', 'endpoint1')
-    await client.register('job1', 'ch3', 'role1', 'uid1', 'endpoint1')
-    await client.register('job1', 'ch3', 'role1', 'uid2', 'endpoint2')
-    result = await client.get('job1', 'ch3')
+    agent = LocalRegistryAgent()
+    await agent.connect()
+    await agent.register('job1', 'ch1', 'role1', 'uid1', 'endpoint1')
+    await agent.register('job1', 'ch3', 'role1', 'uid1', 'endpoint1')
+    await agent.register('job1', 'ch3', 'role1', 'uid2', 'endpoint2')
+    result = await agent.get('job1', 'ch3')
     print(result)
 
 

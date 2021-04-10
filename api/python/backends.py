@@ -9,7 +9,7 @@ class BackendProvider(ObjectFactory):
         return self.create(backend_name, **kargs)
 
 
-provider = BackendProvider()
-provider.register('local', LocalBackend())
-provider.register('p2p', PointToPointBackend())
-provider.register('mqtt', MqttBackend())
+backend_provider = BackendProvider()
+backend_provider.register('local', LocalBackend)
+backend_provider.register('p2p', PointToPointBackend)
+backend_provider.register('mqtt', MqttBackend)

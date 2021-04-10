@@ -1,20 +1,24 @@
-from backend.local import LocalBackend
-from backends import provider
+from backends import backend_provider
 from channel import Channel
-from registry.local_client import LocalRegistryClient
+from common.constants import SOCK_OP_WAIT_TIME
+from common.util import background_thread_loop, run_async
+from registry_agents import registry_agent_provider
 
 
 class ChannelManager(object):
-    def __init__(self, backend, job, role, channels_roles):
+    def __init__(self, registry_agent, backend, job, role, channels_roles):
         self.job = job
         self.role = role
         self.channels_roles = channels_roles
 
         self.channels = {}
 
-        self.registry_client = LocalRegistryClient()
-        self.backend = provider.get(backend)
-        self.backend.set_channel_manager(self)
+        with background_thread_loop() as loop:
+            self._loop = loop
+
+        self._registry_agent = registry_agent_provider.get(registry_agent)
+        self._backend = backend_provider.get(backend)
+        self._backend.set_channel_manager(self)
 
     def join(self, name):
         '''
@@ -23,69 +27,77 @@ class ChannelManager(object):
         if self.join_done(name):
             return True
 
-        ret = await self.registry_client.register(
-            self.job, name, self.role, self.backend.uid(), self.backend.endpoint()
+        coro = self._registry_agent.connect()
+        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        if not status:
+            return False
+
+        coro = self._registry_agent.register(
+            self.job, name, self.role, self._backend.uid(),
+            self._backend.endpoint()
         )
+        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        if status:
+            self.channels[name] = Channel(name, self._backend)
+        else:
+            return False
 
-        if ret is True:
-            self.channels[name] = Channel(name, self.backend)
+        # role_tuples should have at most two entries
+        role_tuples = self.channels_roles[name]
 
-        # role_map should have at most two entries
-        role_map = self.channels_roles[name]
+        coro = self._registry_agent.get(self.job, name)
+        channel_info, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        if not status:
+            return False
 
-        channel_info = self.registry_client.get(self.job, name)
         for role, end_id, endpoint in channel_info:
             # the same backend id; skip
-            if end_id is self.backend.id():
+            if end_id is self._backend.uid():
                 continue
 
             proceed = False
-            for from_role, to_role in role_map.items():
+            for from_role, to_role in role_tuples:
                 proceed = self.role is from_role and role is to_role
 
             if not proceed:
                 continue
 
             # connect to endpoint
-            self.backend.connect(end_id, endpoint)
+            self._backend.connect(end_id, endpoint)
 
             # notify end_id of the channel handled by the backend
-            self.backend.notify(end_id, name)
+            self._backend.notify(end_id, name)
 
             # update channel
             self.channels[name].add(end_id)
 
-        return ret
+        coro = self._registry_agent.close()
+        _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+
+        return True
 
     def leave(self, name):
         '''
         leave a channel
         '''
-        if not self.join_done(name):
+        if not self.is_joined(name):
             return
 
-        ret = await self.registry_client.reset_channel(
-            self.job, name, self.role, self.backend.uid()
+        coro = self._registry_agent.reset_channel(
+            self.job, name, self.role, self._backend.uid()
         )
 
-        del self.channels[name]
+        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        if status:
+            del self.channels[name]
 
-        return ret
-
-    def join_done(self, name):
-        '''
-        check if node joined a channel or not
-        '''
-        if name in self.channels:
-            return True
-        else:
-            return False
+        return status
 
     def get(self, name):
         '''
         returns a channel object in the given channel
         '''
-        if not self.join_done(name):
+        if not self.is_joined(name):
             # didn't join the channel yet
             return None
 
@@ -95,10 +107,25 @@ class ChannelManager(object):
         '''
         add an end ID to a channel with 'name'
         '''
-        if not self.join_done(name):
+        if not self.is_joined(name):
             # didn't join the channel yet
             return
 
         channel = self.channels[name]
 
         channel.add(end_id)
+
+    def is_joined(self, name):
+        '''
+        check if node joined a channel or not
+        '''
+        if name in self.channels:
+            return True
+        else:
+            return False
+
+
+if __name__ == "__main__":
+    channels_roles = {'param-channel': (('agg', 'trainer'), ('trainer', 'agg'))}
+    cm = ChannelManager('local', 'local', 'test-job', 'agg', channels_roles)
+    cm.join('param-channel')

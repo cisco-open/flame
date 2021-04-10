@@ -1,11 +1,9 @@
 import asyncio
-import concurrent.futures
-import struct
 import uuid
-from threading import Thread
 
 from common.comm import _recv_msg, _send_msg
 from common.constants import SOCK_OP_WAIT_TIME, SockType
+from common.util import background_thread_loop, run_async
 from proto import backend_msg_pb2 as msg_pb2
 
 from .abstract import AbstractBackend
@@ -41,25 +39,19 @@ class LocalBackend(AbstractBackend):
         if self._initialized:
             return
 
-        self._initialized = True
-
         self._endpoints = {}
         self._id = str(uuid.uuid1())
 
-        self._loop = asyncio.get_event_loop()
+        with background_thread_loop() as loop:
+            self._loop = loop
 
-        self._thread = Thread(
-            target=self._background_thread_loop,
-            args=(self._loop, ),
-            daemon=True
-        )
-        self._thread.start()
+        coro = self._setup_server()
+        _, status = run_async(coro, self._loop, 1)
+        if not status:
+            # TODO: revisit this in the future
+            print('_setup_server timeout; ok to ignore')
 
-        _ = asyncio.run_coroutine_threadsafe(self._setup_server(), self._loop)
-
-    def _background_thread_loop(self, loop):
-        asyncio.set_event_loop(loop)
-        loop.run_forever()
+        self._initialized = True
 
     async def _register_end(self, reader, writer):
         any_msg = await _recv_msg(self.reader)
@@ -152,10 +144,6 @@ class LocalBackend(AbstractBackend):
         writer.close()
         await writer.wait_closed()
 
-    def _run_async(self, coro, timeout=None):
-        fut = asyncio.run_coroutine_threadsafe(coro, self._loop)
-        fut.result(timeout)
-
     def uid(self):
         '''
         return backend id
@@ -173,14 +161,11 @@ class LocalBackend(AbstractBackend):
             return True
 
         coro = self._connect(endpoint)
-        try:
-            reader, writer = self._run_async(coro, SOCK_OP_WAIT_TIME)
-        except concurrent.futures.TimeoutError:
-            return False
+        reader, writer, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        if status:
+            self._endpoints[end_id] = (reader, writer, SockType.CLIENT)
 
-        self._endpoints[end_id] = (reader, writer, SockType.CLIENT)
-
-        return True
+        return status
 
     def nofity(self, end_id, channel_name):
         if end_id not in self._endpoints:
@@ -189,21 +174,14 @@ class LocalBackend(AbstractBackend):
         _, writer, _ = self._endpoints[end_id]
 
         coro = self._notify(writer, channel_name)
-        try:
-            success = self._run_async(coro, SOCK_OP_WAIT_TIME)
-        except concurrent.futures.TimeoutError:
-            raise False
+        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
 
-        return success
+        return status
 
     def close(self):
         for end_id in list(self._endpoints):
             coro = self._close(end_id)
-            try:
-                _ = self._run_async(coro, SOCK_OP_WAIT_TIME)
-            except concurrent.futures.TimeoutError:
-                # ignore exception and move onto next endpoint
-                pass
+            _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
 
             del self._endpoints[end_id]
 
