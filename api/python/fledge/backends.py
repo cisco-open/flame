@@ -1,7 +1,7 @@
-from backend.local import LocalBackend
-from backend.mqtt import MqttBackend
-from backend.p2p import PointToPointBackend
-from object_factory import ObjectFactory
+from .backend.local import LocalBackend
+from .backend.mqtt import MqttBackend
+from .backend.p2p import PointToPointBackend
+from .object_factory import ObjectFactory
 
 
 class BackendProvider(ObjectFactory):

@@ -1,8 +1,8 @@
-from backends import backend_provider
-from channel import Channel
-from common.constants import SOCK_OP_WAIT_TIME
-from common.util import background_thread_loop, run_async
-from registry_agents import registry_agent_provider
+from .backends import backend_provider
+from .channel import Channel
+from .common.constants import SOCK_OP_WAIT_TIME
+from .common.util import background_thread_loop, run_async
+from .registry_agents import registry_agent_provider
 
 
 class ChannelManager(object):
@@ -24,7 +24,7 @@ class ChannelManager(object):
         '''
         joins a channel
         '''
-        if self.join_done(name):
+        if self.is_joined(name):
             return True
 
         coro = self._registry_agent.connect()

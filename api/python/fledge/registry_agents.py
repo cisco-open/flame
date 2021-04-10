@@ -1,6 +1,6 @@
-from object_factory import ObjectFactory
-from registry.etcd_agent import EtcdRegistryAgent
-from registry.local_agent import LocalRegistryAgent
+from .object_factory import ObjectFactory
+from .registry.etcd_agent import EtcdRegistryAgent
+from .registry.local_agent import LocalRegistryAgent
 
 
 class RegsitryAgentProvider(ObjectFactory):
