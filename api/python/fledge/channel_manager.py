@@ -3,10 +3,13 @@ from .channel import Channel
 from .common.constants import SOCK_OP_WAIT_TIME
 from .common.util import background_thread_loop, run_async
 from .registry_agents import registry_agent_provider
+from .serdeses import serdes_provider
 
 
 class ChannelManager(object):
-    def __init__(self, registry_agent, backend, job, role, channels_roles):
+    def __init__(
+        self, frontend, backend, registry_agent, job, role, channels_roles
+    ):
         self.job = job
         self.role = role
         self.channels_roles = channels_roles
@@ -16,9 +19,9 @@ class ChannelManager(object):
         with background_thread_loop() as loop:
             self._loop = loop
 
-        self._registry_agent = registry_agent_provider.get(registry_agent)
+        self._serdes = serdes_provider.get(frontend)
         self._backend = backend_provider.get(backend)
-        self._backend.set_channel_manager(self)
+        self._registry_agent = registry_agent_provider.get(registry_agent)
 
     def join(self, name):
         '''
@@ -38,7 +41,8 @@ class ChannelManager(object):
         )
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if status:
-            self.channels[name] = Channel(name, self._backend)
+            self.channels[name] = Channel(name, self._serdes, self._backend)
+            self._backend.add_channel(self.channels[name])
         else:
             return False
 
@@ -57,8 +61,9 @@ class ChannelManager(object):
 
             proceed = False
             for from_role, to_role in role_tuples:
-                proceed = self.role is from_role and role is to_role
-
+                proceed = self.role == from_role and role == to_role
+                if proceed:
+                    break
             if not proceed:
                 continue
 
@@ -103,18 +108,6 @@ class ChannelManager(object):
 
         return self.channels[name]
 
-    def update(self, name, end_id):
-        '''
-        add an end ID to a channel with 'name'
-        '''
-        if not self.is_joined(name):
-            # didn't join the channel yet
-            return
-
-        channel = self.channels[name]
-
-        channel.add(end_id)
-
     def is_joined(self, name):
         '''
         check if node joined a channel or not
@@ -123,9 +116,3 @@ class ChannelManager(object):
             return True
         else:
             return False
-
-
-if __name__ == "__main__":
-    channels_roles = {'param-channel': (('agg', 'trainer'), ('trainer', 'agg'))}
-    cm = ChannelManager('local', 'local', 'test-job', 'agg', channels_roles)
-    cm.join('param-channel')

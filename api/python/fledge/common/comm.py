@@ -26,4 +26,9 @@ async def _send_msg(writer, msg):
     data = struct.pack('>I', len(data)) + data
 
     writer.write(data)
-    await writer.drain()
+
+    try:
+        await writer.drain()
+    except ConnectionResetError:
+        # connection is reset; let the caller detect it via reader and cleanup
+        pass

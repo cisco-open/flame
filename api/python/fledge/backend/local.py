@@ -1,6 +1,7 @@
 import asyncio
 import uuid
 
+from ..channel import RXQ, TXQ
 from ..common.comm import _recv_msg, _send_msg
 from ..common.constants import SOCK_OP_WAIT_TIME, SockType
 from ..common.util import background_thread_loop, run_async
@@ -18,8 +19,7 @@ class LocalBackend(AbstractBackend):
 
     _initialized = False
     _endpoints = None
-    _queue = None
-    _manager = None
+    _channels = None
 
     _loop = None
     _thread = None
@@ -39,6 +39,7 @@ class LocalBackend(AbstractBackend):
             return
 
         self._endpoints = {}
+        self._channels = {}
         self._id = str(uuid.uuid1())
 
         with background_thread_loop() as loop:
@@ -53,7 +54,7 @@ class LocalBackend(AbstractBackend):
         self._initialized = True
 
     async def _register_end(self, reader, writer):
-        any_msg = await _recv_msg(self.reader)
+        any_msg = await _recv_msg(reader)
 
         if not any_msg.Is(msg_pb2.Connect.DESCRIPTOR):
             # not expected message
@@ -76,16 +77,20 @@ class LocalBackend(AbstractBackend):
         if any_msg.Is(msg_pb2.Notify.DESCRIPTOR):
             msg = msg_pb2.Notify()
             any_msg.Unpack(msg)
-            print('>>> Notify', msg)
 
-            # the following line may not be thread-safe
-            self._manager.update(msg.channel_name, msg.end_id)
+            if msg.channel_name not in self._channels:
+                return
+
+            channel = self._channels[msg.channel_name]
+            channel.add(msg.end_id, in_active_loop=True)
 
         elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
             msg = msg_pb2.Data()
             any_msg.Unpack(msg)
-            print('>>> Data', msg)
-            # TODO: put data into an asyncio queue
+
+            channel = self._channels[msg.channel_name]
+            rxq = channel.get_q(msg.end_id, RXQ)
+            await rxq.put(msg.payload)
 
         else:
             print('unknown message')
@@ -93,16 +98,11 @@ class LocalBackend(AbstractBackend):
     async def _handle(self, reader, writer):
         await self._register_end(reader, writer)
 
-        while not reader.at_eof():
-            await self._handle_msg(reader)
-
-        writer.close()
-        await writer.wait_closed()
+        # create a coroutine task
+        coro = self._rx_task(reader, writer)
+        _ = asyncio.create_task(coro)
 
     async def _setup_server(self):
-        # create a queue with size 1 in a thread where _loop is running
-        self._queue = asyncio.Queue(1)
-
         self._backend = UNIX_SOCKET_PATH_TEMPLATE.format(self._id)
         self._server = await asyncio.start_unix_server(
             self._handle, path=self._backend
@@ -123,6 +123,10 @@ class LocalBackend(AbstractBackend):
 
         await _send_msg(writer, msg)
 
+        # create a coroutine task
+        coro = self._rx_task(reader, writer)
+        _ = asyncio.create_task(coro)
+
         return reader, writer
 
     async def _notify(self, writer, channel_name):
@@ -131,6 +135,17 @@ class LocalBackend(AbstractBackend):
         msg.channel_name = channel_name
 
         await _send_msg(writer, msg)
+
+    async def _send_data(self, writer, channel_name, data):
+        msg = msg_pb2.Data()
+        msg.end_id = self._id
+        msg.channel_name = channel_name
+        msg.payload = data
+
+        await _send_msg(writer, msg)
+
+    async def _put_txq(self, channel, end_id, data):
+        await channel._txq.put((end_id, data))
 
     async def _close(self, end_id):
         if end_id is not self._endpoints:
@@ -152,21 +167,19 @@ class LocalBackend(AbstractBackend):
     def endpoint(self):
         return self._backend
 
-    def set_channel_manager(self, manager):
-        self._manager = manager
-
     def connect(self, end_id, endpoint):
         if end_id in self._endpoints:
             return True
 
         coro = self._connect(endpoint)
-        reader, writer, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        result, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        (reader, writer) = result
         if status:
             self._endpoints[end_id] = (reader, writer, SockType.CLIENT)
 
         return status
 
-    def nofity(self, end_id, channel_name):
+    def notify(self, end_id, channel_name):
         if end_id not in self._endpoints:
             return False
 
@@ -186,11 +199,69 @@ class LocalBackend(AbstractBackend):
 
             print(f'closed end: {end_id}')
 
-    def send(self, end_id, msg):
-        pass
+    def loop(self):
+        return self._loop
 
-    def recv(self, end_id):
-        pass
+    def add_channel(self, channel):
+        self._channels[channel.name()] = channel
+
+    def create_tx_task(self, channel_name, end_id, in_active_loop=False):
+        if (
+            channel_name not in self._channels or
+            not self._channels[channel_name].has(end_id)
+        ):
+            return False
+
+        channel = self._channels[channel_name]
+
+        if in_active_loop:
+            coro = self._tx_task(channel, end_id)
+            _ = asyncio.create_task(coro)
+        else:
+
+            async def inner():
+                # create a coroutine task
+                coro = self._tx_task(channel, end_id)
+                _ = asyncio.create_task(coro)
+
+            _ = run_async(inner(), self._loop)
+
+        return True
+
+    async def _rx_task(self, reader, writer):
+        '''
+        _rx_task() must be created upon connect or accept
+        '''
+        while not reader.at_eof():  # while connection is alive
+            await self._handle_msg(reader)
+
+        if writer.is_closing():
+            return
+
+        writer.close()
+        await writer.wait_closed()
+
+    async def _tx_task(self, channel, end_id):
+        '''
+        _tx_task() must be created per tx queue right after end_id is added to
+        channel (e.g., channel.add(end_id))
+        '''
+        name = channel.name()
+        txq = channel.get_q(end_id, TXQ)
+
+        reader, writer, _ = self._endpoints[end_id]
+
+        while not reader.at_eof():  # while connection is alive
+            data = await txq.get()
+            await self._send_data(writer, name, data)
+
+        if writer.is_closing():
+            return
+
+        print(f'connection closed to {end_id}')
+
+        writer.close()
+        await writer.wait_closed()
 
 
 if __name__ == "__main__":
