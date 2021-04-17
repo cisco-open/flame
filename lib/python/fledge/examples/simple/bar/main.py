@@ -14,7 +14,8 @@ CHANNELS_ROLES = {CHANNEL_NAME: ((MY_ROLE, OTHER_ROLE), (OTHER_ROLE, MY_ROLE))}
 
 class Bar(object):
     def __init__(self):
-        self.cm = ChannelManager(
+        self.cm = ChannelManager()
+        self.cm(
             FRONTEND, BACKEND, REGISTRY_AGENT, JOB_NAME, MY_ROLE, CHANNELS_ROLES
         )
         self.cm.join(CHANNEL_NAME)
@@ -24,6 +25,10 @@ class Bar(object):
         while True:
             for end in channel.ends():
                 msg = channel.recv(end)
+                if not msg:
+                    print('no data received')
+                    continue
+
                 print(f'type = {type(msg)}, msg = {msg}')
                 msg[:] = [i + 1 for i in msg]
                 channel.send(end, msg)

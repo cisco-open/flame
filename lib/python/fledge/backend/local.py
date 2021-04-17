@@ -1,9 +1,10 @@
 import asyncio
 import uuid
+from enum import Enum
 
 from ..channel import RXQ, TXQ
 from ..common.comm import _recv_msg, _send_msg
-from ..common.constants import SOCK_OP_WAIT_TIME, SockType
+from ..common.constants import SOCK_OP_WAIT_TIME, BackendEvent
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -20,6 +21,8 @@ class LocalBackend(AbstractBackend):
     _initialized = False
     _endpoints = None
     _channels = None
+    # inform channel manager of events occurring at backend
+    _eventq = None
 
     _loop = None
     _thread = None
@@ -30,7 +33,7 @@ class LocalBackend(AbstractBackend):
 
     def __new__(cls):
         if cls._instance is None:
-            print('creating a LocalBackend object')
+            print('creating a LocalBackend instance')
             cls._instance = super(LocalBackend, cls).__new__(cls)
         return cls._instance
 
@@ -45,28 +48,44 @@ class LocalBackend(AbstractBackend):
         with background_thread_loop() as loop:
             self._loop = loop
 
-        coro = self._setup_server()
-        _, status = run_async(coro, self._loop, 1)
-        if not status:
-            # TODO: revisit this in the future
-            print('_setup_server timeout; ok to ignore')
+        async def _init_loop_stuff():
+            self._eventq = asyncio.Queue()
+
+            coro = self._monitor_connections()
+            _ = asyncio.create_task(coro)
+
+            coro = self._setup_server()
+            _ = asyncio.create_task(coro)
+
+        coro = _init_loop_stuff()
+        _ = run_async(coro, self._loop, 1)
 
         self._initialized = True
+
+    async def _monitor_connections(self):
+        while True:
+            for end_id, (reader, _) in list(self._endpoints.items()):
+                if not reader.at_eof():
+                    continue
+
+                # connection is closed
+                await self._close(end_id)
+
+            await asyncio.sleep(1)
 
     async def _register_end(self, reader, writer):
         any_msg = await _recv_msg(reader)
 
         if not any_msg.Is(msg_pb2.Connect.DESCRIPTOR):
             # not expected message
-            writer.close()
-            await writer.wait_closed()
+            await self.__close(writer)
             return
 
         conn_msg = msg_pb2.Connect()
         any_msg.Unpack(conn_msg)
 
         print(f'registering end: {conn_msg.end_id}')
-        self._endpoints[conn_msg.end_id] = (reader, writer, SockType.SERVER)
+        self._endpoints[conn_msg.end_id] = (reader, writer)
 
     async def _handle_msg(self, reader):
         any_msg = await _recv_msg(reader)
@@ -82,7 +101,7 @@ class LocalBackend(AbstractBackend):
                 return
 
             channel = self._channels[msg.channel_name]
-            channel.add(msg.end_id, in_active_loop=True)
+            await channel.add(msg.end_id)
 
         elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
             msg = msg_pb2.Data()
@@ -147,16 +166,25 @@ class LocalBackend(AbstractBackend):
     async def _put_txq(self, channel, end_id, data):
         await channel._txq.put((end_id, data))
 
-    async def _close(self, end_id):
-        if end_id is not self._endpoints:
-            return
-
-        _, writer, _ = self._endpoints[end_id]
+    async def __close(self, writer):
         if writer.is_closing():
             return
 
         writer.close()
         await writer.wait_closed()
+
+    async def _close(self, end_id):
+        if end_id not in self._endpoints:
+            return
+
+        try:
+            _, writer = self._endpoints[end_id]
+            await self.__close(writer)
+        finally:
+            del self._endpoints[end_id]
+
+            await self._eventq.put((BackendEvent.DISCONNECT, end_id))
+            print(f'connection to {end_id} closed')
 
     def uid(self):
         '''
@@ -167,6 +195,9 @@ class LocalBackend(AbstractBackend):
     def endpoint(self):
         return self._backend
 
+    def eventq(self):
+        return self._eventq
+
     def connect(self, end_id, endpoint):
         if end_id in self._endpoints:
             return True
@@ -175,7 +206,7 @@ class LocalBackend(AbstractBackend):
         result, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         (reader, writer) = result
         if status:
-            self._endpoints[end_id] = (reader, writer, SockType.CLIENT)
+            self._endpoints[end_id] = (reader, writer)
 
         return status
 
@@ -183,7 +214,7 @@ class LocalBackend(AbstractBackend):
         if end_id not in self._endpoints:
             return False
 
-        _, writer, _ = self._endpoints[end_id]
+        _, writer = self._endpoints[end_id]
 
         coro = self._notify(writer, channel_name)
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
@@ -195,17 +226,13 @@ class LocalBackend(AbstractBackend):
             coro = self._close(end_id)
             _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
 
-            del self._endpoints[end_id]
-
-            print(f'closed end: {end_id}')
-
     def loop(self):
         return self._loop
 
     def add_channel(self, channel):
         self._channels[channel.name()] = channel
 
-    def create_tx_task(self, channel_name, end_id, in_active_loop=False):
+    def create_tx_task(self, channel_name, end_id):
         if (
             channel_name not in self._channels or
             not self._channels[channel_name].has(end_id)
@@ -214,17 +241,9 @@ class LocalBackend(AbstractBackend):
 
         channel = self._channels[channel_name]
 
-        if in_active_loop:
-            coro = self._tx_task(channel, end_id)
-            _ = asyncio.create_task(coro)
-        else:
-
-            async def inner():
-                # create a coroutine task
-                coro = self._tx_task(channel, end_id)
-                _ = asyncio.create_task(coro)
-
-            _ = run_async(inner(), self._loop)
+        # if in_active_loop:
+        coro = self._tx_task(channel, end_id)
+        _ = asyncio.create_task(coro)
 
         return True
 
@@ -235,11 +254,7 @@ class LocalBackend(AbstractBackend):
         while not reader.at_eof():  # while connection is alive
             await self._handle_msg(reader)
 
-        if writer.is_closing():
-            return
-
-        writer.close()
-        await writer.wait_closed()
+        await self.__close(writer)
 
     async def _tx_task(self, channel, end_id):
         '''
@@ -249,24 +264,11 @@ class LocalBackend(AbstractBackend):
         name = channel.name()
         txq = channel.get_q(end_id, TXQ)
 
-        reader, writer, _ = self._endpoints[end_id]
+        reader, writer = self._endpoints[end_id]
 
         while not reader.at_eof():  # while connection is alive
             data = await txq.get()
             await self._send_data(writer, name, data)
+            txq.task_done()
 
-        if writer.is_closing():
-            return
-
-        print(f'connection closed to {end_id}')
-
-        writer.close()
-        await writer.wait_closed()
-
-
-if __name__ == "__main__":
-    import time
-
-    local_backend = LocalBackend()
-    while True:
-        time.sleep(5)
+        await self._close(end_id)

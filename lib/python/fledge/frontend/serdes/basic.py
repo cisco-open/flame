@@ -16,4 +16,8 @@ class BasicSerDes(AbstractSerDes):
 
     def to_object(self, byte_data):
         json_data = str(byte_data, self._encoding)
-        return json.loads(json_data)
+
+        try:
+            return json.loads(json_data)
+        except json.decoder.JSONDecodeError:
+            return None

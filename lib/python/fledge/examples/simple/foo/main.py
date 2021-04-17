@@ -14,7 +14,8 @@ CHANNELS_ROLES = {CHANNEL_NAME: ((MY_ROLE, OTHER_ROLE), (OTHER_ROLE, MY_ROLE))}
 
 class Foo(object):
     def __init__(self):
-        self.cm = ChannelManager(
+        self.cm = ChannelManager()
+        self.cm(
             FRONTEND, BACKEND, REGISTRY_AGENT, JOB_NAME, MY_ROLE, CHANNELS_ROLES
         )
         self.cm.join(CHANNEL_NAME)
@@ -26,6 +27,10 @@ class Foo(object):
             for end in channel.ends():
                 channel.send(end, msg)
                 msg = channel.recv(end)
+                if not msg:
+                    print('no data received')
+                    continue
+
                 print(f'type = {type(msg)}, msg = {msg}')
                 msg[:] = [i + 1 for i in msg]
             time.sleep(1)

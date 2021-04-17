@@ -11,55 +11,45 @@ class Channel(object):
         self._name = name
         self._backend = backend
 
+        # _ends must be accessed within backend's loop
         self._ends = {}
 
         self._serdes = serdes
 
+    '''
+    ### The following are not asyncio methods
+    ### But access to _ends variable should take place in the backend loop
+    ### Therefore, when necessary, coroutine is defined inside each method
+    ### and the coroutine is executed via run_async()
+    '''
+
     def name(self):
         return self._name
 
-    def add(self, end_id, in_active_loop=False):
-        if self.has(end_id):
-            return
-
-        if in_active_loop:
-            self._ends[end_id] = {RXQ: asyncio.Queue(), TXQ: asyncio.Queue()}
-        else:
-
-            async def _create_q():
-                self._ends[end_id] = {
-                    RXQ: asyncio.Queue(),
-                    TXQ: asyncio.Queue()
-                }
-
-            _ = run_async(_create_q(), self._backend.loop())
-
-        # create tx task in the backend for the channel
-        self._backend.create_tx_task(self._name, end_id, in_active_loop)
-
-    def has(self, end_id):
-        return end_id in self._ends
-
     def ends(self):
-        return self._ends.keys()
+        async def inner():
+            return list(self._ends.keys())
+
+        result, _ = run_async(inner(), self._backend.loop())
+        return result
 
     def broadcast(self, msg):
-        for end_id in self._ends:
+        for end_id in self.ends():
             self.send(end_id, msg)
 
     def send(self, end_id, data):
         '''
         send() is a blocking call to send a message to an end
         '''
-        if not self.has(end_id):
-            # can't send message to end_id
-            return
+        async def _put():
+            if not self.has(end_id):
+                # can't send message to end_id
+                return
 
-        async def _put(end_id, payload):
+            payload = self._serdes.to_bytes(data)
             await self._ends[end_id][TXQ].put(payload)
 
-        payload = self._serdes.to_bytes(data)
-        _, status = run_async(_put(end_id, payload), self._backend.loop())
+        _, status = run_async(_put(), self._backend.loop())
 
         return status
 
@@ -67,18 +57,47 @@ class Channel(object):
         '''
         recv() is a blocking call to receive a message from an end
         '''
-        if not self.has(end_id):
-            # can't receive message from end_id
-            return None
+        async def _get():
+            if not self.has(end_id):
+                # can't receive message from end_id
+                return None
 
-        async def _get(end_id):
-            return await self._ends[end_id][RXQ].get()
+            rxq = self._ends[end_id][RXQ]
+            payload = await rxq.get()
+            rxq.task_done()
+            return payload
 
-        payload, status = run_async(_get(end_id), self._backend.loop())
-
+        payload, status = run_async(_get(), self._backend.loop())
         data = self._serdes.to_object(payload)
 
         return data if status else None
+
+    '''
+    ### The following are asyncio methods of backend loop
+    ### Therefore, they must be called in the backend loop
+    '''
+
+    async def add(self, end_id):
+        if self.has(end_id):
+            return
+
+        self._ends[end_id] = {RXQ: asyncio.Queue(), TXQ: asyncio.Queue()}
+
+        # create tx task in the backend for the channel
+        self._backend.create_tx_task(self._name, end_id)
+
+    async def remove(self, end_id):
+        if not self.has(end_id):
+            return
+
+        rxq = self._ends[end_id][RXQ]
+        del self._ends[end_id]
+
+        # put bogus data to unblock a get() call
+        await rxq.put(b'')
+
+    def has(self, end_id):
+        return end_id in self._ends
 
     def get_q(self, end_id, qtype):
         return self._ends[end_id][qtype]
