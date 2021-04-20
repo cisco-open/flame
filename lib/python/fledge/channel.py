@@ -7,14 +7,14 @@ TXQ = 'txq'
 
 
 class Channel(object):
-    def __init__(self, name, serdes, backend):
+    def __init__(self, name, message_template, backend):
         self._name = name
         self._backend = backend
 
         # _ends must be accessed within backend's loop
         self._ends = {}
 
-        self._serdes = serdes
+        self._message_template = message_template
 
     '''
     ### The following are not asyncio methods
@@ -37,7 +37,7 @@ class Channel(object):
         for end_id in self.ends():
             self.send(end_id, msg)
 
-    def send(self, end_id, data):
+    def send(self, end_id, message):
         '''
         send() is a blocking call to send a message to an end
         '''
@@ -46,7 +46,7 @@ class Channel(object):
                 # can't send message to end_id
                 return
 
-            payload = self._serdes.to_bytes(data)
+            payload = message.to_bytes()
             await self._ends[end_id][TXQ].put(payload)
 
         _, status = run_async(_put(), self._backend.loop())
@@ -68,9 +68,15 @@ class Channel(object):
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
-        data = self._serdes.to_object(payload)
+        message = self._message_template.to_object(payload)
+        return message if status else None
 
-        return data if status else None
+    def message_object(self):
+        '''
+        message_object() returns a blank message object;
+        the object can be used to encapsulate data
+        '''
+        return self._message_template.to_object(b'{}')
 
     '''
     ### The following are asyncio methods of backend loop

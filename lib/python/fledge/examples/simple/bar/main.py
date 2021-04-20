@@ -29,8 +29,11 @@ class Bar(object):
                     print('no data received')
                     continue
 
-                print(f'type = {type(msg)}, msg = {msg}')
-                msg[:] = [i + 1 for i in msg]
+                data = msg.get_state()
+                print(f'type = {type(msg)}, msg = {msg}, data = {data}')
+
+                data[:] = [i + 1 for i in data]
+                msg.set_state(data)
                 channel.send(end, msg)
             time.sleep(1)
 
