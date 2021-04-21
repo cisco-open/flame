@@ -50,37 +50,3 @@ class KerasMessage(BasicMessage):
             data[cls.STATE] = list_obj
 
         return cls(data)
-
-
-if __name__ == "__main__":
-    import tensorflow as tf
-    from tensorflow import keras
-
-    print(tf.version.VERSION)
-
-    model = tf.keras.models.Sequential(
-        [
-            keras.layers.Dense(512, activation='relu', input_shape=(784, )),
-            keras.layers.Dropout(0.2),
-            keras.layers.Dense(10)
-        ]
-    )
-    model.compile(
-        optimizer='adam',
-        loss=tf.losses.SparseCategoricalCrossentropy(from_logits=True),
-        metrics=[tf.metrics.SparseCategoricalAccuracy()]
-    )
-
-    print(f'initial: {model.get_weights()}')
-    keras_data = KerasMessage()
-    keras_data.set_state(model.get_weights())
-    byte_data = keras_data.to_bytes()
-
-    keras_data2 = keras_data.to_object(byte_data)
-
-    print(f'keras_data = {keras_data}, keras_data2 = {keras_data2}')
-
-    model2 = tf.keras.models.clone_model(model)
-    model2.set_weights(keras_data2.get_state())
-
-    print(f'after: {model2.get_weights()}')

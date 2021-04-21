@@ -78,6 +78,17 @@ class Channel(object):
         '''
         return self._message_template.to_object(b'{}')
 
+    def cleanup(self):
+        async def _q_join():
+            for end_id in self._ends.keys():
+                await self._ends[end_id][TXQ].join()
+
+        print(f'finishing queues in channel {self._name}...')
+        _, status = run_async(_q_join(), self._backend.loop())
+        print('done')
+
+        return status
+
     '''
     ### The following are asyncio methods of backend loop
     ### Therefore, they must be called in the backend loop

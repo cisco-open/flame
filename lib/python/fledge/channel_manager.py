@@ -1,4 +1,5 @@
 import asyncio
+import atexit
 
 from .backends import backend_provider
 from .channel import Channel
@@ -54,6 +55,8 @@ class ChannelManager(object):
             _ = asyncio.create_task(coro)
 
         _ = run_async(inner(), self._backend.loop())
+
+        atexit.register(self.cleanup)
 
     async def _backend_eventq_task(self, eventq):
         while True:
@@ -157,3 +160,7 @@ class ChannelManager(object):
             return True
         else:
             return False
+
+    def cleanup(self):
+        for _, channel in self._channels.items():
+            channel.cleanup()

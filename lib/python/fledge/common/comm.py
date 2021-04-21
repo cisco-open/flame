@@ -12,7 +12,7 @@ async def _recv_msg(reader):
 
     msg_len = struct.unpack('>I', data)[0]
 
-    data = await reader.read(msg_len)
+    data = await reader.readexactly(msg_len)
     any = Any().FromString(data)
 
     return any
