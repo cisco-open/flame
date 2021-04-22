@@ -4,27 +4,14 @@ import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from ....channel_manager import ChannelManager
-
-FRONTEND = 'keras'
-BACKEND = 'local'
-REGISTRY_AGENT = 'local'
-CHANNEL_NAME = 'param-channel'
-JOB_NAME = 'keras-mnist-job'
-MY_ROLE = 'trainer'
-OTHER_ROLE = 'aggregator'
-CHANNELS_ROLES = {CHANNEL_NAME: ((MY_ROLE, OTHER_ROLE), (OTHER_ROLE, MY_ROLE))}
+from .cm import CHANNEL_NAME, CM
 
 # keras mnist example from https://keras.io/examples/vision/mnist_convnet/
 
 
 class Trainer(object):
     def __init__(self, n_split=1, split_idx=0, rounds=1):
-        self.cm = ChannelManager()
-        self.cm(
-            FRONTEND, BACKEND, REGISTRY_AGENT, JOB_NAME, MY_ROLE, CHANNELS_ROLES
-        )
-        self.cm.join(CHANNEL_NAME)
+        self.cm = CM()
 
         self._n_split = n_split
         self._split_idx = split_idx
@@ -135,6 +122,8 @@ class Trainer(object):
             i += 1
 
 
+# example cmd: python3 -m fledge.examples.mnist.trainer.main --n_split 2 --rounds 3 --split_idx 0
+# run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 

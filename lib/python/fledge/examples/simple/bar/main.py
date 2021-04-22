@@ -1,24 +1,11 @@
 import time
 
-from ....channel_manager import ChannelManager
-
-FRONTEND = 'basic'
-BACKEND = 'local'
-REGISTRY_AGENT = 'local'
-CHANNEL_NAME = 'simple-channel'
-JOB_NAME = 'simple-job'
-MY_ROLE = 'bar'
-OTHER_ROLE = 'foo'
-CHANNELS_ROLES = {CHANNEL_NAME: ((MY_ROLE, OTHER_ROLE), (OTHER_ROLE, MY_ROLE))}
+from .cm import CHANNEL_NAME, CM
 
 
 class Bar(object):
     def __init__(self):
-        self.cm = ChannelManager()
-        self.cm(
-            FRONTEND, BACKEND, REGISTRY_AGENT, JOB_NAME, MY_ROLE, CHANNELS_ROLES
-        )
-        self.cm.join(CHANNEL_NAME)
+        self.cm = CM()
 
     def run(self):
         channel = self.cm.get(CHANNEL_NAME)

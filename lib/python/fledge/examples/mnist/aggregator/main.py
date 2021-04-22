@@ -4,27 +4,14 @@ import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from ....channel_manager import ChannelManager
-
-FRONTEND = 'keras'
-BACKEND = 'local'
-REGISTRY_AGENT = 'local'
-CHANNEL_NAME = 'param-channel'
-JOB_NAME = 'keras-mnist-job'
-MY_ROLE = 'aggregator'
-OTHER_ROLE = 'trainer'
-CHANNELS_ROLES = {CHANNEL_NAME: ((MY_ROLE, OTHER_ROLE), (OTHER_ROLE, MY_ROLE))}
+from .cm import CHANNEL_NAME, CM
 
 # keras mnist example from https://keras.io/examples/vision/mnist_convnet/
 
 
 class Aggregator(object):
     def __init__(self, rounds=1):
-        self.cm = ChannelManager()
-        self.cm(
-            FRONTEND, BACKEND, REGISTRY_AGENT, JOB_NAME, MY_ROLE, CHANNELS_ROLES
-        )
-        self.cm.join(CHANNEL_NAME)
+        self.cm = CM()
         self._rounds = rounds
 
     def prepare(self):
@@ -73,9 +60,6 @@ class Aggregator(object):
         score = self._model.evaluate(self._x_test, self._y_test, verbose=0)
         print("Test loss:", score[0])
         print("Test accuracy:", score[1])
-
-    def fedsdg(self, weights):
-        pass
 
     def run(self):
         self.prepare()
@@ -127,6 +111,8 @@ class Aggregator(object):
             i += 1
 
 
+# example cmd: python3 -m fledge.examples.mnist.aggregator.main --rounds 3
+# run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
