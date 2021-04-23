@@ -1,5 +1,11 @@
 #! /usr/bin/env bash
 
+function common {
+    PIP3=$HOME/.local/bin/pip3
+
+    $PIP3 install monai scikit-learn tqdm
+}
+
 function controller {
     sudo systemctl enable vernemq
     sudo systemctl start vernemq

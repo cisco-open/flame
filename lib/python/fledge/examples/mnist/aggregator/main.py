@@ -106,7 +106,7 @@ class Aggregator(object):
                 for idx in range(len(weights)):
                     global_weights[idx] += weights[idx] * rate
 
-            self._model.set_weights(weights)
+            self._model.set_weights(global_weights)
             self.test()
             i += 1
 

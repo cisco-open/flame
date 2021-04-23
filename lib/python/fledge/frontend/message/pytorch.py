@@ -1,11 +1,13 @@
 import json
+from collections import OrderedDict
 
 import numpy as np
+import torch
 
 from .basic import BasicMessage
 
 
-class KerasMessage(BasicMessage):
+class PyTorchMessage(BasicMessage):
     def __init__(self, data=None):
         super().__init__(data)
 
@@ -15,11 +17,11 @@ class KerasMessage(BasicMessage):
         if self.STATE in self.data:
             orig_state = self.data[self.STATE]
 
-            list_obj = list()
+            list_dict = OrderedDict()
 
-            for nd_arr in self.data[self.STATE]:
-                list_obj.append(nd_arr.tolist())
-            self.data[self.STATE] = list_obj
+            for key, tensor in self.data[self.STATE].items():
+                list_dict[key] = tensor.tolist()
+            self.data[self.STATE] = list_dict
 
         json_data = json.dumps(self.data)
 
@@ -42,9 +44,10 @@ class KerasMessage(BasicMessage):
             return None
 
         if cls.STATE in data:
-            list_obj = list()
-            for arr in data[cls.STATE]:
-                list_obj.append(np.asarray(arr))
-            data[cls.STATE] = list_obj
+            list_dict = OrderedDict()
+            for key, val in data[cls.STATE].items():
+                list_dict[key] = torch.from_numpy(np.asarray(val))
+
+            data[cls.STATE] = list_dict
 
         return cls(data)
