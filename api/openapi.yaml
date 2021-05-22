@@ -1,0 +1,289 @@
+openapi: 3.0.0
+info:
+  license:
+    name: MIT
+  title: Fledge REST API
+  version: 1.0.0
+servers:
+- url: /
+paths:
+  /designs/{user}:
+    get:
+      operationId: listDesigns
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: How many items to return at one time (max 100)
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          format: int32
+          type: integer
+        style: form
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Designs'
+          description: A paged array of designs
+          headers:
+            x-next:
+              description: A link to the next page of responses
+              explode: false
+              schema:
+                type: string
+              style: simple
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: List designs owned by user
+      tags:
+      - designs
+    post:
+      operationId: createDesigns
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: the name of design
+        explode: true
+        in: query
+        name: name
+        required: true
+        schema:
+          type: string
+        style: form
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: Create a design
+      tags:
+      - designs
+  /designs/{user}/{design}/schema:
+    get:
+      operationId: getDesignSchema
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: name of design
+        explode: false
+        in: path
+        name: design
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DesignSchema'
+          description: a design schema
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: Get a design schema owned by user
+      tags:
+      - designSchema
+    put:
+      operationId: updateDesignSchema
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: name of design
+        explode: false
+        in: path
+        name: design
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignSchema'
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: Update a design schema
+      tags:
+      - designSchema
+components:
+  schemas:
+    Design:
+      example:
+        name: name
+        id: 0
+        tag: tag
+      properties:
+        id:
+          format: int64
+          type: integer
+        name:
+          type: string
+        tag:
+          type: string
+      required:
+      - id
+      - name
+    Designs:
+      items:
+        $ref: '#/components/schemas/Design'
+      type: array
+    DesignSchema:
+      example:
+        channels:
+        - directions:
+          - from: from
+            to: to
+            tag: tag
+          - from: from
+            to: to
+            tag: tag
+          name: name
+          backend: backend
+          groupby: groupby
+          tag: tag
+        - directions:
+          - from: from
+            to: to
+            tag: tag
+          - from: from
+            to: to
+            tag: tag
+          name: name
+          backend: backend
+          groupby: groupby
+          tag: tag
+        roles:
+        - name: name
+          tag: tag
+        - name: name
+          tag: tag
+        tag: tag
+      properties:
+        roles:
+          items:
+            $ref: '#/components/schemas/Role'
+          type: array
+        channels:
+          items:
+            $ref: '#/components/schemas/Channel'
+          type: array
+        tag:
+          type: string
+      required:
+      - channels
+      - roles
+    Channel:
+      example:
+        directions:
+        - from: from
+          to: to
+          tag: tag
+        - from: from
+          to: to
+          tag: tag
+        name: name
+        backend: backend
+        groupby: groupby
+        tag: tag
+      properties:
+        name:
+          type: string
+        backend:
+          type: string
+        directions:
+          items:
+            $ref: '#/components/schemas/Direction'
+          type: array
+        groupby:
+          type: string
+        tag:
+          type: string
+      required:
+      - backend
+      - directions
+      - name
+    Direction:
+      example:
+        from: from
+        to: to
+        tag: tag
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        tag:
+          type: string
+      required:
+      - from
+      - to
+    Role:
+      example:
+        name: name
+        tag: tag
+      properties:
+        name:
+          type: string
+        tag:
+          type: string
+      required:
+      - name
+    Error:
+      properties:
+        code:
+          format: int32
+          type: integer
+        message:
+          type: string
+      required:
+      - code
+      - message
