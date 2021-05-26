@@ -1,5 +1,5 @@
 all: build 
-.PHONY: build test push
+.PHONY: build test push clean fmt
 
 user := $(shell whoami)
 registry := containers.cisco.com/research
@@ -18,3 +18,9 @@ test:
 push: build
 	@docker image tag ${uri} ${registry}/${uri}
 	@docker image push ${registry}/${uri}
+
+clean:
+	@docker image prune --force
+
+fmt:
+	@go fmt ./...
