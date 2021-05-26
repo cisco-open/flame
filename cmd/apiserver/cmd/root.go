@@ -9,7 +9,7 @@ import (
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "fledge-apiserver",
+	Use:   "apiserver",
 	Short: "fledge REST API server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
