@@ -13,5 +13,5 @@ type Role struct {
 
 	Name string `json:"name"`
 
-	Tag string `json:"tag,omitempty"`
+	Replica int32 `json:"replica,omitempty"`
 }

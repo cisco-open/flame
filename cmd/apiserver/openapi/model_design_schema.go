@@ -11,9 +11,9 @@ package openapi
 
 type DesignSchema struct {
 
+	Backend string `json:"backend"`
+
 	Roles []Role `json:"roles"`
 
 	Channels []Channel `json:"channels"`
-
-	Tag string `json:"tag,omitempty"`
 }

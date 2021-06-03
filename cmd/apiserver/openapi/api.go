@@ -12,10 +12,18 @@ package openapi
 import (
 	"context"
 	"net/http"
+	"os"
 )
 
 
 
+// DesignCodeApiRouter defines the required methods for binding the api requests to a responses for the DesignCodeApi
+// The DesignCodeApiRouter implementation should parse necessary information from the http request, 
+// pass the data to a DesignCodeApiServicer to perform the required actions, then write the service results to the http response.
+type DesignCodeApiRouter interface { 
+	GetDesignCode(http.ResponseWriter, *http.Request)
+	UpdateDesignCode(http.ResponseWriter, *http.Request)
+}
 // DesignSchemaApiRouter defines the required methods for binding the api requests to a responses for the DesignSchemaApi
 // The DesignSchemaApiRouter implementation should parse necessary information from the http request, 
 // pass the data to a DesignSchemaApiServicer to perform the required actions, then write the service results to the http response.
@@ -29,6 +37,16 @@ type DesignSchemaApiRouter interface {
 type DesignsApiRouter interface { 
 	CreateDesigns(http.ResponseWriter, *http.Request)
 	ListDesigns(http.ResponseWriter, *http.Request)
+}
+
+
+// DesignCodeApiServicer defines the api actions for the DesignCodeApi service
+// This interface intended to stay up to date with the openapi yaml used to generate it, 
+// while the service implementation can ignored with the .openapi-generator-ignore file 
+// and updated with the logic required for the API.
+type DesignCodeApiServicer interface { 
+	GetDesignCode(context.Context, string, string) (ImplResponse, error)
+	UpdateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
 }
 
 

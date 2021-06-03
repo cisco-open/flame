@@ -13,11 +13,9 @@ type Channel struct {
 
 	Name string `json:"name"`
 
-	Backend string `json:"backend"`
+	Role1 string `json:"role1"`
 
-	Directions []Direction `json:"directions"`
+	Role2 string `json:"role2"`
 
-	Groupby string `json:"groupby,omitempty"`
-
-	Tag string `json:"tag,omitempty"`
+	Groupby []string `json:"groupby,omitempty"`
 }
