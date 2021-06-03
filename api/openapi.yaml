@@ -154,20 +154,91 @@ paths:
       summary: Update a design schema
       tags:
       - designSchema
+  /designs/{user}/{design}/code:
+    get:
+      operationId: getDesignCode
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: name of design
+        explode: false
+        in: path
+        name: design
+        required: true
+        schema:
+          type: string
+        style: simple
+      responses:
+        "200":
+          content:
+            application/octet-steam:
+              schema:
+                format: binary
+                type: string
+          description: a design code file in zipped format
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: Get a zipped design code file owned by user
+      tags:
+      - designCode
+    post:
+      operationId: updateDesignCode
+      parameters:
+      - description: user name
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: name of design
+        explode: false
+        in: path
+        name: design
+        required: true
+        schema:
+          type: string
+        style: simple
+      requestBody:
+        content:
+          application/octet-steam:
+            schema:
+              format: binary
+              type: string
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+      summary: Update a design doce
+      tags:
+      - designCode
 components:
   schemas:
     Design:
       example:
-        name: name
-        id: 0
-        tag: tag
+        name: diabete_predict
+        id: 1
       properties:
         id:
           format: int64
           type: integer
         name:
-          type: string
-        tag:
           type: string
       required:
       - id
@@ -178,36 +249,28 @@ components:
       type: array
     DesignSchema:
       example:
+        backend: p2p
         channels:
-        - directions:
-          - from: from
-            to: to
-            tag: tag
-          - from: from
-            to: to
-            tag: tag
-          name: name
-          backend: backend
-          groupby: groupby
-          tag: tag
-        - directions:
-          - from: from
-            to: to
-            tag: tag
-          - from: from
-            to: to
-            tag: tag
-          name: name
-          backend: backend
-          groupby: groupby
-          tag: tag
+        - role1: aggregator
+          role2: trainer
+          name: param_channel
+          groupby:
+          - us_west
+          - uk
+        - role1: global_aggregator
+          role2: aggregator
+          name: agg_channel
+          groupby: []
         roles:
-        - name: name
-          tag: tag
-        - name: name
-          tag: tag
-        tag: tag
+        - name: aggregator
+          replica: 1
+        - name: global_aggregator
+          replica: 1
+        - name: trainer
+          replica: 1
       properties:
+        backend:
+          type: string
         roles:
           items:
             $ref: '#/components/schemas/Role'
@@ -216,65 +279,43 @@ components:
           items:
             $ref: '#/components/schemas/Channel'
           type: array
-        tag:
-          type: string
       required:
+      - backend
       - channels
       - roles
     Channel:
       example:
-        directions:
-        - from: from
-          to: to
-          tag: tag
-        - from: from
-          to: to
-          tag: tag
-        name: name
-        backend: backend
-        groupby: groupby
-        tag: tag
+        role1: aggregator
+        role2: trainer
+        name: param_channel
+        groupby:
+        - us_west
+        - uk
       properties:
         name:
           type: string
-        backend:
+        role1:
           type: string
-        directions:
-          items:
-            $ref: '#/components/schemas/Direction'
-          type: array
+        role2:
+          type: string
         groupby:
-          type: string
-        tag:
-          type: string
+          items:
+            type: string
+          type: array
       required:
-      - backend
-      - directions
       - name
-    Direction:
-      example:
-        from: from
-        to: to
-        tag: tag
-      properties:
-        from:
-          type: string
-        to:
-          type: string
-        tag:
-          type: string
-      required:
-      - from
-      - to
+      - role1
+      - role2
     Role:
       example:
-        name: name
-        tag: tag
+        name: aggregator
+        replica: 1
       properties:
         name:
           type: string
-        tag:
-          type: string
+        replica:
+          format: int32
+          type: integer
       required:
       - name
     Error:
