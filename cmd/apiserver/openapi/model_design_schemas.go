@@ -9,10 +9,8 @@
 
 package openapi
 
-// Error - Generic error object.
-type Error struct {
+// DesignSchemas - A collection of design schemas related to design template
+type DesignSchemas struct {
 
-	Code int32 `json:"code"`
-
-	Message string `json:"message"`
+	Schemas []DesignSchema `json:"schemas"`
 }

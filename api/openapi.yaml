@@ -5,35 +5,43 @@ info:
   title: Fledge REST API
   version: 1.0.0
 servers:
-- url: /
+  - url: /
 paths:
-  /designs/{user}:
+  /{user}/designs/:
+    #------------------------------------#
+    # Get Template - get list of all designs
+    #------------------------------------#
     get:
-      operationId: listDesigns
+      operationId: getDesigns
+      summary: Get list of all the designs created by the user.
+      tags:
+        - designs
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
-        required: true
-        schema:
-          type: string
-        style: simple
-      - description: How many items to return at one time (max 100)
-        explode: true
-        in: query
-        name: limit
-        required: false
-        schema:
-          format: int32
-          type: integer
-        style: form
+        - name: user
+          description: user id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
+        - description: How many items to return at one time (max 100)
+          explode: true
+          in: query
+          name: limit
+          required: false
+          schema:
+            format: int32
+            type: integer
+          style: form
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Designs'
+                type: array
+                items:
+                  $ref: '#/components/schemas/DesignInfo'
           description: A paged array of designs
           headers:
             x-next:
@@ -48,28 +56,33 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
-      summary: List designs owned by user
-      tags:
-      - designs
+
+
+  /{user}/design/:
+    #------------------------------------#
+    # Create New Design Template
+    #------------------------------------#
     post:
-      operationId: createDesigns
+      operationId: createDesign
+      summary: Create a new design template.
+      tags:
+        - design
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
+        - description: user name
+          explode: false
+          in: path
+          name: user
+          required: true
+          schema:
+            type: string
+          style: simple
+      requestBody:
+        description: Collection of node information
         required: true
-        schema:
-          type: string
-        style: simple
-      - description: the name of design
-        explode: true
-        in: query
-        name: name
-        required: true
-        schema:
-          type: string
-        style: form
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DesignInfo'
       responses:
         "201":
           description: Null response
@@ -79,35 +92,106 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
-      summary: Create a design
-      tags:
-      - designs
-  /designs/{user}/{design}/schema:
+
+  /{user}/design/{designId}:
+    #------------------------------------#
+    # Get Design via ID
+    #------------------------------------#
     get:
-      operationId: getDesignSchema
+      operationId: getDesign
+      summary: Get design template information
+      tags:
+        - design
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
-        required: true
-        schema:
-          type: string
-        style: simple
-      - description: name of design
-        explode: false
-        in: path
-        name: design
-        required: true
-        schema:
-          type: string
-        style: simple
+        - name: user
+          description: user id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
+        - name: designId
+          description: design id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
       responses:
         "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/DesignSchema'
+                $ref: '#/components/schemas/Design'
+
+          description: A paged array of designs
+          headers:
+            x-next:
+              description: A link to the next page of responses
+              explode: false
+              schema:
+                type: string
+              style: simple
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+  /{user}/design/{designId}/schema/:
+    #------------------------------------#
+    # Get Design Schema - all or by id
+    #------------------------------------#
+    get:
+      operationId: getDesignSchema
+      tags:
+        - designSchema
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: designId
+          description: design id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: type
+          description: Type of fetch based on id or all
+          in: query
+          schema:
+            type: string
+            enum: ["all", "id"]
+          style: form
+          explode: false
+          required: false
+        - name: schemaId
+          description: If type is ID this provides the design schema id
+          in: query
+          schema:
+            format: int64
+            type: integer
+          style: form
+          explode: true
+          required: false
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/DesignSchema'
+                  - $ref: '#/components/schemas/DesignSchemas'
           description: a design schema
         default:
           content:
@@ -116,27 +200,29 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
       summary: Get a design schema owned by user
-      tags:
-      - designSchema
-    put:
+
+    #------------------------------------#
+    # Create Design Schema
+    #------------------------------------#
+    post:
       operationId: updateDesignSchema
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
-        required: true
-        schema:
-          type: string
-        style: simple
-      - description: name of design
-        explode: false
-        in: path
-        name: design
-        required: true
-        schema:
-          type: string
-        style: simple
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: designId
+          description: design id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
       requestBody:
         content:
           application/json:
@@ -153,35 +239,40 @@ paths:
           description: unexpected error
       summary: Update a design schema
       tags:
-      - designSchema
-  /designs/{user}/{design}/code:
+        - designSchema
+
+  /{user}/design/{designId}/code/:
+    #------------------------------------#
+    # Get Code Zip
+    #------------------------------------#
     get:
       operationId: getDesignCode
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
-        required: true
-        schema:
-          type: string
-        style: simple
-      - description: name of design
-        explode: false
-        in: path
-        name: design
-        required: true
-        schema:
-          type: string
-        style: simple
+        - name: user
+          description: user name
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
+        - name: designId
+          description: design id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
       responses:
         "200":
           content:
-            application/octet-steam:
+            application/octet-stream:
               schema:
-                format: binary
+                # a binary file of any type
                 type: string
-          description: a design code file in zipped format
+                format: binary
+          description: A design code file in zipped format
         default:
           content:
             application/json:
@@ -190,29 +281,33 @@ paths:
           description: unexpected error
       summary: Get a zipped design code file owned by user
       tags:
-      - designCode
+        - designCode
+
+    #------------------------------------#
+    # Upload Code Zip
+    #------------------------------------#
     post:
       operationId: updateDesignCode
       parameters:
-      - description: user name
-        explode: false
-        in: path
-        name: user
-        required: true
-        schema:
-          type: string
-        style: simple
-      - description: name of design
-        explode: false
-        in: path
-        name: design
-        required: true
-        schema:
-          type: string
-        style: simple
+        - name: user
+          description: user id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
+        - name: designId
+          description: design id
+          explode: false
+          in: path
+          required: true
+          schema:
+            type: string
+          style: simple
       requestBody:
         content:
-          application/octet-steam:
+          application/octet-stream:
             schema:
               format: binary
               type: string
@@ -227,98 +322,220 @@ paths:
           description: unexpected error
       summary: Update a design doce
       tags:
-      - designCode
+        - designCode
+
 components:
   schemas:
-    Design:
-      example:
-        name: diabete_predict
-        id: 1
+    #-----------------------#
+    # Basic Design Information
+    #-----------------------#
+    DesignInfo:
+      description: Only basic desgin information.
+      type: object
       properties:
+        name:
+          type: string
+        description:
+          type: string
         id:
           format: int64
           type: integer
+      required:
+        - id
+        - name
+      example:
+        name: diabete predict
+        description : Helps in quick diagnosis and prediction of diabetes among patients.
+        id: 1
+
+    Design:
+      description: Design template details along with all the schemas.
+      type: object
+      allOf:
+        - $ref: '#/components/schemas/DesignInfo'
+        - $ref: '#/components/schemas/DesignSchemas'
+
+    #-----------------------#
+    # Schema
+    #-----------------------#
+    DesignSchemas:
+      description: A collection of design schemas related to design template
+      type: object
+      properties:
+        schemas:
+          type: array
+          items:
+            $ref : '#/components/schemas/DesignSchema'
+      required:
+        - schemas
+
+    DesignSchema:
+      description: Schema to define the roles and their connections
+      properties:
+        id:
+          type: integer
+          format: int64
+        isCurrentlyUsed:
+          # for a given design we can have multiple design schemas and can select which one would be used
+          type: boolean
         name:
           type: string
-      required:
-      - id
-      - name
-    Designs:
-      items:
-        $ref: '#/components/schemas/Design'
-      type: array
-    DesignSchema:
-      example:
-        backend: p2p
-        channels:
-        - role1: aggregator
-          role2: trainer
-          name: param_channel
-          groupby:
-          - us_west
-          - uk
-        - role1: global_aggregator
-          role2: aggregator
-          name: agg_channel
-          groupby: []
-        roles:
-        - name: aggregator
-          replica: 1
-        - name: global_aggregator
-          replica: 1
-        - name: trainer
-          replica: 1
-      properties:
-        backend:
+        description:
           type: string
         roles:
+          type: array
           items:
             $ref: '#/components/schemas/Role'
-          type: array
         channels:
+          type: array
           items:
             $ref: '#/components/schemas/Channel'
+        connectors:
           type: array
-      required:
-      - backend
-      - channels
-      - roles
-    Channel:
-      example:
-        role1: aggregator
-        role2: trainer
-        name: param_channel
-        groupby:
-        - us_west
-        - uk
-      properties:
-        name:
-          type: string
-        role1:
-          type: string
-        role2:
-          type: string
-        groupby:
           items:
-            type: string
-          type: array
+            $ref: '#/components/schemas/Connector'
       required:
-      - name
-      - role1
-      - role2
-    Role:
+        - id
+        - name
+        - roles
+        - channels
       example:
-        name: aggregator
-        replica: 1
+        - name: sample schema 1
+          description: Sample schema to demostrate a TAG layout.
+          roles:
+            - name: trainer
+              description: These are responsible to consume the data and train local model
+              isDataConsumer: true
+            - name: aggregator
+              description: These are responsible to aggregate the updates from trainer nodes.
+              replica: 2
+            - name: global_aggregator
+              description: It is responsible to aggregate the updates from all the aggregators and make a generic model.
+              replica: 2
+          channel:
+            - name: trainer-agg-channel
+              description: Model update is sent from trainer to aggregator and vice-versa.
+              pair: ["trainer", "aggregator"]
+              groupBy:
+                type: tag
+                value : ["us", "eu"]
+            - name: agg-global-channel
+              description: Model update is sent from all aggregators to the global aggregator and vice-versa.
+              pair: ["trainer", "aggregator"]
+              groupBy:
+                type: tag
+                value : ["us", "eu"]
+
+
+    #-----------------------#
+    # Roles
+    #-----------------------#
+    Role:
+      description: Define the role of a compute unit
+      type: object
       properties:
         name:
           type: string
+        description:
+          type: string
+        isDataConsumer:
+          type: boolean
         replica:
           format: int32
           type: integer
       required:
-      - name
+        - name
+      example:
+        - name: trainer
+          description: These are responsible to consume the data and train local model
+          isDataConsumer: true
+        - name: aggregator
+          description: These are responsible to aggregate the updates from trainer nodes.
+          replica: 2
+
+    #-----------------------#
+    # Channel between roles
+    #-----------------------#
+    Channel:
+      description: Defines how different roles are connected.
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        pair:
+          type: array
+          items:
+            type: string
+          minItems: 2
+          maxItems: 2
+        groupBy:
+          type: object
+          properties:
+            type:
+              type: string
+            value:
+              type: array
+              items:
+                type: string
+              # code generation for oneOf is not working
+              # https://github.com/OpenAPITools/openapi-generator/issues/8086
+              # oneOf:
+              #   - type: string
+              #   - type: integer
+              #   - type: array
+              #     items:
+              #       oneOf:
+              #         - type: string
+              #         - type: integer
+          required:
+            - type
+            - value
+        isBidirectional:
+          type: boolean
+      required:
+        - name
+        - pair
+        - groupby
+      example:
+        - name: directionalExample
+          description: An example to demostrate bi-directional channel creation. Data is sent from trainer to aggregator and vice-versa.
+          pair: ["trainer", "aggregator"]
+          groupBy:
+            type: tag
+            value : ["us", "eu"]
+
+        - name: non-directionalExample
+          description: An example to demostrate connection in one direction. Data is sent from aggregator to global aggregator but not the other way. isBidirectional flag allows you to define one way channels.
+          pair: ["aggregator", "global-aggregator"]
+          groupBy:
+            type: tag
+            value : ["us", "eu"]
+          isBidirectional: false
+
+    #-----------------------#
+    # Connectors for channels
+    #-----------------------#
+    Connector:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        connection:
+          type: object
+      required:
+        - name
+        - pair
+        - connection
+
+    #-----------------------#
+    # Helpers
+    #-----------------------#
     Error:
+      description: Generic error object.
       properties:
         code:
           format: int32
@@ -326,5 +543,6 @@ components:
         message:
           type: string
       required:
-      - code
-      - message
+        - code
+        - message
+

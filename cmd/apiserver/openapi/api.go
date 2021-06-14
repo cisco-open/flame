@@ -17,6 +17,13 @@ import (
 
 
 
+// DesignApiRouter defines the required methods for binding the api requests to a responses for the DesignApi
+// The DesignApiRouter implementation should parse necessary information from the http request, 
+// pass the data to a DesignApiServicer to perform the required actions, then write the service results to the http response.
+type DesignApiRouter interface { 
+	CreateDesign(http.ResponseWriter, *http.Request)
+	GetDesign(http.ResponseWriter, *http.Request)
+}
 // DesignCodeApiRouter defines the required methods for binding the api requests to a responses for the DesignCodeApi
 // The DesignCodeApiRouter implementation should parse necessary information from the http request, 
 // pass the data to a DesignCodeApiServicer to perform the required actions, then write the service results to the http response.
@@ -35,8 +42,17 @@ type DesignSchemaApiRouter interface {
 // The DesignsApiRouter implementation should parse necessary information from the http request, 
 // pass the data to a DesignsApiServicer to perform the required actions, then write the service results to the http response.
 type DesignsApiRouter interface { 
-	CreateDesigns(http.ResponseWriter, *http.Request)
-	ListDesigns(http.ResponseWriter, *http.Request)
+	GetDesigns(http.ResponseWriter, *http.Request)
+}
+
+
+// DesignApiServicer defines the api actions for the DesignApi service
+// This interface intended to stay up to date with the openapi yaml used to generate it, 
+// while the service implementation can ignored with the .openapi-generator-ignore file 
+// and updated with the logic required for the API.
+type DesignApiServicer interface { 
+	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
+	GetDesign(context.Context, string, string) (ImplResponse, error)
 }
 
 
@@ -55,7 +71,7 @@ type DesignCodeApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file 
 // and updated with the logic required for the API.
 type DesignSchemaApiServicer interface { 
-	GetDesignSchema(context.Context, string, string) (ImplResponse, error)
+	GetDesignSchema(context.Context, string, string, string, int64) (ImplResponse, error)
 	UpdateDesignSchema(context.Context, string, string, DesignSchema) (ImplResponse, error)
 }
 
@@ -65,6 +81,5 @@ type DesignSchemaApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file 
 // and updated with the logic required for the API.
 type DesignsApiServicer interface { 
-	CreateDesigns(context.Context, string, string) (ImplResponse, error)
-	ListDesigns(context.Context, string, int32) (ImplResponse, error)
+	GetDesigns(context.Context, string, int32) (ImplResponse, error)
 }

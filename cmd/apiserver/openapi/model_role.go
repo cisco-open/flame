@@ -9,9 +9,14 @@
 
 package openapi
 
+// Role - Define the role of a compute unit
 type Role struct {
 
 	Name string `json:"name"`
+
+	Description string `json:"description,omitempty"`
+
+	IsDataConsumer bool `json:"isDataConsumer,omitempty"`
 
 	Replica int32 `json:"replica,omitempty"`
 }

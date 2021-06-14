@@ -33,13 +33,13 @@ func (c *DesignSchemaApiController) Routes() Routes {
 		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
-			"/designs/{user}/{design}/schema",
+			"/{user}/design/{designId}/schema/",
 			c.GetDesignSchema,
 		},
 		{
 			"UpdateDesignSchema",
-			strings.ToUpper("Put"),
-			"/designs/{user}/{design}/schema",
+			strings.ToUpper("Post"),
+			"/{user}/design/{designId}/schema/",
 			c.UpdateDesignSchema,
 		},
 	}
@@ -48,11 +48,18 @@ func (c *DesignSchemaApiController) Routes() Routes {
 // GetDesignSchema - Get a design schema owned by user
 func (c *DesignSchemaApiController) GetDesignSchema(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
+	query := r.URL.Query()
 	user := params["user"]
 	
-	design := params["design"]
+	designId := params["designId"]
 	
-	result, err := c.service.GetDesignSchema(r.Context(), user, design)
+	type_ := query.Get("type_")
+	schemaId, err := parseInt64Parameter(query.Get("schemaId"), false)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.GetDesignSchema(r.Context(), user, designId, type_, schemaId)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)
@@ -68,14 +75,14 @@ func (c *DesignSchemaApiController) UpdateDesignSchema(w http.ResponseWriter, r 
 	params := mux.Vars(r)
 	user := params["user"]
 	
-	design := params["design"]
+	designId := params["designId"]
 	
 	designSchema := &DesignSchema{}
 	if err := json.NewDecoder(r.Body).Decode(&designSchema); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	result, err := c.service.UpdateDesignSchema(r.Context(), user, design, *designSchema)
+	result, err := c.service.UpdateDesignSchema(r.Context(), user, designId, *designSchema)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

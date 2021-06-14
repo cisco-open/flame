@@ -9,9 +9,14 @@
 
 package openapi
 
+// Design - Design template details along with all the schemas.
 type Design struct {
+
+	Name string `json:"name"`
+
+	Description string `json:"description,omitempty"`
 
 	Id int64 `json:"id"`
 
-	Name string `json:"name"`
+	Schemas []DesignSchema `json:"schemas"`
 }

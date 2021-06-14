@@ -10,6 +10,7 @@
 package openapi
 
 import (
+	_ "encoding/json"
 	"net/http"
 	"strings"
 
@@ -30,40 +31,16 @@ func NewDesignsApiController(s DesignsApiServicer) Router {
 func (c *DesignsApiController) Routes() Routes {
 	return Routes{
 		{
-			"CreateDesigns",
-			strings.ToUpper("Post"),
-			"/designs/{user}",
-			c.CreateDesigns,
-		},
-		{
-			"ListDesigns",
+			"GetDesigns",
 			strings.ToUpper("Get"),
-			"/designs/{user}",
-			c.ListDesigns,
+			"/{user}/designs/",
+			c.GetDesigns,
 		},
 	}
 }
 
-// CreateDesigns - Create a design
-func (c *DesignsApiController) CreateDesigns(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	query := r.URL.Query()
-	user := params["user"]
-
-	name := query.Get("name")
-	result, err := c.service.CreateDesigns(r.Context(), user, name)
-	// If an error occurred, encode the error with the status code
-	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
-		return
-	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
-
-}
-
-// ListDesigns - List designs owned by user
-func (c *DesignsApiController) ListDesigns(w http.ResponseWriter, r *http.Request) {
+// GetDesigns - Get list of all the designs created by the user.
+func (c *DesignsApiController) GetDesigns(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
 	user := params["user"]
@@ -73,7 +50,7 @@ func (c *DesignsApiController) ListDesigns(w http.ResponseWriter, r *http.Reques
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	result, err := c.service.ListDesigns(r.Context(), user, limit)
+	result, err := c.service.GetDesigns(r.Context(), user, limit)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

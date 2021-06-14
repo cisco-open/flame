@@ -28,7 +28,7 @@ func NewDesignCodeApiService() DesignCodeApiServicer {
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
-func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, design string) (ImplResponse, error) {
+func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (ImplResponse, error) {
 	// TODO - update GetDesignCode with the required logic for this service method.
 	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -42,7 +42,7 @@ func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, d
 }
 
 // UpdateDesignCode - Update a design doce
-func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, design string, body *os.File) (ImplResponse, error) {
+func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string, body *os.File) (ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
 	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 

@@ -9,10 +9,9 @@
 
 package openapi
 
-// Error - Generic error object.
-type Error struct {
+type ChannelGroupBy struct {
 
-	Code int32 `json:"code"`
+	Type string `json:"type"`
 
-	Message string `json:"message"`
+	Value []string `json:"value"`
 }

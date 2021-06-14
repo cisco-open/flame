@@ -9,13 +9,16 @@
 
 package openapi
 
+// Channel - Defines how different roles are connected.
 type Channel struct {
 
 	Name string `json:"name"`
 
-	Role1 string `json:"role1"`
+	Description string `json:"description,omitempty"`
 
-	Role2 string `json:"role2"`
+	Pair []string `json:"pair"`
 
-	Groupby []string `json:"groupby,omitempty"`
+	GroupBy ChannelGroupBy `json:"groupBy,omitempty"`
+
+	IsBidirectional bool `json:"isBidirectional,omitempty"`
 }

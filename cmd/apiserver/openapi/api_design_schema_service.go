@@ -27,12 +27,12 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, design string) (ImplResponse, error) {
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, type_ string, schemaId int64) (ImplResponse, error) {
 	// TODO - update GetDesignSchema with the required logic for this service method.
 	// Add api_design_schema_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
-	//TODO: Uncomment the next line to return response Response(200, DesignSchema{}) or use other options such as http.Ok ...
-	//return Response(200, DesignSchema{}), nil
+	//TODO: Uncomment the next line to return response Response(200, OneOfDesignSchemaDesignSchemas{}) or use other options such as http.Ok ...
+	//return Response(200, OneOfDesignSchemaDesignSchemas{}), nil
 
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
@@ -41,7 +41,7 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, design string, designSchema DesignSchema) (ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema DesignSchema) (ImplResponse, error) {
 	// TODO - update UpdateDesignSchema with the required logic for this service method.
 	// Add api_design_schema_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 

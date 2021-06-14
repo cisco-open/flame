@@ -1,3 +1,7 @@
+# idea files
+.DS_Store
+.idea
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

@@ -26,31 +26,17 @@ func NewDesignsApiService() DesignsApiServicer {
 	return &DesignsApiService{}
 }
 
-// CreateDesigns - Create a design
-func (s *DesignsApiService) CreateDesigns(ctx context.Context, user string, name string) (ImplResponse, error) {
-	// TODO - update CreateDesigns with the required logic for this service method.
+// GetDesigns - Get list of all the designs created by the user.
+func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
+	// TODO - update GetDesigns with the required logic for this service method.
 	// Add api_designs_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	//TODO: Uncomment the next line to return response Response(200, []DesignInfo{}) or use other options such as http.Ok ...
+	//return Response(200, []DesignInfo{}), nil
 
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("CreateDesigns method not implemented")
-}
-
-// ListDesigns - List designs owned by user
-func (s *DesignsApiService) ListDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
-	// TODO - update ListDesigns with the required logic for this service method.
-	// Add api_designs_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(200, []Design{}) or use other options such as http.Ok ...
-	//return Response(200, []Design{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("ListDesigns method not implemented")
+	return Response(http.StatusNotImplemented, nil), errors.New("GetDesigns method not implemented")
 }
 

@@ -9,20 +9,12 @@
 
 package openapi
 
-// DesignSchema - Schema to define the roles and their connections
-type DesignSchema struct {
-
-	Id int64 `json:"id"`
-
-	IsCurrentlyUsed bool `json:"isCurrentlyUsed,omitempty"`
+// DesignInfo - Only basic desgin information.
+type DesignInfo struct {
 
 	Name string `json:"name"`
 
 	Description string `json:"description,omitempty"`
 
-	Roles []Role `json:"roles"`
-
-	Channels []Channel `json:"channels"`
-
-	Connectors []Connector `json:"connectors,omitempty"`
+	Id int64 `json:"id"`
 }
