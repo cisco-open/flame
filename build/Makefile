@@ -1,5 +1,5 @@
 all: build 
-.PHONY: build test push clean fmt
+.PHONY: build test push clean dep fmt local local_test
 
 user := $(shell whoami)
 registry := containers.cisco.com/research
@@ -8,6 +8,11 @@ project := fledge
 now := $(shell date +"%Y%m%d%H%M%S")
 uri := ${project}:${user}-${now}
 
+dep:
+	@go mod tidy
+
+fmt:
+	@go fmt ./...
 
 build: test
 	@docker build -f build/Dockerfile --target build --tag ${uri} .
@@ -22,5 +27,9 @@ push: build
 clean:
 	@docker image prune --force
 
-fmt:
-	@go fmt ./...
+local: dep
+	@mkdir -p ./build/bin
+	@go build -o ./build/bin ./...
+
+local_test: dep
+	@go test -v ./...
