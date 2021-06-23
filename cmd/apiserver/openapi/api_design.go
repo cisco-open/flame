@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
 )
 
 // A DesignApiController binds http requests to an api service and writes the service results to the http response
@@ -29,7 +30,7 @@ func NewDesignApiController(s DesignApiServicer) Router {
 
 // Routes returns all of the api route for the DesignApiController
 func (c *DesignApiController) Routes() Routes {
-	return Routes{ 
+	return Routes{
 		{
 			"CreateDesign",
 			strings.ToUpper("Post"),
@@ -49,8 +50,8 @@ func (c *DesignApiController) Routes() Routes {
 func (c *DesignApiController) CreateDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	user := params["user"]
-	
-	designInfo := &DesignInfo{}
+
+	designInfo := &objects2.DesignInfo{}
 	if err := json.NewDecoder(r.Body).Decode(&designInfo); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -70,9 +71,9 @@ func (c *DesignApiController) CreateDesign(w http.ResponseWriter, r *http.Reques
 func (c *DesignApiController) GetDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	user := params["user"]
-	
+
 	designId := params["designId"]
-	
+
 	result, err := c.service.GetDesign(r.Context(), user, designId)
 	// If an error occurred, encode the error with the status code
 	if err != nil {

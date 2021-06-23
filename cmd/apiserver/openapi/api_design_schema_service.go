@@ -11,12 +11,16 @@ package openapi
 
 import (
 	"context"
-	"net/http"
 	"errors"
+	"net/http"
+
+	"go.uber.org/zap"
+	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
+	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
 )
 
 // DesignSchemaApiService is a service that implents the logic for the DesignSchemaApiServicer
-// This service should implement the business logic for every endpoint for the DesignSchemaApi API. 
+// This service should implement the business logic for every endpoint for the DesignSchemaApi API.
 // Include any external packages or services that will be required by this service.
 type DesignSchemaApiService struct {
 }
@@ -27,30 +31,26 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, type_ string, schemaId int64) (ImplResponse, error) {
-	// TODO - update GetDesignSchema with the required logic for this service method.
-	// Add api_design_schema_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (ImplResponse, error) {
+	zap.S().Debugf("get design schema details for user:%s | designId:%s | type:%s | schemaId:%s", user, designId, getType, schemaId)
 
-	//TODO: Uncomment the next line to return response Response(200, OneOfDesignSchemaDesignSchemas{}) or use other options such as http.Ok ...
-	//return Response(200, OneOfDesignSchemaDesignSchemas{}), nil
+	info, err := controller.GetDesignSchema(user, designId, getType, schemaId)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("GetDesignSchema method not implemented")
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
+	} else {
+		return Response(http.StatusOK, info), nil
+	}
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema DesignSchema) (ImplResponse, error) {
-	// TODO - update UpdateDesignSchema with the required logic for this service method.
-	// Add api_design_schema_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects2.DesignSchema) (ImplResponse, error) {
+	zap.S().Debugf("update design schema request recieved ... | designId : %v ", designId)
+	err := controller.UpdateDesignSchema(user, designId, designSchema)
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("UpdateDesignSchema method not implemented")
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
+	} else {
+		return Response(http.StatusCreated, nil), nil
+	}
 }
-

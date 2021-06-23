@@ -9,6 +9,7 @@
 *.so
 *.dylib
 build/bin
+build/scripts
 
 # Test binary, built with `go test -c`
 *.test

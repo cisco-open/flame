@@ -11,12 +11,18 @@ package openapi
 
 import (
 	"context"
-	"net/http"
 	"errors"
+	"net/http"
+
+	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+
+	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
+
+	"go.uber.org/zap"
 )
 
 // DesignApiService is a service that implents the logic for the DesignApiServicer
-// This service should implement the business logic for every endpoint for the DesignApi API. 
+// This service should implement the business logic for every endpoint for the DesignApi API.
 // Include any external packages or services that will be required by this service.
 type DesignApiService struct {
 }
@@ -27,30 +33,35 @@ func NewDesignApiService() DesignApiServicer {
 }
 
 // CreateDesign - Create a new design template.
-func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo DesignInfo) (ImplResponse, error) {
-	// TODO - update CreateDesign with the required logic for this service method.
-	// Add api_design_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects2.DesignInfo) (ImplResponse, error) {
+	zap.S().Debugf("new design request recieved for user:%s | designInfo:%v", user, designInfo)
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	var d = objects2.Design{
+		UserId:      user,
+		Name:        designInfo.Name,
+		Description: designInfo.Description,
+		Schemas:     []objects2.DesignSchema{},
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	err := controller.CreateNewDesign(user, d)
 
-	return Response(http.StatusNotImplemented, nil), errors.New("CreateDesign method not implemented")
+	if err != nil {
+		//return Response(0, Error{}), nil
+		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
+	} else {
+		return Response(http.StatusCreated, nil), nil
+	}
 }
 
 // GetDesign - Get design template information
 func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (ImplResponse, error) {
-	// TODO - update GetDesign with the required logic for this service method.
-	// Add api_design_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	zap.S().Debugf("get design template information for user:%s | designId: %s", user, designId)
 
-	//TODO: Uncomment the next line to return response Response(200, Design{}) or use other options such as http.Ok ...
-	//return Response(200, Design{}), nil
+	info, err := controller.GetDesign(user, designId)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("GetDesign method not implemented")
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
+	} else {
+		return Response(http.StatusOK, info), nil
+	}
 }
-

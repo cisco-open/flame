@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
 )
 
 // A DesignSchemaApiController binds http requests to an api service and writes the service results to the http response
@@ -29,7 +30,7 @@ func NewDesignSchemaApiController(s DesignSchemaApiServicer) Router {
 
 // Routes returns all of the api route for the DesignSchemaApiController
 func (c *DesignSchemaApiController) Routes() Routes {
-	return Routes{ 
+	return Routes{
 		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
@@ -50,16 +51,12 @@ func (c *DesignSchemaApiController) GetDesignSchema(w http.ResponseWriter, r *ht
 	params := mux.Vars(r)
 	query := r.URL.Query()
 	user := params["user"]
-	
+
 	designId := params["designId"]
-	
-	type_ := query.Get("type_")
-	schemaId, err := parseInt64Parameter(query.Get("schemaId"), false)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
-	}
-	result, err := c.service.GetDesignSchema(r.Context(), user, designId, type_, schemaId)
+
+	getType := query.Get("getType")
+	schemaId := query.Get("schemaId")
+	result, err := c.service.GetDesignSchema(r.Context(), user, designId, getType, schemaId)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)
@@ -74,10 +71,10 @@ func (c *DesignSchemaApiController) GetDesignSchema(w http.ResponseWriter, r *ht
 func (c *DesignSchemaApiController) UpdateDesignSchema(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	user := params["user"]
-	
+
 	designId := params["designId"]
-	
-	designSchema := &DesignSchema{}
+
+	designSchema := &objects2.DesignSchema{}
 	if err := json.NewDecoder(r.Body).Decode(&designSchema); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return

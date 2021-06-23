@@ -166,7 +166,7 @@ paths:
           style: simple
           explode: false
           required: true
-        - name: type
+        - name: getType
           description: Type of fetch based on id or all
           in: query
           schema:
@@ -179,8 +179,7 @@ paths:
           description: If type is ID this provides the design schema id
           in: query
           schema:
-            format: int64
-            type: integer
+            type: string
           style: form
           explode: true
           required: false
@@ -340,6 +339,8 @@ components:
         id:
           format: int64
           type: integer
+        userId:
+          type: string
       required:
         - id
         - name

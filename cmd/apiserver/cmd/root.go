@@ -4,6 +4,8 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 	"wwwin-github.cisco.com/fledge/fledge/cmd/apiserver/app"
+	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database"
+	util2 "wwwin-github.cisco.com/fledge/fledge/pkg/util"
 )
 
 /*
@@ -35,7 +37,17 @@ var startApiServerCmd = &cobra.Command{
 			return err
 		}
 
-		if err := app.RunServer(portNo); err != nil {
+		db, err := flags.GetString("db")
+		if err != nil {
+			return err
+		}
+
+		uri, err := flags.GetString("uri")
+		if err != nil {
+			return err
+		}
+
+		if err := app.RunServer(portNo, database.DBInfo{Name: db, URI: uri}); err != nil {
 			return err
 		}
 		return nil
@@ -71,6 +83,9 @@ func init() {
 	apiServerCmd.AddCommand(startApiServerCmd, stopApiServerCmd, reloadApiServerCmd)
 
 	apiServerCmd.PersistentFlags().Uint16P("port", "p", 5000, "listening port for API server")
+	apiServerCmd.PersistentFlags().StringP("db", "d", util2.MONGODB, "Database type")
+	apiServerCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
+	apiServerCmd.MarkPersistentFlagRequired("uri")
 }
 
 func Execute() error {

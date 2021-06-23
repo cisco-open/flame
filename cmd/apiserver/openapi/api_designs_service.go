@@ -11,12 +11,15 @@ package openapi
 
 import (
 	"context"
-	"net/http"
 	"errors"
+	"net/http"
+
+	"go.uber.org/zap"
+	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
 )
 
 // DesignsApiService is a service that implents the logic for the DesignsApiServicer
-// This service should implement the business logic for every endpoint for the DesignsApi API. 
+// This service should implement the business logic for every endpoint for the DesignsApi API.
 // Include any external packages or services that will be required by this service.
 type DesignsApiService struct {
 }
@@ -28,15 +31,13 @@ func NewDesignsApiService() DesignsApiServicer {
 
 // GetDesigns - Get list of all the designs created by the user.
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
-	// TODO - update GetDesigns with the required logic for this service method.
-	// Add api_designs_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	zap.S().Debugf("get list of designs for user:%s | limit:%d", user, limit)
 
-	//TODO: Uncomment the next line to return response Response(200, []DesignInfo{}) or use other options such as http.Ok ...
-	//return Response(200, []DesignInfo{}), nil
+	designList, err := controller.GetDesigns(user, limit)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return Response(http.StatusNotImplemented, nil), errors.New("GetDesigns method not implemented")
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
+	} else {
+		return Response(http.StatusOK, designList), nil
+	}
 }
-
