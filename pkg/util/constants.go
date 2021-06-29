@@ -16,3 +16,8 @@ const (
 const (
 	UserId = "userId"
 )
+
+//GROC constants
+const (
+	GrpcControllerPort = 9000
+)

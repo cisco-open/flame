@@ -15,8 +15,8 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	controllerapi "wwwin-github.cisco.com/fledge/fledge/cmd/controller/api"
+	"wwwin-github.cisco.com/fledge/fledge/pkg/objects"
 )
 
 // DesignSchemaApiService is a service that implents the logic for the DesignSchemaApiServicer
@@ -32,10 +32,11 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 
 // GetDesignSchema - Get a design schema owned by user
 func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (ImplResponse, error) {
+	//todo input validation
 	zap.S().Debugf("get design schema details for user:%s | designId:%s | type:%s | schemaId:%s", user, designId, getType, schemaId)
 
-	info, err := controller.GetDesignSchema(user, designId, getType, schemaId)
-
+	dc := controllerapi.DesignController{}
+	info, err := dc.GetDesignSchema(user, designId, getType, schemaId)
 	if err != nil {
 		return Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
 	} else {
@@ -44,10 +45,12 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects2.DesignSchema) (ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (ImplResponse, error) {
+	//todo input validation
 	zap.S().Debugf("update design schema request recieved ... | designId : %v ", designId)
-	err := controller.UpdateDesignSchema(user, designId, designSchema)
 
+	dc := controllerapi.DesignController{}
+	err := dc.UpdateDesignSchema(user, designId, designSchema)
 	if err != nil {
 		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
 	} else {

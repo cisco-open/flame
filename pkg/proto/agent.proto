@@ -1,0 +1,9 @@
+//syntax = "proto3";
+//
+//package grpcAgent;
+//option go_package = "wwwin-github.cisco.com/fledge/internal/proto/grpcController";
+//
+//message Response{
+//   int32 code = 1;
+//   string message = 2;
+//}

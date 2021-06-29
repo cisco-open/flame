@@ -14,11 +14,10 @@ import (
 	"errors"
 	"net/http"
 
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
-
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
-
 	"go.uber.org/zap"
+
+	controllerapi "wwwin-github.cisco.com/fledge/fledge/cmd/controller/api"
+	"wwwin-github.cisco.com/fledge/fledge/pkg/objects"
 )
 
 // DesignApiService is a service that implents the logic for the DesignApiServicer
@@ -33,18 +32,18 @@ func NewDesignApiService() DesignApiServicer {
 }
 
 // CreateDesign - Create a new design template.
-func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects2.DesignInfo) (ImplResponse, error) {
+func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (ImplResponse, error) {
+	//todo input validation
 	zap.S().Debugf("new design request recieved for user:%s | designInfo:%v", user, designInfo)
 
-	var d = objects2.Design{
+	var d = objects.Design{
 		UserId:      user,
 		Name:        designInfo.Name,
 		Description: designInfo.Description,
-		Schemas:     []objects2.DesignSchema{},
+		Schemas:     []objects.DesignSchema{},
 	}
-
-	err := controller.CreateNewDesign(user, d)
-
+	dc := controllerapi.DesignController{}
+	err := dc.CreateNewDesign(user, d)
 	if err != nil {
 		//return Response(0, Error{}), nil
 		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
@@ -55,10 +54,11 @@ func (s *DesignApiService) CreateDesign(ctx context.Context, user string, design
 
 // GetDesign - Get design template information
 func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (ImplResponse, error) {
+	//todo input validation
 	zap.S().Debugf("get design template information for user:%s | designId: %s", user, designId)
 
-	info, err := controller.GetDesign(user, designId)
-
+	dc := controllerapi.DesignController{}
+	info, err := dc.GetDesign(user, designId)
 	if err != nil {
 		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
 	} else {

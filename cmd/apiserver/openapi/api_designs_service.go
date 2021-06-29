@@ -15,7 +15,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller"
+	controllerapi "wwwin-github.cisco.com/fledge/fledge/cmd/controller/api"
 )
 
 // DesignsApiService is a service that implents the logic for the DesignsApiServicer
@@ -31,9 +31,11 @@ func NewDesignsApiService() DesignsApiServicer {
 
 // GetDesigns - Get list of all the designs created by the user.
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
+	//todo input validation
 	zap.S().Debugf("get list of designs for user:%s | limit:%d", user, limit)
 
-	designList, err := controller.GetDesigns(user, limit)
+	dc := controllerapi.DesignController{}
+	designList, err := dc.GetDesigns(user, limit)
 
 	if err != nil {
 		return Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
