@@ -1,5 +1,7 @@
 import asyncio
 
+import cloudpickle
+
 from .common.util import run_async
 
 RXQ = 'rxq'
@@ -7,14 +9,12 @@ TXQ = 'txq'
 
 
 class Channel(object):
-    def __init__(self, name, message_template, backend):
+    def __init__(self, name, backend):
         self._name = name
         self._backend = backend
 
         # _ends must be accessed within backend's loop
         self._ends = {}
-
-        self._message_template = message_template
 
     '''
     ### The following are not asyncio methods
@@ -46,7 +46,8 @@ class Channel(object):
                 # can't send message to end_id
                 return
 
-            payload = message.to_bytes()
+            # payload = message.to_bytes()
+            payload = cloudpickle.dumps(message)
             await self._ends[end_id][TXQ].put(payload)
 
         _, status = run_async(_put(), self._backend.loop())
@@ -68,15 +69,8 @@ class Channel(object):
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
-        message = self._message_template.to_object(payload)
+        message = cloudpickle.loads(payload)
         return message if status else None
-
-    def message_object(self):
-        '''
-        message_object() returns a blank message object;
-        the object can be used to encapsulate data
-        '''
-        return self._message_template.to_object(b'{}')
 
     def cleanup(self):
         async def _q_join():

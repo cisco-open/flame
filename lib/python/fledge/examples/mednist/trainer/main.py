@@ -243,7 +243,6 @@ class Trainer(object):
     def run(self):
         self.prepare()
         channel = self.cm.get(CHANNEL_NAME)
-        msg = channel.message_object()
 
         i = 0
         while i < self._rounds:
@@ -256,16 +255,14 @@ class Trainer(object):
 
             # one aggregator is sufficient
             end = ends[0]
-            msg = channel.recv(end)
+            state_dict = channel.recv(end)
 
-            state_dict = msg.get_state()
             self._model.load_state_dict(state_dict)
             self.train()
 
             # craft a message to inform aggregator
-            msg.set_state(self._model.state_dict())
-            msg.set_attr('count', len(self._train_ds.image_files))
-            channel.send(end, msg)
+            data = (self._model.state_dict(), len(self._train_ds.image_files))
+            channel.send(end, data)
 
             # increase round
             i += 1

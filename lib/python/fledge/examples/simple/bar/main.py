@@ -11,17 +11,16 @@ class Bar(object):
         channel = self.cm.get(CHANNEL_NAME)
         while True:
             for end in channel.ends():
-                msg = channel.recv(end)
-                if not msg:
+                data = channel.recv(end)
+                if not data:
                     print('no data received')
                     continue
 
-                data = msg.get_state()
-                print(f'type = {type(msg)}, msg = {msg}, data = {data}')
+                # data = msg.get_state()
+                print(f'type = {type(data)}, data = {data}')
 
                 data[:] = [i + 1 for i in data]
-                msg.set_state(data)
-                channel.send(end, msg)
+                channel.send(end, data)
             time.sleep(1)
 
 

@@ -7,8 +7,10 @@ import PIL
 import torch
 from monai.apps import download_and_extract
 from monai.networks.nets import DenseNet121
-from monai.transforms import (Activations, AddChannel, AsDiscrete, Compose,
-                              LoadImage, ScaleIntensity, ToTensor)
+from monai.transforms import (
+    Activations, AddChannel, AsDiscrete, Compose, LoadImage, ScaleIntensity,
+    ToTensor
+)
 from monai.utils import set_determinism
 from sklearn.metrics import classification_report
 
@@ -165,9 +167,7 @@ class Aggregator(object):
             print(f'>>> round {i+1}')
             # send out global model parameters to trainers
             for end in channel.ends():
-                msg = channel.message_object()
-                msg.set_state(self._model.state_dict())
-                channel.send(end, msg)
+                channel.send(end, self._model.state_dict())
 
             # TODO: lines below need to be abstracted for different
             # frontends (e.g., keras, pytorch, etc)
@@ -180,9 +180,9 @@ class Aggregator(object):
                     print('no data received')
                     continue
 
-                count = msg.get_attr('count')
+                state_dict = msg[0]
+                count = msg[1]
                 total += count
-                state_dict = msg.get_state()
                 state_array.append((state_dict, count))
                 print(f'got {end}\'s parameters trained with {count} samples')
 

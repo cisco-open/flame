@@ -13,16 +13,13 @@ class Foo(object):
 
         while True:
             for end in channel.ends():
-                msg = channel.message_object()
-                msg.set_state(data)
-                channel.send(end, msg)
-                msg = channel.recv(end)
-                if not msg:
+                channel.send(end, data)
+                data = channel.recv(end)
+                if not data:
                     print('no data received')
                     continue
 
-                data = msg.get_state()
-                print(f'type = {type(msg)}, msg = {msg}, data = {data}')
+                print(f'type = {type(data)}, data = {data}')
                 data[:] = [i + 1 for i in data]
             time.sleep(1)
 

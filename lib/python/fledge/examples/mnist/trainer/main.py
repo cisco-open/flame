@@ -94,7 +94,6 @@ class Trainer(object):
     def run(self):
         self.prepare()
         channel = self.cm.get(CHANNEL_NAME)
-        msg = channel.message_object()
 
         i = 0
         while i < self._rounds:
@@ -107,16 +106,14 @@ class Trainer(object):
 
             # one aggregator is sufficient
             end = ends[0]
-            msg = channel.recv(end)
+            weights = channel.recv(end)
 
-            weights = msg.get_state()
             self._model.set_weights(weights)
             self.train()
 
             # craft a message to inform aggregator
-            msg.set_state(self._model.get_weights())
-            msg.set_attr('count', len(self._x_train))
-            channel.send(end, msg)
+            data = (self._model.get_weights(), len(self._x_train))
+            channel.send(end, data)
 
             # increase round
             i += 1

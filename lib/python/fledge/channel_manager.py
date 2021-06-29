@@ -5,7 +5,6 @@ from .backends import backend_provider
 from .channel import Channel
 from .common.constants import SOCK_OP_WAIT_TIME, BackendEvent
 from .common.util import background_thread_loop, run_async
-from .messages import message_provider
 from .registry_agents import registry_agent_provider
 
 
@@ -23,7 +22,6 @@ class ChannelManager(object):
 
     _loop = None
 
-    _message = None
     _backend = None
     _registry_agent = None
 
@@ -33,9 +31,7 @@ class ChannelManager(object):
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
-    def __call__(
-        self, frontend, backend, registry_agent, job, role, channels_roles
-    ):
+    def __call__(self, backend, registry_agent, job, role, channels_roles):
         self._job = job
         self._role = role
         self._channels_roles = channels_roles
@@ -45,7 +41,6 @@ class ChannelManager(object):
         with background_thread_loop() as loop:
             self._loop = loop
 
-        self._message = message_provider.get(frontend)
         self._backend = backend_provider.get(backend)
         self._registry_agent = registry_agent_provider.get(registry_agent)
 
@@ -84,7 +79,7 @@ class ChannelManager(object):
         )
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if status:
-            self._channels[name] = Channel(name, self._message, self._backend)
+            self._channels[name] = Channel(name, self._backend)
             self._backend.add_channel(self._channels[name])
         else:
             return False

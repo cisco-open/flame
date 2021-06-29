@@ -70,9 +70,7 @@ class Aggregator(object):
             print(f'>>> round {i+1}')
             # send out global model parameters to trainers
             for end in channel.ends():
-                msg = channel.message_object()
-                msg.set_state(self._model.get_weights())
-                channel.send(end, msg)
+                channel.send(end, self._model.get_weights())
 
             # TODO: lines below need to be abstracted for different
             # frontends (e.g., keras, pytorch, etc)
@@ -85,9 +83,9 @@ class Aggregator(object):
                     print('no data received')
                     continue
 
-                count = msg.get_attr('count')
+                weights = msg[0]
+                count = msg[1]
                 total += count
-                weights = msg.get_state()
                 weights_array.append((weights, count))
                 print(f'got {end}\'s parameters trained with {count} samples')
 
