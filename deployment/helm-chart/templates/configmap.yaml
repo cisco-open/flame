@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-configmap
+  namespace: '{{ .Release.Namespace }}'
+data:
+  {{- with .Values.dbinfo }}
+  DB_CONNECTION_INFO: {{ . }}
+  {{- end }}
+  {{- with .Values.dbname }}
+  DB_NAME: {{ . }}
+  {{- end }}
+  IDP_LABEL: "okta"
+  IDP_CLIENT_ID: "0oa91s018dBJZONqD5d6"
+  IDP_ISSUER: "https://dev-75978588.okta.com/oauth2/aus91tuhgfSLmoQv65d6"
+  IDP_AUDIENCE: "api://helloworld"
+  IDP_LOGIN_CALLBACK: "https://helloworld.{{ .Values.cluster.apiDomainName }}/auth/login/token"
+  IDP_ISSUER_LOGOUT_PATH : "/v1/logout"

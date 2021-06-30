@@ -1,0 +1,38 @@
+# Default values for configserver-chart.
+# This is a YAML-formatted file.
+#
+# This file provides project specific variables and is joined with another value file
+# in MasterDeployments or MinikubeDeployment repos.
+#
+# When helm is launched it will be done so like this:
+#
+#  helm template -f <valuesfile> <chartlocation>  > outputfile
+#
+# and the output will be redirected to a yaml file which will then be manually kubectl applied
+
+# local variables for this deployment can go here
+
+ingress:
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    certmanager.k8s.io/cluster-issuer: letsencrypt-prod
+
+dimage: fledge
+tagversion: 2020.12.01-master-817b0fb-128
+microk8s: false
+replicas: 1
+servicename: fledge
+servicePort: "5000"
+metricsPort: "5001"
+domainPrefix: fledge
+dbinfo: /etc/dbinfo/db.json
+dbname: noop
+cluster:
+  apiDomainName: some.cluster.domain
+global:
+  apiDomainName: some.global.domain
+docker:
+  GeneralFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
+  HelmRegistryPreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/helm/
+
+existingEnvSecret:

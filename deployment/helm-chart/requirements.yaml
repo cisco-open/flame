@@ -1,0 +1,3 @@
+configuration:
+  - name: remote-configuration
+    pre-compiler: vault-template
