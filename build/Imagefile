@@ -1,0 +1,5 @@
+FROM fledge:base as base-build
+
+FROM containers.cisco.com/eti-sre/sre-golang-docker:latest
+
+COPY --from=base-build /fledge/* /usr/bin

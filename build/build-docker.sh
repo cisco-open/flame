@@ -91,7 +91,7 @@ do
 done
 
 # get_artifactory_credentials
-# echo BUILDING DOCKER ${BASE_DOCKER_IMAGE}
+echo BUILDING DOCKER ${BASE_DOCKER_IMAGE}
 
 # export GO111MODULE=on
 # export GOPRIVATE="wwwin-github.cisco.com"
@@ -99,14 +99,14 @@ done
 # export GOPROXY=https://${ARTIFACTORY_USER}:${ARTIFACTORY_PASSWORD}@engci-maven-master.cisco.com/artifactory/api/go/nyota-go
 
 # docker pull containers.cisco.com/eti-sre/sre-golang-docker:latest
-# docker build --no-cache \
-#     -t ${BASE_DOCKER_IMAGE} \
-#     -f build/Dockerfile \
-#     --build-arg HTML_OUT=${H_OUT} \
-#     --build-arg CODE_COVERAGE=${CODE_COVERAGE} \
-#     --build-arg STATIC_ANALYSIS=${STATIC_ANALYSIS} \
-#     --build-arg SA_OUT=${S_OUT} \
-#     .
+docker build --no-cache \
+    -t ${BASE_DOCKER_IMAGE} \
+    -f build/Dockerfile \
+    --build-arg HTML_OUT=${H_OUT} \
+    --build-arg CODE_COVERAGE=${CODE_COVERAGE} \
+    --build-arg STATIC_ANALYSIS=${STATIC_ANALYSIS} \
+    --build-arg SA_OUT=${S_OUT} \
+    .
 
 # if [[ "${CODE_COVERAGE}" = "cc" ]] ; then
 #     echo "Generating code coverage"
@@ -118,9 +118,8 @@ done
 #     static_analysis
 # fi
 
-echo BUILDING DOCKER ${DOCKER_IMAGE}
-
-docker build --no-cache -t ${DOCKER_IMAGE} -f build/Dockerfile .
+# echo BUILDING DOCKER ${DOCKER_IMAGE}
+# docker build --no-cache -t ${DOCKER_IMAGE} -f build/Imagefile .
 
 # remove base image and its subordinate images
 # docker image rmi ${BASE_DOCKER_IMAGE} || true

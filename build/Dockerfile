@@ -46,4 +46,5 @@ RUN if [ "${STATIC_ANALYSIS}" = "sa" ] ; then \
     fi
 
 # Everything looks good so far, build the code
+RUN mkdir -p /fledge
 RUN go build -o /fledge ./...
