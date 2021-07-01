@@ -1,3 +1,4 @@
+# FROM containers.cisco.com/eti-sre/sre-golang-docker:latest AS base
 FROM golang:1.16.4-buster AS base
 
 WORKDIR /src
