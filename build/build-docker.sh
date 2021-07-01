@@ -90,8 +90,8 @@ do
     esac
 done
 
-get_artifactory_credentials
-echo BUILDING DOCKER ${BASE_DOCKER_IMAGE}
+# get_artifactory_credentials
+# echo BUILDING DOCKER ${BASE_DOCKER_IMAGE}
 
 # export GO111MODULE=on
 # export GOPRIVATE="wwwin-github.cisco.com"

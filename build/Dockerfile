@@ -28,7 +28,7 @@ RUN if [ "${CODE_COVERAGE}" = "cc" ] ; \
         go tool cover -html=${COVER_OUT} -o ${HTML_OUT} ; \
     else go test -v ./... ; fi
 
-# TODO: work on githooks
+# TODO: work on githooks later
 # Run gofmt checks in case the developer missed installing the hook
 # RUN sh $SRC_DIR/githooks/gofmt_checks
 
@@ -46,4 +46,4 @@ RUN if [ "${STATIC_ANALYSIS}" = "sa" ] ; then \
     fi
 
 # Everything looks good so far, build the code
-RUN go build -o /fledge/ ./...
+RUN go build -o /fledge ./...
