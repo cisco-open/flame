@@ -14,7 +14,7 @@ import (
 	"net/http"
 	"os"
 
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // DesignApiRouter defines the required methods for binding the api requests to a responses for the DesignApi

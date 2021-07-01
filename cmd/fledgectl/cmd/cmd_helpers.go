@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"strconv"
 
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"go.uber.org/zap"
 )

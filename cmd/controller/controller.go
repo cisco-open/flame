@@ -3,9 +3,9 @@ package main
 import (
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database"
-	grpcctlr "wwwin-github.cisco.com/fledge/fledge/cmd/controller/grpc"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/grpc"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 func main() {

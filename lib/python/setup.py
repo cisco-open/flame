@@ -7,7 +7,7 @@ setup(
     author_email='myungjle@cisco.com',
     packages=find_packages(),
     scripts=[],
-    url='https://wwwin-github.cisco.com/fledge/fledge/',
+    url='https://wwwin-github.cisco.com/eti/fledge/',
     license='LICENSE.txt',
     description=
     'This package is a python library to run ML workloads in the fledge system',

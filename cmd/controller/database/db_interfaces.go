@@ -1,7 +1,7 @@
 package database
 
 import (
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // StoreCollection provides collection of all the db stores in the application.

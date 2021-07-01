@@ -5,8 +5,8 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // CreateDesign create a new design entry in the database

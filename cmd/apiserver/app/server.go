@@ -5,8 +5,8 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/apiserver/openapi"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/openapi"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
 )
 
 //crate channel to listen for shutdown and other commands?

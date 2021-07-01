@@ -11,13 +11,13 @@ package openapi
 
 import (
 	"context"
-	"net/http"
 	"errors"
+	"net/http"
 	"os"
 )
 
 // DesignCodeApiService is a service that implents the logic for the DesignCodeApiServicer
-// This service should implement the business logic for every endpoint for the DesignCodeApi API. 
+// This service should implement the business logic for every endpoint for the DesignCodeApi API.
 // Include any external packages or services that will be required by this service.
 type DesignCodeApiService struct {
 }
@@ -54,4 +54,3 @@ func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string
 
 	return Response(http.StatusNotImplemented, nil), errors.New("UpdateDesignCode method not implemented")
 }
-

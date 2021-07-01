@@ -15,7 +15,7 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // A DesignApiController binds http requests to an api service and writes the service results to the http response

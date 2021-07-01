@@ -2,8 +2,8 @@ package database
 
 import (
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database/mongodb"
-	util2 "wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database/mongodb"
+	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 var DB StoreCollection

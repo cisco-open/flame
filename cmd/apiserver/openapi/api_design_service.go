@@ -16,8 +16,8 @@ import (
 
 	"go.uber.org/zap"
 
-	controllerapi "wwwin-github.cisco.com/fledge/fledge/cmd/controller/api"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	controllerapi "wwwin-github.cisco.com/eti/fledge/cmd/controller/api"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // DesignApiService is a service that implents the logic for the DesignApiServicer

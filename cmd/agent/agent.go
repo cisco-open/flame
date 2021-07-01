@@ -8,8 +8,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pb "wwwin-github.cisco.com/fledge/fledge/pkg/proto/go"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	pb "wwwin-github.cisco.com/eti/fledge/pkg/proto/go"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 func main() {

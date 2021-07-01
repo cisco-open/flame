@@ -1,8 +1,8 @@
 package controllerapi
 
 import (
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 type DesignController struct{}

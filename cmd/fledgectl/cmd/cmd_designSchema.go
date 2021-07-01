@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"gopkg.in/yaml.v3"
 

@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/apiserver/app"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/controller/database"
-	util2 "wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 /*

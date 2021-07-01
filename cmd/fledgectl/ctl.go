@@ -3,10 +3,10 @@ package main
 import (
 	"os"
 
-	util2 "wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/fledge/fledge/cmd/fledgectl/cmd"
+	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/cmd"
 )
 
 func main() {

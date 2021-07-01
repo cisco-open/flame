@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"go.mongodb.org/mongo-driver/mongo/options"
-	objects2 "wwwin-github.cisco.com/fledge/fledge/pkg/objects"
+	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
 
-	"wwwin-github.cisco.com/fledge/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
