@@ -120,7 +120,7 @@ echo BUILDING DOCKER ${BASE_DOCKER_IMAGE}
 
 echo BUILDING DOCKER ${DOCKER_IMAGE}
 
-docker build --no-cache -t ${DOCKER_IMAGE} --target build -f build/Dockerfile .
+docker build --no-cache -t ${DOCKER_IMAGE} -f build/Dockerfile .
 
 # remove base image and its subordinate images
 # docker image rmi ${BASE_DOCKER_IMAGE} || true

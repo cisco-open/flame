@@ -15,10 +15,10 @@ fmt:
 	@go fmt ./...
 
 build: test
-	@docker build -f build/Dockerfile --target build --tag ${uri} .
+	@docker build -f build/Dockerfile.dev --target build --tag ${uri} .
 
 test:
-	@docker build -f build/Dockerfile --target test .
+	@docker build -f build/Dockerfile.dev --target test .
 
 push: build
 	@docker image tag ${uri} ${registry}/${uri}
