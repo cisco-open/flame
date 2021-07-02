@@ -118,8 +118,8 @@ docker build --no-cache \
 #     static_analysis
 # fi
 
-# echo BUILDING DOCKER ${DOCKER_IMAGE}
-# docker build --no-cache -t ${DOCKER_IMAGE} -f build/Imagefile .
+echo BUILDING DOCKER ${DOCKER_IMAGE}
+docker build --no-cache -t ${DOCKER_IMAGE} -f build/Imagefile .
 
 # remove base image and its subordinate images
 # docker image rmi ${BASE_DOCKER_IMAGE} || true
