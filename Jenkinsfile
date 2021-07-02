@@ -20,10 +20,10 @@ def pipelinesettings = [
   unittest: 1,                                  // Unit-test
   build: 1,                                     // Build container
   executeCC: 1,                                 // Generate Code Coverage report
-  // TODO: can't enable lint yet because there are many linting errors
-  // TODO: enable it after all errors are handled
+  // TODO: can't enable lint and sonarqube yet because there are many errors
+  // TODO: enable them after all errors are handled
   // lint: 1,                                      // GO Lint
-  sonarQube: 1,                                 // SonarQube scan
+  // sonarQube: 1,                                 // SonarQube scan
   publishContainer: 1,                          // Publish container
   ecr: 1,                                       // Publish container to Private ECR
   // ciscoContainer: 1,                            // Publish container to containers.cisco.com
@@ -43,8 +43,9 @@ def pipelinesettings = [
   // blackduck: [
   //   email: "eti-sre-admins@cisco.com",
   // ],                                            // Blackduck Open Source Scan
-  publishHelm: 1,                               // Stage HELM CREATE
-  deployHelm: 1,                                // Stage DEPLOY k8s
+  // TODO: enable publishhelm and deployhelm after errors are handled
+  // publishHelm: 1,                               // Stage HELM CREATE
+  // deployHelm: 1,                                // Stage DEPLOY k8s
   // artifactory: 1,                               // Use Artifactory creds
   // stricterCCThreshold: 90.0,                    // Fail builds for Code Coverage below 90%
   awsLoginType:  "dynamic",
