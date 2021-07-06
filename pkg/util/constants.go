@@ -1,23 +1,25 @@
 package util
 
-//General
+// General
 const (
 	ALL = "all"
 	ID  = "id"
 )
 
-//Database
+// Database
 const (
 	MONGODB = "mongo"
 	MySQL   = "mysql"
 )
 
-//Database Fields
+// Database Fields
 const (
 	UserId = "userId"
 )
 
-//GROC constants
+// Port numbers
 const (
-	GrpcControllerPort = 9000
+	ApiServerRestApiPort        = 443   // REST API port
+	NotificationServiceGrpcPort = 10101 // for notification and push
+	ControllerGrpcPort          = 10102 // for handling requests via API server
 )

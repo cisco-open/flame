@@ -3,6 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
 	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
@@ -82,7 +83,7 @@ func init() {
 	//todo use systemd and make the server daemon process.
 	apiServerCmd.AddCommand(startApiServerCmd, stopApiServerCmd, reloadApiServerCmd)
 
-	apiServerCmd.PersistentFlags().Uint16P("port", "p", 5000, "listening port for API server")
+	apiServerCmd.PersistentFlags().Uint16P("port", "p", util2.ApiServerRestApiPort, "listening port for API server")
 	apiServerCmd.PersistentFlags().StringP("db", "d", util2.MONGODB, "Database type")
 	apiServerCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
 	apiServerCmd.MarkPersistentFlagRequired("uri")

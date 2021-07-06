@@ -24,7 +24,7 @@ func (s *server) InitAgent(ctx context.Context, in *pb.ExperimentInfo) (*pb.Conf
 
 // StartGRPCService example https://github.com/grpc/grpc-go/blob/master/examples/helloworld/greeter_server/main.go
 func StartGRPCService() {
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(util.GrpcControllerPort))
+	lis, err := net.Listen("tcp", ":"+strconv.Itoa(util.ControllerGrpcPort))
 	if err != nil {
 		zap.S().Errorf("failed to listen grpc server: %v", err)
 	}

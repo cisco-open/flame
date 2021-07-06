@@ -17,7 +17,7 @@ func main() {
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync()
 
-	conn, err := grpc.Dial("localhost:"+strconv.Itoa(util.GrpcControllerPort), grpc.WithInsecure(), grpc.WithBlock())
+	conn, err := grpc.Dial("localhost:"+strconv.Itoa(util.ControllerGrpcPort), grpc.WithInsecure(), grpc.WithBlock())
 	if err != nil {
 		zap.S().Fatalf("did not connect: %v", err)
 	}
