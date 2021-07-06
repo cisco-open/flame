@@ -26,7 +26,7 @@ def pipelinesettings = [
   // sonarQube: 1,                                 // SonarQube scan
   publishContainer: 1,                          // Publish container
   ecr: 1,                                       // Publish container to Private ECR
-  // ciscoContainer: 1,                            // Publish container to containers.cisco.com
+  ciscoContainer: 1,                            // Publish container to containers.cisco.com
   // dockerHub: 1,                                 // Publish container to dockerhub.cisco.com
   pushPublicRegistryOnTag: 1,                   // Publish container to Public ECR on tag
   // forceCorona: 1,                            // Force Corona Scan on any branch
@@ -43,9 +43,8 @@ def pipelinesettings = [
   // blackduck: [
   //   email: "eti-sre-admins@cisco.com",
   // ],                                            // Blackduck Open Source Scan
-  // TODO: enable publishhelm and deployhelm after errors are handled
-  // publishHelm: 1,                               // Stage HELM CREATE
-  // deployHelm: 1,                                // Stage DEPLOY k8s
+  publishHelm: 1,                               // Stage HELM CREATE
+  deployHelm: 1,                                // Stage DEPLOY k8s
   // artifactory: 1,                               // Use Artifactory creds
   // stricterCCThreshold: 90.0,                    // Fail builds for Code Coverage below 90%
   awsLoginType:  "dynamic",

@@ -14,16 +14,17 @@
 
 ingress:
   annotations:
+    kubernetes.io/ingress.class: nginx
     nginx.ingress.kubernetes.io/rewrite-target: /
-    certmanager.k8s.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: letsencrypt
 
 dimage: fledge
 tagversion: 2020.12.01-master-817b0fb-128
 microk8s: false
 replicas: 1
 servicename: fledge
-servicePort: "5000"
-metricsPort: "5001"
+servicePort: "443"
+# metricsPort: "5001"
 domainPrefix: fledge
 dbinfo: /etc/dbinfo/db.json
 dbname: noop

@@ -1,7 +1,7 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.servicename }}
+  name: {{ .Values.servicename }}-apiserver
   namespace: '{{ .Release.Namespace }}'
 spec:
   replicas: {{ .Values.replicas }}
@@ -12,18 +12,16 @@ spec:
     metadata:
       labels:
         app: {{ .Values.servicename }}
-      annotations:
-        prometheus.io/scrape: "true"
-        prometheus.io/port: "{{ .Values.metricsPort }}"
-        prometheus.io/path: "/metrics"
+      # annotations:
+      #   prometheus.io/scrape: "true"
+      #   prometheus.io/port: "{{ .Values.metricsPort }}"
+      #   prometheus.io/path: "/metrics"
     spec:
-      {{- if .Values.microk8s }}
-      imagePullSecrets:
-      - name: acr-secret
-      {{- end }}
       containers:
       - name: {{ .Values.servicename }}
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
+        command: ["/usr/bin/apiserver"]
+        args: ["start", "--db", "mongo", "--uri", "mongodb://mongodb.fledge.svc:27017"]
         ports:
         - containerPort: {{ .Values.servicePort }}
         envFrom:
