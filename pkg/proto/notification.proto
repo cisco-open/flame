@@ -1,0 +1,35 @@
+syntax = "proto3";
+
+package grpcNotification;
+option go_package = "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification";
+
+import "google/protobuf/any.proto";
+
+service NotificationStreamingStore{
+  rpc SetupAgentStream(AgentInfo) returns (stream StreamResponse) {}
+}
+
+message AgentInfo{
+  string uuid = 1;
+  string ip = 2;
+}
+
+message StreamResponse {
+  enum ResponseType {
+    JOB_NOTIFICATION = 0;
+    SCHEMA_UPDATE_NOTIFICATION = 1;
+  }
+  ResponseType type = 1;  //identifier to determine the type of message
+  google.protobuf.Any message = 2; //call details
+  string agent_uuid = 3;
+}
+
+message NewJobMessage{
+  string design_id = 1;
+  string job_id = 2;
+}
+
+message SchemaUpdateMessage{
+  string design_id = 1;
+  string schema_id = 2;
+}
