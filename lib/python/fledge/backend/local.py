@@ -133,8 +133,8 @@ class LocalBackend(AbstractBackend):
         async with self._server:
             await self._server.serve_forever()
 
-    async def _connect(self, path):
-        reader, writer = await asyncio.open_unix_connection(f'{path}')
+    async def _connect(self, endpoint):
+        reader, writer = await asyncio.open_unix_connection(f'{endpoint}')
 
         # register backend id to end
         msg = msg_pb2.Connect()
