@@ -21,7 +21,7 @@ spec:
       - name: {{ .Values.servicename }}-apiserver
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/apiserver"]
-        args: ["start", "--db", {{ .Values.database.type }}, "--uri", {{ .Values.database.uri }}]
+        args: ["start", "--db", "{{ .Values.database.type }}", "--uri", "{{ .Values.database.uri }}"]
         ports:
         - containerPort: {{ .Values.servicePort }}
         envFrom:
