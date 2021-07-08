@@ -35,5 +35,9 @@ global:
 docker:
   GeneralFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
   HelmRegistryPreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/helm/
+database:
+  name: fledge
+  type: mongo
+  uri: mongodb://eks-development-1-mongodb.mongodb.svc:27017
 
 existingEnvSecret:

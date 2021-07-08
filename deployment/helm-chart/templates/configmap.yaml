@@ -4,7 +4,9 @@ metadata:
   name: {{ .Release.Name }}-configmap
   namespace: '{{ .Release.Namespace }}'
 data:
-  foo: "bar" # TODO: remove this later
+  DB_NAME: '{{ .Values.database.name }}'
+  DB_URI: '{{ .Values.database.uri }}'
+  DB_TYPE: '{{ .Values.database.type }}'
   # {{- with .Values.dbinfo }}
   # DB_CONNECTION_INFO: {{ . }}
   # {{- end }}

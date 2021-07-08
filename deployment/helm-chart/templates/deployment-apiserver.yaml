@@ -11,7 +11,7 @@ spec:
   template:
     metadata:
       labels:
-        app: {{ .Values.servicename }}
+        app: {{ .Values.servicename }}-apiserver
       # annotations:
       #   prometheus.io/scrape: "true"
       #   prometheus.io/port: "{{ .Values.metricsPort }}"
@@ -21,7 +21,7 @@ spec:
       - name: {{ .Values.servicename }}
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/apiserver"]
-        args: ["start", "--db", "mongo", "--uri", "mongodb://mongodb.fledge.svc:27017"]
+        args: ["start", "--db", {{ .Values.database.type }}, "--uri", {{ .Values.database.uri }}]
         ports:
         - containerPort: {{ .Values.servicePort }}
         envFrom:
