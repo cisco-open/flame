@@ -10,7 +10,7 @@ import (
 )
 
 func main() {
-	loggerMgr := util.InitZapLog() //use zap.S().Infof("") or zap.L().Infof("")
+	loggerMgr := util.InitZapLog(util.ApiServer)
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync() // flushes buffer, if any
 

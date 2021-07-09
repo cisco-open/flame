@@ -8,7 +8,7 @@ import (
 )
 
 func main() {
-	loggerMgr := util.InitZapLog()
+	loggerMgr := util.InitZapLog(util.Controller)
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync()
 

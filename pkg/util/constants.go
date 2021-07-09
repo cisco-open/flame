@@ -1,25 +1,28 @@
 package util
 
-// General
 const (
+	ProjectName = "fledge"
+
+	// General
 	ALL = "all"
 	ID  = "id"
-)
 
-// Database
-const (
+	// Database
 	MONGODB = "mongo"
 	MySQL   = "mysql"
-)
 
-// Database Fields
-const (
+	// Database Fields
 	UserId = "userId"
-)
 
-// Port numbers
-const (
+	// Port numbers
 	ApiServerRestApiPort        = 443   // REST API port
 	NotificationServiceGrpcPort = 10101 // for notification and push
 	ControllerGrpcPort          = 10102 // for handling requests via API server
+
+	// Service names
+	Agent      = "agent"
+	ApiServer  = "apiserver"
+	CliTool    = "fledgectl"
+	Controller = "controller"
+	Notifier   = "notifier"
 )

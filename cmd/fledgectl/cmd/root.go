@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"github.com/spf13/cobra"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 /*
@@ -10,8 +12,8 @@ import (
  * example codebase https://github.com/schadokar/my-calc
  */
 var rootCmd = &cobra.Command{
-	Use:   "fledgectl",
-	Short: "FLEDGE CLI Tool",
+	Use:   util.CliTool,
+	Short: "Fledge CLI Tool",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

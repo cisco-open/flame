@@ -15,7 +15,7 @@ import (
  * example codebase https://github.com/schadokar/my-calc
  */
 var apiServerCmd = &cobra.Command{
-	Use:   "apiServer",
+	Use:   util2.ApiServer,
 	Short: "API server",
 	Long:  "API server",
 	Run: func(cmd *cobra.Command, args []string) {
