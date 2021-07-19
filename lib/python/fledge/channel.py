@@ -69,19 +69,7 @@ class Channel(object):
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
-        message = cloudpickle.loads(payload)
-        return message if status else None
-
-    def cleanup(self):
-        async def _q_join():
-            for end_id in self._ends.keys():
-                await self._ends[end_id][TXQ].join()
-
-        print(f'finishing queues in channel {self._name}...')
-        _, status = run_async(_q_join(), self._backend.loop())
-        print('done')
-
-        return status
+        return cloudpickle.loads(payload) if payload and status else None
 
     '''
     ### The following are asyncio methods of backend loop

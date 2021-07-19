@@ -14,7 +14,7 @@ from monai.transforms import (
 )
 from monai.utils import set_determinism
 
-from .cm import CHANNEL_NAME, CM
+from ....channel_manager import ChannelManager
 
 # monai mednist example from
 # https://github.com/Project-MONAI/tutorials/blob/master/2d_classification/mednist_tutorial.ipynb
@@ -34,8 +34,10 @@ class MedNISTDataset(torch.utils.data.Dataset):
 
 
 class Trainer(object):
-    def __init__(self, n_split=1, split_idx=0, rounds=1):
-        self.cm = CM()
+    def __init__(self, config_file: str, n_split=1, split_idx=0, rounds=1):
+        self.cm = ChannelManager()
+        self.cm(config_file)
+        self.cm.join('param-channel')
 
         self._n_split = n_split
         self._split_idx = split_idx
@@ -242,7 +244,7 @@ class Trainer(object):
 
     def run(self):
         self.prepare()
-        channel = self.cm.get(CHANNEL_NAME)
+        channel = self.cm.get('param-channel')
 
         i = 0
         while i < self._rounds:
@@ -292,5 +294,10 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    trainer = Trainer(args.n_split, args.split_idx, args.rounds)
+    trainer = Trainer(
+        'fledge/examples/mednist/trainer/config.json',
+        args.n_split,
+        args.split_idx,
+        args.rounds,
+    )
     trainer.run()

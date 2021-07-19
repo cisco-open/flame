@@ -1,0 +1,20 @@
+{
+    "backend": "local",
+    "agent": "local",
+    "job": "simple-job",
+    "role": "foo",
+    "channel": [
+	{
+	    "name": "simple-channel",
+	    "pair": ["foo", "bar"],
+	    "groupBy": {
+		"type": "tag",
+		"value": [
+		    "us"
+		]
+	    }
+	}
+    ],
+    "hyperparams": null,
+    "datasets": null
+}

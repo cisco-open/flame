@@ -4,14 +4,17 @@ import numpy as np
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from .cm import CHANNEL_NAME, CM
+from ....channel_manager import ChannelManager
 
 # keras mnist example from https://keras.io/examples/vision/mnist_convnet/
 
 
 class Aggregator(object):
-    def __init__(self, rounds=1):
-        self.cm = CM()
+    def __init__(self, config_file: str, rounds=1):
+        self.cm = ChannelManager()
+        self.cm(config_file)
+        self.cm.join('param-channel')
+
         self._rounds = rounds
 
     def prepare(self):
@@ -63,7 +66,7 @@ class Aggregator(object):
 
     def run(self):
         self.prepare()
-        channel = self.cm.get(CHANNEL_NAME)
+        channel = self.cm.get('param-channel')
 
         i = 0
         while i < self._rounds:
@@ -121,5 +124,8 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    aggregator = Aggregator(args.rounds)
+    aggregator = Aggregator(
+        'fledge/examples/mnist/aggregator/config.json',
+        args.rounds,
+    )
     aggregator.run()

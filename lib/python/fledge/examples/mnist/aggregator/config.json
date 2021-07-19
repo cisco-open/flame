@@ -1,0 +1,20 @@
+{
+    "backend": "local",
+    "agent": "local",
+    "job": "keras-mnist-job",
+    "role": "aggregator",
+    "channel": [
+	{
+	    "name": "param-channel",
+	    "pair": ["aggregator", "trainer"],
+	    "groupBy": {
+		"type": "tag",
+		"value": [
+		    "us"
+		]
+	    }
+	}
+    ],
+    "hyperparams": null,
+    "datasets": null
+}

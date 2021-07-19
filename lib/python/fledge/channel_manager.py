@@ -5,6 +5,7 @@ from .backends import backend_provider
 from .channel import Channel
 from .common.constants import SOCK_OP_WAIT_TIME, BackendEvent
 from .common.util import background_thread_loop, run_async
+from .config import Config
 from .registry_agents import registry_agent_provider
 
 
@@ -14,9 +15,9 @@ class ChannelManager(object):
     '''
     _instance = None
 
+    _config = None
     _job = None
     _role = None
-    _channels_roles = None
 
     _channels = None
 
@@ -31,18 +32,18 @@ class ChannelManager(object):
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
-    def __call__(self, backend, registry_agent, job, role, channels_roles):
-        self._job = job
-        self._role = role
-        self._channels_roles = channels_roles
+    def __call__(self, config_file: str):
+        self._config = Config(config_file)
+        self._job = self._config.job_name
+        self._role = self._config.role
 
         self._channels = {}
 
         with background_thread_loop() as loop:
             self._loop = loop
 
-        self._backend = backend_provider.get(backend)
-        self._registry_agent = registry_agent_provider.get(registry_agent)
+        self._backend = backend_provider.get(self._config.backend)
+        self._registry_agent = registry_agent_provider.get(self._config.agent)
 
         async def inner():
             # create a coroutine task
@@ -84,25 +85,26 @@ class ChannelManager(object):
         else:
             return False
 
-        # role_tuples should have at most two entries
-        role_tuples = self._channels_roles[name]
-
         coro = self._registry_agent.get(self._job, name)
         channel_info, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
             return False
 
+        # connect to other ends to complete join to channels
         for role, end_id, endpoint in channel_info:
             # the same backend id; skip
             if end_id is self._backend.uid():
                 continue
 
-            proceed = False
-            for from_role, to_role in role_tuples:
-                proceed = self._role == from_role and role == to_role
-                if proceed:
-                    break
-            if not proceed:
+            channel_config = self._config.channels[name]
+            one = channel_config.pair[0]
+            other = channel_config.pair[1]
+
+            # doesn't match channel config; skip connection
+            if (
+                (one != self._role or other != role) and
+                (one != role or other != self._role)
+            ):
                 continue
 
             # connect to endpoint
@@ -157,5 +159,5 @@ class ChannelManager(object):
             return False
 
     def cleanup(self):
-        for _, channel in self._channels.items():
-            channel.cleanup()
+        for task in asyncio.Task.all_tasks(self._backend.loop()):
+            task.cancel()

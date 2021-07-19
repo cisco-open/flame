@@ -1,15 +1,17 @@
 import time
 
-from .cm import CHANNEL_NAME, CM
+from ....channel_manager import ChannelManager
 
 
 class Foo(object):
-    def __init__(self):
-        self.cm = CM()
+    def __init__(self, config_file: str):
+        self.cm = ChannelManager()
+        self.cm(config_file)
+        self.cm.join('simple-channel')
 
     def run(self):
         data = [0, 1, 2, 3, 4, 5]
-        channel = self.cm.get(CHANNEL_NAME)
+        channel = self.cm.get('simple-channel')
 
         while True:
             for end in channel.ends():
@@ -24,6 +26,7 @@ class Foo(object):
             time.sleep(1)
 
 
+# On fledge/lib/python, run python3 -m fledge.examples.simple.foo.main
 if __name__ == "__main__":
-    foo = Foo()
+    foo = Foo('fledge/examples/simple/foo/config.json')
     foo.run()

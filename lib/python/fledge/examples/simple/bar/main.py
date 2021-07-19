@@ -1,14 +1,16 @@
 import time
 
-from .cm import CHANNEL_NAME, CM
+from ....channel_manager import ChannelManager
 
 
 class Bar(object):
-    def __init__(self):
-        self.cm = CM()
+    def __init__(self, config_file: str):
+        self.cm = ChannelManager()
+        self.cm(config_file)
+        self.cm.join('simple-channel')
 
     def run(self):
-        channel = self.cm.get(CHANNEL_NAME)
+        channel = self.cm.get('simple-channel')
         while True:
             for end in channel.ends():
                 data = channel.recv(end)
@@ -24,6 +26,7 @@ class Bar(object):
             time.sleep(1)
 
 
+# On fledge/lib/python, run python3 -m fledge.examples.simple.bar.main
 if __name__ == "__main__":
-    bar = Bar()
+    bar = Bar('fledge/examples/simple/bar/config.json')
     bar.run()
