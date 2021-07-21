@@ -1,9 +1,9 @@
 #! /usr/bin/env bash
 
 function common {
-    PIP3=$HOME/.local/bin/pip3
+    # pip3 install monai scikit-learn tqdm
 
-    $PIP3 install monai scikit-learn tqdm
+    pip3 install paho-mqtt cloudpickle
 }
 
 function controller {
@@ -17,6 +17,8 @@ function worker {
 }
 
 function main {
+    common
+
     if [ `hostname` == "controller" ]; then
 	controller
     else
