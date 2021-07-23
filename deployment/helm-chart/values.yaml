@@ -23,7 +23,12 @@ tagversion: 2020.12.01-master-817b0fb-128
 microk8s: false
 replicas: 1
 servicename: fledge
-servicePort: "443"
+# servicePort: "443"
+componentPorts:
+  apiserver: "10100"
+  notifier: "10101"
+  controller: "10102"
+  agent: "10103"
 # metricsPort: "5001"
 domainPrefix: fledge
 dbinfo: /etc/dbinfo/db.json

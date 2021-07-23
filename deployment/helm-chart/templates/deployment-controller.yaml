@@ -1,29 +1,36 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.servicename }}-apiserver
+  name: {{ .Values.servicename }}-controller
   namespace: '{{ .Release.Namespace }}'
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.servicename }}-apiserver
+      app: {{ .Values.servicename }}-controller
   template:
     metadata:
       labels:
-        app: {{ .Values.servicename }}-apiserver
+        app: {{ .Values.servicename }}-controller
       # annotations:
       #   prometheus.io/scrape: "true"
       #   prometheus.io/port: "{{ .Values.metricsPort }}"
       #   prometheus.io/path: "/metrics"
     spec:
       containers:
-      - name: {{ .Values.servicename }}-apiserver
+      - name: {{ .Values.servicename }}-controller
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
-        command: ["/usr/bin/apiserver"]
-        args: ["start"]
+        command: ["/usr/bin/controller"]
+        args:
+          - "start"
+          - "--db"
+          - "{{ .Values.database.type }}"
+          - "--uri"
+          - "{{ .Values.database.uri }}"
+          - "--notifyIp"
+          - "{{ .Values.servicename }}-notifier"
         ports:
-        - containerPort: {{ .Values.componentPorts.apiserver }}
+        - containerPort: {{ .Values.componentPorts.controller }}
         envFrom:
           - configMapRef:
               name: {{ .Release.Name }}-configmap

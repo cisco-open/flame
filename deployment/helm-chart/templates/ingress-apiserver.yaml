@@ -22,12 +22,12 @@ spec:
         paths:
         - backend:
             serviceName: '{{ .Release.Name }}'
-            servicePort: {{ .Values.servicePort }}
+            servicePort: {{ .Values.componentPorts.apiserver }}
           path: /
     - host: "{{ .Values.domainPrefix }}.{{ .Values.global.apiDomainName }}"
       http:
         paths:
         - backend:
             serviceName: '{{ .Release.Name }}'
-            servicePort: {{ .Values.servicePort }}
+            servicePort: {{ .Values.componentPorts.apiserver }}
           path: /
