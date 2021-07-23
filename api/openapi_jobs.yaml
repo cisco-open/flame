@@ -1,0 +1,299 @@
+openapi: 3.0.0
+info:
+  license:
+    name: MIT
+  title: Job REST API
+  version: 1.0.0
+servers:
+  - url: /
+paths:
+  /{user}/job/{jobId}:
+    #------------------------------------#
+    # Get Job by jobId
+    #------------------------------------#
+    get:
+      operationId: getJob
+      summary: Get job detail.
+      tags:
+        - job
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: jobId
+          description: job id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobInfo'
+          description: Information about submitted job
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+    #------------------------------------#
+    # Update Job
+    #------------------------------------#
+    put:
+      operationId: updateJob
+      summary: Update job by id.
+      tags:
+        - job
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: jobId
+          description: job id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobInfo'
+      responses:
+        '200':
+          description: Updated
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+    #------------------------------------#
+    # Delete Job
+    #------------------------------------#
+    delete:
+      operationId: deleteJob
+      summary: Delete job by id.
+      tags:
+        - job
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: jobId
+          description: job id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      responses:
+        '200':
+          description: Deleted
+        '404':
+          description: id not found
+        '401':
+          description: Unauthorized
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+  /{user}/job/:
+    #------------------------------------#
+    # Submit New Job
+    #------------------------------------#
+    post:
+      operationId: submitJob
+      summary: Submit a new job.
+      tags:
+        - job
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobInfo'
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+  /{user}/jobs/:
+    #------------------------------------#
+    # Get Jobs by user or designId
+    #------------------------------------#
+    get:
+      operationId: getJobs
+      summary: Get list of all the jobs by the user or based on designId.
+      tags:
+        - jobs
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: designId
+          description: design id
+          in: query
+          schema:
+            type: string
+          style: form
+          explode: true
+          required: false
+        - name: getType
+          description: Type of fetch based on id or all
+          in: query
+          schema:
+            type: string
+            enum: ["all", "design"]
+          style: form
+          explode: true
+          required: false
+        - name: limit
+          description: How many items to return at one time (max 100)
+          in: query
+          schema:
+            format: int32
+            type: integer
+          style: form
+          explode: true
+          required: false
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/JobInfo'
+          description: A paged array of jobs
+          headers:
+            x-next:
+              description: A link to the next page of responses
+              explode: false
+              schema:
+                type: string
+              style: simple
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+
+
+components:
+  schemas:
+    #-----------------------#
+    # Basic Job Information
+    #-----------------------#
+    JobInfo:
+      description: Basic job information.
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        userId:
+          type: string
+        designId:
+          type: string
+        priority:
+          type: string
+          enum: ["high", "low", "default"]
+        status:
+          type: string
+          enum: ["initializing", "running", "terminated", "completed"]
+        timestamp:
+          type: object
+          properties:
+            created_at:
+              format: int64
+              type: integer
+            started_at:
+              format: int64
+              type: integer
+            updated_at:
+              format: int64
+              type: integer
+            completed_at:
+              format: int64
+              type: integer
+        dataset:
+          type: object
+        codeBlock:
+          type: object
+        config:
+          type: object
+      required:
+        - name
+        - userId
+        - designId
+      example:
+        name: cancer detection model
+        description: Creating a new model from 2021 dataset to detect cancer
+        designId: "60d0d66716af12b787d9ef0a"
+        prority: "default"
+
+    #-----------------------#
+    # Helpers
+    #-----------------------#
+    Error:
+      description: Generic error object.
+      properties:
+        code:
+          format: int32
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+

@@ -1,26 +1,26 @@
 package database
 
 import (
-	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // CreateDesign - Create a new design template entry in the database.
-func CreateDesign(userId string, info objects2.Design) error {
+func CreateDesign(userId string, info objects.Design) error {
 	return DB.CreateDesign(userId, info)
 }
 
-func GetDesigns(userId string, limit int32) ([]objects2.DesignInfo, error) {
+func GetDesigns(userId string, limit int32) ([]objects.DesignInfo, error) {
 	return DB.GetDesigns(userId, limit)
 }
 
-func GetDesign(userId string, designId string) (objects2.Design, error) {
+func GetDesign(userId string, designId string) (objects.Design, error) {
 	return DB.GetDesign(userId, designId)
 }
 
-func GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]objects2.DesignSchema, error) {
+func GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]objects.DesignSchema, error) {
 	return DB.GetDesignSchema(userId, designId, getType, schemaId)
 }
 
-func UpdateDesignSchema(userId string, designId string, info objects2.DesignSchema) error {
+func UpdateDesignSchema(userId string, designId string, info objects.DesignSchema) error {
 	return DB.UpdateDesignSchema(userId, designId, info)
 }

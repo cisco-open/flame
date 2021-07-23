@@ -13,7 +13,7 @@ import (
  */
 var rootCmd = &cobra.Command{
 	Use:   util.CliTool,
-	Short: "Fledge CLI Tool",
+	Short: util.ProjectName + " CLI Tool",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},

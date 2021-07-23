@@ -1,10 +1,9 @@
 package cmd
 
 import (
-	"encoding/json"
 	"io/ioutil"
 
-	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"gopkg.in/yaml.v3"
@@ -64,22 +63,25 @@ var createDesignSchemaCmd = &cobra.Command{
 			"user":     user,
 			"designId": designId,
 		}
-		url := CreateURI(ip, portNo, UpdateDesignSchema, uriMap)
+		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
 
 		//Read schemas from the yaml file
-		var y = objects2.DesignSchemas{}
+		var y = objects.DesignSchemas{}
 		err = yaml.Unmarshal(yamlFile, &y)
 
 		//Send post request for each schema
 		for _, s := range y.Schemas {
-			postBody, _ := json.Marshal(s)
+			//postBody, _ := json.Marshal(s)
 
 			//send post request
-			responseBody, _ := HTTPPost(url, postBody, "application/json")
-			sb := string(responseBody)
-			zap.S().Infof(sb)
+			_, responseBody, err := util.HTTPPost(url, s, "application/json")
+			if err != nil {
+				zap.S().Errorf("error while adding a new schema. %v", err)
+			} else {
+				sb := string(responseBody)
+				zap.S().Infof(sb)
+			}
 		}
-
 		return nil
 	},
 }
@@ -127,10 +129,10 @@ var getDesignSchemaCmd = &cobra.Command{
 			"type":     getType,
 			"schemaId": schemaId,
 		}
-		url := CreateURI(ip, portNo, GetDesignSchema, uriMap)
+		url := util.CreateURI(ip, portNo, util.GetDesignSchemaEndPoint, uriMap)
 
 		//send get request
-		responseBody, _ := HTTPGet(url)
+		responseBody, _ := util.HTTPGet(url)
 
 		//format the output into prettyJson format
 		prettyJSON, err := util.FormatJSON(responseBody)

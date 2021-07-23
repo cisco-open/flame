@@ -19,7 +19,7 @@ type Design struct {
 
 	ID primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
 
-	UserId string `bson:"userId,omitempty" json:"userId,omitempty"`
+	UserId string `bson:"userId" json:"userId,omitempty"`
 
 	Schemas []DesignSchema `json:"schemas"`
 }

@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"os"
 
-	objects2 "wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 
 	"github.com/olekukonko/tablewriter"
@@ -28,7 +28,6 @@ var createDesignCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 		portNo, err := flags.GetInt64("port")
-		//portNo, err := flags.GetString("port")
 		if err != nil {
 			return err
 		}
@@ -57,16 +56,20 @@ var createDesignCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": user,
 		}
-		url := CreateURI(ip, portNo, CreateDesign, uriMap)
+		url := util.CreateURI(ip, portNo, util.CreateDesignEndPoint, uriMap)
 
 		//Encode the data
-		postBody, _ := json.Marshal(objects2.DesignInfo{
+		postBody := objects.DesignInfo{
 			Name:        name,
 			Description: description,
-		})
+		}
 
 		//send post request
-		responseBody, _ := HTTPPost(url, postBody, "application/json")
+		_, responseBody, err := util.HTTPPost(url, postBody, "application/json")
+		if err != nil {
+			zap.S().Errorf("error while creating a new design templated. %v", err)
+			return err
+		}
 		sb := string(responseBody)
 		zap.S().Infof(sb)
 
@@ -105,10 +108,10 @@ var getDesignCmd = &cobra.Command{
 			"user":     user,
 			"designId": dId,
 		}
-		url := CreateURI(ip, portNo, GetDesign, uriMap)
+		url := util.CreateURI(ip, portNo, util.GetDesignEndPoint, uriMap)
 
 		//send get request
-		responseBody, _ := HTTPGet(url)
+		responseBody, _ := util.HTTPGet(url)
 
 		//format the output into prettyJson format
 		prettyJSON, err := util.FormatJSON(responseBody)
@@ -154,13 +157,13 @@ var getDesignsCmd = &cobra.Command{
 			"user":  user,
 			"limit": limit,
 		}
-		url := CreateURI(ip, portNo, GetDesigns, uriMap)
+		url := util.CreateURI(ip, portNo, util.GetDesignsEndPoint, uriMap)
 
 		//send get request
-		responseBody, _ := HTTPGet(url)
+		responseBody, _ := util.HTTPGet(url)
 
 		//convert the response into list of struct
-		var infoList []objects2.DesignInfo
+		var infoList []objects.DesignInfo
 		err = json.Unmarshal(responseBody, &infoList)
 		if err != nil {
 			return err
@@ -183,7 +186,7 @@ func init() {
 	rootCmd.AddCommand(designCmd)
 	designCmd.AddCommand(createDesignCmd, getDesignCmd, getDesignsCmd)
 
-	designCmd.PersistentFlags().Int64P("port", "p", 5000, "listening port for API server")
+	designCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
 	designCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
 	designCmd.PersistentFlags().StringP("user", "u", "", "User id")
 	//required flags

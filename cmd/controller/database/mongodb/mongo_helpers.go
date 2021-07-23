@@ -21,6 +21,10 @@ func ConvertToObjectID(id string) primitive.ObjectID {
 	return objID
 }
 
+func GetStringID(id interface{}) string {
+	return id.(primitive.ObjectID).Hex()
+}
+
 func ErrorCheck(err error) error {
 	if mongo.IsDuplicateKeyError(err) {
 		err = errors.New("duplicate key error")

@@ -1,0 +1,92 @@
+openapi: 3.0.0
+info:
+  license:
+    name: MIT
+  title: Job REST API
+  version: 1.0.0
+servers:
+  - url: /
+paths:
+  /{user}/nodes/:
+    #------------------------------------#
+    # New Node for a job
+    #------------------------------------#
+    post:
+      operationId: jobNodes
+      summary: Nodes information for the job
+      tags:
+        - dev
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobNodes'
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+components:
+  schemas:
+    #-----------------------#
+    # Basic Job Information
+    #-----------------------#
+    ServerInfo:
+      description: server information
+      properties:
+        name:
+          type: string
+        ip:
+          type: string
+        port:
+          type: integer
+          format: int64
+        uuid:
+          type: string
+        tags:
+          type: string
+        role:
+          type: string
+        status:
+          type: string
+    
+    JobNodes:
+      description: Node information for the job.
+      type: object
+      properties:
+        designId:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServerInfo'
+
+    #-----------------------#
+    # Helpers
+    #-----------------------#
+    Error:
+      description: Generic error object.
+      properties:
+        code:
+          format: int32
+          type: integer
+        message:
+          type: string
+      required:
+        - code
+        - message
+

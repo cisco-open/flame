@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package grpcAgent;
+option go_package = "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent";
+
+import "google/protobuf/struct.proto";
+
+service StreamingStore{
+  rpc SetupAppStream(AppInfo) returns (stream StreamResponse) {}
+}
+
+message AppInfo{
+  string uuid = 1;
+  string name = 2;
+}
+
+message StreamResponse {
+  enum ResponseType {
+    JOB_NOTIFICATION_INIT = 0;
+    JOB_NOTIFICATION_START = 1;
+    SCHEMA_UPDATE_NOTIFICATION = 2;
+  }
+  ResponseType type = 1;  //identifier to determine the type of message
+  google.protobuf.Struct message = 2; //call details
+}
+
+message Response{
+  enum ResponseStatus {
+    ERROR = 0;
+    SUCCESS = 1;
+    SUCCESS_WITH_ERROR = 2; //example- notification sent to all but one node
+  }
+  ResponseStatus status = 1;
+  string message = 2;
+  google.protobuf.Struct details = 3;
+}

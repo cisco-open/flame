@@ -4,40 +4,45 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"html/template"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
+	"strconv"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
-// InitZapLog Zap Logger initialization
-/*
-	https://pkg.go.dev/go.uber.org/zap#ReplaceGlobals
-	https://pkg.go.dev/go.uber.org/zap#hdr-Choosing_a_Logger
+/*InitZapLog Zap Logger initialization
 
-	In most circumstances, use the SugaredLogger. It's 4-10x faster than most
-	other structured logging packages and has a familiar, loosely-typed API.
-		sugar := logger.Sugar()
-		sugar.Infow("Failed to fetch URL.",
-			// Structured context as loosely typed key-value pairs.
-			"url", url,
-			"attempt", 3,
-			"backoff", time.Second,
-		)
-		sugar.Infof("Failed to fetch URL: %s", url)
+https://pkg.go.dev/go.uber.org/zap#ReplaceGlobals
+https://pkg.go.dev/go.uber.org/zap#hdr-Choosing_a_Logger
 
-	In the unusual situations where every microsecond matters, use the
-	Logger. It's even faster than the SugaredLogger, but only supports
-	structured logging.
-		logger.Info("Failed to fetch URL.",
-			// Structured context as strongly typed fields.
-			zap.String("url", url),
-			zap.Int("attempt", 3),
-			zap.Duration("backoff", time.Second),
-		)
+In most circumstances, use the SugaredLogger. It's 4-10x faster than most
+other structured logging packages and has a familiar, loosely-typed API.
+	sugar := logger.Sugar()
+	sugar.Infow("Failed to fetch URL.",
+		// Structured context as loosely typed key-value pairs.
+		"url", url,
+		"attempt", 3,
+		"backoff", time.Second,
+	)
+	sugar.Infof("Failed to fetch URL: %s", url)
+
+In the unusual situations where every microsecond matters, use the
+Logger. It's even faster than the SugaredLogger, but only supports
+structured logging.
+	logger.Info("Failed to fetch URL.",
+		// Structured context as strongly typed fields.
+		zap.String("url", url),
+		zap.Int("attempt", 3),
+		zap.Duration("backoff", time.Second),
+	)
 */
 func InitZapLog(service string) *zap.Logger {
 	dirPath := filepath.Join("/var/log", ProjectName)
@@ -52,6 +57,7 @@ func InitZapLog(service string) *zap.Logger {
 	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
 	config.EncoderConfig.TimeKey = "timestamp"
 	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
 	config.OutputPaths = []string{
 		"stdout",
 		logPath,
@@ -62,7 +68,6 @@ func InitZapLog(service string) *zap.Logger {
 		fmt.Printf("Can't build logger: %v", err)
 		return nil
 	}
-
 	return logger
 }
 
@@ -85,4 +90,147 @@ func FormatJSON(data []byte) ([]byte, error) {
 		return out.Bytes(), err
 	}
 	return data, nil
+}
+
+//StructToMapInterface converts any struct interface into map interface using json de-coding/encoding.
+func StructToMapInterface(in interface{}) (map[string]interface{}, error) {
+	//todo maybe a better way to do this https://github.com/golang/protobuf/issues/1259#issuecomment-750453617
+	var out map[string]interface{}
+	inMarsh, err := json.Marshal(in)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(inMarsh, &out)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func ToProtoStruct(in interface{}) (*structpb.Struct, error) {
+	m, err := StructToMapInterface(in)
+	if err != nil {
+		zap.S().Errorf("error converting notification object into map interface. %v", err)
+		return nil, err
+	}
+	details, err := structpb.NewStruct(m)
+	if err != nil {
+		zap.S().Errorf("error creating proto struct. %v", err)
+		return nil, err
+	}
+	return details, nil
+}
+
+func ProtoStructToStruct(msg *structpb.Struct, obj interface{}) error {
+	inJson, err := msg.MarshalJSON()
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(inJson, obj)
+	if err != nil {
+		//zap.S().Errorf("error while converting decoded message into struct. %v", err)
+		return err
+	}
+	return nil
+}
+
+func ByteToStruct(msg []byte, obj interface{}) error {
+	err := json.Unmarshal(msg, obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+//URI must always end with a backslash. Make sure the query params are not ended with a backslash
+//API END POINTS
+const (
+	//Design
+	CreateDesignEndPoint       = "CREATE_DESIGN"
+	GetDesignsEndPoint         = "GET_DESIGNS"
+	GetDesignEndPoint          = "GET_DESIGN"
+	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
+	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
+	//Job
+	SubmitJobEndPoint = "SUBMIT_JOB"
+	GetJobEndPoint    = "GET_JOB"
+	GetJobsEndPoint   = "GET_JOBS"
+	DeleteJobEndPoint = "DELETE_JOB"
+	UpdateJobEndPoint = "UPDATE_JOB"
+
+	//TODO remove me after prototyping phase is done.
+	JobNodesEndPoint = "JOB_NODES"
+)
+
+var URI = map[string]string{
+	// Design Template
+	CreateDesignEndPoint:       "/{{.user}}/design/",
+	GetDesignEndPoint:          "/{{.user}}/design/{{.designId}}/",
+	GetDesignsEndPoint:         "/{{.user}}/designs/?limit={{.limit}}",
+	UpdateDesignSchemaEndPoint: "/{{.user}}/design/{{.designId}}/schema/",
+	GetDesignSchemaEndPoint:    "/{{.user}}/design/{{.designId}}/schema/?getType={{.type}}&schemaId={{.schemaId}}",
+
+	//Job
+	SubmitJobEndPoint: "/{{.user}}/job/",
+	GetJobEndPoint:    "/{{.user}}/job/{{.jobId}}",
+	GetJobsEndPoint:   "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
+	UpdateJobEndPoint: "/{{.user}}/job/{{.jobId}}",
+	DeleteJobEndPoint: "/{{.user}}/job/{{.jobId}}",
+
+	//TODO remove me after prototyping phase is done.
+	JobNodesEndPoint: "/{{.user}}/nodes/",
+}
+
+func CreateURI(ip string, portNo int64, endPoint string, inputMap map[string]string) string {
+	//https://stackoverflow.com/questions/29071212/implementing-dynamic-strings-in-golang
+	var t = template.Must(template.New("").Parse(URI[endPoint]))
+	buf := bytes.Buffer{}
+	err := t.Execute(&buf, inputMap)
+	if err != nil {
+		zap.S().Errorf("error creating a uri. End point: %s", endPoint)
+	}
+	//TODO - change it to https
+	var url = "http://" + ip + ":" + strconv.Itoa(int(portNo)) + buf.String()
+	return url
+}
+
+func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, error) {
+	postBody, err := json.Marshal(msg)
+
+	if err != nil {
+		zap.S().Errorf("error encoding the payload")
+		return -1, nil, err
+	}
+
+	responseBody := bytes.NewBuffer(postBody)
+	resp, err := http.Post(url, contentType, responseBody)
+
+	//Handle Error
+	ErrorNilCheck(GetFunctionName(HTTPPost), err)
+	defer resp.Body.Close()
+
+	//Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	ErrorNilCheck(GetFunctionName(HTTPPost), err)
+
+	//status code
+	//zap.S().Debugf("status... %v", resp.StatusCode)
+	//code, err := strconv.Atoi(resp.StatusCode)
+	//ErrorNilCheck(GetFunctionName(HTTPPost), err)
+
+	return resp.StatusCode, body, err
+}
+
+func HTTPGet(url string) ([]byte, error) {
+	resp, err := http.Get(url)
+
+	//handle error
+	ErrorNilCheck(GetFunctionName(HTTPGet), err)
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	ErrorNilCheck(GetFunctionName(HTTPGet), err)
+
+	return body, err
 }

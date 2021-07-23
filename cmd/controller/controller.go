@@ -1,9 +1,11 @@
 package main
 
 import (
+	"os"
+
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/cmd"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -12,7 +14,7 @@ func main() {
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync()
 
-	//Init Database connection
-	//todo remove hardcoded obj creation & remove db init from server.go file.
-	database.NewDBService(database.DBInfo{Name: util.MONGODB, URI: "mongodb://localhost:27017"})
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

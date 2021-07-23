@@ -127,3 +127,126 @@ var NotificationStreamingStore_ServiceDesc = grpc.ServiceDesc{
 	},
 	Metadata: "notification.proto",
 }
+
+// NotificationControllerStoreClient is the client API for NotificationControllerStore service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type NotificationControllerStoreClient interface {
+	JobNotification(ctx context.Context, in *JsonRequest, opts ...grpc.CallOption) (*Response, error)
+	SchemaUpdateNotification(ctx context.Context, in *SchemaUpdateMessage, opts ...grpc.CallOption) (*Response, error)
+}
+
+type notificationControllerStoreClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewNotificationControllerStoreClient(cc grpc.ClientConnInterface) NotificationControllerStoreClient {
+	return &notificationControllerStoreClient{cc}
+}
+
+func (c *notificationControllerStoreClient) JobNotification(ctx context.Context, in *JsonRequest, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/grpcNotification.NotificationControllerStore/JobNotification", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationControllerStoreClient) SchemaUpdateNotification(ctx context.Context, in *SchemaUpdateMessage, opts ...grpc.CallOption) (*Response, error) {
+	out := new(Response)
+	err := c.cc.Invoke(ctx, "/grpcNotification.NotificationControllerStore/SchemaUpdateNotification", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// NotificationControllerStoreServer is the server API for NotificationControllerStore service.
+// All implementations must embed UnimplementedNotificationControllerStoreServer
+// for forward compatibility
+type NotificationControllerStoreServer interface {
+	JobNotification(context.Context, *JsonRequest) (*Response, error)
+	SchemaUpdateNotification(context.Context, *SchemaUpdateMessage) (*Response, error)
+	mustEmbedUnimplementedNotificationControllerStoreServer()
+}
+
+// UnimplementedNotificationControllerStoreServer must be embedded to have forward compatible implementations.
+type UnimplementedNotificationControllerStoreServer struct {
+}
+
+func (UnimplementedNotificationControllerStoreServer) JobNotification(context.Context, *JsonRequest) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method JobNotification not implemented")
+}
+func (UnimplementedNotificationControllerStoreServer) SchemaUpdateNotification(context.Context, *SchemaUpdateMessage) (*Response, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method SchemaUpdateNotification not implemented")
+}
+func (UnimplementedNotificationControllerStoreServer) mustEmbedUnimplementedNotificationControllerStoreServer() {
+}
+
+// UnsafeNotificationControllerStoreServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to NotificationControllerStoreServer will
+// result in compilation errors.
+type UnsafeNotificationControllerStoreServer interface {
+	mustEmbedUnimplementedNotificationControllerStoreServer()
+}
+
+func RegisterNotificationControllerStoreServer(s grpc.ServiceRegistrar, srv NotificationControllerStoreServer) {
+	s.RegisterService(&NotificationControllerStore_ServiceDesc, srv)
+}
+
+func _NotificationControllerStore_JobNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(JsonRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationControllerStoreServer).JobNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpcNotification.NotificationControllerStore/JobNotification",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationControllerStoreServer).JobNotification(ctx, req.(*JsonRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NotificationControllerStore_SchemaUpdateNotification_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SchemaUpdateMessage)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationControllerStoreServer).SchemaUpdateNotification(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpcNotification.NotificationControllerStore/SchemaUpdateNotification",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationControllerStoreServer).SchemaUpdateNotification(ctx, req.(*SchemaUpdateMessage))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// NotificationControllerStore_ServiceDesc is the grpc.ServiceDesc for NotificationControllerStore service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var NotificationControllerStore_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "grpcNotification.NotificationControllerStore",
+	HandlerType: (*NotificationControllerStoreServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "JobNotification",
+			Handler:    _NotificationControllerStore_JobNotification_Handler,
+		},
+		{
+			MethodName: "SchemaUpdateNotification",
+			Handler:    _NotificationControllerStore_SchemaUpdateNotification_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "notification.proto",
+}

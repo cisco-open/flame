@@ -13,9 +13,12 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strconv"
 
 	"go.uber.org/zap"
-	controllerapi "wwwin-github.cisco.com/eti/fledge/cmd/controller/api"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // DesignsApiService is a service that implents the logic for the DesignsApiServicer
@@ -31,15 +34,26 @@ func NewDesignsApiService() DesignsApiServicer {
 
 // GetDesigns - Get list of all the designs created by the user.
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
-	//todo input validation
-	zap.S().Debugf("get list of designs for user:%s | limit:%d", user, limit)
+	//TODO input validation
+	zap.S().Debugf("get list of designs for user: %s | limit: %d", user, limit)
 
-	dc := controllerapi.DesignController{}
-	designList, err := dc.GetDesigns(user, limit)
-
-	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
-	} else {
-		return Response(http.StatusOK, designList), nil
+	//create controller request
+	//construct URL
+	uriMap := map[string]string{
+		"user":  user,
+		"limit": strconv.Itoa(int(limit)),
 	}
+	url := CreateURI(util.GetDesignsEndPoint, uriMap)
+
+	//send get request
+	responseBody, err := util.HTTPGet(url)
+
+	//response to the user
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
+	}
+
+	var resp []objects.DesignInfo
+	err = util.ByteToStruct(responseBody, &resp)
+	return Response(http.StatusOK, resp), err
 }

@@ -3,29 +3,30 @@ package grpcagent
 import (
 	"context"
 	"io"
-	"log"
-	"strconv"
+	"os"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"wwwin-github.cisco.com/eti/fledge/cmd/agent/impl"
 
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 //ConnectToNotificationService connects to the notification grpc server.
 //It starts a new goroutine which listens for notifications.
-func ConnectToNotificationService(ip string, port int) {
+func ConnectToNotificationService(sInfo objects.ServerInfo) {
 	//dial server
-	conn, err := grpc.Dial(ip+":"+strconv.Itoa(port), grpc.WithInsecure())
+	conn, err := grpc.Dial(sInfo.GetAddress(), grpc.WithInsecure())
 	if err != nil {
-		zap.S().Fatalf("can not connect with server %v", err)
+		zap.S().Fatalf("can not connect with notification service %v", err)
 	}
 
 	client := pbNotification.NewNotificationStreamingStoreClient(conn)
-	//todo name and ip to be fetched using api
 	in := &pbNotification.AgentInfo{
-		Uuid: "local",
-		Ip:   "localhost",
+		Uuid: os.Getenv(util.EnvUuid),
+		Name: os.Getenv(util.EnvName),
 	}
 
 	//setup notification stream
@@ -33,6 +34,7 @@ func ConnectToNotificationService(ip string, port int) {
 	if err != nil {
 		zap.S().Fatalf("open stream error %v", err)
 	}
+	zap.S().Infof("Agent -- Notification service connection established. Notification service at %v", sInfo)
 
 	//creating a channel to inform the client if notification connection is broken
 	done := make(chan bool)
@@ -45,7 +47,8 @@ func ConnectToNotificationService(ip string, port int) {
 				done <- true //means stream is finished
 				return
 			} else if err != nil {
-				log.Fatalf("cannot receive %v", err)
+				zap.S().Errorf("cannot receive notification %v", err)
+				done <- true //means stream is finished
 			}
 			newNotification(resp)
 		}
@@ -59,16 +62,19 @@ func ConnectToNotificationService(ip string, port int) {
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
 func newNotification(in *pbNotification.StreamResponse) {
 	switch in.GetType() {
-	case pbNotification.StreamResponse_JOB_NOTIFICATION:
-		msg := &pbNotification.NewJobMessage{}
-		in.GetMessage().UnmarshalTo(msg)
-		newJob(msg)
+	case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
+		jobMsg := objects.JobNotification{}
+		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
+		if err != nil {
+			zap.S().Errorf("error processing the job request. %v", err)
+		} else {
+			impl.NewJobInitApp(jobMsg)
+		}
+		break
+	case pbNotification.StreamResponse_JOB_NOTIFICATION_START:
+		zap.S().Infof("message :  %v", in.GetMessage())
 		break
 	default:
 		zap.S().Errorf("Invalid message type: %s", in.GetType())
 	}
-}
-
-func newJob(in *pbNotification.NewJobMessage) {
-	zap.S().Infof("New job request submitted. %v", in)
 }

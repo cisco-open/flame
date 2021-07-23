@@ -17,7 +17,7 @@ type Channel struct {
 
 	Pair []string `json:"pair"`
 
-	GroupBy ChannelGroupBy `bson:"groupBy,omitempty" json:"groupBy,omitempty" yaml:"groupBy,omitempty"`
+	GroupBy ChannelGroupBy `bson:"groupBy" json:"groupBy,omitempty" yaml:"groupBy,omitempty"`
 
-	IsBidirectional bool `bson:"isBidirectional,omitempty" json:"isBidirectional,omitempty"`
+	IsBidirectional bool `bson:"isBidirectional" json:"isBidirectional,omitempty"`
 }

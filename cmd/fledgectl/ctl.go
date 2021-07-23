@@ -6,11 +6,11 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/cmd"
-	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 func main() {
-	loggerMgr := util2.InitZapLog(util2.CliTool)
+	loggerMgr := util.InitZapLog(util.CliTool)
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync()
 

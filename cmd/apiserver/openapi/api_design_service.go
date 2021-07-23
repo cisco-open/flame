@@ -16,8 +16,8 @@ import (
 
 	"go.uber.org/zap"
 
-	controllerapi "wwwin-github.cisco.com/eti/fledge/cmd/controller/api"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // DesignApiService is a service that implents the logic for the DesignApiServicer
@@ -33,35 +33,45 @@ func NewDesignApiService() DesignApiServicer {
 
 // CreateDesign - Create a new design template.
 func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (ImplResponse, error) {
-	//todo input validation
-	zap.S().Debugf("new design request recieved for user:%s | designInfo:%v", user, designInfo)
+	//TODO input validation
+	zap.S().Debugf("New design request recieved for user: %s | designInfo: %v", user, designInfo)
 
-	var d = objects.Design{
-		UserId:      user,
-		Name:        designInfo.Name,
-		Description: designInfo.Description,
-		Schemas:     []objects.DesignSchema{},
+	//create controller request
+	uriMap := map[string]string{
+		"user": user,
 	}
-	dc := controllerapi.DesignController{}
-	err := dc.CreateNewDesign(user, d)
+	url := CreateURI(util.CreateDesignEndPoint, uriMap)
+
+	//send post request
+	_, _, err := util.HTTPPost(url, designInfo, "application/json")
+
+	//response to the user
 	if err != nil {
-		//return Response(0, Error{}), nil
 		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
-	} else {
-		return Response(http.StatusCreated, nil), nil
 	}
+	return Response(http.StatusCreated, nil), nil
 }
 
 // GetDesign - Get design template information
 func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (ImplResponse, error) {
-	//todo input validation
-	zap.S().Debugf("get design template information for user:%s | designId: %s", user, designId)
+	//TODO input validation
+	zap.S().Debugf("Get design template information for user: %s | designId: %s", user, designId)
 
-	dc := controllerapi.DesignController{}
-	info, err := dc.GetDesign(user, designId)
+	//create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+	}
+	url := CreateURI(util.GetDesignEndPoint, uriMap)
+
+	//send get request
+	responseBody, err := util.HTTPGet(url)
+
+	//response to the user
 	if err != nil {
 		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
-	} else {
-		return Response(http.StatusOK, info), nil
 	}
+	resp := objects.Design{}
+	err = util.ByteToStruct(responseBody, &resp)
+	return Response(http.StatusOK, resp), err
 }

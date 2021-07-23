@@ -1,9 +1,11 @@
 package main
 
 import (
+	"os"
+
 	"go.uber.org/zap"
 
-	grpcagent "wwwin-github.cisco.com/eti/fledge/cmd/agent/grpc"
+	"wwwin-github.cisco.com/eti/fledge/cmd/agent/cmd"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -12,5 +14,7 @@ func main() {
 	zap.ReplaceGlobals(loggerMgr)
 	defer loggerMgr.Sync()
 
-	grpcagent.ConnectToNotificationService("localhost", util.NotificationServiceGrpcPort)
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
+	}
 }

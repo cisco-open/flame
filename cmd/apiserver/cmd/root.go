@@ -5,8 +5,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
-	util2 "wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 /*
@@ -15,7 +14,7 @@ import (
  * example codebase https://github.com/schadokar/my-calc
  */
 var apiServerCmd = &cobra.Command{
-	Use:   util2.ApiServer,
+	Use:   util.ApiServer,
 	Short: "API server",
 	Long:  "API server",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -29,26 +28,12 @@ var startApiServerCmd = &cobra.Command{
 	Long:  "Start API server",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		//flags.VisitAll(func(flag *pflag.Flag) {
-		//	zap.S().Infof("FLAG: --%s=%q", flag.Name, flag.Value)
-		//})
-
 		portNo, err := flags.GetUint16("port")
 		if err != nil {
 			return err
 		}
 
-		db, err := flags.GetString("db")
-		if err != nil {
-			return err
-		}
-
-		uri, err := flags.GetString("uri")
-		if err != nil {
-			return err
-		}
-
-		if err := app.RunServer(portNo, database.DBInfo{Name: db, URI: uri}); err != nil {
+		if err := app.RunServer(portNo); err != nil {
 			return err
 		}
 		return nil
@@ -83,10 +68,7 @@ func init() {
 	//todo use systemd and make the server daemon process.
 	apiServerCmd.AddCommand(startApiServerCmd, stopApiServerCmd, reloadApiServerCmd)
 
-	apiServerCmd.PersistentFlags().Uint16P("port", "p", util2.ApiServerRestApiPort, "listening port for API server")
-	apiServerCmd.PersistentFlags().StringP("db", "d", util2.MONGODB, "Database type")
-	apiServerCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
-	apiServerCmd.MarkPersistentFlagRequired("uri")
+	apiServerCmd.PersistentFlags().Uint16P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
 }
 
 func Execute() error {

@@ -13,19 +13,19 @@ import (
 const (
 	DatabaseName     = "fledge"
 	DesignCollection = "t_design"
+	JobCollection    = "t_job"
 )
 
 type MongoService struct {
 	client           *mongo.Client
 	database         *mongo.Database
 	designCollection *mongo.Collection
+	jobCollection    *mongo.Collection
 }
 
 var mongoDB = &MongoService{}
 
 func NewMongoService(uri string) (*MongoService, error) {
-	zap.S().Infof("connecting to mongodb database ...")
-
 	// create the base context, the context in which your application runs
 	//https://www.mongodb.com/blog/post/quick-start-golang-mongodb-starting-and-setup
 	//10seconds = timeout duration that we want to use when trying to connect.
@@ -57,13 +57,14 @@ func NewMongoService(uri string) (*MongoService, error) {
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
 		panic(err)
 	}
-	zap.S().Infof("successfully connected and pinged ...")
+	zap.S().Infof("Successfully connected to database and pinged")
 
 	db := client.Database(DatabaseName)
 	mongoDB = &MongoService{
 		client:           client,
 		database:         db,
 		designCollection: db.Collection(DesignCollection),
+		jobCollection:    db.Collection(JobCollection),
 	}
 
 	return mongoDB, nil
