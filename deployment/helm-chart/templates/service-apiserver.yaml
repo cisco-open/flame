@@ -10,8 +10,8 @@ spec:
   ports:
   - name: apiserver
     protocol: TCP
-    port: {{ .Values.componentPort.apiserver }}
-    targetPort: {{ .Values.componentPort.apiserver }}
+    port: {{ .Values.componentPorts.apiserver }}
+    targetPort: {{ .Values.componentPorts.apiserver }}
   type: ClusterIP
   selector:
     app: {{ .Values.servicename }}-apiserver
