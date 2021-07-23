@@ -148,13 +148,6 @@ class LocalBackend(AbstractBackend):
 
         return reader, writer
 
-    async def _notify(self, writer, channel_name):
-        msg = msg_pb2.Notify()
-        msg.end_id = self._id
-        msg.channel_name = channel_name
-
-        await _send_msg(writer, msg)
-
     async def _send_data(self, writer, channel_name, data):
         msg = msg_pb2.Data()
         msg.end_id = self._id
@@ -216,8 +209,14 @@ class LocalBackend(AbstractBackend):
 
         _, writer = self._endpoints[end_id]
 
-        coro = self._notify(writer, channel_name)
-        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        async def _notify():
+            msg = msg_pb2.Notify()
+            msg.end_id = self._id
+            msg.channel_name = channel_name
+
+            await _send_msg(writer, msg)
+
+        _, status = run_async(_notify(), self._loop, SOCK_OP_WAIT_TIME)
 
         return status
 

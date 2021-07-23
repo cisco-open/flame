@@ -1,7 +1,11 @@
 {
-    "backend": "local",
+    "broker": "mqtt.eclipseprojects.io",
+    "backend": "mqtt",
     "agent": "local",
-    "job": "keras-mnist-job",
+    "job": {
+	"id": "67890",
+	"name": "keras-mnist-job"
+    },
     "role": "aggregator",
     "channel": [
 	{

@@ -9,12 +9,27 @@ TXQ = 'txq'
 
 
 class Channel(object):
-    def __init__(self, name, backend):
-        self._name = name
+    def __init__(self, backend, job_id: str, name: str, me='', other=''):
         self._backend = backend
+        self._job_id = job_id
+        self._name = name
+        self._my_role = me
+        self._other_role = other
 
         # _ends must be accessed within backend's loop
         self._ends = {}
+
+    def job_id(self):
+        return self._job_id
+
+    def name(self):
+        return self._name
+
+    def my_role(self):
+        return self._my_role
+
+    def other_role(self):
+        return self._other_role
 
     '''
     ### The following are not asyncio methods
@@ -22,9 +37,6 @@ class Channel(object):
     ### Therefore, when necessary, coroutine is defined inside each method
     ### and the coroutine is executed via run_async()
     '''
-
-    def name(self):
-        return self._name
 
     def ends(self):
         async def inner():
@@ -46,7 +58,6 @@ class Channel(object):
                 # can't send message to end_id
                 return
 
-            # payload = message.to_bytes()
             payload = cloudpickle.dumps(message)
             await self._ends[end_id][TXQ].put(payload)
 

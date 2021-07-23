@@ -1,7 +1,11 @@
 {
+    "broker": "mqtt.eclipseprojects.io",
     "backend": "local",
     "agent": "local",
-    "job": "monai-mednist",
+    "job": {
+	"id": "77777",
+	"name": "monai-mednist"
+    },
     "role": "trainer",
     "channel": [
 	{

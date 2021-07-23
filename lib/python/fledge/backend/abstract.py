@@ -23,9 +23,5 @@ class AbstractBackend:
         pass
 
     @abstractmethod
-    def send(self, end_id, msg):
-        pass
-
-    @abstractmethod
-    def recv(self, end_id):
+    def configure(self, broker, job_id):
         pass

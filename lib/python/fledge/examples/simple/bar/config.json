@@ -1,7 +1,11 @@
 {
-    "backend": "local",
+    "broker": "mqtt.eclipseprojects.io",
+    "backend": "mqtt",
     "agent": "local",
-    "job": "simple-job",
+    "job": {
+	"id": "12345",
+	"name": "simple-job"
+    },
     "role": "bar",
     "channel": [
 	{

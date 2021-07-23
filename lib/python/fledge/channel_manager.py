@@ -3,9 +3,10 @@ import atexit
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import SOCK_OP_WAIT_TIME, BackendEvent
+from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
+                               BackendEvent)
 from .common.util import background_thread_loop, run_async
-from .config import Config
+from .config import BACKEND_TYPE_MQTT, Config
 from .registry_agents import registry_agent_provider
 
 
@@ -16,7 +17,7 @@ class ChannelManager(object):
     _instance = None
 
     _config = None
-    _job = None
+    _job_id = None
     _role = None
 
     _channels = None
@@ -34,7 +35,7 @@ class ChannelManager(object):
 
     def __call__(self, config_file: str):
         self._config = Config(config_file)
-        self._job = self._config.job_name
+        self._job_id = self._config.job.job_id
         self._role = self._config.role
 
         self._channels = {}
@@ -43,6 +44,7 @@ class ChannelManager(object):
             self._loop = loop
 
         self._backend = backend_provider.get(self._config.backend)
+        self._backend.configure(self._config.broker, self._job_id)
         self._registry_agent = registry_agent_provider.get(self._config.agent)
 
         async def inner():
@@ -64,28 +66,63 @@ class ChannelManager(object):
 
     def join(self, name):
         '''
-        joins a channel
+        join a channel
         '''
         if self.is_joined(name):
             return True
 
+        # TODO: Consider if all of these can be moved into Channel class
+        if self._config.backend == BACKEND_TYPE_MQTT:
+            return self._join_mqtt(name)
+
+        return self._join_non_mqtt(name)
+
+    def _join_mqtt(self, name):
+        '''
+        join a channel in case of mqtt backend
+        '''
+        channel_config = self._config.channels[name]
+
+        if self._role == channel_config.pair[0]:
+            me = channel_config.pair[0]
+            other = channel_config.pair[1]
+        else:
+            me = channel_config.pair[1]
+            other = channel_config.pair[0]
+
+        self._channels[name] = Channel(
+            self._backend, self._job_id, name, me, other
+        )
+        self._backend.add_channel(self._channels[name])
+
+        # format: /fledge/<job_id>/<channel_name>/<role>/+
+        topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}/{name}/{other}/+'
+        self._backend.subscribe(topic)
+        self._backend.notify(name)
+
+        return True
+
+    def _join_non_mqtt(self, name):
+        '''
+        join a channel when backend is not mqtt
+        '''
         coro = self._registry_agent.connect()
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
             return False
 
         coro = self._registry_agent.register(
-            self._job, name, self._role, self._backend.uid(),
+            self._job_id, name, self._role, self._backend.uid(),
             self._backend.endpoint()
         )
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if status:
-            self._channels[name] = Channel(name, self._backend)
+            self._channels[name] = Channel(self._backend, self._job_id, name)
             self._backend.add_channel(self._channels[name])
         else:
             return False
 
-        coro = self._registry_agent.get(self._job, name)
+        coro = self._registry_agent.get(self._job_id, name)
         channel_info, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
             return False
@@ -130,7 +167,7 @@ class ChannelManager(object):
             return
 
         coro = self._registry_agent.reset_channel(
-            self._job, name, self._role, self._backend.uid()
+            self._job_id, name, self._role, self._backend.uid()
         )
 
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
