@@ -21,7 +21,11 @@ Vagrant.configure("2") do |config|
   end
 
   # define workers
-  N = 2
+  N = 3
+  if ARGV[0] == 'up'
+      print "Input number of worker nodes: "
+      N = STDIN.gets.chomp.to_i
+  end
   (1..N).each do |i|
     config.vm.define "worker#{i}" do |worker|
       worker.vm.hostname = "worker#{i}"
