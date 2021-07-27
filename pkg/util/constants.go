@@ -18,6 +18,7 @@ const (
 	Terminated   = "Terminated"
 	Completed    = "Completed"
 	GenericError = "GenericError"
+	InternalUser = "sys"
 
 	// Database
 	MONGODB = "mongo"
@@ -36,10 +37,10 @@ const (
 	ApiServerRestApiPort        = 10100 // REST API port
 	NotificationServiceGrpcPort = 10101 // for notification and push
 	ControllerRestApiPort       = 10102 // Controller REST API port
-	AgentGrpcPort               = 10103 // for agent - application
+	AgentGrpcPort               = 10103 // for fledgelet - application
 
 	// Service names
-	Agent      = "agent"
+	Agent      = "fledgelet"
 	ApiServer  = "apiserver"
 	Controller = "controller"
 	Notifier   = "notifier"

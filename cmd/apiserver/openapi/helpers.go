@@ -9,7 +9,14 @@
 
 package openapi
 
-import "wwwin-github.cisco.com/eti/fledge/pkg/util"
+import (
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+)
+
+type AppInfo struct {
+	controllerInfo objects.ServerInfo
+}
 
 //Response return a ImplResponse struct filled
 func Response(code int, body interface{}) ImplResponse {
@@ -20,6 +27,5 @@ func Response(code int, body interface{}) ImplResponse {
 }
 
 func CreateURI(endPoint string, uriMap map[string]string) string {
-	//TODO - implement value retrieval from config/environment
-	return util.CreateURI("localhost", util.ControllerRestApiPort, endPoint, uriMap)
+	return util.CreateURI(App.controllerInfo.IP, util.ControllerRestApiPort, endPoint, uriMap)
 }

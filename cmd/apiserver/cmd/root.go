@@ -3,8 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -33,7 +34,20 @@ var startApiServerCmd = &cobra.Command{
 			return err
 		}
 
-		if err := app.RunServer(portNo); err != nil {
+		ctlrIp, err := flags.GetString("ctlrIp")
+		if err != nil {
+			return err
+		}
+
+		ctlrPort, err := flags.GetUint16("ctlrPort")
+		if err != nil {
+			return err
+		}
+
+		if err := openapi.RunServer(portNo, objects.ServerInfo{
+			IP:   ctlrIp,
+			Port: ctlrPort,
+		}); err != nil {
 			return err
 		}
 		return nil
@@ -69,6 +83,10 @@ func init() {
 	apiServerCmd.AddCommand(startApiServerCmd, stopApiServerCmd, reloadApiServerCmd)
 
 	apiServerCmd.PersistentFlags().Uint16P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
+
+	startApiServerCmd.Flags().StringP("ctlrIp", "c", "0.0.0.0", "Controller ip")
+	startApiServerCmd.Flags().Uint16P("ctlrPort", "o", util.ControllerRestApiPort, "Controller port")
+	startApiServerCmd.MarkFlagRequired("ctlrIp")
 }
 
 func Execute() error {

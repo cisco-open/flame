@@ -1,4 +1,4 @@
-package grpcagent
+package app
 
 import (
 	"context"
@@ -6,8 +6,6 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
-	"wwwin-github.cisco.com/eti/fledge/cmd/agent/impl"
-
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
@@ -15,17 +13,17 @@ import (
 
 //ConnectToNotificationService connects to the notification grpc server.
 //It starts a new goroutine which listens for notifications.
-func ConnectToNotificationService(agentName string, id string, sInfo objects.ServerInfo) {
+func ConnectToNotificationService() {
 	//dial server
-	conn, err := grpc.Dial(sInfo.GetAddress(), grpc.WithInsecure())
+	conn, err := grpc.Dial(Agent.nsInfo.GetAddress(), grpc.WithInsecure())
 	if err != nil {
 		zap.S().Fatalf("can not connect with notification service %v", err)
 	}
 
 	client := pbNotification.NewNotificationStreamingStoreClient(conn)
 	in := &pbNotification.AgentInfo{
-		Uuid: id,
-		Name: agentName,
+		Uuid: Agent.uuid,
+		Name: Agent.name,
 	}
 
 	//setup notification stream
@@ -33,7 +31,7 @@ func ConnectToNotificationService(agentName string, id string, sInfo objects.Ser
 	if err != nil {
 		zap.S().Fatalf("open stream error %v", err)
 	}
-	zap.S().Infof("Agent -- Notification service connection established. Notification service at %v", sInfo)
+	zap.S().Infof("Agent -- Notification service connection established. Notification service at %v", Agent.nsInfo)
 
 	//creating a channel to inform the client if notification connection is broken
 	done := make(chan bool)
@@ -62,12 +60,15 @@ func ConnectToNotificationService(agentName string, id string, sInfo objects.Ser
 func newNotification(in *pbNotification.StreamResponse) {
 	switch in.GetType() {
 	case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
-		jobMsg := objects.JobNotification{}
+		jobMsg := objects.JobInfo{}
 		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
+
+		zap.S().Infof("message :  %v", in.GetMessage())
+		zap.S().Infof("jobMsg :  %v", jobMsg)
 		if err != nil {
 			zap.S().Errorf("error processing the job request. %v", err)
 		} else {
-			impl.NewJobInitApp(jobMsg)
+			NewJobInitApp(jobMsg)
 		}
 		break
 	case pbNotification.StreamResponse_JOB_NOTIFICATION_START:

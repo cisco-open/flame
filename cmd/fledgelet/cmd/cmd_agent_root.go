@@ -3,7 +3,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/agent/app"
+	"wwwin-github.cisco.com/eti/fledge/cmd/fledgelet/app"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -18,8 +18,8 @@ var agentCmd = &cobra.Command{
 
 var startAgentCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start agent",
-	Long:  "Start agent",
+	Short: "Start fledgelet",
+	Long:  "Start fledgelet",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
@@ -33,9 +33,17 @@ var startAgentCmd = &cobra.Command{
 			return err
 		}
 
-		notificationInfo := objects.ServerInfo{IP: notifyIp, Port: notifyPort}
+		restIp, err := flags.GetString("apiIp")
+		if err != nil {
+			return err
+		}
 
-		if err := app.StartAgent(notificationInfo); err != nil {
+		restPort, err := flags.GetUint16("apiPort")
+		if err != nil {
+			return err
+		}
+
+		if err := app.StartAgent(objects.ServerInfo{IP: notifyIp, Port: notifyPort}, objects.ServerInfo{IP: restIp, Port: restPort}); err != nil {
 			return err
 		}
 		return nil
@@ -47,13 +55,11 @@ func init() {
 
 	startAgentCmd.Flags().StringP("notifyIp", "i", "0.0.0.0", "Notification service ip")
 	startAgentCmd.Flags().Uint16P("notifyPort", "p", util.NotificationServiceGrpcPort, "Notification service port")
-	//TODO remove me after discussion - will obtain these details from environment variable?
-	//startAgentCmd.Flags().StringP("name", "n", "agent", "Agent name")
-	//startAgentCmd.Flags().StringP("uuid", "u", "0", "Agent uuid")
+	startAgentCmd.Flags().StringP("apiIp", "a", "0.0.0.0", "REST API ip")
+	startAgentCmd.Flags().Uint16P("apiPort", "o", util.ApiServerRestApiPort, "REST API port")
 
 	startAgentCmd.MarkFlagRequired("notifyIp")
-	//startAgentCmd.MarkFlagRequired("name")
-	//startAgentCmd.MarkFlagRequired("uuid")
+	startAgentCmd.MarkFlagRequired("apiIp")
 }
 
 func Execute() error {

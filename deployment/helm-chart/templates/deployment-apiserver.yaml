@@ -21,7 +21,7 @@ spec:
       - name: {{ .Values.servicename }}-apiserver
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/apiserver"]
-        args: ["start"]
+        args: ["start" , "—ctlrIp", "{{ .Values.servicename }}-controller"]
         ports:
         - containerPort: {{ .Values.componentPorts.apiserver }}
         envFrom:

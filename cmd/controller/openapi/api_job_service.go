@@ -79,7 +79,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	//Step 2 - add nodes details into database
 	inJson, err := json.Marshal(agentInfo)
 	if err != nil {
-		zap.S().Errorf("error while marshling agent info %v", err)
+		zap.S().Errorf("error while marshling fledgelet info %v", err)
 		return Response(http.StatusMultiStatus, nil), errors.New("job request created but failed to initialized")
 	}
 	err = database.UpdateJobDetails(jId, util.AddJobNodes, inJson)
@@ -87,14 +87,14 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		return Response(http.StatusMultiStatus, nil), errors.New("job request created but failed to initialized")
 	}
 
-	//Step 3 - Notifying the agents of new job. Sending a init request allows to re-use the agent nodes in the future, if needed.
+	//Step 3 - Notifying the agents of new job. Sending a init request allows to re-use the fledgelet nodes in the future, if needed.
 	jobInfo.ID = jId
 	jobMsg := objects.JobNotification{
 		Agents:           agentInfo,
 		Job:              jobInfo,
 		NotificationType: util.Init,
 	}
-	zap.S().Debugf("Sending notification to all the agents (count: %d) for new job id: %s", len(agentInfo), jId)
+	zap.S().Debugf("Sending notification to all the agents (count: %d) for new job id: %s. Info: %v", len(agentInfo), jId, jobMsg)
 	resp, err := grpcctlr.ControllerGRPC.SendNotification(grpcctlr.JobNotification, jobMsg)
 	if err != nil {
 		zap.S().Errorf("failed to notify the agents. %v", err)
@@ -124,7 +124,7 @@ func getNodes(designId string) []objects.ServerInfo {
 
 	return agentInfo
 
-	//get the list of agent nodes where the job is required to be deployed
+	//get the list of fledgelet nodes where the job is required to be deployed
 	//var agentInfo []objects.ServerInfo
 	//agentInfo = append(agentInfo, objects.ServerInfo{
 	//	IP:     "localhost",

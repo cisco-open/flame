@@ -2,16 +2,17 @@
 // versions:
 // 	protoc-gen-go v1.27.0
 // 	protoc        v3.17.3
-// source: agent.proto
+// source: fledgelet.proto
 
 package agent
 
 import (
+	reflect "reflect"
+	sync "sync"
+
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	structpb "google.golang.org/protobuf/types/known/structpb"
-	reflect "reflect"
-	sync "sync"
 )
 
 const (

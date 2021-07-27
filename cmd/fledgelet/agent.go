@@ -5,7 +5,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/agent/cmd"
+	"wwwin-github.cisco.com/eti/fledge/cmd/fledgelet/cmd"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 

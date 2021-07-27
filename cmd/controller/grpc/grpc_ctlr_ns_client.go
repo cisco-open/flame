@@ -20,7 +20,7 @@ type fn func(context.Context, *pbNotification.JsonRequest, ...grpc.CallOption) (
 var notificationApiStore map[string]fn
 
 // ConnectToNotificationService establishes connection to the notification service and stores the client object.
-// The client object is later used by the controller to pass information to the notification service which passes it to the agent.
+// The client object is later used by the controller to pass information to the notification service which passes it to the fledgelet.
 func (s *controllerGRPC) connectToNotificationService(sInfo objects.ServerInfo) {
 	conn, err := grpc.Dial(sInfo.GetAddress(), grpc.WithInsecure())
 	if err != nil {

@@ -20,8 +20,8 @@ spec:
       containers:
       - name: {{ .Values.servicename }}-agent3
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
-        command: ["/usr/bin/agent"]
-        args: ["start", "--notifyIp", "{{ .Values.servicename }}-notifier"]
+        command: ["/usr/bin/fledgelet"]
+        args: ["start", "--notifyIp", "{{ .Values.servicename }}-notifier", "--apiIp", "{{ .Values.servicename }}-apiserver"]
 
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}

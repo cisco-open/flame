@@ -12,7 +12,7 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-// SubmitJob creates a new job and return the jobId which is used by the controller to inform the agent about new job.
+// SubmitJob creates a new job and return the jobId which is used by the controller to inform the fledgelet about new job.
 func (db *MongoService) SubmitJob(userId string, info objects.JobInfo) (string, error) {
 	t := time.Now()
 	info.Timestamp = objects.JobInfoTimestamp{

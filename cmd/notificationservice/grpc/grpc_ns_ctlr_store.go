@@ -24,12 +24,13 @@ func (s *notificationServer) JobNotification(ctx context.Context, in *pbNotifica
 	for _, item := range jobMsg.Agents {
 		clients = append(clients, item.Uuid)
 	}
-	zap.S().Debugf("Sending job notification to the following clients %v", clients)
 
 	var nsType pbNotification.StreamResponse_ResponseType
-	if nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT; jobMsg.NotificationType == util.Init {
+	if nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT; jobMsg.NotificationType == util.Start {
 		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_START
 	}
+	zap.S().Debugf("Sending job notification to the following clients %v. Notification type: %s", clients, jobMsg.NotificationType)
+
 	errList := s.pushNotifications(clients, nsType, jobMsg.Job)
 	//notifications sent. However, check if it was sent to all or partial only.
 	resp := &pbNotification.Response{Status: pbNotification.Response_SUCCESS}

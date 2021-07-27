@@ -1,4 +1,4 @@
-package grpcagent
+package app
 
 import (
 	"errors"
@@ -9,7 +9,7 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-// SetupAppStream is called by the application to subscribe to the agent.
+// SetupAppStream is called by the application to subscribe to the fledgelet.
 // Adds the client to the server client map and stores the client stream.
 func (s *agentServer) SetupAppStream(in *pbAgent.AppInfo, stream pbAgent.StreamingStore_SetupAppStreamServer) error {
 	s.addNewClient(in, &stream)
