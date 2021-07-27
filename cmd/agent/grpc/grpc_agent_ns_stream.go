@@ -3,7 +3,6 @@ package grpcagent
 import (
 	"context"
 	"io"
-	"os"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -16,7 +15,7 @@ import (
 
 //ConnectToNotificationService connects to the notification grpc server.
 //It starts a new goroutine which listens for notifications.
-func ConnectToNotificationService(sInfo objects.ServerInfo) {
+func ConnectToNotificationService(agentName string, id string, sInfo objects.ServerInfo) {
 	//dial server
 	conn, err := grpc.Dial(sInfo.GetAddress(), grpc.WithInsecure())
 	if err != nil {
@@ -25,8 +24,8 @@ func ConnectToNotificationService(sInfo objects.ServerInfo) {
 
 	client := pbNotification.NewNotificationStreamingStoreClient(conn)
 	in := &pbNotification.AgentInfo{
-		Uuid: os.Getenv(util.EnvUuid),
-		Name: os.Getenv(util.EnvName),
+		Uuid: id,
+		Name: agentName,
 	}
 
 	//setup notification stream

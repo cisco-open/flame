@@ -19,10 +19,6 @@ const (
 	Completed    = "Completed"
 	GenericError = "GenericError"
 
-	//ENV
-	EnvName = "NAME"
-	EnvUuid = "UUID"
-
 	// Database
 	MONGODB = "mongo"
 	MySQL   = "mysql"

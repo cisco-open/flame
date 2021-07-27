@@ -48,7 +48,7 @@ func StartGRPCService() {
 }
 
 // InitGRPCService starts the controller grpc server and establishes connection with the notification service
-func InitGRPCService(nsInfo objects.ServerInfo) {
-	go ConnectToNotificationService(nsInfo)
+func InitGRPCService(agentName string, id string, nsInfo objects.ServerInfo) {
+	go ConnectToNotificationService(agentName, id, nsInfo)
 	StartGRPCService()
 }
