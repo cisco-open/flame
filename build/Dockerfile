@@ -1,5 +1,7 @@
 FROM containers.cisco.com/eti-sre/sre-golang-docker:latest
 
+ARG DEBIAN_FRONTEND=noninteractive
+
 ARG GOPATH=/go
 ARG BINARY_NAME=fledge
 ARG SRC_DIR=$GOPATH/src/wwwin-github.cisco.com/eti/$BINARY_NAME
@@ -48,3 +50,9 @@ RUN if [ "${STATIC_ANALYSIS}" = "sa" ] ; then \
 # Everything looks good so far, build the code
 RUN mkdir -p /fledge
 RUN go build -o /fledge ./...
+
+# Compile fledge python package
+RUN apt-get update && apt-get -y upgrade
+RUN apt-get install -y python3-setuptools python3-pip
+RUN pip3 install wheel
+RUN cd lib/python && python3 setup.py bdist_wheel && cp dist/fledge-*.whl /tmp/

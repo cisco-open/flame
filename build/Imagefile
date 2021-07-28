@@ -1,5 +1,10 @@
 FROM fledge:base as base-build
 
-FROM containers.cisco.com/eti-sre/sre-golang-docker:latest
+FROM containers.cisco.com/research/dl-docker:latest-cpu
 
+# Copy fledge binaries
 COPY --from=base-build /fledge/* /usr/bin/
+
+# Install fledge python library
+COPY --from=base-build /tmp/*.whl /tmp/
+RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl
