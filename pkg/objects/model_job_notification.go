@@ -6,5 +6,7 @@ type JobNotification struct {
 
 	Job JobInfo `json:"job"`
 
+	SchemaInfo DesignSchema `json:"schemaInfo"`
+
 	NotificationType string `json:"notificationType"`
 }

@@ -21,6 +21,8 @@ type JobInfo struct {
 
 	DesignId string `bson:"designId" json:"designId"`
 
+	SchemaId string `bson:"schemaId" json:"schemaId"`
+
 	Priority string `json:"priority,omitempty"`
 
 	Status string `json:"status,omitempty"`

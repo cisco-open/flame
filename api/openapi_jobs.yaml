@@ -245,6 +245,8 @@ components:
           type: string
         designId:
           type: string
+        schemaId:
+          type: string
         priority:
           type: string
           enum: ["high", "low", "default"]

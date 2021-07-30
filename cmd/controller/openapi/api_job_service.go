@@ -72,6 +72,12 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		return Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
 	}
 
+	//get design detail that is passed to the nodes as part of notification
+	schemaInfo, err := database.GetDesignSchema(util.InternalUser, jobInfo.DesignId, util.ID, jobInfo.SchemaId)
+	if err != nil {
+		return Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed. Failed to fetch schema information")
+	}
+
 	//Notify the agents about new job
 	//Step 1 - get nodes for the job
 	var agentInfo = getNodes(jobInfo.DesignId)
@@ -92,6 +98,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	jobMsg := objects.JobNotification{
 		Agents:           agentInfo,
 		Job:              jobInfo,
+		SchemaInfo:       schemaInfo[0],
 		NotificationType: util.Init,
 	}
 	zap.S().Debugf("Sending notification to all the agents (count: %d) for new job id: %s. Info: %v", len(agentInfo), jId, jobMsg)

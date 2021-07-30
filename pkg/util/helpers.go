@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"reflect"
 	"runtime"
 	"strconv"
+	"text/template"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -143,6 +143,18 @@ func ByteToStruct(msg []byte, obj interface{}) error {
 	return nil
 }
 
+func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {
+	//https://stackoverflow.com/questions/29071212/implementing-dynamic-strings-in-golang
+	var t = template.Must(template.New("").Parse(skeleton))
+	buf := bytes.Buffer{}
+	err := t.Execute(&buf, inputMap)
+	if err != nil {
+		zap.S().Errorf("error creating a text from skeleton. %v", err)
+		return "", err
+	}
+	return buf.String(), nil
+}
+
 //URI must always end with a backslash. Make sure the query params are not ended with a backslash
 //API END POINTS
 const (
@@ -183,15 +195,13 @@ var URI = map[string]string{
 }
 
 func CreateURI(ip string, portNo int64, endPoint string, inputMap map[string]string) string {
-	//https://stackoverflow.com/questions/29071212/implementing-dynamic-strings-in-golang
-	var t = template.Must(template.New("").Parse(URI[endPoint]))
-	buf := bytes.Buffer{}
-	err := t.Execute(&buf, inputMap)
+	msg, err := FromTemplate(URI[endPoint], inputMap)
 	if err != nil {
 		zap.S().Errorf("error creating a uri. End point: %s", endPoint)
+		return ""
 	}
 	//TODO - change it to https
-	var url = "http://" + ip + ":" + strconv.Itoa(int(portNo)) + buf.String()
+	url := "http://" + ip + ":" + strconv.Itoa(int(portNo)) + msg
 	return url
 }
 

@@ -27,7 +27,6 @@ func StartAgent(nsInfo objects.ServerInfo, apiInfo objects.ServerInfo) error {
 		zap.S().Error("name or id not determined")
 		return errors.New("missing fledgelet name or id")
 	}
-
 	Agent = AgentInfo{
 		apiInfo: apiInfo,
 		nsInfo:  nsInfo,

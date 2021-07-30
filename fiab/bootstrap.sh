@@ -40,12 +40,12 @@ function setup {
 }
 
 function main {
-    setup
+    # setup
 
     if [ `hostname` == "controller" ]; then
-	controller
+      controller
     else
-	worker
+      worker
     fi
 }
 

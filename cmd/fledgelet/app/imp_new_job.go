@@ -1,42 +1,56 @@
 package app
 
 import (
+	"encoding/json"
+	"io/ioutil"
+	"os"
+	"os/exec"
+
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-func NewJobInitApp(jobInfo objects.JobInfo) {
-	zap.S().Debugf("Init new job. Job details: %v", jobInfo)
-	//Step 1 : get information about the job such as schema details
-	//construct URL
-	uriMap := map[string]string{
-		"user":  util.InternalUser,
-		"jobId": jobInfo.ID,
-	}
-	url := CreateURI(util.GetJobEndPoint, uriMap)
+func NewJobInitApp(info objects.AppConf) {
+	job := info.JobInfo
+	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.ID, job.DesignId, job.SchemaId, info.Role)
 
-	//send get request
-	responseBody, err := util.HTTPGet(url)
+	//Step 1 : dump the information in application confirmation json file
+	err := initApp(info)
 	if err != nil {
-		zap.S().Errorf("error while getting job infromation. Cannot intalize the job. %v", err)
-		return
-	}
-
-	prettyJSON, err := util.FormatJSON(responseBody)
-	if err != nil {
-		zap.S().Errorf("error while unpacking response %v", err)
+		zap.S().Errorf("error intializing configuration details for application")
 	} else {
-		zap.S().Infof("job details : %v", string(prettyJSON))
+		// TODO currently hard coded to run the simple example. Work to be done includes - making it generic and putting in into a go routine.
+		//Step 2: start the application
+		command := ""
+		if info.Role == "foo" {
+			command = "/fledge/example/simple/foo/main.py"
+		} else if info.Role == "bar" {
+			command = "/fledge/example/simple/bar/main.py"
+		}
+		cmd := exec.Command("python3", command)
+		outfile, err := os.Create("./out.txt")
+		if err != nil {
+			panic(err)
+		}
+		cmd.Stdout = outfile
+		//cmd.Stdout = os.Stdout
+		err = cmd.Start()
+		if err != nil {
+			zap.S().Errorf("error starting the application. %v", err)
+		}
 	}
+}
 
-	//Step 2: start the application
-	//example python3 main.py --agentIp localhost --name asd --uuid 123asd --agentUuid agent_1
-	//cmd := exec.Command("python3", "main.py", "--agentIp", "localhost", "--agentUuid", os.Getenv(util.EnvUuid), "--name", "app", "--uuid", "app_1")
-	//cmd.Stdout = os.Stdout
-	//err := cmd.Start()
-	//if err != nil {
-	//	zap.S().Errorf("error starting the application. %v", err)
-	//}
+func initApp(info objects.AppConf) error {
+	file, _ := json.MarshalIndent(info, "", " ")
+	//directory path
+	filepath := "/fledge/job/" + info.JobInfo.ID
+	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		os.MkdirAll(filepath, 0700) // Create your file
+	}
+	confFilePath := filepath + "/conf.json"
+	//create a configuration file for the application
+	err := ioutil.WriteFile(confFilePath, file, 0644)
+	return err
 }

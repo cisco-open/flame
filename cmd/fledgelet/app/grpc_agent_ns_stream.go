@@ -60,11 +60,8 @@ func ConnectToNotificationService() {
 func newNotification(in *pbNotification.StreamResponse) {
 	switch in.GetType() {
 	case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
-		jobMsg := objects.JobInfo{}
+		jobMsg := objects.AppConf{}
 		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
-
-		zap.S().Infof("message :  %v", in.GetMessage())
-		zap.S().Infof("jobMsg :  %v", jobMsg)
 		if err != nil {
 			zap.S().Errorf("error processing the job request. %v", err)
 		} else {

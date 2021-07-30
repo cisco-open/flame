@@ -20,23 +20,32 @@ func (s *notificationServer) JobNotification(ctx context.Context, in *pbNotifica
 	}
 
 	//notification handler
-	var clients []string
-	for _, item := range jobMsg.Agents {
-		clients = append(clients, item.Uuid)
-	}
-
 	var nsType pbNotification.StreamResponse_ResponseType
 	if nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT; jobMsg.NotificationType == util.Start {
 		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_START
 	}
-	zap.S().Debugf("Sending job notification to the following clients %v. Notification type: %s", clients, jobMsg.NotificationType)
+	zap.S().Debugf("Sending job notification to the following clients %v. Notification type: %s", jobMsg.Agents, jobMsg.NotificationType)
 
-	errList := s.pushNotifications(clients, nsType, jobMsg.Job)
+	eList := map[string]interface{}{}
+	for _, item := range jobMsg.Agents {
+		cId := item.Uuid
+		//clients = append(clients, item.Uuid)
+		req := objects.AppConf{
+			JobInfo:    jobMsg.Job,
+			SchemaInfo: jobMsg.SchemaInfo,
+			Role:       item.Role,
+		}
+		err = s.pushNotification(cId, nsType, req)
+		if err != nil {
+			eList[cId] = err
+		}
+	}
+
 	//notifications sent. However, check if it was sent to all or partial only.
 	resp := &pbNotification.Response{Status: pbNotification.Response_SUCCESS}
-	if errList != nil {
-		zap.S().Errorf("error while sending out notification, only partial clients notified %v", errList)
-		eList, _ := util.ToProtoStruct(errList)
+	if len(eList) != 0 {
+		zap.S().Errorf("error while sending out notification, only partial clients notified %v", eList)
+		eList, _ := util.ToProtoStruct(eList)
 		resp.Status = pbNotification.Response_SUCCESS_WITH_ERROR
 		resp.Message = "error notifying all the agents"
 		resp.Details = eList

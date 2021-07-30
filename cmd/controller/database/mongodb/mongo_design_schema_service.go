@@ -16,7 +16,7 @@ import (
 func (db *MongoService) GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]objects.DesignSchema, error) {
 	zap.S().Debugf("mongodb get schema details for userId:%s | designId:%s | getType:%s | schemaId:%s", userId, designId, getType, schemaId)
 
-	filter := bson.M{"_id": ConvertToObjectID(designId), util.UserId: userId}
+	filter := bson.M{"_id": ConvertToObjectID(designId)}
 	opts := options.FindOne().SetProjection(bson.M{"schemas": 1})
 
 	//selecting a specific schema from list of schemas

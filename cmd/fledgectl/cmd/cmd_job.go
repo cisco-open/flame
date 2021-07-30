@@ -47,6 +47,11 @@ var submitJobCmd = &cobra.Command{
 			return err
 		}
 
+		schemaId, err := flags.GetString("schemaId")
+		if err != nil {
+			return err
+		}
+
 		name, err := flags.GetString("name")
 		if err != nil {
 			return err
@@ -72,6 +77,7 @@ var submitJobCmd = &cobra.Command{
 		postBody := objects.JobInfo{
 			UserId:      user,
 			DesignId:    designId,
+			SchemaId:    schemaId,
 			Name:        name,
 			Description: description,
 			Priority:    priority,
@@ -238,9 +244,11 @@ func init() {
 	submitJobCmd.Flags().StringP("desc", "e", "job description placeholder", "Job description")
 	submitJobCmd.Flags().StringP("priority", "x", "default", "Job priority")
 	submitJobCmd.Flags().StringP("designId", "d", "", "Design id")
+	submitJobCmd.Flags().StringP("schemaId", "s", "", "Schema id")
 	//required flags
 	submitJobCmd.MarkFlagRequired("name")
 	submitJobCmd.MarkFlagRequired("designId")
+	submitJobCmd.MarkFlagRequired("schemaId")
 
 	//GET JOB
 	getJobCmd.Flags().StringP("jobId", "j", "", "Job Id")

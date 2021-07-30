@@ -16,7 +16,7 @@ import (
 func ConvertToObjectID(id string) primitive.ObjectID {
 	objID, err := primitive.ObjectIDFromHex(id)
 	if err != nil {
-		zap.S().Fatal(err)
+		zap.S().Errorf("error converting string to mongodbId. %v", err)
 	}
 	return objID
 }
