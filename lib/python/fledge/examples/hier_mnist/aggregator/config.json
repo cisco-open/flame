@@ -1,0 +1,34 @@
+{
+    "broker": "mqtt.eclipseprojects.io",
+    "backend": "mqtt",
+    "agent": "local",
+    "job": {
+	"id": "67890",
+	"name": "keras-mnist-job"
+    },
+    "role": "aggregator",
+    "channel": [
+	{
+	    "name": "global-channel",
+	    "pair": ["global-aggregator", "aggregator"],
+	    "groupBy": {
+		"type": "tag",
+		"value": [
+		    "us"
+		]
+	    }
+	},
+	{
+	    "name": "param-channel",
+	    "pair": ["aggregator", "trainer"],
+	    "groupBy": {
+		"type": "tag",
+		"value": [
+		    "us"
+		]
+	    }
+	}
+    ],
+    "hyperparams": null,
+    "datasets": null
+}
