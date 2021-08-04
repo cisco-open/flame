@@ -80,6 +80,7 @@ class Channel(object):
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
+
         return cloudpickle.loads(payload) if payload and status else None
 
     '''

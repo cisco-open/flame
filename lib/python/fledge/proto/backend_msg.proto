@@ -14,5 +14,7 @@ message Notify {
 message Data {
   string end_id = 1;
   string channel_name = 2;
-  bytes payload = 3;
+  int32 seqno =3;
+  bool eom = 4;
+  bytes payload = 5;
 }

@@ -1,6 +1,6 @@
 {
     "broker": "mqtt.eclipseprojects.io",
-    "backend": "local",
+    "backend": "mqtt",
     "agent": "local",
     "job": {
 	"id": "77777",

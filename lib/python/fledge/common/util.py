@@ -2,6 +2,9 @@ import asyncio
 import concurrent.futures
 from contextlib import contextmanager
 from threading import Thread
+from typing import List
+
+from pip._internal.cli.main import main as pipmain
 
 
 @contextmanager
@@ -23,3 +26,16 @@ def run_async(coro, loop, timeout=None):
         return fut.result(timeout), True
     except concurrent.futures.TimeoutError:
         return None, False
+
+
+def install_packages(packages: List[str]) -> None:
+    for package in packages:
+        if not install_package(package):
+            print(f'Failed to install package: {package}')
+
+
+def install_package(package: str) -> bool:
+    if pipmain(['install', package]) == 0:
+        return True
+
+    return False
