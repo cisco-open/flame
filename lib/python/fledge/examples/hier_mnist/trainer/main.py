@@ -56,10 +56,10 @@ class Trainer(object):
         split_array = get_split_array(y_train)
         y_train = np.split(y_train, split_array)[self._split_idx]
 
-        logger.info("x_train shape:", x_train.shape)
-        logger.info(x_train.shape[0], "train samples")
-        logger.info("y_train shape:", y_train.shape)
-        logger.info(y_train.shape[0], "train samples")
+        logger.info(f'x_train shape: {x_train.shape}')
+        logger.info(f'{x_train.shape[0]} train samples')
+        logger.info(f'y_train shape: {y_train.shape}')
+        logger.info(f'{y_train.shape[0]} train samples')
 
         model = keras.Sequential(
             [
@@ -124,12 +124,15 @@ class Trainer(object):
             i += 1
 
 
-# example cmd: python3 -m fledge.examples.hier_mnist.trainer.main --n_split 2 --rounds 3 --split_idx 0
+# example cmd in the following:
+# python3 -m fledge.examples.hier_mnist.trainer.main --config fledge/examples/hier_mnist/trainer/config_us.json --n_split 2 --rounds 3 --split_idx 0
 # run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
+
+    parser.add_argument('--config', type=str, help='config file', required=True)
     parser.add_argument(
         '--n_split',
         type=int,
@@ -148,12 +151,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    trainer = Trainer(
-        'fledge/examples/hier_mnist/trainer/config.json',
-        args.n_split,
-        args.split_idx,
-        args.rounds,
-    )
+    trainer = Trainer(args.config, args.n_split, args.split_idx, args.rounds)
     trainer.run()
 
     # There is a bug in mqtt backend implemtnation where a subscriber

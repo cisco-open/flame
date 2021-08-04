@@ -62,8 +62,8 @@ class GlobalAggregator(object):
 
     def test(self):
         score = self._model.evaluate(self._x_test, self._y_test, verbose=0)
-        logger.info("Test loss:", score[0])
-        logger.info("Test accuracy:", score[1])
+        logger.info(f'Test loss: {score[0]}')
+        logger.info(f'Test accuracy: {score[1]}')
 
     def run(self):
         self.prepare()
@@ -118,20 +118,19 @@ class GlobalAggregator(object):
             i += 1
 
 
-# example cmd: python3 -m fledge.examples.hier_mnist.gaggr.main --rounds 3
+# example cmd in the following:
+# python3 -m fledge.examples.hier_mnist.gaggr.main --config fledge/examples/hier_mnist/gaggr/config.json --rounds 3
 # run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--config', type=str, help='config file', required=True)
     parser.add_argument(
         '--rounds', type=int, default=1, help='number of training rounds'
     )
 
     args = parser.parse_args()
 
-    gaggr = GlobalAggregator(
-        'fledge/examples/hier_mnist/gaggr/config.json',
-        args.rounds,
-    )
+    gaggr = GlobalAggregator(args.config, args.rounds)
     gaggr.run()

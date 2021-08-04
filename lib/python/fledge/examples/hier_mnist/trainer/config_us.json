@@ -3,19 +3,20 @@
     "backend": "mqtt",
     "agent": "local",
     "job": {
-	"id": "12345",
-	"name": "simple-job"
+	"id": "67890",
+	"name": "keras-mnist-job"
     },
-    "role": "bar",
-    "realm": "us",
+    "role": "trainer",
+    "realm": "us.west.org1.machine1",
     "channel": [
 	{
-	    "name": "simple-channel",
-	    "pair": ["foo", "bar"],
+	    "name": "param-channel",
+	    "pair": ["aggregator", "trainer"],
 	    "groupBy": {
 		"type": "tag",
 		"value": [
-		    "us"
+		    "us.west.org1",
+		    "uk.london.org2"
 		]
 	    }
 	}

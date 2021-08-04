@@ -7,16 +7,12 @@
 	"name": "keras-mnist-job"
     },
     "role": "aggregator",
+    "realm": "us.west.org1.fledge",
     "channel": [
 	{
 	    "name": "global-channel",
 	    "pair": ["global-aggregator", "aggregator"],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "us"
-		]
-	    }
+	    "groupBy": null
 	},
 	{
 	    "name": "param-channel",
@@ -24,7 +20,8 @@
 	    "groupBy": {
 		"type": "tag",
 		"value": [
-		    "us"
+		    "us.west.org1",
+		    "uk.london.org2"
 		]
 	    }
 	}

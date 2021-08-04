@@ -1,5 +1,6 @@
 import asyncio
 import atexit
+import logging
 
 from .backends import backend_provider
 from .channel import Channel
@@ -9,11 +10,13 @@ from .common.util import background_thread_loop, run_async
 from .config import BACKEND_TYPE_MQTT, Config
 from .registry_agents import registry_agent_provider
 
+logger = logging.getLogger(__name__)
+
 
 class ChannelManager(object):
-    '''
+    """
     ChannelManager only allows a singleton instance
-    '''
+    """
     _instance = None
 
     _config = None
@@ -29,7 +32,7 @@ class ChannelManager(object):
 
     def __new__(cls):
         if cls._instance is None:
-            print('creating a ChannelManager instance')
+            logger.info('creating a ChannelManager instance')
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
@@ -65,9 +68,9 @@ class ChannelManager(object):
                     await channel.remove(info)
 
     def join(self, name):
-        '''
+        """
         join a channel
-        '''
+        """
         if self.is_joined(name):
             return True
 
@@ -78,9 +81,9 @@ class ChannelManager(object):
         return self._join_non_mqtt(name)
 
     def _join_mqtt(self, name):
-        '''
+        """
         join a channel in case of mqtt backend
-        '''
+        """
         channel_config = self._config.channels[name]
 
         if self._role == channel_config.pair[0]:
@@ -90,22 +93,25 @@ class ChannelManager(object):
             me = channel_config.pair[1]
             other = channel_config.pair[0]
 
+        groupby = channel_config.groupby.groupable_value(self._config.realm)
+
         self._channels[name] = Channel(
-            self._backend, self._job_id, name, me, other
+            self._backend, self._job_id, name, me, other, groupby
         )
         self._backend.add_channel(self._channels[name])
 
-        # format: /fledge/<job_id>/<channel_name>/<role>/+
-        topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}/{name}/{other}/+'
+        # format: /fledge/<job_id>/<channel_name>/<groupby>/<role>/+
+        topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}/{name}/{groupby}/{other}/+'
         self._backend.subscribe(topic)
         self._backend.notify(name)
 
         return True
 
+    # TODO: groupby feature with non-mqtt backend should be implemented
     def _join_non_mqtt(self, name):
-        '''
+        """
         join a channel when backend is not mqtt
-        '''
+        """
         coro = self._registry_agent.connect()
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
@@ -160,9 +166,9 @@ class ChannelManager(object):
         return True
 
     def leave(self, name):
-        '''
+        """
         leave a channel
-        '''
+        """
         if not self.is_joined(name):
             return
 
@@ -177,9 +183,9 @@ class ChannelManager(object):
         return status
 
     def get(self, name):
-        '''
+        """
         returns a channel object in the given channel
-        '''
+        """
         if not self.is_joined(name):
             # didn't join the channel yet
             return None
@@ -187,9 +193,9 @@ class ChannelManager(object):
         return self._channels[name]
 
     def is_joined(self, name):
-        '''
+        """
         check if node joined a channel or not
-        '''
+        """
         if name in self._channels:
             return True
         else:

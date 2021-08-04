@@ -7,16 +7,12 @@
 	"name": "keras-mnist-job"
     },
     "role": "global-aggregator",
+    "realm": "",
     "channel": [
 	{
 	    "name": "global-channel",
 	    "pair": ["global-aggregator", "aggregator"],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "us"
-		]
-	    }
+	    "groupBy": null
 	}
     ],
     "hyperparams": null,

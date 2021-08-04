@@ -98,22 +98,21 @@ class Aggregator(object):
             i += 1
 
 
-# example cmd: python3 -m fledge.examples.hier_mnist.aggregator.main --rounds 3
+# example cmd in the following:
+# python3 -m fledge.examples.hier_mnist.aggregator.main --config fledge/examples/hier_mnist/aggregator/config_us.json --rounds 3
 # run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
+    parser.add_argument('--config', type=str, help='config file', required=True)
     parser.add_argument(
         '--rounds', type=int, default=1, help='number of training rounds'
     )
 
     args = parser.parse_args()
 
-    aggregator = Aggregator(
-        'fledge/examples/hier_mnist/aggregator/config.json',
-        args.rounds,
-    )
+    aggregator = Aggregator(args.config, args.rounds)
     aggregator.run()
 
     # There is a bug in mqtt backend implemtnation where a subscriber

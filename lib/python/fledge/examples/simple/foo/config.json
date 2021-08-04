@@ -7,6 +7,7 @@
 	"name": "simple-job"
     },
     "role": "foo",
+    "realm": "us",
     "channel": [
 	{
 	    "name": "simple-channel",

@@ -6,15 +6,22 @@
 	"id": "67890",
 	"name": "keras-mnist-job"
     },
-    "role": "trainer",
+    "role": "aggregator",
+    "realm": "uk.london.org2.fledge",
     "channel": [
+	{
+	    "name": "global-channel",
+	    "pair": ["global-aggregator", "aggregator"],
+	    "groupBy": null
+	},
 	{
 	    "name": "param-channel",
 	    "pair": ["aggregator", "trainer"],
 	    "groupBy": {
 		"type": "tag",
 		"value": [
-		    "us"
+		    "us.west.org1",
+		    "uk.london.org2"
 		]
 	    }
 	}

@@ -297,4 +297,16 @@ class MqttBackend(AbstractBackend):
         logger.debug(f'sending chunk {seqno} to {topic} is done')
 
     def topic_for_pub(self, ch: Channel):
-        return f'{MQTT_TOPIC_PREFIX}/{ch.job_id()}/{ch.name()}/{ch.my_role()}/{self._id}'
+        sep = '/'
+        topic = sep.join(
+            [
+                f'{MQTT_TOPIC_PREFIX}',
+                f'{ch.job_id()}',
+                f'{ch.name()}',
+                f'{ch.groupby()}',
+                f'{ch.my_role()}',
+                f'{self._id}',
+            ]
+        )
+
+        return topic

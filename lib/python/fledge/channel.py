@@ -3,18 +3,28 @@ import asyncio
 import cloudpickle
 
 from .common.util import run_async
+from .config import GROUPBY_DEFAULT_GROUP
 
 RXQ = 'rxq'
 TXQ = 'txq'
 
 
 class Channel(object):
-    def __init__(self, backend, job_id: str, name: str, me='', other=''):
+    def __init__(
+        self,
+        backend,
+        job_id: str,
+        name: str,
+        me='',
+        other='',
+        groupby=GROUPBY_DEFAULT_GROUP
+    ):
         self._backend = backend
         self._job_id = job_id
         self._name = name
         self._my_role = me
         self._other_role = other
+        self._groupby = groupby
 
         # _ends must be accessed within backend's loop
         self._ends = {}
@@ -30,6 +40,9 @@ class Channel(object):
 
     def other_role(self):
         return self._other_role
+
+    def groupby(self):
+        return self._groupby
 
     '''
     ### The following are not asyncio methods
