@@ -29,6 +29,7 @@ class Aggregator(object):
         return weights
 
     def distribute_model_weights(self, weights):
+        logger.info('sending model weights to trainers')
         # send out global model parameters to trainers
         for end in self.param_channel.ends():
             self.param_channel.send(end, weights)
@@ -91,6 +92,7 @@ class Aggregator(object):
 
             agg_weights, count = self.aggregate_model_weights()
             if agg_weights is None:
+                self.send_weights_to_global_aggregator(agg_weights, count)
                 continue
 
             self.send_weights_to_global_aggregator(agg_weights, count)
@@ -114,14 +116,3 @@ if __name__ == "__main__":
 
     aggregator = Aggregator(args.config, args.rounds)
     aggregator.run()
-
-    # There is a bug in mqtt backend implemtnation where a subscriber
-    # fails to receive a message from a publisher when the publisher terminates.
-    # This is due to the fact that mqtt last will message is used to signal
-    # the termination of a node, which is an out-of-band mechanism.
-    # The following is a simple hack used temporarily until a proper fix is
-    # implemented.
-    #
-    # TODO: remove the following after the fix is implemented.
-    while True:
-        time.sleep(1)

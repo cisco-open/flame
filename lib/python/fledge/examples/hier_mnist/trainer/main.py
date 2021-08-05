@@ -112,6 +112,8 @@ class Trainer(object):
             # one aggregator is sufficient
             end = ends[0]
             weights = channel.recv(end)
+            if weights is None:
+                continue
 
             self._model.set_weights(weights)
             self.train()
@@ -153,14 +155,3 @@ if __name__ == "__main__":
 
     trainer = Trainer(args.config, args.n_split, args.split_idx, args.rounds)
     trainer.run()
-
-    # There is a bug in mqtt backend implemtnation where a subscriber
-    # fails to receive a message from a publisher when the publisher terminates.
-    # This is due to the fact that mqtt last will message is used to signal
-    # the termination of a node, which is an out-of-band mechanism.
-    # The following is a simple hack used temporarily until a proper fix is
-    # implemented.
-    #
-    # TODO: remove the following after the fix is implemented.
-    while True:
-        time.sleep(1)

@@ -1,7 +1,9 @@
 import asyncio
 import hashlib
 import logging
+import time
 import uuid
+from enum import IntEnum
 from typing import Tuple
 
 import paho.mqtt.client as mqtt
@@ -9,7 +11,7 @@ from google.protobuf.any_pb2 import Any
 from paho.mqtt.client import MQTTv5
 
 from ..channel import RXQ, TXQ, Channel
-from ..common.constants import MQTT_TOPIC_PREFIX
+from ..common.constants import MQTT_TOPIC_PREFIX, BackendEvent
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -18,7 +20,24 @@ from .chunk_store import ChunkStore
 END_STATUS_ON = 'online'
 END_STATUS_OFF = 'offline'
 
+# wait time of 10 sec
+# clean up resources allocated for terminated end
+# if no message arrives after the wait time
+MQTT_TIME_WAIT = 10  # 10 sec
+MIN_CHECK_PERIOD = 1  # 1 sec
+
+# message's signature is valid for 1 sec
+MSG_SIG_PERIOD = 1  # 1 sec
+
 logger = logging.getLogger(__name__)
+
+
+# info for mqtt qos is found at
+# https://www.hivemq.com/blog/mqtt-essentials-part-6-mqtt-quality-of-service-levels/
+class MqttQoS(IntEnum):
+    AT_MOST_ONCE = 0
+    AT_LEAST_ONCE = 1
+    EXACTLY_ONCE = 2
 
 
 class MqttBackend(AbstractBackend):
@@ -38,6 +57,7 @@ class MqttBackend(AbstractBackend):
     _mqtt_client = None
     _last_payload_sig = None
     _msg_chunks = None
+    _cleanup_waits = None
 
     def __new__(cls):
         if cls._instance is None:
@@ -50,6 +70,7 @@ class MqttBackend(AbstractBackend):
             return
 
         self._channels = {}
+        self._cleanup_waits = {}
         self._id = str(uuid.uuid1())
 
         with background_thread_loop() as loop:
@@ -58,10 +79,25 @@ class MqttBackend(AbstractBackend):
         async def _init_loop_stuff():
             self._eventq = asyncio.Queue()
 
+            coro = self._monitor_end_termination()
+            _ = asyncio.create_task(coro)
+
         coro = _init_loop_stuff()
         _ = run_async(coro, self._loop, 1)
 
         self._initialized = True
+
+    async def _monitor_end_termination(self):
+        period = MQTT_TIME_WAIT * 0.5
+        period = MIN_CHECK_PERIOD if period <= MIN_CHECK_PERIOD else period
+
+        while True:
+            for end_id, expiry in list(self._cleanup_waits.items()):
+                if time.time() >= expiry:
+                    await self._eventq.put((BackendEvent.DISCONNECT, end_id))
+                    del self._cleanup_waits[end_id]
+
+            await asyncio.sleep(period)
 
     def configure(self, broker: str, job_id: str):
         self._broker = broker
@@ -73,7 +109,7 @@ class MqttBackend(AbstractBackend):
         client.will_set(
             self._health_check_topic,
             payload=f'{self._id}:{END_STATUS_OFF}',
-            qos=0
+            qos=MqttQoS.EXACTLY_ONCE
         )
         client.connect(self._broker)
         client.subscribe(self._health_check_topic)
@@ -98,7 +134,7 @@ class MqttBackend(AbstractBackend):
         client.publish(
             self._health_check_topic,
             payload=f'{self._id}:{END_STATUS_ON}',
-            qos=0
+            qos=MqttQoS.EXACTLY_ONCE
         )
 
     def on_message(self, client, userdata, message):
@@ -110,14 +146,12 @@ class MqttBackend(AbstractBackend):
                 # nothing to do
                 return
 
-            logger.info(f'end ({end_id}) status = {status}')
+            async def _add_cleanup_waits(end_id):
+                expiry = time.time() + MQTT_TIME_WAIT
+                self._cleanup_waits[end_id] = expiry
 
-            async def _remove(channel, end_id):
-                await channel.remove(end_id)
-
-            # remove queues allocated for the end from all channels
-            for channel in self._channels.values():
-                _ = run_async(_remove(channel, end_id), self._loop)
+            # add end_id to _cleanup_waits dictionary
+            _ = run_async(_add_cleanup_waits(end_id), self._loop)
 
             return
 
@@ -141,7 +175,6 @@ class MqttBackend(AbstractBackend):
 
             has_end, _ = run_async(_has(), self._loop)
             if not has_end:
-                logger.debug(f'end ({msg.end_id}) seen first time')
                 # this is the first time to see this end,
                 # so let's notify my presence to the end
                 self.notify(msg.channel_name)
@@ -155,10 +188,18 @@ class MqttBackend(AbstractBackend):
             msg = msg_pb2.Data()
             any_msg.Unpack(msg)
 
-            logger.debug(f'data message incoming from {msg.end_id}')
-            channel = self._channels[msg.channel_name]
+            async def _update_cleanup_waits(end_id):
+                # update is needed only if end_id's termination is detected
+                if end_id in self._cleanup_waits:
+                    expiry = time.time() + MQTT_TIME_WAIT
+                    self._cleanup_waits[end_id] = expiry
+
+            # update end_id to _cleanup_waits dictionary
+            _ = run_async(_update_cleanup_waits(msg.end_id), self._loop)
 
             payload, fully_assembled = self.assemble_chunks(msg)
+
+            channel = self._channels[msg.channel_name]
 
             async def _put():
                 rxq = channel.get_q(msg.end_id, RXQ)
@@ -188,7 +229,7 @@ class MqttBackend(AbstractBackend):
             return b'', False
 
     def subscribe(self, topic):
-        self._mqtt_client.subscribe(topic)
+        self._mqtt_client.subscribe(topic, qos=MqttQoS.EXACTLY_ONCE)
         self._mqtt_client.on_message = self.on_message
 
     def notify(self, channel_name):
@@ -207,7 +248,7 @@ class MqttBackend(AbstractBackend):
         any.Pack(msg)
         payload = any.SerializeToString()
 
-        self._mqtt_client.publish(topic, payload)
+        self._mqtt_client.publish(topic, payload, qos=MqttQoS.EXACTLY_ONCE)
 
         return True
 
@@ -255,10 +296,12 @@ class MqttBackend(AbstractBackend):
         #       This check can be in channel, but the code/interface becomes
         #       ugly as channel needs to know what is the underlying backend
         #       and handle situations differently.
+        name = channel.name()
         digest = hashlib.md5(data).hexdigest()
         if (
-            channel.name() in self._last_payload_sig and
-            self._last_payload_sig[channel.name()] == digest
+            name in self._last_payload_sig and
+            self._last_payload_sig[name][0] == digest and
+            self._last_payload_sig[name][1] + MSG_SIG_PERIOD >= time.time()
         ):
             logger.info('Last seen payload; skipping tx')
             return
@@ -266,7 +309,6 @@ class MqttBackend(AbstractBackend):
         chunk_store = ChunkStore()
         chunk_store.set_data(data)
 
-        logger.debug(f'sending data size = {len(data)}')
         while True:
             chunk, seqno, eom = chunk_store.get_chunk()
             if chunk is None:
@@ -275,7 +317,7 @@ class MqttBackend(AbstractBackend):
             self.send_chunk(channel, chunk, seqno, eom)
 
         # update payload signature
-        self._last_payload_sig[channel.name()] = digest
+        self._last_payload_sig[name] = [digest, time.time()]
 
     def send_chunk(
         self, channel: Channel, data: bytes, seqno: int, eom: bool
@@ -292,7 +334,10 @@ class MqttBackend(AbstractBackend):
         payload = any.SerializeToString()
 
         topic = self.topic_for_pub(channel)
-        self._mqtt_client.publish(topic, payload)
+        info = self._mqtt_client.publish(
+            topic, payload, qos=MqttQoS.EXACTLY_ONCE
+        )
+        info.wait_for_publish()
 
         logger.debug(f'sending chunk {seqno} to {topic} is done')
 
