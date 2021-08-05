@@ -33,6 +33,7 @@ var JobNodesInMem = make(map[string]objects.JobNodes)
 // JobNodes - Nodes information for the job
 func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (objects.ImplResponse, error) {
 	zap.S().Infof("Adding nodes for designId : %s", jobNodes.DesignId)
+	zap.S().Debugf("Node info: %v", jobNodes.Nodes)
 	JobNodesInMem[jobNodes.DesignId] = jobNodes
 	return objects.Response(http.StatusCreated, nil), nil
 }

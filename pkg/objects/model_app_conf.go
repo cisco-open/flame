@@ -5,5 +5,8 @@ type AppConf struct {
 
 	SchemaInfo DesignSchema `json:"schemaInfo"`
 
-	Role string
+	Role string `json:"role"`
+
+	//TODO remove me after demo-day
+	Command []string `json:"command"`
 }

@@ -7,7 +7,6 @@ import (
 	"os"
 
 	"go.uber.org/zap"
-
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 

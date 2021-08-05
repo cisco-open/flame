@@ -1,5 +1,4 @@
 import time
-import os
 from fledge.channel_manager import ChannelManager
 
 

@@ -67,18 +67,14 @@ func newNotification(in *pbNotification.StreamResponse) {
 		} else {
 			NewJobInit(jobMsg)
 		}
-		break
 	case pbNotification.StreamResponse_JOB_NOTIFICATION_START:
-		zap.S().Infof("start job notification recieved. Message :  %v", in.GetMessage())
 		jobMsg := objects.AppConf{}
 		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
 		if err != nil {
 			zap.S().Errorf("error processing the job request. %v", err)
 		} else {
-			NewJobStart(jobMsg, true)
+			NewJobStart(jobMsg)
 		}
-
-		break
 	default:
 		zap.S().Errorf("Invalid message type: %s", in.GetType())
 	}

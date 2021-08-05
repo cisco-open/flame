@@ -34,6 +34,7 @@ func (s *notificationServer) JobNotification(ctx context.Context, in *pbNotifica
 			JobInfo:    jobMsg.Job,
 			SchemaInfo: jobMsg.SchemaInfo,
 			Role:       item.Role,
+			Command:    item.Command,
 		}
 		err = s.pushNotification(cId, nsType, req)
 		if err != nil {

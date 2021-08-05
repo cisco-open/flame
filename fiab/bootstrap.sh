@@ -29,7 +29,7 @@ function setup {
     sudo update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.9 1
 
     # python packages
-    pip3 install paho-mqtt cloudpickle
+    pip3 install paho-mqtt cloudpickle tensorflow torch torchvision scikit-learn
 
     # Printing software versions for verification
     echo -e "\n\n"

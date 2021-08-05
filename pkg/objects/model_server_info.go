@@ -16,6 +16,9 @@ type ServerInfo struct {
 	Role string `json:"role,omitempty"`
 
 	State string `json:"state,omitempty"`
+
+	//TODO remove me after demo-day
+	Command []string `json:"command,omitempty"`
 }
 
 func (s *ServerInfo) GetAddress() string {

@@ -11,7 +11,11 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
+//TODO remove me after demo-day
+var Conf objects.AppConf
+
 func NewJobInit(info objects.AppConf) {
+	Conf = info
 	job := info.JobInfo
 	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.ID, job.DesignId, job.SchemaId, info.Role)
 
@@ -33,7 +37,7 @@ func NewJobInit(info objects.AppConf) {
 		req.Message = util.ReadyState
 
 		if startAppPolicy(info) {
-			state, err := NewJobStart(info, false)
+			state, err := NewJobStart(info)
 
 			if err != nil {
 				req.Status = util.StatusError
@@ -90,28 +94,24 @@ func startAppPolicy(info objects.AppConf) bool {
 }
 
 //NewJobStart starts the application on the agent
-// TODO remove the second param once starting point for application is generalized.
-func NewJobStart(info objects.AppConf, startTrainner bool) (string, error) {
-	zap.S().Debugf("Starting application.")
+func NewJobStart(info objects.AppConf) (string, error) {
+	cmd := exec.Command("python3", Conf.Command...)
+	zap.S().Debugf("Starting application. Command : %v", cmd)
 
-	// TODO currently hard coded to run the simple example. Work to be done includes - making it generic and putting in into a go routine.
-	command := "/fledge/example/simple/foo/main.py"
-	if startTrainner {
-		command = "/fledge/example/simple/bar/main.py"
-	}
-
-	cmd := exec.Command("python3", command)
-	outfile, err := os.Create("./out_" + Agent.uuid + ".txt")
+	//dump output to a log file
+	outfile, err := os.Create("./application_" + Agent.name + ".log")
 	if err != nil {
 		zap.S().Errorf("%v", err)
 	}
 	cmd.Stdout = outfile
+	cmd.Stderr = outfile
 	//cmd.Stdout = os.Stdout
-	err = cmd.Start()
 
+	err = cmd.Start()
 	if err != nil {
 		zap.S().Errorf("error starting the application. %v", err)
 		return util.ErrorState, err
 	}
+
 	return util.RunningState, nil
 }
