@@ -30,7 +30,7 @@ func NewDesignApiService() DesignApiServicer {
 }
 
 // CreateDesign - Create a new design template.
-func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (ImplResponse, error) {
+func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (objects.ImplResponse, error) {
 	var d = objects.Design{
 		UserId:      user,
 		Name:        designInfo.Name,
@@ -39,16 +39,16 @@ func (s *DesignApiService) CreateDesign(ctx context.Context, user string, design
 	}
 	err := database.CreateDesign(user, d)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
 	}
-	return Response(http.StatusCreated, nil), nil
+	return objects.Response(http.StatusCreated, nil), nil
 }
 
 // GetDesign - Get design template information
-func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (ImplResponse, error) {
+func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (objects.ImplResponse, error) {
 	info, err := database.GetDesign(user, designId)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
 	}
-	return Response(http.StatusOK, info), nil
+	return objects.Response(http.StatusOK, info), nil
 }

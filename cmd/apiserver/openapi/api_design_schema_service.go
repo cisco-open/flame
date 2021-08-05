@@ -32,7 +32,7 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (ImplResponse, error) {
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Get design schema details for user: %s | designId: %s | type: %s | schemaId: %s", user, designId, getType, schemaId)
 
@@ -50,15 +50,15 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
 	}
 	var resp []objects.DesignSchema
 	err = util.ByteToStruct(responseBody, &resp)
-	return Response(http.StatusOK, resp), err
+	return objects.Response(http.StatusOK, resp), err
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Update design schema request recieved for designId: %v", designId)
 
@@ -74,7 +74,7 @@ func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user st
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("error while updating/inserting design schema")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("error while updating/inserting design schema")
 	}
-	return Response(http.StatusOK, nil), err
+	return objects.Response(http.StatusOK, nil), err
 }

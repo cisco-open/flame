@@ -31,8 +31,8 @@ func NewDevApiService() DevApiServicer {
 var JobNodesInMem = make(map[string]objects.JobNodes)
 
 // JobNodes - Nodes information for the job
-func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (ImplResponse, error) {
+func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (objects.ImplResponse, error) {
 	zap.S().Infof("Adding nodes for designId : %s", jobNodes.DesignId)
 	JobNodesInMem[jobNodes.DesignId] = jobNodes
-	return Response(http.StatusCreated, nil), nil
+	return objects.Response(http.StatusCreated, nil), nil
 }

@@ -3,6 +3,10 @@ package util
 const (
 	ProjectName = "fledge"
 
+	//Job
+	JobStatus   = "JobStatus"
+	AddJobNodes = "AddJobNodes"
+
 	// General
 	ALL          = "all"
 	ID           = "id"
@@ -10,15 +14,24 @@ const (
 	Agents       = "agents"
 	Message      = "message"
 	Errors       = "errors"
-	Initializing = "Initializing"
-	Init         = "Init"
-	Start        = "Start"
-	Running      = "Running"
-	Stop         = "Stop"
-	Terminated   = "Terminated"
-	Completed    = "Completed"
 	GenericError = "GenericError"
 	InternalUser = "sys"
+
+	// Status
+	Status        = "status"
+	StatusSuccess = "Success"
+	StatusError   = "Error"
+
+	// States
+	State           = "state"
+	InitState       = "Init"
+	StartState      = "Start"
+	ReadyState      = "Ready"
+	RunningState    = "Running"
+	StopState       = "Stop"
+	TerminatedState = "Terminated"
+	ErrorState      = "Error"
+	CompletedState  = "Completed"
 
 	// Database
 	MONGODB = "mongo"
@@ -28,10 +41,6 @@ const (
 	MongoID  = "_id"
 	UserId   = "userId"
 	DesignId = "designId"
-
-	AddJobNodes         = "AddJobNodes"
-	UpdateJobStatus     = "UpdateJobStatus"
-	UpdateJobNodeStatus = "UpdateJobNodeStatus"
 
 	// Port numbers
 	ApiServerRestApiPort        = 10100 // REST API port

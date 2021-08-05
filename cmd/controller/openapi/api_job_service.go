@@ -11,7 +11,6 @@ package openapi
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"net/http"
 
@@ -36,7 +35,7 @@ func NewJobApiService() JobApiServicer {
 }
 
 // DeleteJob - Delete job by id.
-func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (ImplResponse, error) {
+func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	// TODO - update DeleteJob with the required logic for this service method.
 	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -52,30 +51,30 @@ func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
 }
 
 // GetJob - Get job detail.
-func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (ImplResponse, error) {
+func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	jInfo, err := database.GetJob(user, jobId)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get job details request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get job details request failed")
 	}
-	return Response(http.StatusOK, jInfo), nil
+	return objects.Response(http.StatusOK, jInfo), nil
 }
 
 // SubmitJob - Submit a new job.
-func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo objects.JobInfo) (ImplResponse, error) {
+func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	//insert in database. If failed, abort
 	jId, err := database.SubmitJob(user, jobInfo)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
 	}
 
 	//get design detail that is passed to the nodes as part of notification
 	schemaInfo, err := database.GetDesignSchema(util.InternalUser, jobInfo.DesignId, util.ID, jobInfo.SchemaId)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed. Failed to fetch schema information")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed. Failed to fetch schema information")
 	}
 
 	//Notify the agents about new job
@@ -83,29 +82,28 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	var agentInfo = getNodes(jobInfo.DesignId)
 
 	//Step 2 - add nodes details into database
-	inJson, err := json.Marshal(agentInfo)
+	err = database.UpdateJobDetails(jId, util.AddJobNodes, agentInfo)
 	if err != nil {
-		zap.S().Errorf("error while marshling fledgelet info %v", err)
-		return Response(http.StatusMultiStatus, nil), errors.New("job request created but failed to initialized")
-	}
-	err = database.UpdateJobDetails(jId, util.AddJobNodes, inJson)
-	if err != nil {
-		return Response(http.StatusMultiStatus, nil), errors.New("job request created but failed to initialized")
+		return objects.Response(http.StatusMultiStatus, nil), errors.New("job request created but failed to initialized")
 	}
 
-	//Step 3 - Notifying the agents of new job. Sending a init request allows to re-use the fledgelet nodes in the future, if needed.
+	//Step 3 - update cache
+	Cache.jobAgents[jId] = agentInfo
+	Cache.jobSchema[jId] = schemaInfo[0]
+
+	//Step 4 - Notifying the agents of new job. Sending a init request allows to re-use the fledgelet nodes in the future, if needed.
 	jobInfo.ID = jId
 	jobMsg := objects.JobNotification{
 		Agents:           agentInfo,
 		Job:              jobInfo,
 		SchemaInfo:       schemaInfo[0],
-		NotificationType: util.Init,
+		NotificationType: util.InitState,
 	}
 	zap.S().Debugf("Sending notification to all the agents (count: %d) for new job id: %s. Info: %v", len(agentInfo), jId, jobMsg)
 	resp, err := grpcctlr.ControllerGRPC.SendNotification(grpcctlr.JobNotification, jobMsg)
 	if err != nil {
 		zap.S().Errorf("failed to notify the agents. %v", err)
-		return Response(http.StatusCreated, jId), err
+		return objects.Response(http.StatusCreated, jId), err
 	}
 
 	//Check for partial error
@@ -115,9 +113,9 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 			util.ID:     jId,
 			util.Errors: resp.GetDetails(),
 		}
-		return Response(http.StatusMultiStatus, msResponse), nil
+		return objects.Response(http.StatusMultiStatus, msResponse), nil
 	}
-	return Response(http.StatusCreated, jId), nil
+	return objects.Response(http.StatusCreated, jId), nil
 }
 
 //TODO Code related to calling cluster manager to get nodes to be added here. For development purpose we are assuming that information is present in-memory
@@ -125,40 +123,15 @@ func getNodes(designId string) []objects.ServerInfo {
 	zap.S().Debugf("Getting nodes for designId: %s", designId)
 	var agentInfo []objects.ServerInfo
 	for _, node := range JobNodesInMem[designId].Nodes {
-		node.Status = util.Initializing
+		node.State = util.InitState
+
 		agentInfo = append(agentInfo, node)
 	}
-
 	return agentInfo
-
-	//get the list of fledgelet nodes where the job is required to be deployed
-	//var agentInfo []objects.ServerInfo
-	//agentInfo = append(agentInfo, objects.ServerInfo{
-	//	IP:     "localhost",
-	//	Port:   5000,
-	//	Uuid:   "trainer_uuid_1",
-	//	Role:   "trainer",
-	//	Status: util.Initializing,
-	//})
-	//agentInfo = append(agentInfo, objects.ServerInfo{
-	//	IP:     "localhost",
-	//	Port:   5001,
-	//	Uuid:   "trainer_uuid_2",
-	//	Role:   "trainer",
-	//	Status: util.Initializing,
-	//})
-	//agentInfo = append(agentInfo, objects.ServerInfo{
-	//	IP:     "localhost",
-	//	Port:   6000,
-	//	Uuid:   "aggregator_uuid_1",
-	//	Role:   "aggregator",
-	//	Status: util.Initializing,
-	//})
-	//return agentInfo
 }
 
 // UpdateJob - Update job by id.
-func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (ImplResponse, error) {
+func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	// TODO - update UpdateJobEndPoint with the required logic for this service method.
 	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -168,5 +141,5 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
 }

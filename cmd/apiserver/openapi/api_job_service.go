@@ -32,7 +32,7 @@ func NewJobApiService() JobApiServicer {
 }
 
 // DeleteJob - Delete job by id.
-func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (ImplResponse, error) {
+func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	// TODO - update DeleteJob with the required logic for this service method.
 	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -48,11 +48,11 @@ func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
 }
 
 // GetJob - Get job detail.
-func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (ImplResponse, error) {
+func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	//TODO - validate the input
 	zap.S().Debugf("Get job details recieved for user: %s | jobId: %v", user, jobId)
 
@@ -68,15 +68,15 @@ func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get job details request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get job details request failed")
 	}
 	resp := objects.JobInfo{}
 	err = util.ByteToStruct(responseBody, &resp)
-	return Response(http.StatusOK, resp), err
+	return objects.Response(http.StatusOK, resp), err
 }
 
 // SubmitJob - Submit a new job.
-func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo objects.JobInfo) (ImplResponse, error) {
+func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	//TODO - validate the input
 	zap.S().Debugf("New job request recieved for user: %s | jobInfo: %v", user, jobInfo)
 
@@ -92,7 +92,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
 	}
 
 	if code == http.StatusMultiStatus {
@@ -101,13 +101,13 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		if err != nil {
 			zap.S().Errorf("error sending out mutlistatus response %v", err)
 		}
-		return Response(http.StatusMultiStatus, resp), nil
+		return objects.Response(http.StatusMultiStatus, resp), nil
 	}
-	return Response(http.StatusCreated, responseBody), nil
+	return objects.Response(http.StatusCreated, responseBody), nil
 }
 
 // UpdateJob - Update job by id.
-func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (ImplResponse, error) {
+func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	// TODO - update UpdateJobEndPoint with the required logic for this service method.
 	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -117,5 +117,5 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
 }

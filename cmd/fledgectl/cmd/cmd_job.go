@@ -227,9 +227,62 @@ var getAllJobsCmd = &cobra.Command{
 	},
 }
 
+// TODO remove me later - use it to quick test a URL
+var testCmd = &cobra.Command{
+	Use: "test",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flags := cmd.Flags()
+		portNo, err := flags.GetInt64("port")
+		if err != nil {
+			return err
+		}
+
+		ip, err := flags.GetString("ip")
+		if err != nil {
+			return err
+		}
+
+		jId, err := flags.GetString("jobId")
+		if err != nil {
+			return err
+		}
+
+		uuid, err := flags.GetString("uuid")
+		if err != nil {
+			return err
+		}
+
+		//Update agents status
+		//construct URL
+		uriMap := map[string]string{
+			"user":    util.InternalUser,
+			"jobId":   jId,
+			"agentId": uuid,
+		}
+		url := util.CreateURI(ip, portNo, util.UpdateAgentStatusEndPoint, uriMap)
+
+		zap.S().Debugf("url .. %s", url)
+
+		req := objects.AgentStatus{
+			UpdateType: util.JobStatus,
+			Status:     util.StatusSuccess,
+			Message:    util.RunningState,
+		}
+
+		//send post request
+		code, response, err := util.HTTPPut(url, req, "application/json")
+		if err != nil {
+			zap.S().Errorf("error while updating the agent status. %v", err)
+		} else {
+			zap.S().Debugf("update response code: %d | response: %s", code, string(response))
+		}
+		return nil
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(jobCmd)
-	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd)
+	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd, testCmd)
 
 	jobCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
 	jobCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
@@ -258,4 +311,7 @@ func init() {
 	getAllJobsCmd.Flags().StringP("type", "t", "all", "Fetch list of all jobs for given user based on type. Options - all/design")
 	getAllJobsCmd.Flags().StringP("designId", "d", "", "Design Id")
 	getAllJobsCmd.Flags().Int32P("limit", "l", 100, "Item count to be returned")
+
+	testCmd.Flags().StringP("jobId", "j", "", "Job Id")
+	testCmd.Flags().StringP("uuid", "x", "", "Agent UUID")
 }

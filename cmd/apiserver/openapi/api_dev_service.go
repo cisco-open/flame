@@ -31,7 +31,7 @@ func NewDevApiService() DevApiServicer {
 }
 
 // JobNodes - Nodes information for the job
-func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (ImplResponse, error) {
+func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (objects.ImplResponse, error) {
 	zap.S().Debugf("Add nodes for user: %s | designId: %v", user, jobNodes.DesignId)
 
 	//create controller request
@@ -45,7 +45,7 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes obje
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("add nodes for job request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("add nodes for job request failed")
 	}
-	return Response(http.StatusOK, nil), err
+	return objects.Response(http.StatusOK, nil), err
 }

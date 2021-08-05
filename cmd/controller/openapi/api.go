@@ -53,8 +53,8 @@ type DesignsApiRouter interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignApiServicer interface {
-	CreateDesign(context.Context, string, objects.DesignInfo) (ImplResponse, error)
-	GetDesign(context.Context, string, string) (ImplResponse, error)
+	CreateDesign(context.Context, string, objects.DesignInfo) (objects.ImplResponse, error)
+	GetDesign(context.Context, string, string) (objects.ImplResponse, error)
 }
 
 // DesignCodeApiServicer defines the api actions for the DesignCodeApi service
@@ -62,8 +62,8 @@ type DesignApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignCodeApiServicer interface {
-	GetDesignCode(context.Context, string, string) (ImplResponse, error)
-	UpdateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
+	GetDesignCode(context.Context, string, string) (objects.ImplResponse, error)
+	UpdateDesignCode(context.Context, string, string, *os.File) (objects.ImplResponse, error)
 }
 
 // DesignSchemaApiServicer defines the api actions for the DesignSchemaApi service
@@ -71,8 +71,8 @@ type DesignCodeApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignSchemaApiServicer interface {
-	GetDesignSchema(context.Context, string, string, string, string) (ImplResponse, error)
-	UpdateDesignSchema(context.Context, string, string, objects.DesignSchema) (ImplResponse, error)
+	GetDesignSchema(context.Context, string, string, string, string) (objects.ImplResponse, error)
+	UpdateDesignSchema(context.Context, string, string, objects.DesignSchema) (objects.ImplResponse, error)
 }
 
 // DesignsApiServicer defines the api actions for the DesignsApi service
@@ -80,7 +80,7 @@ type DesignSchemaApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignsApiServicer interface {
-	GetDesigns(context.Context, string, int32) (ImplResponse, error)
+	GetDesigns(context.Context, string, int32) (objects.ImplResponse, error)
 }
 
 // JobApiRouter defines the required methods for binding the api requests to a responses for the JobApi
@@ -105,10 +105,10 @@ type JobsApiRouter interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobApiServicer interface {
-	DeleteJob(context.Context, string, string) (ImplResponse, error)
-	GetJob(context.Context, string, string) (ImplResponse, error)
-	SubmitJob(context.Context, string, objects.JobInfo) (ImplResponse, error)
-	UpdateJob(context.Context, string, string, objects.JobInfo) (ImplResponse, error)
+	DeleteJob(context.Context, string, string) (objects.ImplResponse, error)
+	GetJob(context.Context, string, string) (objects.ImplResponse, error)
+	SubmitJob(context.Context, string, objects.JobInfo) (objects.ImplResponse, error)
+	UpdateJob(context.Context, string, string, objects.JobInfo) (objects.ImplResponse, error)
 }
 
 // JobsApiServicer defines the api actions for the JobsApi service
@@ -116,7 +116,22 @@ type JobApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobsApiServicer interface {
-	GetJobs(context.Context, string, string, string, int32) (ImplResponse, error)
+	GetJobs(context.Context, string, string, string, int32) (objects.ImplResponse, error)
+}
+
+// AgentApiRouter defines the required methods for binding the api requests to a responses for the AgentApi
+// The AgentApiRouter implementation should parse necessary information from the http request,
+// pass the data to a AgentApiServicer to perform the required actions, then write the service results to the http response.
+type AgentApiRouter interface {
+	UpdateAgentStatus(http.ResponseWriter, *http.Request)
+}
+
+// AgentApiServicer defines the api actions for the AgentApi service
+// This interface intended to stay up to date with the openapi yaml used to generate it,
+// while the service implementation can ignored with the .openapi-generator-ignore file
+// and updated with the logic required for the API.
+type AgentApiServicer interface {
+	UpdateAgentStatus(context.Context, string, string, string, objects.AgentStatus) (objects.ImplResponse, error)
 }
 
 // DevApiRouter defines the required methods for binding the api requests to a responses for the DevApi
@@ -133,5 +148,5 @@ type DevApiRouter interface {
 // and updated with the logic required for the API.
 //TODO remove me after prototyping phase is done.
 type DevApiServicer interface {
-	JobNodes(context.Context, string, objects.JobNodes) (ImplResponse, error)
+	JobNodes(context.Context, string, objects.JobNodes) (objects.ImplResponse, error)
 }

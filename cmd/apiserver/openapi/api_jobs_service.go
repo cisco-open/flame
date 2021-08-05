@@ -33,7 +33,7 @@ func NewJobsApiService() JobsApiServicer {
 }
 
 // GetJobs - Get list of all the jobs by the user or based on designId.
-func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (ImplResponse, error) {
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (objects.ImplResponse, error) {
 	//TODO - validate the input
 	zap.S().Debugf("Get list of all jobs for user: %s | getType: %s | designId: %s", user, getType, designId)
 
@@ -51,9 +51,9 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId stri
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get jobs list request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get jobs list request failed")
 	}
 	var resp []objects.JobInfo
 	err = util.ByteToStruct(responseBody, &resp)
-	return Response(http.StatusOK, resp), err
+	return objects.Response(http.StatusOK, resp), err
 }

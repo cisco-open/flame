@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // DesignsApiService is a service that implents the logic for the DesignsApiServicer
@@ -29,10 +30,10 @@ func NewDesignsApiService() DesignsApiServicer {
 }
 
 // GetDesigns - Get list of all the designs created by the user.
-func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
+func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (objects.ImplResponse, error) {
 	designList, err := database.GetDesigns(user, limit)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
 	}
-	return Response(http.StatusOK, designList), nil
+	return objects.Response(http.StatusOK, designList), nil
 }

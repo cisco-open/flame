@@ -36,6 +36,5 @@ func StartAgent(nsInfo objects.ServerInfo, apiInfo objects.ServerInfo) error {
 
 	zap.S().Infof("Starting fledgelet. name: %s | id: %s", name, uuid)
 	InitGRPCService()
-
 	return nil
 }

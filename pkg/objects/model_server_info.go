@@ -15,7 +15,7 @@ type ServerInfo struct {
 
 	Role string `json:"role,omitempty"`
 
-	Status string `json:"status,omitempty"`
+	State string `json:"state,omitempty"`
 }
 
 func (s *ServerInfo) GetAddress() string {

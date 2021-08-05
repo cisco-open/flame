@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // JobsApiService is a service that implents the logic for the JobsApiServicer
@@ -29,10 +30,10 @@ func NewJobsApiService() JobsApiServicer {
 }
 
 // GetJobs - Get list of all the jobs by the user or based on designId.
-func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (ImplResponse, error) {
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (objects.ImplResponse, error) {
 	jInfo, err := database.GetJobs(user, getType, designId, limit)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get list of jobs request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get list of jobs request failed")
 	}
-	return Response(http.StatusOK, jInfo), nil
+	return objects.Response(http.StatusOK, jInfo), nil
 }

@@ -30,19 +30,19 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (ImplResponse, error) {
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (objects.ImplResponse, error) {
 	info, err := database.GetDesignSchema(user, designId, getType, schemaId)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
 	}
-	return Response(http.StatusOK, info), nil
+	return objects.Response(http.StatusOK, info), nil
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
 	err := database.UpdateDesignSchema(user, designId, designSchema)
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("update/insert design schema details request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("update/insert design schema details request failed")
 	}
-	return Response(http.StatusOK, nil), nil
+	return objects.Response(http.StatusOK, nil), nil
 }

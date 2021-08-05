@@ -33,12 +33,15 @@ func RunServer(portNo uint16, ctlrInfo objects.ServerInfo) error {
 	JobsServiceApi := NewJobsApiService()
 	JobsServiceApiController := NewJobsApiController(JobsServiceApi)
 
+	AgentServiceApi := NewAgentApiService()
+	AgentServiceApiController := NewAgentApiController(AgentServiceApi)
+
 	// TODO remove me after prototyping phase is done.
 	// only for prototyping
 	DevServiceApi := NewDevApiService()
 	DevServiceApiController := NewDevApiController(DevServiceApi)
 
-	router := NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController)
+	router := NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController, AgentServiceApiController)
 	addr := fmt.Sprintf(":%d", portNo)
 	zap.S().Fatal(http.ListenAndServe(addr, router))
 

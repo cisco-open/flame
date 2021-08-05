@@ -33,7 +33,7 @@ func NewDesignsApiService() DesignsApiServicer {
 }
 
 // GetDesigns - Get list of all the designs created by the user.
-func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (ImplResponse, error) {
+func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("get list of designs for user: %s | limit: %d", user, limit)
 
@@ -50,10 +50,10 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
 	}
 
 	var resp []objects.DesignInfo
 	err = util.ByteToStruct(responseBody, &resp)
-	return Response(http.StatusOK, resp), err
+	return objects.Response(http.StatusOK, resp), err
 }

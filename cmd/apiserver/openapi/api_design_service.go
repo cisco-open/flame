@@ -32,7 +32,7 @@ func NewDesignApiService() DesignApiServicer {
 }
 
 // CreateDesign - Create a new design template.
-func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (ImplResponse, error) {
+func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("New design request recieved for user: %s | designInfo: %v", user, designInfo)
 
@@ -47,13 +47,13 @@ func (s *DesignApiService) CreateDesign(ctx context.Context, user string, design
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("create new design request failed")
 	}
-	return Response(http.StatusCreated, nil), nil
+	return objects.Response(http.StatusCreated, nil), nil
 }
 
 // GetDesign - Get design template information
-func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (ImplResponse, error) {
+func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId string) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Get design template information for user: %s | designId: %s", user, designId)
 
@@ -69,9 +69,9 @@ func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId 
 
 	//response to the user
 	if err != nil {
-		return Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design template information request failed")
 	}
 	resp := objects.Design{}
 	err = util.ByteToStruct(responseBody, &resp)
-	return Response(http.StatusOK, resp), err
+	return objects.Response(http.StatusOK, resp), err
 }

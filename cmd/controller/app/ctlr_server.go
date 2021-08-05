@@ -50,12 +50,17 @@ func startServer() {
 	JobsServiceApi := openapi.NewJobsApiService()
 	JobsServiceApiController := openapi.NewJobsApiController(JobsServiceApi)
 
+	AgentServiceApi := openapi.NewAgentApiService()
+	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
+
+	openapi.CacheInit()
+
 	// TODO remove me after prototyping phase is done.
 	// only for prototyping
 	DevServiceApi := openapi.NewDevApiService()
 	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
 
-	router := openapi.NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController)
+	router := openapi.NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController, AgentServiceApiController)
 	addr := fmt.Sprintf(":%d", util.ControllerRestApiPort)
 	zap.S().Fatal(http.ListenAndServe(addr, router))
 }

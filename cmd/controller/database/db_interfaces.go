@@ -31,5 +31,5 @@ type JobStore interface {
 	DeleteJob(userId string, jobId string) error
 
 	//TODO would like to not expose these methods as they are for internal use.
-	UpdateJobDetails(jobId string, updateType string, msg []byte) error
+	UpdateJobDetails(jobId string, updateType string, msg interface{}) error
 }

@@ -22,6 +22,6 @@ func DeleteJob(userId string, jobId string) error {
 	return DB.DeleteJob(userId, jobId)
 }
 
-func UpdateJobDetails(jobId string, updateType string, msg []byte) error {
+func UpdateJobDetails(jobId string, updateType string, msg interface{}) error {
 	return DB.UpdateJobDetails(jobId, updateType, msg)
 }

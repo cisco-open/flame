@@ -170,6 +170,8 @@ const (
 	GetJobsEndPoint   = "GET_JOBS"
 	DeleteJobEndPoint = "DELETE_JOB"
 	UpdateJobEndPoint = "UPDATE_JOB"
+	//Agent
+	UpdateAgentStatusEndPoint = "UPDATE_AGENT_STATUS"
 
 	//TODO remove me after prototyping phase is done.
 	JobNodesEndPoint = "JOB_NODES"
@@ -190,6 +192,9 @@ var URI = map[string]string{
 	UpdateJobEndPoint: "/{{.user}}/job/{{.jobId}}",
 	DeleteJobEndPoint: "/{{.user}}/job/{{.jobId}}",
 
+	//Agent
+	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",
+
 	//TODO remove me after prototyping phase is done.
 	JobNodesEndPoint: "/{{.user}}/nodes/",
 }
@@ -207,14 +212,12 @@ func CreateURI(ip string, portNo int64, endPoint string, inputMap map[string]str
 
 func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, error) {
 	postBody, err := json.Marshal(msg)
-
 	if err != nil {
 		zap.S().Errorf("error encoding the payload")
 		return -1, nil, err
 	}
 
-	responseBody := bytes.NewBuffer(postBody)
-	resp, err := http.Post(url, contentType, responseBody)
+	resp, err := http.Post(url, contentType, bytes.NewBuffer(postBody))
 
 	//Handle Error
 	ErrorNilCheck(GetFunctionName(HTTPPost), err)
@@ -224,10 +227,29 @@ func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, err
 	body, err := ioutil.ReadAll(resp.Body)
 	ErrorNilCheck(GetFunctionName(HTTPPost), err)
 
-	//status code
-	//zap.S().Debugf("status... %v", resp.StatusCode)
-	//code, err := strconv.Atoi(resp.StatusCode)
-	//ErrorNilCheck(GetFunctionName(HTTPPost), err)
+	return resp.StatusCode, body, err
+}
+
+func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, error) {
+	putBody, err := json.Marshal(msg)
+	if err != nil {
+		zap.S().Errorf("error encoding the payload")
+		return -1, nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(putBody))
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+
+	//Handle Error
+	ErrorNilCheck(GetFunctionName(HTTPPut), err)
+	defer resp.Body.Close()
+
+	//Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	ErrorNilCheck(GetFunctionName(HTTPPut), err)
 
 	return resp.StatusCode, body, err
 }

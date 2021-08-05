@@ -21,7 +21,7 @@ func (s *notificationServer) JobNotification(ctx context.Context, in *pbNotifica
 
 	//notification handler
 	var nsType pbNotification.StreamResponse_ResponseType
-	if nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT; jobMsg.NotificationType == util.Start {
+	if nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT; jobMsg.NotificationType == util.StartState {
 		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_START
 	}
 	zap.S().Debugf("Sending job notification to the following clients %v. Notification type: %s", jobMsg.Agents, jobMsg.NotificationType)

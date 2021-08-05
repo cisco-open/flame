@@ -14,6 +14,8 @@ import (
 	"errors"
 	"net/http"
 	"os"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
 // DesignCodeApiService is a service that implents the logic for the DesignCodeApiServicer
@@ -28,7 +30,7 @@ func NewDesignCodeApiService() DesignCodeApiServicer {
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
-func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (ImplResponse, error) {
+func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (objects.ImplResponse, error) {
 	// TODO - update GetDesignCode with the required logic for this service method.
 	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -38,11 +40,11 @@ func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, d
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
 }
 
 // UpdateDesignCode - Update a design doce
-func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string, body *os.File) (ImplResponse, error) {
+func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string, body *os.File) (objects.ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
 	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
 
@@ -52,5 +54,5 @@ func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return Response(http.StatusNotImplemented, nil), errors.New("UpdateDesignCode method not implemented")
+	return objects.Response(http.StatusNotImplemented, nil), errors.New("UpdateDesignCode method not implemented")
 }

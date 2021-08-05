@@ -18,14 +18,6 @@ type AppInfo struct {
 	controllerInfo objects.ServerInfo
 }
 
-//Response return a ImplResponse struct filled
-func Response(code int, body interface{}) ImplResponse {
-	return ImplResponse{
-		Code: code,
-		Body: body,
-	}
-}
-
 func CreateURI(endPoint string, uriMap map[string]string) string {
 	return util.CreateURI(App.controllerInfo.IP, util.ControllerRestApiPort, endPoint, uriMap)
 }

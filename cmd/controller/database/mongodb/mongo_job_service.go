@@ -21,7 +21,7 @@ func (db *MongoService) SubmitJob(userId string, info objects.JobInfo) (string, 
 		UpdatedAt:   0,
 		CompletedAt: 0,
 	}
-	info.Status = util.Initializing
+	info.Status = util.InitState
 	result, err := db.jobCollection.InsertOne(context.TODO(), info)
 	zap.S().Debugf("mongodb new job request for userId: %v inserted with ID: %v", userId, result.InsertedID)
 	if err != nil {
@@ -82,27 +82,38 @@ func (db *MongoService) DeleteJob(userId string, jobId string) error {
 	Internal Functions to be used by Controller only
     - - - - - - - -- - - -- - - -- - - -- - - -- - - -
 */
-
-func (db *MongoService) UpdateJobDetails(jobId string, updateType string, msg []byte) error {
+func (db *MongoService) UpdateJobDetails(jobId string, updateType string, msg interface{}) error {
 	if updateType == util.AddJobNodes {
 		return db.addJobNodes(jobId, msg)
+	} else if updateType == util.JobStatus {
+		return db.updateJobStatus(jobId, msg)
 	}
 	return errors.New("update job details request failed due to invalid update type")
 }
 
-func (db *MongoService) addJobNodes(jobId string, msg []byte) error {
-	var nodesInfo []objects.ServerInfo
-	err := util.ByteToStruct(msg, &nodesInfo)
-	if err != nil {
-		return err
-	}
-
+func (db *MongoService) addJobNodes(jobId string, msg interface{}) error {
+	nodesInfo := msg.([]objects.ServerInfo)
 	filter := bson.M{util.MongoID: ConvertToObjectID(jobId)}
 	update := bson.M{"$set": bson.M{"nodes": nodesInfo}}
 	var updatedDocument bson.M
-	err = db.jobCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDocument)
+	err := db.jobCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDocument)
 	if err != nil {
-		zap.S().Errorf("error while updating the design template. %v", err)
+		zap.S().Errorf("error while adding new job nodes. %v", err)
+		err = ErrorCheck(err)
+	}
+	return err
+}
+
+func (db *MongoService) updateJobStatus(jobId string, msg interface{}) error {
+	info := msg.(map[string]string)
+	zap.S().Debugf("Updating the job status for the agent. %v", info)
+
+	filter := bson.M{util.MongoID: ConvertToObjectID(jobId), "nodes.uuid": info[util.ID]}
+	update := bson.M{"$set": bson.M{"nodes.$.state": info[util.State]}}
+	var updatedDocument bson.M
+	err := db.jobCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDocument)
+	if err != nil {
+		zap.S().Errorf("error while updating the node status. %v", err)
 		err = ErrorCheck(err)
 	}
 	return err
