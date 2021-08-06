@@ -109,6 +109,8 @@ class Trainer(object):
             # one aggregator is sufficient
             end = ends[0]
             weights = channel.recv(end)
+            if weights is None:
+                continue
 
             self._model.set_weights(weights)
             self.train()

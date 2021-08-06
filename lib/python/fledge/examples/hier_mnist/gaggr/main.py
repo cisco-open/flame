@@ -74,6 +74,7 @@ class GlobalAggregator(object):
             logger.info(f'>>> round {i+1}')
             # send out global model parameters to trainers
             for end in channel.ends():
+                logger.info(f'sending global model weights to {end}')
                 channel.send(end, self._model.get_weights())
 
             # TODO: lines below need to be abstracted for different
@@ -82,6 +83,7 @@ class GlobalAggregator(object):
             weights_array = []
             # receive local model parameters from trainers
             for end in channel.ends():
+                logger.info(f'waiting to receive a message from {end}')
                 msg = channel.recv(end)
                 if not msg:
                     logger.info('no data received')

@@ -25,6 +25,7 @@ END_STATUS_OFF = 'offline'
 # if no message arrives after the wait time
 MQTT_TIME_WAIT = 10  # 10 sec
 MIN_CHECK_PERIOD = 1  # 1 sec
+MQTT_LOOP_CHECK_PERIOD = 0.1  # 100ms
 
 # message's signature is valid for 1 sec
 MSG_SIG_PERIOD = 1  # 1 sec
@@ -72,6 +73,7 @@ class MqttBackend(AbstractBackend):
         self._channels = {}
         self._cleanup_waits = {}
         self._id = str(uuid.uuid1())
+        self._mqtt_client = mqtt.Client(self._id, protocol=MQTTv5)
 
         with background_thread_loop() as loop:
             self._loop = loop
@@ -100,24 +102,103 @@ class MqttBackend(AbstractBackend):
             await asyncio.sleep(period)
 
     def configure(self, broker: str, job_id: str):
+        self._last_payload_sig: dict[str, Tuple[str, float]] = {}
+        self._msg_chunks: dict[str, ChunkStore] = {}
+        self._got_message = None
+
         self._broker = broker
         self._job_id = job_id
         self._health_check_topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}'
 
-        client = mqtt.Client(self._id, protocol=MQTTv5)
-        client.on_connect = self.on_connect
-        client.will_set(
-            self._health_check_topic,
-            payload=f'{self._id}:{END_STATUS_OFF}',
-            qos=MqttQoS.EXACTLY_ONCE
-        )
-        client.connect(self._broker)
-        client.subscribe(self._health_check_topic)
-        client.loop_start()
+        async def _setup_mqtt_client():
 
-        self._mqtt_client = client
-        self._last_payload_sig = {}
-        self._msg_chunks = {}
+            self._mqtt_client.on_connect = self.on_connect
+            self._mqtt_client.on_message = self.on_message
+            self._mqtt_client.will_set(
+                self._health_check_topic,
+                payload=f'{self._id}:{END_STATUS_OFF}',
+                qos=MqttQoS.EXACTLY_ONCE
+            )
+
+            _ = AsyncioHelper(self._loop, self._mqtt_client)
+
+            self._mqtt_client.connect(self._broker)
+            self._mqtt_client.subscribe(self._health_check_topic)
+
+            _ = asyncio.create_task(self._rx_task())
+
+        coro = _setup_mqtt_client()
+        _ = run_async(coro, self._loop, 1)
+
+    def _handle_health_message(self, message):
+        health_data = str(message.payload.decode("utf-8"))
+        # the correct format of health data: <end_id>:<status>
+        (end_id, status) = health_data.split(':')[0:2]
+        if end_id == self._id or status == END_STATUS_ON:
+            # nothing to do
+            return
+
+        expiry = time.time() + MQTT_TIME_WAIT
+        self._cleanup_waits[end_id] = expiry
+
+    async def _handle_notification(self, any_msg):
+        msg = msg_pb2.Notify()
+        any_msg.Unpack(msg)
+
+        if msg.channel_name not in self._channels:
+            logger.debug('channel not found')
+            return
+
+        channel = self._channels[msg.channel_name]
+
+        if not channel.has(msg.end_id):
+            # this is the first time to see this end,
+            # so let's notify my presence to the end
+            self.notify(msg.channel_name)
+
+        await channel.add(msg.end_id)
+
+    async def _handle_data(self, any_msg: Any) -> None:
+        msg = msg_pb2.Data()
+        any_msg.Unpack(msg)
+
+        # update is needed only if end_id's termination is detected
+        if msg.end_id in self._cleanup_waits:
+            # update end_id to _cleanup_waits dictionary
+            expiry = time.time() + MQTT_TIME_WAIT
+            self._cleanup_waits[msg.end_id] = expiry
+
+        payload, fully_assembled = self.assemble_chunks(msg)
+
+        channel = self._channels[msg.channel_name]
+
+        if fully_assembled:
+            logger.debug(f'fully assembled data size = {len(payload)}')
+            rxq = channel.get_q(msg.end_id, RXQ)
+            await rxq.put(payload)
+
+    async def _rx_task(self):
+        while True:
+            self._got_message = self._loop.create_future()
+            message = await self._got_message
+            if message.topic == self._health_check_topic:
+                self._handle_health_message(message)
+                continue
+
+            logger.debug(
+                f'topic: {message.topic}; paylod length: {len(message.payload)}'
+            )
+
+            any_msg = Any().FromString(message.payload)
+
+            if any_msg.Is(msg_pb2.Notify.DESCRIPTOR):
+                await self._handle_notification(any_msg)
+            elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
+                await self._handle_data(any_msg)
+            else:
+                logger.debug('unknown message type')
+
+            self._got_message = None
 
     def uid(self):
         '''
@@ -138,78 +219,13 @@ class MqttBackend(AbstractBackend):
         )
 
     def on_message(self, client, userdata, message):
-        if message.topic == self._health_check_topic:
-            health_data = str(message.payload.decode("utf-8"))
-            # the correct format of health data: <end_id>:<status>
-            (end_id, status) = health_data.split(':')[0:2]
-            if end_id == self._id or status == END_STATUS_ON:
-                # nothing to do
-                return
-
-            async def _add_cleanup_waits(end_id):
-                expiry = time.time() + MQTT_TIME_WAIT
-                self._cleanup_waits[end_id] = expiry
-
-            # add end_id to _cleanup_waits dictionary
-            _ = run_async(_add_cleanup_waits(end_id), self._loop)
-
-            return
-
-        logger.debug(
-            f'topic: {message.topic}; paylod length: {len(message.payload)}'
-        )
-        any_msg = Any().FromString(message.payload)
-
-        if any_msg.Is(msg_pb2.Notify.DESCRIPTOR):
-            msg = msg_pb2.Notify()
-            any_msg.Unpack(msg)
-
-            if msg.channel_name not in self._channels:
-                logger.debug('channel not found')
-                return
-
-            channel = self._channels[msg.channel_name]
-
-            async def _has():
-                return channel.has(msg.end_id)
-
-            has_end, _ = run_async(_has(), self._loop)
-            if not has_end:
-                # this is the first time to see this end,
-                # so let's notify my presence to the end
-                self.notify(msg.channel_name)
-
-            async def _add():
-                await channel.add(msg.end_id)
-
-            _ = run_async(_add(), self._loop)
-
-        elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
-            msg = msg_pb2.Data()
-            any_msg.Unpack(msg)
-
-            async def _update_cleanup_waits(end_id):
-                # update is needed only if end_id's termination is detected
-                if end_id in self._cleanup_waits:
-                    expiry = time.time() + MQTT_TIME_WAIT
-                    self._cleanup_waits[end_id] = expiry
-
-            # update end_id to _cleanup_waits dictionary
-            _ = run_async(_update_cleanup_waits(msg.end_id), self._loop)
-
-            payload, fully_assembled = self.assemble_chunks(msg)
-
-            channel = self._channels[msg.channel_name]
-
-            async def _put():
-                rxq = channel.get_q(msg.end_id, RXQ)
-                await rxq.put(payload)
-
-            if fully_assembled:
-                logger.debug(f'fully assembled data size = {len(payload)}')
-                _ = run_async(_put(), self._loop)
+        if not self._got_message:
+            logger.debug(f'got unexpected message: {message}')
         else:
-            logger.debug('unknown message type')
+            logger.debug(
+                f'topic: {message.topic}; paylod len: {len(message.payload)}'
+            )
+            self._got_message.set_result(message)
 
     def assemble_chunks(self, msg: msg_pb2.Data) -> Tuple[bytes, bool]:
         if msg.end_id not in self._msg_chunks:
@@ -230,7 +246,6 @@ class MqttBackend(AbstractBackend):
 
     def subscribe(self, topic):
         self._mqtt_client.subscribe(topic, qos=MqttQoS.EXACTLY_ONCE)
-        self._mqtt_client.on_message = self.on_message
 
     def notify(self, channel_name):
         if channel_name not in self._channels:
@@ -281,9 +296,7 @@ class MqttBackend(AbstractBackend):
 
         while True:
             data = await txq.get()
-
             self.send_chunks(channel, data)
-
             txq.task_done()
 
     def send_chunks(self, channel: Channel, data: bytes) -> None:
@@ -317,7 +330,7 @@ class MqttBackend(AbstractBackend):
             self.send_chunk(channel, chunk, seqno, eom)
 
         # update payload signature
-        self._last_payload_sig[name] = [digest, time.time()]
+        self._last_payload_sig[name] = (digest, time.time())
 
     def send_chunk(
         self, channel: Channel, data: bytes, seqno: int, eom: bool
@@ -337,7 +350,10 @@ class MqttBackend(AbstractBackend):
         info = self._mqtt_client.publish(
             topic, payload, qos=MqttQoS.EXACTLY_ONCE
         )
-        info.wait_for_publish()
+
+        while not info.is_published():
+            logger.debug('waiting for publish completion')
+            self._mqtt_client.loop(MQTT_LOOP_CHECK_PERIOD)
 
         logger.debug(f'sending chunk {seqno} to {topic} is done')
 
@@ -355,3 +371,52 @@ class MqttBackend(AbstractBackend):
         )
 
         return topic
+
+
+# Asyncio MQTT client example from
+# https://github.com/eclipse/paho.mqtt.python/blob/master/examples/loop_asyncio.py
+class AsyncioHelper:
+    def __init__(self, loop, client):
+        self.loop = loop
+        self.client = client
+        self.client.on_socket_open = self.on_socket_open
+        self.client.on_socket_close = self.on_socket_close
+        self.client.on_socket_register_write = self.on_socket_register_write
+        self.client.on_socket_unregister_write = self.on_socket_unregister_write
+
+    def on_socket_open(self, client, userdata, sock):
+        logger.debug('Socket opened')
+
+        def cb():
+            logger.debug('Socket is readable, calling loop_read')
+            client.loop_read()
+
+        self.loop.add_reader(sock, cb)
+        self.misc = self.loop.create_task(self.misc_loop())
+
+    def on_socket_close(self, client, userdata, sock):
+        logger.debug('Socket closed')
+        self.loop.remove_reader(sock)
+        self.misc.cancel()
+
+    def on_socket_register_write(self, client, userdata, sock):
+        logger.debug('Watching socket for writability.')
+
+        def cb():
+            logger.debug('Socket is writable, calling loop_write')
+            client.loop_write()
+
+        self.loop.add_writer(sock, cb)
+
+    def on_socket_unregister_write(self, client, userdata, sock):
+        logger.debug('Stop watching socket for writability.')
+        self.loop.remove_writer(sock)
+
+    async def misc_loop(self):
+        logger.debug('misc_loop started')
+        while self.client.loop_misc() == mqtt.MQTT_ERR_SUCCESS:
+            try:
+                await asyncio.sleep(1)
+            except asyncio.CancelledError:
+                break
+        logger.debug('misc_loop finished')

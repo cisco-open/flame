@@ -4,8 +4,9 @@ import logging
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
-                               BackendEvent)
+from .common.constants import (
+    MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME, BackendEvent
+)
 from .common.util import background_thread_loop, run_async
 from .config import BACKEND_TYPE_MQTT, Config
 from .registry_agents import registry_agent_provider

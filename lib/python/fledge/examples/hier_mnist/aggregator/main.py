@@ -69,12 +69,14 @@ class Aggregator(object):
         return agg_weights, total
 
     def send_weights_to_global_aggregator(self, weights, count):
+        logger.info('start to send model weights to global aggregator')
         ends = self.global_channel.ends()
         # one global aggregator is sufficient
         end = ends[0]
 
         data = (weights, count)
         self.global_channel.send(end, data)
+        logger.info('finished sending model weights to global aggregator')
 
     def run(self):
         self.global_channel = self.cm.get('global-channel')
@@ -92,6 +94,7 @@ class Aggregator(object):
 
             agg_weights, count = self.aggregate_model_weights()
             if agg_weights is None:
+                logger.info('aggregated weights is none')
                 self.send_weights_to_global_aggregator(agg_weights, count)
                 continue
 
