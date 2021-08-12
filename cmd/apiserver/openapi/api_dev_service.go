@@ -49,3 +49,23 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes obje
 	}
 	return objects.Response(http.StatusOK, nil), err
 }
+
+// UpdateJobNodes - Update or add new nodes information for the job
+func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (objects.ImplResponse, error) {
+	zap.S().Debugf("Update/add new nodes for user: %s | designId: %v", user, jobNodes.DesignId)
+
+	//create controller request
+	uriMap := map[string]string{
+		"user": user,
+	}
+	url := CreateURI(util.JobNodesEndPoint, uriMap)
+
+	//send get request
+	_, _, err := util.HTTPPut(url, jobNodes, "application/json")
+
+	//response to the user
+	if err != nil {
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("update/add nodes for job request failed")
+	}
+	return objects.Response(http.StatusOK, nil), err
+}

@@ -60,7 +60,7 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 // UpdateDesignSchema - Update a design schema
 func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
 	//TODO input validation
-	zap.S().Debugf("Update design schema request recieved for designId: %v", designId)
+	zap.S().Debugf("Update/insert design schema request recieved for designId: %v", designId)
 
 	//create controller request
 	uriMap := map[string]string{

@@ -15,7 +15,6 @@ import (
 var designSchemaCmd = &cobra.Command{
 	Use:   "schema",
 	Short: "Design Schema Commands",
-	Long:  "Design Schema Commands",
 	Run: func(cmd *cobra.Command, args []string) {
 		cmd.Help()
 	},
@@ -24,7 +23,6 @@ var designSchemaCmd = &cobra.Command{
 var createDesignSchemaCmd = &cobra.Command{
 	Use:   "create",
 	Short: "Create a new design schema",
-	Long:  "Create a new design schema",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 		portNo, err := flags.GetInt64("port")
@@ -81,6 +79,70 @@ var createDesignSchemaCmd = &cobra.Command{
 				sb := string(responseBody)
 				zap.S().Infof(sb)
 			}
+		}
+		return nil
+	},
+}
+
+var updateDesignSchemaCmd = &cobra.Command{
+	Use:   "update",
+	Short: "Update existing design schema",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flags := cmd.Flags()
+		portNo, err := flags.GetInt64("port")
+		if err != nil {
+			return err
+		}
+
+		ip, err := flags.GetString("ip")
+		if err != nil {
+			return err
+		}
+
+		user, err := flags.GetString("user")
+		if err != nil {
+			return err
+		}
+
+		designId, err := flags.GetString("designId")
+		if err != nil {
+			return err
+		}
+
+		schemaId, err := flags.GetString("schemaId")
+		if err != nil {
+			return err
+		}
+
+		conf, err := flags.GetString("conf")
+		if err != nil {
+			return err
+		}
+
+		//read schema via conf file
+		yamlFile, err := ioutil.ReadFile(conf)
+		if err != nil {
+			return err
+		}
+
+		//construct URL
+		uriMap := map[string]string{
+			"user":     user,
+			"designId": designId,
+		}
+		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
+
+		//Read schemas from the yaml file
+		var schema = objects.DesignSchema{}
+		err = yaml.Unmarshal(yamlFile, &schema)
+		schema.ID = schemaId
+
+		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
+		if err != nil {
+			zap.S().Errorf("error while adding a new schema. %v", err)
+		} else {
+			sb := string(responseBody)
+			zap.S().Infof(sb)
 		}
 		return nil
 	},
@@ -149,7 +211,7 @@ var getDesignSchemaCmd = &cobra.Command{
 
 func init() {
 	designCmd.AddCommand(designSchemaCmd)
-	designSchemaCmd.AddCommand(createDesignSchemaCmd, getDesignSchemaCmd)
+	designSchemaCmd.AddCommand(createDesignSchemaCmd, getDesignSchemaCmd, updateDesignSchemaCmd)
 
 	designSchemaCmd.PersistentFlags().StringP("designId", "d", "", "Design id")
 	designSchemaCmd.MarkPersistentFlagRequired("designId")
@@ -162,4 +224,9 @@ func init() {
 	//CREATE DESIGN SCHEMA
 	createDesignSchemaCmd.Flags().StringP("conf", "c", "", "Configuration file with schema design")
 	createDesignSchemaCmd.MarkFlagRequired("conf")
+
+	updateDesignSchemaCmd.Flags().StringP("schemaId", "s", "", "Schema Id that is required to be updated")
+	updateDesignSchemaCmd.Flags().StringP("conf", "c", "", "Configuration file with schema design")
+	updateDesignSchemaCmd.MarkFlagRequired("schemaId")
+	updateDesignSchemaCmd.MarkFlagRequired("conf")
 }

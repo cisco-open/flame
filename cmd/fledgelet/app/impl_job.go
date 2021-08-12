@@ -23,21 +23,23 @@ func NewJobInit(info objects.AppConf) {
 	err := initApp(info)
 	req := objects.AgentStatus{
 		UpdateType: util.JobStatus,
-		Status:     util.StatusError,
+		Status:     "",
 		Message:    "",
 	}
 
 	if err != nil {
 		zap.S().Errorf("error intializing configuration details for application. %v", err)
+		req.Status = util.StatusError
 		req.Message = err.Error()
 	} else {
 		//Step 2 : Start Application based on policy
 		//default state would be ready because configuration file is created and
 		//if it is a non data consumer agent next step would be to start the application
+		req.Status = util.StatusSuccess
 		req.Message = util.ReadyState
 
 		if startAppPolicy(info) {
-			state, err := NewJobStart(info)
+			state, err := startApp(info)
 
 			if err != nil {
 				req.Status = util.StatusError
@@ -49,23 +51,31 @@ func NewJobInit(info objects.AppConf) {
 		}
 	}
 
-	//Update agents status
-	//construct URL
-	uriMap := map[string]string{
-		"user":    util.InternalUser,
-		"jobId":   job.ID,
-		"agentId": Agent.uuid,
-	}
-	url := CreateURI(util.UpdateAgentStatusEndPoint, uriMap)
+	updateJobStatus(job, req)
+}
 
-	//send post request
-	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)
-	code, response, err := util.HTTPPut(url, req, "application/json")
-	if err != nil {
-		zap.S().Errorf("error while updating the agent status. %v", err)
-	} else {
-		zap.S().Debugf("update response code: %d | response: %s", code, string(response))
+//NewJobStart starts the application on the agent
+func NewJobStart(info objects.AppConf) {
+	req := objects.AgentStatus{
+		UpdateType: util.JobStatus,
+		Status:     "",
+		Message:    "",
 	}
+	state, err := startApp(info)
+	if err != nil {
+		req.Status = util.StatusError
+		req.Message = err.Error()
+	} else {
+		req.Status = util.StatusSuccess
+		req.Message = state
+	}
+
+	updateJobStatus(info.JobInfo, req)
+}
+
+func JobReload(info objects.AppConf) (string, error) {
+	zap.S().Debugf("Reloading job ...")
+	return "", nil
 }
 
 func initApp(info objects.AppConf) error {
@@ -93,15 +103,18 @@ func startAppPolicy(info objects.AppConf) bool {
 	return false
 }
 
-//NewJobStart starts the application on the agent
-func NewJobStart(info objects.AppConf) (string, error) {
-	cmd := exec.Command("python3", Conf.Command...)
+func startApp(info objects.AppConf) (string, error) {
+	//TODO only for development purpose. We should have single command command to start all applications example python3 main.py
+	//cmd := exec.Command("python3", Conf.Command...)
+	//cmd := exec.Command("echo", Conf.Command...)
+	cmd := exec.Command(Conf.Command[0], Conf.Command[1:]...)
 	zap.S().Debugf("Starting application. Command : %v", cmd)
 
 	//dump output to a log file
 	outfile, err := os.Create("./application_" + Agent.name + ".log")
 	if err != nil {
 		zap.S().Errorf("%v", err)
+		return util.ErrorState, err
 	}
 	cmd.Stdout = outfile
 	cmd.Stderr = outfile
@@ -114,4 +127,24 @@ func NewJobStart(info objects.AppConf) (string, error) {
 	}
 
 	return util.RunningState, nil
+}
+
+func updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
+	//Update agents status
+	//construct URL
+	uriMap := map[string]string{
+		"user":    util.InternalUser,
+		"jobId":   job.ID,
+		"agentId": Agent.uuid,
+	}
+	url := CreateURI(util.UpdateAgentStatusEndPoint, uriMap)
+
+	//send post request
+	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)
+	code, response, err := util.HTTPPut(url, req, "application/json")
+	if err != nil {
+		zap.S().Errorf("error while updating the agent status. %v", err)
+	} else {
+		zap.S().Debugf("update response code: %d | response: %s", code, string(response))
+	}
 }

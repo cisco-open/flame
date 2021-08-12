@@ -227,6 +227,66 @@ var getAllJobsCmd = &cobra.Command{
 	},
 }
 
+var changeJobSchemaCmd = &cobra.Command{
+	Use:   "changeSchema",
+	Short: "Change existing design schema associated with the job",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flags := cmd.Flags()
+		portNo, err := flags.GetInt64("port")
+		if err != nil {
+			return err
+		}
+
+		ip, err := flags.GetString("ip")
+		if err != nil {
+			return err
+		}
+
+		user, err := flags.GetString("user")
+		if err != nil {
+			return err
+		}
+
+		jId, err := flags.GetString("jobId")
+		if err != nil {
+			return err
+		}
+
+		sId, err := flags.GetString("schemaId")
+		if err != nil {
+			return err
+		}
+
+		dId, err := flags.GetString("designId")
+		if err != nil {
+			return err
+		}
+
+		//construct URL
+		uriMap := map[string]string{
+			"user":     user,
+			"jobId":    jId,
+			"schemaId": sId,
+			"designId": dId,
+		}
+		url := util.CreateURI(ip, portNo, util.ChangeJobSchemaEndPoint, uriMap)
+
+		zap.S().Infof("url %s", url)
+
+		//send get request
+		code, responseBody, err := util.HTTPPost(url, objects.JobInfo{}, "application/json")
+		//responseBody, err := util.HTTPGet(url)
+		if err != nil {
+			zap.S().Errorf("error while changing to a new schema. %v", err)
+		} else {
+			sb := string(responseBody)
+			zap.S().Infof("code : %d | response: %s", code, sb)
+			//zap.S().Infof("response: %s", sb)
+		}
+		return nil
+	},
+}
+
 // TODO remove me later - use it to quick test a URL
 var testCmd = &cobra.Command{
 	Use: "test",
@@ -282,7 +342,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(jobCmd)
-	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd, testCmd)
+	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd, changeJobSchemaCmd, testCmd)
 
 	jobCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
 	jobCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
@@ -314,4 +374,13 @@ func init() {
 
 	testCmd.Flags().StringP("jobId", "j", "", "Job Id")
 	testCmd.Flags().StringP("uuid", "x", "", "Agent UUID")
+
+	//CHANGE JOB SCHEMA
+	changeJobSchemaCmd.Flags().StringP("designId", "d", "", "Design id")
+	changeJobSchemaCmd.Flags().StringP("jobId", "j", "", "Job id")
+	changeJobSchemaCmd.Flags().StringP("schemaId", "s", "", "Schema id")
+	//required flags
+	changeJobSchemaCmd.MarkFlagRequired("designId")
+	changeJobSchemaCmd.MarkFlagRequired("jobId")
+	changeJobSchemaCmd.MarkFlagRequired("schemaId")
 }

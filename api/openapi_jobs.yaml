@@ -159,6 +159,59 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
 
+  /{user}/job/{jobId}/schema/{schemaId}/design/{designId}:
+    #------------------------------------#
+    # Change Job Schema
+    #------------------------------------#
+    post:
+      operationId: changeJobSchema
+      summary: Change the schema for the given job
+      tags:
+        - job
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: jobId
+          description: job id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: schemaId
+          description: schema id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+        - name: designId
+          description: design id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: true
+          required: true
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
+
   /{user}/jobs/:
     #------------------------------------#
     # Get Jobs by user or designId
@@ -279,6 +332,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
+
 
 components:
   schemas:

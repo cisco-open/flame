@@ -40,9 +40,16 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 
 // UpdateDesignSchema - Update a design schema
 func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
-	err := database.UpdateDesignSchema(user, designId, designSchema)
-	if err != nil {
-		return objects.Response(http.StatusInternalServerError, nil), errors.New("update/insert design schema details request failed")
+	if designSchema.ID == "" {
+		err := database.CreateDesignSchema(user, designId, designSchema)
+		if err != nil {
+			return objects.Response(http.StatusInternalServerError, nil), errors.New("insert design schema details request failed")
+		}
+	} else {
+		err := database.UpdateDesignSchema(user, designId, designSchema)
+		if err != nil {
+			return objects.Response(http.StatusInternalServerError, nil), errors.New("update design schema details request failed")
+		}
 	}
 	return objects.Response(http.StatusOK, nil), nil
 }

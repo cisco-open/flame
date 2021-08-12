@@ -143,3 +143,110 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 
 	return objects.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
 }
+
+// ChangeJobSchema - Change the schema for the given job
+func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, newSchemaId string, designId string) (objects.ImplResponse, error) {
+	//step 1 - get old schema details
+	oldSchema := Cache.jobSchema[jobId]
+
+	//step 2 - get schema details for new schema id
+	//get design detail that is passed to the nodes as part of notification
+	res, err := database.GetDesignSchema(util.InternalUser, designId, util.ID, newSchemaId)
+	if err != nil {
+		zap.S().Errorf("error while updating the schema for existing job: %s | new schema id: %s. Failed to fetch new schema information. %v", jobId, newSchemaId, err)
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("change job schema request failed. Failed to fetch new schema information")
+	}
+	newSchema := res[0]
+	zap.S().Debugf("schema : %v | %v", oldSchema, newSchema)
+
+	//step 3 - check the old and new schema to determine the -new nodes required and -determine changes in the existing nodes
+	existingNodes, newNodes := getNodesToNotify(jobId, designId, oldSchema, newSchema)
+
+	//step 4 - update the job details in Database - 1) change schema id to new schema id and 2) add new nodes
+	err = database.UpdateJobDetails(jobId, util.ChangeJobSchema, map[string]interface{}{
+		util.DBFieldSchemaId: newSchemaId,
+		util.DBFieldNodes:    newNodes,
+	})
+	if err != nil {
+		zap.S().Errorf("error while updating the schema for existing job: %s | new schema id: %s. %v", jobId, newSchemaId, err)
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("error updating the schema for the given job")
+	}
+
+	//Step 5 - Since database has been updated update or invalidate the cache
+	cacheAgentList := Cache.jobAgents[jobId]
+	Cache.jobAgents[jobId] = append(cacheAgentList, newNodes...)
+	Cache.jobSchema[jobId] = newSchema
+
+	//step 6 - Get updated job information
+	jobInfo, err := database.GetJob(util.InternalUser, jobId)
+	if err != nil {
+		zap.S().Errorf("schema update for the existing job: %s | new schema id: %s. Failed while getting updated job information from database %v", jobId, newSchemaId, err)
+		return objects.Response(http.StatusMultiStatus, nil), errors.New("successfully changed the schema for the existing job. Error while getting updated job information from database")
+	}
+
+	//step 7 - Send corresponding notifications to the nodes.
+	sendNotification := func(agentList []objects.ServerInfo, nsType string, nodeType string) bool{
+		isError := false
+		if len(agentList) > 0 {
+			jobMsg := objects.JobNotification{
+				Agents:           newNodes,
+				Job:              jobInfo,
+				SchemaInfo:       newSchema,
+				NotificationType: nsType,
+			}
+			zap.S().Debugf("Sending notification to all the %s nodes (count: %d) for the job id: %s. Info: %v", nodeType, len(newNodes), jobId, jobMsg)
+			resp, err := grpcctlr.ControllerGRPC.SendNotification(grpcctlr.JobNotification, jobMsg)
+
+			if err != nil {
+				//TODO currently we are ignoring the failure. Add a flag to check the job configuration if setting is to stop or continue
+				zap.S().Errorf("failed to notify the new nodes about the job. %v", err)
+				isError = true
+			}
+
+			//Check for partial error
+			if resp.GetStatus() == pbNotification.Response_SUCCESS_WITH_ERROR {
+				zap.S().Errorf("error while sending out job notification to the %s nodes added for jobId: %s. Only partial clients notified.", nodeType, jobId)
+				isError = true
+				//TODO what steps should be taken if an error occurs for few of the new nodes.
+				//msResponse := map[string]interface{}{
+				//	util.ID:     jId,
+				//	util.Errors: resp.GetDetails(),
+				//}
+				//return errors.New("failed to notify all the new nodes. Only partial nodes we notified")
+				//return objects.Response(http.StatusMultiStatus, msResponse), nil
+			}
+		}
+		return isError
+	}
+
+	nsError := sendNotification(newNodes, util.InitState, "NEW")
+	nsError = sendNotification(existingNodes, util.InitState, "EXISTING") || nsError
+	if !nsError {
+		return objects.Response(http.StatusMultiStatus, nil), errors.New("successfully changed the schema for the existing job. Error while notifying the new/existing nodes")
+	}
+
+	return objects.Response(http.StatusOK, nil), nil
+}
+
+//TODO Based on the changes in the schema determine 1) the new worker nodes that are required to be added and 2) nodes that will get affected by schema update
+func getNodesToNotify(jobId string, designId string, oldSchema objects.DesignSchema, newSchema objects.DesignSchema) ([]objects.ServerInfo, []objects.ServerInfo) {
+	var existingAgentInfo []objects.ServerInfo
+	var newAgentInfo []objects.ServerInfo
+
+	for i, node := range JobNodesInMem[designId].Nodes {
+		if !node.IsExistingNode {
+			node.State = util.InitState
+			newAgentInfo = append(newAgentInfo, node)
+		} else if node.IsUpdated {
+			existingAgentInfo = append(existingAgentInfo, node)
+		}
+
+		//since the node information is used time they will now be considered as existing nodes
+		JobNodesInMem[designId].Nodes[i].IsExistingNode = true
+		JobNodesInMem[designId].Nodes[i].IsUpdated = false
+	}
+
+	zap.S().Debugf("new nodes: %v", newAgentInfo)
+	zap.S().Debugf("existing nodes: %v", existingAgentInfo)
+	return existingAgentInfo, newAgentInfo
+}

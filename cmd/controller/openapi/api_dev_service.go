@@ -37,3 +37,42 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes obje
 	JobNodesInMem[jobNodes.DesignId] = jobNodes
 	return objects.Response(http.StatusCreated, nil), nil
 }
+
+// UpdateJobNodes - Update or add new nodes information for the job
+func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNodes objects.JobNodes) (objects.ImplResponse, error) {
+	dId := jobNodes.DesignId
+	zap.S().Infof("Updating nodes for designId : %s", jobNodes.DesignId)
+	zap.S().Infof("Current node information: %v", JobNodesInMem[jobNodes.DesignId])
+	zap.S().Debugf("New Node info: %v", jobNodes.Nodes)
+
+	eNodes := JobNodesInMem[dId].Nodes
+	//mark existing node flag as true
+	for j, _ := range eNodes {
+		eNodes[j].IsExistingNode = true
+	}
+
+	//loop through all the nodes shared via conf file
+	for _, node := range jobNodes.Nodes {
+		if node.IsExistingNode {
+			//if existing node is required to be updated
+			for j, existingNode := range eNodes {
+				if existingNode.Uuid == node.Uuid {
+					zap.S().Infof("Found an existing node that needs to be updated. old: %v | new: %v", existingNode, node)
+					eNodes[j].Command = node.Command
+					eNodes[j].IsUpdated = node.IsUpdated
+				}
+			}
+		} else {
+			//adding a new node
+			eNodes = append(eNodes, node)
+		}
+	}
+
+	JobNodesInMem[dId] = objects.JobNodes{
+		DesignId: dId,
+		Nodes:    eNodes,
+	}
+
+	zap.S().Infof("Updated node information: %v", JobNodesInMem[dId])
+	return objects.Response(http.StatusCreated, nil), nil
+}

@@ -58,24 +58,21 @@ func ConnectToNotificationService() {
 
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
 func newNotification(in *pbNotification.StreamResponse) {
-	switch in.GetType() {
-	case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
-		jobMsg := objects.AppConf{}
-		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
-		if err != nil {
-			zap.S().Errorf("error processing the job request. %v", err)
-		} else {
+	jobMsg := objects.AppConf{}
+	err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
+	if err != nil {
+		zap.S().Errorf("error processing the job request. %v", err)
+	} else {
+		switch in.GetType() {
+		case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
 			NewJobInit(jobMsg)
-		}
-	case pbNotification.StreamResponse_JOB_NOTIFICATION_START:
-		jobMsg := objects.AppConf{}
-		err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
-		if err != nil {
-			zap.S().Errorf("error processing the job request. %v", err)
-		} else {
+		case pbNotification.StreamResponse_JOB_NOTIFICATION_START:
 			NewJobStart(jobMsg)
+		case pbNotification.StreamResponse_JOB_NOTIFICATION_RELOAD:
+			JobReload(jobMsg)
+		default:
+			zap.S().Errorf("Invalid message type: %s", in.GetType())
 		}
-	default:
-		zap.S().Errorf("Invalid message type: %s", in.GetType())
 	}
+
 }

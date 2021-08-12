@@ -87,6 +87,7 @@ type DesignsApiServicer interface {
 // The JobApiRouter implementation should parse necessary information from the http request,
 // pass the data to a JobApiServicer to perform the required actions, then write the service results to the http response.
 type JobApiRouter interface {
+	ChangeJobSchema(http.ResponseWriter, *http.Request)
 	DeleteJob(http.ResponseWriter, *http.Request)
 	GetJob(http.ResponseWriter, *http.Request)
 	SubmitJob(http.ResponseWriter, *http.Request)
@@ -105,6 +106,7 @@ type JobsApiRouter interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobApiServicer interface {
+	ChangeJobSchema(context.Context, string, string, string, string) (objects.ImplResponse, error)
 	DeleteJob(context.Context, string, string) (objects.ImplResponse, error)
 	GetJob(context.Context, string, string) (objects.ImplResponse, error)
 	SubmitJob(context.Context, string, objects.JobInfo) (objects.ImplResponse, error)
@@ -140,6 +142,7 @@ type AgentApiServicer interface {
 //TODO remove me after prototyping phase is done.
 type DevApiRouter interface {
 	JobNodes(http.ResponseWriter, *http.Request)
+	UpdateJobNodes(http.ResponseWriter, *http.Request)
 }
 
 // DevApiServicer defines the api actions for the DevApi service
@@ -149,4 +152,5 @@ type DevApiRouter interface {
 //TODO remove me after prototyping phase is done.
 type DevApiServicer interface {
 	JobNodes(context.Context, string, objects.JobNodes) (objects.ImplResponse, error)
+	UpdateJobNodes(context.Context, string, objects.JobNodes) (objects.ImplResponse, error)
 }

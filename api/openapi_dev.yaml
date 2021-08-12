@@ -40,6 +40,35 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
 
+    put:
+      operationId: updateJobNodes
+      summary: Update or add new nodes information for the job
+      tags:
+        - dev
+      parameters:
+        - name: user
+          description: user id
+          in: path
+          schema:
+            type: string
+          style: simple
+          explode: false
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobNodes'
+      responses:
+        "201":
+          description: Null response
+        default:
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+          description: unexpected error
+
 components:
   schemas:
     #-----------------------#

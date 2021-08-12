@@ -74,13 +74,16 @@ func startTraining(jobId string, agentId string) error {
 		}
 	}
 
-	//policy check
+	//policy check - simple policy of verifying all the non-DC nodes are up and running.
 	var dcAgentList []objects.ServerInfo
 	sendStartSignal := true
 	for _, agent := range Cache.jobAgents[jobId] {
-		if agent.Role == dataConsumerRole {
+		//check if it is a DC node and is not running
+		if agent.Role == dataConsumerRole && agent.State != util.RunningState {
 			dcAgentList = append(dcAgentList, agent)
 		} else if agent.State != util.RunningState {
+			//TODO add a group by rule to ensure we are checking only in the corresponding group of nodes.
+			//For example - when checking for 'us' group - only the nodes with 'us' tags are checked and 'uk' are ignored.
 			zap.S().Debugf("Breaking off becaues one of the agent (non dc) role: %s | state: %s | uuid: %s ", agent.Role, agent.State, agent.Uuid)
 			sendStartSignal = false
 			break

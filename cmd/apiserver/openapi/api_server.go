@@ -42,6 +42,7 @@ func RunServer(portNo uint16, ctlrInfo objects.ServerInfo) error {
 	DevServiceApiController := NewDevApiController(DevServiceApi)
 
 	router := NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController, AgentServiceApiController)
+
 	addr := fmt.Sprintf(":%d", portNo)
 	zap.S().Fatal(http.ListenAndServe(addr, router))
 

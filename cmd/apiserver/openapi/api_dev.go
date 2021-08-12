@@ -37,6 +37,12 @@ func (c *DevApiController) Routes() Routes {
 			"/{user}/nodes/",
 			c.JobNodes,
 		},
+		{
+			"UpdateJobNodes",
+			strings.ToUpper("Put"),
+			"/{user}/nodes/",
+			c.UpdateJobNodes,
+		},
 	}
 }
 
@@ -51,6 +57,27 @@ func (c *DevApiController) JobNodes(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	result, err := c.service.JobNodes(r.Context(), user, *jobNodes)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+
+}
+
+// UpdateJobNodes - Update or add new nodes information for the job
+func (c *DevApiController) UpdateJobNodes(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	jobNodes := &objects.JobNodes{}
+	if err := json.NewDecoder(r.Body).Decode(&jobNodes); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.UpdateJobNodes(r.Context(), user, *jobNodes)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

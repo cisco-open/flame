@@ -376,9 +376,6 @@ components:
         id:
           type: integer
           format: int64
-        isCurrentlyUsed:
-          # for a given design we can have multiple design schemas and can select which one would be used
-          type: boolean
         name:
           type: string
         description:

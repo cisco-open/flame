@@ -119,3 +119,28 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 
 	return objects.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
 }
+
+// ChangeJobSchema - Change the schema for the given job
+func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, schemaId string, designId string) (objects.ImplResponse, error) {
+	//TODO input validation
+	zap.S().Debugf("Change design schema for the given jobId: %s | schemdId: %s | designId: %s", jobId, schemaId, designId)
+
+	//create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"jobId":    jobId,
+		"schemaId": schemaId,
+		"designId": designId,
+	}
+
+	url := CreateURI(util.ChangeJobSchemaEndPoint, uriMap)
+
+	//send get request
+	_, _, err := util.HTTPPost(url, nil, "application/json")
+
+	//response to the user
+	if err != nil {
+		return objects.Response(http.StatusInternalServerError, nil), errors.New("error while changing the design schema for the given job")
+	}
+	return objects.Response(http.StatusOK, nil), err
+}

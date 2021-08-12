@@ -11,13 +11,19 @@ func SubmitJob(userId string, info objects.JobInfo) (string, error) {
 func GetJob(userId string, jobId string) (objects.JobInfo, error) {
 	return DB.GetJob(userId, jobId)
 }
+
 func GetJobs(userId string, getType string, designId string, limit int32) ([]objects.JobInfo, error) {
 	return DB.GetJobs(userId, getType, designId, limit)
 }
 
+//func GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]objects.JobInfo, error) {
+//	return DB.GetJobsDetailsBy(userId, getType, in)
+//}
+
 func UpdateJob(userId string, jobId string) (objects.JobInfo, error) {
 	return DB.UpdateJob(userId, jobId)
 }
+
 func DeleteJob(userId string, jobId string) error {
 	return DB.DeleteJob(userId, jobId)
 }

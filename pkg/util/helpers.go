@@ -165,11 +165,13 @@ const (
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
 	//Job
-	SubmitJobEndPoint = "SUBMIT_JOB"
-	GetJobEndPoint    = "GET_JOB"
-	GetJobsEndPoint   = "GET_JOBS"
-	DeleteJobEndPoint = "DELETE_JOB"
-	UpdateJobEndPoint = "UPDATE_JOB"
+	SubmitJobEndPoint       = "SUBMIT_JOB"
+	GetJobEndPoint          = "GET_JOB"
+	GetJobsEndPoint         = "GET_JOBS"
+	DeleteJobEndPoint       = "DELETE_JOB"
+	UpdateJobEndPoint       = "UPDATE_JOB"
+	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
+
 	//Agent
 	UpdateAgentStatusEndPoint = "UPDATE_AGENT_STATUS"
 
@@ -186,11 +188,12 @@ var URI = map[string]string{
 	GetDesignSchemaEndPoint:    "/{{.user}}/design/{{.designId}}/schema/?getType={{.type}}&schemaId={{.schemaId}}",
 
 	//Job
-	SubmitJobEndPoint: "/{{.user}}/job/",
-	GetJobEndPoint:    "/{{.user}}/job/{{.jobId}}",
-	GetJobsEndPoint:   "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
-	UpdateJobEndPoint: "/{{.user}}/job/{{.jobId}}",
-	DeleteJobEndPoint: "/{{.user}}/job/{{.jobId}}",
+	SubmitJobEndPoint:       "/{{.user}}/job/",
+	GetJobEndPoint:          "/{{.user}}/job/{{.jobId}}",
+	GetJobsEndPoint:         "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
+	UpdateJobEndPoint:       "/{{.user}}/job/{{.jobId}}",
+	DeleteJobEndPoint:       "/{{.user}}/job/{{.jobId}}",
+	ChangeJobSchemaEndPoint: "/{{.user}}/job/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
 
 	//Agent
 	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",

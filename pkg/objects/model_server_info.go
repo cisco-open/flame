@@ -19,6 +19,13 @@ type ServerInfo struct {
 
 	//TODO remove me after demo-day
 	Command []string `json:"command,omitempty"`
+
+	//required by the controller to check what type of notification to send. Ideally K8 will provide a new node and system will be able to determine it
+	IsExistingNode bool `yaml:"is_existing_node" json:"is_existing_node"`
+
+	//required by the controller to check if anything related to the node got updated.
+	// Example - schema design change impacted this node so a notification is required to be sent.
+	IsUpdated bool `yaml:"is_updated" json:"is_updated"`
 }
 
 func (s *ServerInfo) GetAddress() string {

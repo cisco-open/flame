@@ -7,4 +7,4 @@ protoc --go_out=./go/notification --go_opt=paths=source_relative --go-grpc_out=.
 #protoc --go_out=./go/fledgelet --go_opt=paths=source_relative --go-grpc_out=./go/fledgelet --go-grpc_opt=paths=source_relative fledgelet.proto
 
 #protoc --python_out=./python/fledgelet fledgelet.proto
-python3 -m grpc_tools.protoc -I./ --python_out=../../lib/python/fledge/proto/agent --grpc_python_out=../../lib/python/fledge/proto/agent ./agent.proto
+#python3 -m grpc_tools.protoc -I./ --python_out=../../lib/python/fledge/proto/agent --grpc_python_out=../../lib/python/fledge/proto/agent ./agent.proto

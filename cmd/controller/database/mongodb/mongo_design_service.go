@@ -24,7 +24,7 @@ func (db *MongoService) CreateDesign(userId string, design objects.Design) error
 //todo update the method to implement a limit next based cursor
 func (db *MongoService) GetDesigns(userId string, limit int32) ([]objects.DesignInfo, error) {
 	zap.S().Debugf("mongodb get list of designs for user: %s | limit: %d", userId, limit)
-	filter := bson.M{util.UserId: userId}
+	filter := bson.M{util.DBFieldUserId: userId}
 	cursor, err := db.designCollection.Find(context.TODO(), filter)
 
 	if err != nil {
@@ -52,7 +52,7 @@ func (db *MongoService) GetDesigns(userId string, limit int32) ([]objects.Design
 func (db *MongoService) GetDesign(userId string, designId string) (objects.Design, error) {
 	zap.S().Debugf("mongodb get design information for user: %s | desginId: %s", userId, designId)
 	var info objects.Design
-	filter := bson.M{"_id": ConvertToObjectID(designId), util.UserId: userId}
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(designId), util.DBFieldUserId: userId}
 	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&info)
 	if err != nil {
 		err = ErrorCheck(err)

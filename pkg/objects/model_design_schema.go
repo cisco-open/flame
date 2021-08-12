@@ -9,13 +9,9 @@
 
 package objects
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
-
 // DesignSchema - Schema to define the roles and their connections
 type DesignSchema struct {
-	ID primitive.ObjectID `bson:"_id,omitempty" json:"id,omitempty"`
-
-	IsCurrentlyUsed bool `bson:"isCurrentlyUsed" json:"isCurrentlyUsed"`
+	ID string `bson:"_id,omitempty" json:"id,omitempty"`
 
 	Name string `json:"name"`
 

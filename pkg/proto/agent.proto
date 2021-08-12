@@ -18,7 +18,7 @@ message StreamResponse {
   enum ResponseType {
     JOB_NOTIFICATION_INIT = 0;
     JOB_NOTIFICATION_START = 1;
-    SCHEMA_UPDATE_NOTIFICATION = 2;
+    JOB_NOTIFICATION_RELOAD = 2;
   }
   ResponseType type = 1;  //identifier to determine the type of message
   google.protobuf.Struct message = 2; //call details

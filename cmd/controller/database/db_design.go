@@ -21,6 +21,10 @@ func GetDesignSchema(userId string, designId string, getType string, schemaId st
 	return DB.GetDesignSchema(userId, designId, getType, schemaId)
 }
 
+func CreateDesignSchema(userId string, designId string, info objects.DesignSchema) error {
+	return DB.CreateDesignSchema(userId, designId, info)
+}
+
 func UpdateDesignSchema(userId string, designId string, info objects.DesignSchema) error {
 	return DB.UpdateDesignSchema(userId, designId, info)
 }

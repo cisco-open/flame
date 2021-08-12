@@ -4,8 +4,10 @@ const (
 	ProjectName = "fledge"
 
 	//Job
-	JobStatus   = "JobStatus"
-	AddJobNodes = "AddJobNodes"
+	JobStatus       = "JobStatus"
+	AddJobNodes     = "AddJobNodes"
+	ChangeJobSchema = "ChangeJobSchema"
+	GetBySchemaId   = "GetBySchemaId"
 
 	// General
 	ALL          = "all"
@@ -28,6 +30,7 @@ const (
 	StartState      = "Start"
 	ReadyState      = "Ready"
 	RunningState    = "Running"
+	ReloadState     = "Reload"
 	StopState       = "Stop"
 	TerminatedState = "Terminated"
 	ErrorState      = "Error"
@@ -38,9 +41,12 @@ const (
 	MySQL   = "mysql"
 
 	// Database Fields
-	MongoID  = "_id"
-	UserId   = "userId"
-	DesignId = "designId"
+	//TODO append Field to distinguish the fields
+	DBFieldMongoID  = "_id"
+	DBFieldUserId   = "userId"
+	DesignId        = "designId"
+	DBFieldSchemaId = "schemaId"
+	DBFieldNodes    = "nodes"
 
 	// Port numbers
 	ApiServerRestApiPort        = 10100 // REST API port
