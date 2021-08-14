@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"go.uber.org/zap"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
@@ -80,12 +81,12 @@ func JobReload(info objects.AppConf) (string, error) {
 
 func initApp(info objects.AppConf) error {
 	//directory path
-	filepath := "/fledge/job/" + info.JobInfo.ID
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		zap.S().Debugf("Creating filepath: %s", filepath)
-		os.MkdirAll(filepath, 0700) // Create your file
+	fp := filepath.Join("/fledge/job/" , Agent.uuid , info.JobInfo.ID)
+	if _, err := os.Stat(fp); os.IsNotExist(err) {
+		zap.S().Debugf("Creating filepath: %s", fp)
+		os.MkdirAll(fp, 0700) // Create your file
 	}
-	confFilePath := filepath + "/conf.json"
+	confFilePath := fp + "/conf.json"
 
 	//create a configuration file for the application
 	file, _ := json.MarshalIndent(info, "", " ")

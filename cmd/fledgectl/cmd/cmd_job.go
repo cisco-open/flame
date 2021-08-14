@@ -72,6 +72,7 @@ var submitJobCmd = &cobra.Command{
 			"user": user,
 		}
 		url := util.CreateURI(ip, portNo, util.SubmitJobEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		//Encode the data
 		postBody := objects.JobInfo{
@@ -97,8 +98,11 @@ var submitJobCmd = &cobra.Command{
 			}
 			zap.S().Infof("Job request submitted with partial error with job id:%s and failed to notifiy clients: %v", resp[util.ID], resp[util.Errors])
 		} else {
-			jobId := string(responseBody)
-			zap.S().Infof("Job request successfully submitted with job id: %s", jobId)
+			resp := map[string]interface{}{}
+			_ = util.ByteToStruct(responseBody, &resp)
+			zap.S().Infof("Job request successfully submitted.\nJob Id: %s\nDesign Id: %s", resp[util.ID], designId)
+			zap.S().Infof("Job Id   : %s", resp[util.ID])
+			zap.S().Infof("Design Id: %s", designId)
 		}
 
 		return nil
@@ -270,18 +274,18 @@ var changeJobSchemaCmd = &cobra.Command{
 			"designId": dId,
 		}
 		url := util.CreateURI(ip, portNo, util.ChangeJobSchemaEndPoint, uriMap)
-
-		zap.S().Infof("url %s", url)
+		printCmdInfo(ip, portNo, url)
 
 		//send get request
 		code, responseBody, err := util.HTTPPost(url, objects.JobInfo{}, "application/json")
-		//responseBody, err := util.HTTPGet(url)
 		if err != nil {
 			zap.S().Errorf("error while changing to a new schema. %v", err)
 		} else {
-			sb := string(responseBody)
-			zap.S().Infof("code : %d | response: %s", code, sb)
-			//zap.S().Infof("response: %s", sb)
+			zap.S().Debugf("Response code: %d | response: %s", code, string(responseBody))
+			zap.S().Debugf("Successfully changed the schema for the running job.")
+			zap.S().Debugf("Job Id:	%s", jId)
+			zap.S().Debugf("Design Id: %s", dId)
+			zap.S().Debugf("New Schema Id: %s", sId)
 		}
 		return nil
 	},

@@ -12,6 +12,7 @@ import (
 	"runtime"
 	"strconv"
 	"text/template"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -53,16 +54,25 @@ func InitZapLog(service string) *zap.Logger {
 		return nil
 	}
 
+
 	config := zap.NewDevelopmentConfig()
-	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
-	config.EncoderConfig.TimeKey = "timestamp"
-	config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+	//default
+	//config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	//config.EncoderConfig.TimeKey = "timestamp"
+	//config.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+
+	//custom
+	config.EncoderConfig.EncodeLevel = func(level zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString("[" + level.CapitalString() + "]")
+	}
+	config.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("2006/01/02 15:04:05"))
+	}
 
 	config.OutputPaths = []string{
 		"stdout",
 		logPath,
 	}
-
 	logger, err := config.Build()
 	if err != nil {
 		fmt.Printf("Can't build logger: %v", err)

@@ -115,7 +115,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		}
 		return objects.Response(http.StatusMultiStatus, msResponse), nil
 	}
-	return objects.Response(http.StatusCreated, jId), nil
+	return objects.Response(http.StatusCreated, map[string]string{util.ID: jId}), nil
 }
 
 //TODO Code related to calling cluster manager to get nodes to be added here. For development purpose we are assuming that information is present in-memory
@@ -189,12 +189,12 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 		isError := false
 		if len(agentList) > 0 {
 			jobMsg := objects.JobNotification{
-				Agents:           newNodes,
+				Agents:           agentList,
 				Job:              jobInfo,
 				SchemaInfo:       newSchema,
 				NotificationType: nsType,
 			}
-			zap.S().Debugf("Sending notification to all the %s nodes (count: %d) for the job id: %s. Info: %v", nodeType, len(newNodes), jobId, jobMsg)
+			zap.S().Debugf("Sending notification to all the %s nodes (count: %d) for the job id: %s. Info: %v", nodeType, len(agentList), jobId, jobMsg)
 			resp, err := grpcctlr.ControllerGRPC.SendNotification(grpcctlr.JobNotification, jobMsg)
 
 			if err != nil {

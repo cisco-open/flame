@@ -1,8 +1,9 @@
 package cmd
 
 import (
-	"github.com/spf13/cobra"
+	"fmt"
 
+	"github.com/spf13/cobra"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -29,4 +30,10 @@ func init() {}
 
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+func printCmdInfo(ip string, portNo int64, url string){
+	separator :="- - - - - - - - - - - - - - -"
+	fmt.Printf("%s\nServer: %s:%d\n", separator, ip, portNo)
+	fmt.Printf("URL: %s\n%s\n", url, separator)
 }

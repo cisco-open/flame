@@ -62,6 +62,7 @@ var jobNodesCmd = &cobra.Command{
 			"user": user,
 		}
 		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
@@ -75,17 +76,14 @@ var jobNodesCmd = &cobra.Command{
 			DesignId: designId,
 			Nodes:    y.Nodes,
 		}
-		//zap.S().Infof("url : %s | jobId: %s", url, jobId)
-		//zap.S().Infof("conf %v", yamlFile)
-		//zap.S().Infof("nodes: %v", y.Nodes)
 
 		//send post request
-		_, responseBody, err := util.HTTPPost(url, jN, "application/json")
+		code, responseBody, err := util.HTTPPost(url, jN, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while adding a new schema. %v", err)
 		} else {
-			sb := string(responseBody)
-			zap.S().Infof(sb)
+			zap.S().Debugf("Response code: %d | response: %s", code, string(responseBody))
+			zap.S().Debugf("Successfully added %d # of nodes to designId: %s", len(jN.Nodes), designId)
 		}
 		return nil
 	},
@@ -133,6 +131,7 @@ var updateJobNodesCmd = &cobra.Command{
 			"user": user,
 		}
 		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
@@ -148,12 +147,12 @@ var updateJobNodesCmd = &cobra.Command{
 		}
 
 		//send post request
-		_, responseBody, err := util.HTTPPut(url, jN, "application/json")
+		code, responseBody, err := util.HTTPPut(url, jN, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while adding a new schema. %v", err)
 		} else {
-			sb := string(responseBody)
-			zap.S().Infof(sb)
+			zap.S().Debugf("Response code: %d | response: %s", code, string(responseBody))
+			zap.S().Debugf("Successfully updated the designId: %s with %d # of nodes", designId, len(jN.Nodes))
 		}
 		return nil
 	},

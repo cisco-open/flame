@@ -103,7 +103,11 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		}
 		return objects.Response(http.StatusMultiStatus, resp), nil
 	}
-	return objects.Response(http.StatusCreated, responseBody), nil
+
+	//everything went well and response is a job id
+	resp := map[string]string{}
+	err = util.ByteToStruct(responseBody, &resp)
+	return objects.Response(http.StatusCreated, resp), nil
 }
 
 // UpdateJob - Update job by id.

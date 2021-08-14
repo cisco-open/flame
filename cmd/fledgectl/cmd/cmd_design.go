@@ -57,6 +57,7 @@ var createDesignCmd = &cobra.Command{
 			"user": user,
 		}
 		url := util.CreateURI(ip, portNo, util.CreateDesignEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		//Encode the data
 		postBody := objects.DesignInfo{
@@ -65,13 +66,13 @@ var createDesignCmd = &cobra.Command{
 		}
 
 		//send post request
-		_, responseBody, err := util.HTTPPost(url, postBody, "application/json")
+		code, responseBody, err := util.HTTPPost(url, postBody, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while creating a new design templated. %v", err)
 			return err
 		}
-		sb := string(responseBody)
-		zap.S().Infof(sb)
+		zap.S().Infof("Code: %d | Response: %s", code, string(responseBody))
+		zap.S().Infof("New design created." )
 
 		return nil
 	},
@@ -109,6 +110,7 @@ var getDesignCmd = &cobra.Command{
 			"designId": dId,
 		}
 		url := util.CreateURI(ip, portNo, util.GetDesignEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		//send get request
 		responseBody, _ := util.HTTPGet(url)
@@ -158,7 +160,7 @@ var getDesignsCmd = &cobra.Command{
 			"limit": limit,
 		}
 		url := util.CreateURI(ip, portNo, util.GetDesignsEndPoint, uriMap)
-
+		printCmdInfo(ip, portNo, url)
 		//send get request
 		responseBody, _ := util.HTTPGet(url)
 
