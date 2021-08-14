@@ -12,11 +12,11 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-//TODO remove me after demo-day
-var Conf objects.AppConf
+//TODO refactor AgentStatus object
+var App AppInfo
 
 func NewJobInit(info objects.AppConf) {
-	Conf = info
+	App.Conf = info
 	job := info.JobInfo
 	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.ID, job.DesignId, job.SchemaId, info.Role)
 
@@ -57,24 +57,27 @@ func NewJobInit(info objects.AppConf) {
 
 //NewJobStart starts the application on the agent
 func NewJobStart(info objects.AppConf) {
-	req := objects.AgentStatus{
-		UpdateType: util.JobStatus,
-		Status:     "",
-		Message:    "",
-	}
-	state, err := startApp(info)
-	if err != nil {
-		req.Status = util.StatusError
-		req.Message = err.Error()
-	} else {
-		req.Status = util.StatusSuccess
-		req.Message = state
-	}
+	if App.State != util.RunningState{
+		req := objects.AgentStatus{
+			UpdateType: util.JobStatus,
+			Status:     "",
+			Message:    "",
+		}
 
-	updateJobStatus(info.JobInfo, req)
+		state, err := startApp(info)
+		if err != nil {
+			req.Status = util.StatusError
+			req.Message = err.Error()
+		} else {
+			req.Status = util.StatusSuccess
+			req.Message = state
+		}
+		updateJobStatus(info.JobInfo, req)
+	}
 }
 
 func JobReload(info objects.AppConf) (string, error) {
+	//TODO - update the appInfo - state/conf etc.
 	zap.S().Debugf("Reloading job ...")
 	return "", nil
 }
@@ -108,7 +111,7 @@ func startApp(info objects.AppConf) (string, error) {
 	//TODO only for development purpose. We should have single command command to start all applications example python3 main.py
 	//cmd := exec.Command("python3", Conf.Command...)
 	//cmd := exec.Command("echo", Conf.Command...)
-	cmd := exec.Command(Conf.Command[0], Conf.Command[1:]...)
+	cmd := exec.Command(App.Conf.Command[0], App.Conf.Command[1:]...)
 	zap.S().Debugf("Starting application. Command : %v", cmd)
 
 	//dump output to a log file
@@ -131,6 +134,12 @@ func startApp(info objects.AppConf) (string, error) {
 }
 
 func updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
+	//update application state
+	App.State = req.Message
+	if req.Status == util.StatusError{
+		App.State = util.ErrorState
+	}
+
 	//Update agents status
 	//construct URL
 	uriMap := map[string]string{

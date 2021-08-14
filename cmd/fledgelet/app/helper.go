@@ -12,6 +12,11 @@ type AgentInfo struct {
 	uuid    string
 }
 
+type AppInfo struct {
+	State string
+	Conf objects.AppConf
+}
+
 func CreateURI(endPoint string, uriMap map[string]string) string {
 	return util.CreateURI(Agent.apiInfo.IP, util.ApiServerRestApiPort, endPoint, uriMap)
 }
