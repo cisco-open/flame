@@ -1,0 +1,22 @@
+nodes:
+  - name: worker1
+    ip: ""
+    uuid: ebad64149cc767ba26ef069819279fd5
+    role: trainer
+    command:
+      - "echo"
+      - "I am US trainer 1"
+  - name: worker2
+    ip: ""
+    uuid: 01925b7892e2ca194993afdd20a7c761
+    role: aggregator
+    command:
+       - "echo"
+       - "I am aggregator"
+  - name: worker3
+    ip: ""
+    uuid: b504f5a746deafd3e78b9c85c20ca653
+    role: global_aggregator
+    command:
+      - "echo"
+      - "I am global aggregator"

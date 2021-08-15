@@ -1,0 +1,80 @@
+- - - - - - - - - - - - - - - - 
+Setup
+- - - - - - - - - - - - - - - - 
+1. Make sure Agents are registered with the notification service (NS). 
+	- can verify it by checking NS logs
+
+2. Login to the pods using the ./ssh_aws.sh script in the /build/script folder
+	- use the following to auto ssh
+	API server - ./ssh_aws.sh api
+	Controller - ./ssh_aws.sh controller
+	NS server  - ./ssh_aws.sh notifier
+	Agent1     - ./ssh_aws.sh agent1
+	Agent2     - ./ssh_aws.sh agent2 etc..
+
+
+- - - - - - - - - - - - - - - - 
+Demo Testing
+- - - - - - - - - - - - - - - - 
+There are different ways you can test
+- by printing echo's and checking them in the corresponding agents logs ($tail -f /var/log/fledge/fledgelet.log)
+- or by running python application and checking the logs ($tail -f /tmp/fledge-job.log)
+
+- - - - - - - - - - - - - - - - 
+Commands to Test
+- - - - - - - - - - - - - - - - 
+- Get All designs
+fledgectl design getList --user "tmpUser"
+
+NOTE-
+1. Make sure designId/schemaId and jobId are replaced appropriately
+2. You would need to create the corresponding yaml files in the api pod
+	- sample yaml files can be found under /build/scripts/jobs/dynamic_nodes/k8 folder
+
+Test1 - All Echo test
+- - - - - - - - - - - - 
+1. Add all job nodes
+fledgectl dev nodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./all_nodes.yaml
+
+2. Submit a job
+fledgectl job submit --user "tmpUser" --name "echo all" --desc "printing echo" --designId 60e781f9b5f71390c1d024a3 --priority "low" --schemaId 6116a6290e8750ace0014e73
+
+
+
+Test2 - Hierarchical Echo Test
+- - - - - - - - - - - - 
+1. Add US nodes
+fledgectl dev nodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./init_nodes.yaml
+
+2. Submit Job
+fledgectl job submit --user "tmpUser" --name "echo hierarchical" --desc "printing echo" --designId 60e781f9b5f71390c1d024a3 --priority "low" --schemaId 6116a6290e8750ace0014e73
+
+3. Update nodes
+fledgectl dev updateNodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./new_nodes.yaml
+
+4. Change schema
+fledgectl job changeSchema --user "tmpUser" --jobId 61187d810f74960d9cbbba65 --designId 60e781f9b5f71390c1d024a3 --schemaId 6116a6290e8750ace0014e73
+
+
+Test3 - All MNIST Test
+- - - - - - - - - - - - 
+1. Add all job nodes
+fledgectl dev nodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./all_nodes.yaml
+
+2. Submit a job
+fledgectl job submit --user "tmpUser" --name "echo all" --desc "all hierarchical mninst" --designId 60e781f9b5f71390c1d024a3 --priority "low" --schemaId 6116a6290e8750ace0014e73
+
+
+Test4 - Hierarchical MNIST Test
+- - - - - - - - - - - - 
+1. Add US nodes
+fledgectl dev nodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./init_nodes.yaml
+
+2. Submit Job
+fledgectl job submit --user "tmpUser" --name "hierarchical minst" --desc "printing echo" --designId 60e781f9b5f71390c1d024a3 --priority "low" --schemaId 6116a6290e8750ace0014e73
+
+3. Update nodes
+fledgectl dev updateNodes --userId "tmpUser" --designId 60e781f9b5f71390c1d024a3 --conf ./new_nodes.yaml
+
+4. Change schema
+fledgectl job changeSchema --user "tmpUser" --jobId 61187d810f74960d9cbbba65 --designId 60e781f9b5f71390c1d024a3 --schemaId 6116a6290e8750ace0014e73

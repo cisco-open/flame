@@ -1,0 +1,43 @@
+nodes:
+  - name: worker1
+    ip: ""
+    uuid: d36248a290c57464c39a883f7118fe4e
+    role: trainer
+    command:
+      - "echo"
+      - "I am US trainer 1"
+  - name: worker2
+    ip: ""
+    uuid: 3276821c07ebedc6fc5e751555145aa3
+    role: trainer
+    command:
+      - "echo"
+      - "I am US trainer 2"
+  - name: worker3
+    ip: ""
+    uuid: 29e4f49c4e0662b9a93114dedc7abd03
+    role: aggregator
+    command:
+       - "echo"
+       - "I am aggregator"
+  - name: worker6
+    ip: ""
+    uuid: 70d9e6e6e6701bd5515b84734b96356b
+    role: global_aggregator
+    command:
+      - "echo"
+      - "I am global aggregator"
+  - name: worker4
+    ip: ""
+    uuid: a5eab085120fd0ea1bc34c3fa5435991
+    role: trainer
+    command:
+      - "echo"
+      - "I am UK trainer 1"
+  - name: worker5
+    ip: ""
+    uuid: 87bfe76e609dcef020982b60127a9c8e
+    role: aggregator
+    command:
+      - "echo"
+      - "I am UK aggregator"

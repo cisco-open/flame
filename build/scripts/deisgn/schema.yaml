@@ -1,0 +1,26 @@
+schemas:
+  - name: Demo schema
+    description: Sample schema to demostrate a TAG layout.
+    roles:
+      - name: trainer
+        description: These are responsible to consume the data and train local model
+        isDataConsumer: true
+      - name: aggregator
+        description: These are responsible to aggregate the updates from trainer nodes.
+        replica: 2
+      - name: global_aggregator
+        description: It is responsible to aggregate the updates from all the aggregators and make a generic model.
+        replica: 2
+    channels:
+      - name: trainer-agg-channel
+        description: Model update is sent from trainer to aggregator and vice-versa.
+        pair: ["trainer", "aggregator"]
+        groupBy:
+          type: tag
+          value : ["us"]
+      - name: agg-global-channel
+        description: Model update is sent from all aggregators to the global aggregator and vice-versa.
+        pair: ["aggregator", "global_aggregator"]
+        groupBy:
+          type: tag
+          value : ["us"]
