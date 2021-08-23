@@ -33,7 +33,8 @@ func NewJobsApiService() JobsApiServicer {
 }
 
 // GetJobs - Get list of all the jobs by the user or based on designId.
-func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (objects.ImplResponse, error) {
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string,
+	limit int32) (objects.ImplResponse, error) {
 	//TODO - validate the input
 	zap.S().Debugf("Get list of all jobs for user: %s | getType: %s | designId: %s", user, getType, designId)
 

@@ -60,5 +60,4 @@ func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

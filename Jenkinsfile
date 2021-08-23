@@ -20,9 +20,8 @@ def pipelinesettings = [
   unittest: 1,                                  // Unit-test
   build: 1,                                     // Build container
   executeCC: 1,                                 // Generate Code Coverage report
-  // TODO: can't enable lint and sonarqube yet because there are many errors
-  // TODO: enable them after all errors are handled
-  // lint: 1,                                      // GO Lint
+  lint: 1,                                      // GO Lint
+  // TODO: sonarQube fails at the moment. Enable it after a fix is found
   // sonarQube: 1,                                 // SonarQube scan
   publishContainer: 1,                          // Publish container
   ecr: 1,                                       // Publish container to Private ECR

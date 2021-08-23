@@ -23,15 +23,15 @@ func (s *notificationServer) JobNotification(ctx context.Context, in *pbNotifica
 	//notification handler
 	var nsType pbNotification.StreamResponse_ResponseType
 	switch jobMsg.NotificationType {
-		case  util.InitState :
-			nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT
-		case util.StartState :
-			nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_START
-		case util.ReloadState :
-			nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_RELOAD
-		default:
-			zap.S().Errorf("invalid job notification type: %s", jobMsg.NotificationType)
-			return nil, errors.New("invalid job notification type")
+	case util.InitState:
+		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_INIT
+	case util.StartState:
+		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_START
+	case util.ReloadState:
+		nsType = pbNotification.StreamResponse_JOB_NOTIFICATION_RELOAD
+	default:
+		zap.S().Errorf("invalid job notification type: %s", jobMsg.NotificationType)
+		return nil, errors.New("invalid job notification type")
 	}
 	zap.S().Debugf("Sending job notification to the following clients %v. Notification type: %s", jobMsg.Agents, jobMsg.NotificationType)
 

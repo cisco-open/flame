@@ -64,7 +64,6 @@ func (c *DesignSchemaApiController) GetDesignSchema(w http.ResponseWriter, r *ht
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // UpdateDesignSchema - Update a design schema
@@ -87,5 +86,4 @@ func (c *DesignSchemaApiController) UpdateDesignSchema(w http.ResponseWriter, r 
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

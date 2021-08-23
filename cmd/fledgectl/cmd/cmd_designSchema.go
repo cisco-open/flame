@@ -56,16 +56,19 @@ var createDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
+		// read schemas from the yaml file
+		y := objects.DesignSchemas{}
+		err = yaml.Unmarshal(yamlFile, &y)
+		if err != nil {
+			return err
+		}
+
 		//construct URL
 		uriMap := map[string]string{
 			"user":     user,
 			"designId": designId,
 		}
 		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
-
-		//Read schemas from the yaml file
-		var y = objects.DesignSchemas{}
-		err = yaml.Unmarshal(yamlFile, &y)
 
 		//Send post request for each schema
 		for _, s := range y.Schemas {
@@ -125,17 +128,21 @@ var updateDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
+		// read schemas from the yaml file
+		schema := objects.DesignSchema{}
+		err = yaml.Unmarshal(yamlFile, &schema)
+		if err != nil {
+			return err
+		}
+
+		schema.ID = schemaId
+
 		//construct URL
 		uriMap := map[string]string{
 			"user":     user,
 			"designId": designId,
 		}
 		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
-
-		//Read schemas from the yaml file
-		var schema = objects.DesignSchema{}
-		err = yaml.Unmarshal(yamlFile, &schema)
-		schema.ID = schemaId
 
 		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
 		if err != nil {

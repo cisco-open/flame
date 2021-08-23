@@ -3,13 +3,12 @@ package cmd
 import (
 	"io/ioutil"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
-
-	"gopkg.in/yaml.v3"
-
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 var devCmd = &cobra.Command{
@@ -57,13 +56,6 @@ var jobNodesCmd = &cobra.Command{
 			return err
 		}
 
-		//construct URL
-		uriMap := map[string]string{
-			"user": user,
-		}
-		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
-
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
 		type Tmp struct {
@@ -71,6 +63,16 @@ var jobNodesCmd = &cobra.Command{
 		}
 		y := Tmp{}
 		err = yaml.Unmarshal(yamlFile, &y)
+		if err != nil {
+			return err
+		}
+
+		//construct URL
+		uriMap := map[string]string{
+			"user": user,
+		}
+		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		jN := objects.JobNodes{
 			DesignId: designId,
@@ -126,13 +128,6 @@ var updateJobNodesCmd = &cobra.Command{
 			return err
 		}
 
-		//construct URL
-		uriMap := map[string]string{
-			"user": user,
-		}
-		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
-
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
 		type Tmp struct {
@@ -140,6 +135,16 @@ var updateJobNodesCmd = &cobra.Command{
 		}
 		y := Tmp{}
 		err = yaml.Unmarshal(yamlFile, &y)
+		if err != nil {
+			return err
+		}
+
+		//construct URL
+		uriMap := map[string]string{
+			"user": user,
+		}
+		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(ip, portNo, url)
 
 		jN := objects.JobNodes{
 			DesignId: designId,

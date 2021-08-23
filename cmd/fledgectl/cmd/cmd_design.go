@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"os"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
-
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 var designCmd = &cobra.Command{
@@ -72,7 +72,7 @@ var createDesignCmd = &cobra.Command{
 			return err
 		}
 		zap.S().Infof("Code: %d | Response: %s", code, string(responseBody))
-		zap.S().Infof("New design created." )
+		zap.S().Infof("New design created.")
 
 		return nil
 	},
@@ -206,5 +206,4 @@ func init() {
 
 	//GET DESIGNS
 	getDesignsCmd.Flags().StringP("limit", "l", "100", "List of all the designs by this user")
-
 }

@@ -74,5 +74,4 @@ func newNotification(in *pbNotification.StreamResponse) {
 			zap.S().Errorf("Invalid message type: %s", in.GetType())
 		}
 	}
-
 }

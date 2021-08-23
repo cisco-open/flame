@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
@@ -41,7 +42,15 @@ func RunServer(portNo uint16, ctlrInfo objects.ServerInfo) error {
 	DevServiceApi := NewDevApiService()
 	DevServiceApiController := NewDevApiController(DevServiceApi)
 
-	router := NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController, AgentServiceApiController)
+	router := NewRouter(
+		DesignApiController,
+		DesignsApiController,
+		DesignSchemaApiController,
+		JobServiceApiController,
+		JobsServiceApiController,
+		DevServiceApiController,
+		AgentServiceApiController,
+	)
 
 	addr := fmt.Sprintf(":%d", portNo)
 	zap.S().Fatal(http.ListenAndServe(addr, router))

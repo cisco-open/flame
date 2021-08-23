@@ -48,12 +48,11 @@ structured logging.
 func InitZapLog(service string) *zap.Logger {
 	dirPath := filepath.Join("/var/log", ProjectName)
 	logPath := filepath.Join(dirPath, service+".log")
-	err := os.MkdirAll(dirPath, 0755)
+	err := os.MkdirAll(dirPath, FilePerm0755)
 	if err != nil {
 		fmt.Printf("Can't create directory: %v\n", err)
 		return nil
 	}
-
 
 	config := zap.NewDevelopmentConfig()
 	//default
@@ -251,6 +250,7 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 	}
 
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(putBody))
+	ErrorNilCheck(GetFunctionName(HTTPPut), err)
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	client := &http.Client{}

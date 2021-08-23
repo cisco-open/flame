@@ -62,5 +62,4 @@ func (c *AgentApiController) UpdateAgentStatus(w http.ResponseWriter, r *http.Re
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

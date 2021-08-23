@@ -12,6 +12,7 @@ package openapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -37,7 +38,8 @@ func NewJobApiService() JobApiServicer {
 // DeleteJob - Delete job by id.
 func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	// TODO - update DeleteJob with the required logic for this service method.
-	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
 	//return Response(200, nil),nil
@@ -71,10 +73,11 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 		return objects.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
 	}
 
-	//get design detail that is passed to the nodes as part of notification
+	// get design detail that is passed to the nodes as part of notification
 	schemaInfo, err := database.GetDesignSchema(util.InternalUser, jobInfo.DesignId, util.ID, jobInfo.SchemaId)
 	if err != nil {
-		return objects.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed. Failed to fetch schema information")
+		err = fmt.Errorf("submit new job request failed: %v", err)
+		return objects.Response(http.StatusInternalServerError, nil), err
 	}
 
 	//Notify the agents about new job
@@ -118,7 +121,8 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	return objects.Response(http.StatusCreated, map[string]string{util.ID: jId}), nil
 }
 
-//TODO Code related to calling cluster manager to get nodes to be added here. For development purpose we are assuming that information is present in-memory
+// TODO: Code related to calling cluster manager to get nodes to be added here.
+// For development purpose we are assuming that information is present in-memory
 func getNodes(designId string) []objects.ServerInfo {
 	zap.S().Debugf("Getting nodes for designId: %s", designId)
 	var agentInfo []objects.ServerInfo
@@ -133,7 +137,8 @@ func getNodes(designId string) []objects.ServerInfo {
 // UpdateJob - Update job by id.
 func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	// TODO - update UpdateJobEndPoint with the required logic for this service method.
-	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
 	//return Response(200, nil),nil
@@ -145,7 +150,8 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 }
 
 // ChangeJobSchema - Change the schema for the given job
-func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, newSchemaId string, designId string) (objects.ImplResponse, error) {
+func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, newSchemaId string,
+	designId string) (objects.ImplResponse, error) {
 	//step 1 - get old schema details
 	oldSchema := Cache.jobSchema[jobId]
 
@@ -153,14 +159,15 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 	//get design detail that is passed to the nodes as part of notification
 	res, err := database.GetDesignSchema(util.InternalUser, designId, util.ID, newSchemaId)
 	if err != nil {
-		zap.S().Errorf("error while updating the schema for existing job: %s | new schema id: %s. Failed to fetch new schema information. %v", jobId, newSchemaId, err)
-		return objects.Response(http.StatusInternalServerError, nil), errors.New("change job schema request failed. Failed to fetch new schema information")
+		err = fmt.Errorf("change job schema request failed - job: %s | new schema id: %s | %v", jobId, newSchemaId, err)
+		zap.S().Error(err)
+		return objects.Response(http.StatusInternalServerError, nil), err
 	}
 	newSchema := res[0]
 	zap.S().Debugf("schema : %v | %v", oldSchema, newSchema)
 
 	//step 3 - check the old and new schema to determine the -new nodes required and -determine changes in the existing nodes
-	existingNodes, newNodes := getNodesToNotify(jobId, designId, oldSchema, newSchema)
+	existingNodes, newNodes := getNodesToNotify(designId)
 
 	//step 4 - update the job details in Database - 1) change schema id to new schema id and 2) add new nodes
 	err = database.UpdateJobDetails(jobId, util.ChangeJobSchema, map[string]interface{}{
@@ -180,12 +187,13 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 	//step 6 - Get updated job information
 	jobInfo, err := database.GetJob(util.InternalUser, jobId)
 	if err != nil {
-		zap.S().Errorf("schema update for the existing job: %s | new schema id: %s. Failed while getting updated job information from database %v", jobId, newSchemaId, err)
-		return objects.Response(http.StatusMultiStatus, nil), errors.New("successfully changed the schema for the existing job. Error while getting updated job information from database")
+		err = fmt.Errorf("getting updated job info failed - job: %s | new schema id: %s | %v", jobId, newSchemaId, err)
+		zap.S().Error(err)
+		return objects.Response(http.StatusMultiStatus, nil), err
 	}
 
 	//step 7 - Send corresponding notifications to the nodes.
-	sendNotification := func(agentList []objects.ServerInfo, nsType string, nodeType string) bool{
+	sendNotification := func(agentList []objects.ServerInfo, nsType string, nodeType string) bool {
 		isError := false
 		if len(agentList) > 0 {
 			jobMsg := objects.JobNotification{
@@ -194,18 +202,20 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 				SchemaInfo:       newSchema,
 				NotificationType: nsType,
 			}
-			zap.S().Debugf("Sending notification to all the %s nodes (count: %d) for the job id: %s. Info: %v", nodeType, len(agentList), jobId, jobMsg)
+			zap.S().Debugf("Notifying %d nodes (type: %s) for job: %s; msg: %v", len(agentList), nodeType, jobId, jobMsg)
 			resp, err := grpcctlr.ControllerGRPC.SendNotification(grpcctlr.JobNotification, jobMsg)
 
 			if err != nil {
-				//TODO currently we are ignoring the failure. Add a flag to check the job configuration if setting is to stop or continue
-				zap.S().Errorf("failed to notify the new nodes about the job. %v", err)
+				// TODO: currently we are ignoring the failure. Add a flag to check
+				//       the job configuration if setting is to stop or continue
+				zap.S().Errorf("failed to notify the new nodes about the job: %v", err)
 				isError = true
 			}
 
-			//Check for partial error
+			// Check for partial error
 			if resp.GetStatus() == pbNotification.Response_SUCCESS_WITH_ERROR {
-				zap.S().Errorf("error while sending out job notification to the %s nodes added for jobId: %s. Only partial clients notified.", nodeType, jobId)
+				msgTemplate := "error while sending out job notification to %s nodes for job: %s; clients notified partially"
+				zap.S().Errorf(msgTemplate, nodeType, jobId)
 				isError = true
 				//TODO what steps should be taken if an error occurs for few of the new nodes.
 				//msResponse := map[string]interface{}{
@@ -222,14 +232,16 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 	nsError := sendNotification(newNodes, util.InitState, "NEW")
 	nsError = sendNotification(existingNodes, util.InitState, "EXISTING") || nsError
 	if !nsError {
-		return objects.Response(http.StatusMultiStatus, nil), errors.New("successfully changed the schema for the existing job. Error while notifying the new/existing nodes")
+		err := fmt.Errorf("successfully changed the schema for the existing job; error while notifying the new/existing nodes")
+		return objects.Response(http.StatusMultiStatus, nil), err
 	}
 
 	return objects.Response(http.StatusOK, nil), nil
 }
 
-//TODO Based on the changes in the schema determine 1) the new worker nodes that are required to be added and 2) nodes that will get affected by schema update
-func getNodesToNotify(jobId string, designId string, oldSchema objects.DesignSchema, newSchema objects.DesignSchema) ([]objects.ServerInfo, []objects.ServerInfo) {
+// TODO: Based on the changes in the schema determine 1) the new worker nodes that are required to be added
+// and 2) nodes that will get affected by schema update
+func getNodesToNotify(designId string) ([]objects.ServerInfo, []objects.ServerInfo) {
 	var existingAgentInfo []objects.ServerInfo
 	var newAgentInfo []objects.ServerInfo
 
@@ -246,7 +258,7 @@ func getNodesToNotify(jobId string, designId string, oldSchema objects.DesignSch
 		JobNodesInMem[designId].Nodes[i].IsUpdated = false
 	}
 
-	zap.S().Debugf("new nodes: %v", newAgentInfo)
-	zap.S().Debugf("existing nodes: %v", existingAgentInfo)
+	zap.S().Debugf("new nodes: %v for job: %s", newAgentInfo)
+	zap.S().Debugf("existing nodes: %v for job: %s", existingAgentInfo)
 	return existingAgentInfo, newAgentInfo
 }

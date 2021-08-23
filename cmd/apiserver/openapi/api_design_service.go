@@ -34,7 +34,7 @@ func NewDesignApiService() DesignApiServicer {
 // CreateDesign - Create a new design template.
 func (s *DesignApiService) CreateDesign(ctx context.Context, user string, designInfo objects.DesignInfo) (objects.ImplResponse, error) {
 	//TODO input validation
-	zap.S().Debugf("New design request recieved for user: %s | designInfo: %v", user, designInfo)
+	zap.S().Debugf("New design request received for user: %s | designInfo: %v", user, designInfo)
 
 	//create controller request
 	uriMap := map[string]string{

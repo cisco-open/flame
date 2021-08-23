@@ -60,4 +60,9 @@ const (
 	Controller = "controller"
 	Notifier   = "notifier"
 	CliTool    = "fledgectl"
+
+	// file permission
+	FilePerm0644 = 0644
+	FilePerm0700 = 0700
+	FilePerm0755 = 0755
 )

@@ -31,7 +31,8 @@ func NewAgentApiService() AgentApiServicer {
 }
 
 // UpdateAgentStatus - Update agent status for job id.
-func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jobId string, agentId string, agentStatus objects.AgentStatus) (objects.ImplResponse, error) {
+func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jobId string, agentId string,
+	agentStatus objects.AgentStatus) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Update agent status agentId: %s | jobId: %s | update type: %s", agentId, jobId, agentStatus.UpdateType)
 

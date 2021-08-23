@@ -32,7 +32,8 @@ func NewDesignCodeApiService() DesignCodeApiServicer {
 // GetDesignCode - Get a zipped design code file owned by user
 func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (objects.ImplResponse, error) {
 	// TODO - update GetDesignCode with the required logic for this service method.
-	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, *os.File{}) or use other options such as http.Ok ...
 	//return Response(200, *os.File{}), nil
@@ -44,9 +45,11 @@ func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, d
 }
 
 // UpdateDesignCode - Update a design doce
-func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string, body *os.File) (objects.ImplResponse, error) {
+func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string,
+	body *os.File) (objects.ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
-	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
 	//return Response(201, nil),nil

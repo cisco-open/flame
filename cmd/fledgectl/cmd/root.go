@@ -32,8 +32,8 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
-func printCmdInfo(ip string, portNo int64, url string){
-	separator :="- - - - - - - - - - - - - - -"
+func printCmdInfo(ip string, portNo int64, url string) {
+	separator := "- - - - - - - - - - - - - - -"
 	fmt.Printf("%s\nServer: %s:%d\n", separator, ip, portNo)
 	fmt.Printf("URL: %s\n%s\n", url, separator)
 }

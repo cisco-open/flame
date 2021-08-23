@@ -96,14 +96,14 @@ func (db *MongoService) DeleteJob(userId string, jobId string) error {
 */
 func (db *MongoService) UpdateJobDetails(jobId string, updateType string, msg interface{}) error {
 	switch updateType {
-		case util.AddJobNodes:
-			return db.addJobNodes(jobId, msg)
-		case util.JobStatus:
-			return db.updateNodeJobStatus(jobId, msg)
-		case util.ChangeJobSchema:
-			return db.changeJobSchema(jobId, msg)
-		default:
-			return errors.New("update job details request failed due to invalid update type")
+	case util.AddJobNodes:
+		return db.addJobNodes(jobId, msg)
+	case util.JobStatus:
+		return db.updateNodeJobStatus(jobId, msg)
+	case util.ChangeJobSchema:
+		return db.changeJobSchema(jobId, msg)
+	default:
+		return errors.New("update job details request failed due to invalid update type")
 	}
 }
 

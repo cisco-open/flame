@@ -12,6 +12,10 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
+const (
+	defaultItemLimit = 100
+)
+
 var jobCmd = &cobra.Command{
 	Use:   "job",
 	Short: "Job Submission Commands",
@@ -96,7 +100,8 @@ var submitJobCmd = &cobra.Command{
 			if err != nil {
 				zap.S().Errorf("error decoding response %v", err)
 			}
-			zap.S().Infof("Job request submitted with partial error with job id:%s and failed to notifiy clients: %v", resp[util.ID], resp[util.Errors])
+			zap.S().Infof("Job request submitted with partial error with job id:%s and failed to notifiy clients: %v",
+				resp[util.ID], resp[util.Errors])
 		} else {
 			resp := map[string]interface{}{}
 			_ = util.ByteToStruct(responseBody, &resp)
@@ -145,7 +150,7 @@ var getJobCmd = &cobra.Command{
 		//send get request
 		responseBody, err := util.HTTPGet(url)
 		if err != nil {
-			zap.S().Errorf("error while getting job infromation %v", err)
+			zap.S().Errorf("error while getting job information %v", err)
 			return err
 		}
 
@@ -374,7 +379,7 @@ func init() {
 	//GET JOB(s)
 	getAllJobsCmd.Flags().StringP("type", "t", "all", "Fetch list of all jobs for given user based on type. Options - all/design")
 	getAllJobsCmd.Flags().StringP("designId", "d", "", "Design Id")
-	getAllJobsCmd.Flags().Int32P("limit", "l", 100, "Item count to be returned")
+	getAllJobsCmd.Flags().Int32P("limit", "l", defaultItemLimit, "Item count to be returned")
 
 	testCmd.Flags().StringP("jobId", "j", "", "Job Id")
 	testCmd.Flags().StringP("uuid", "x", "", "Agent UUID")

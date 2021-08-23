@@ -58,5 +58,4 @@ func (c *DesignsApiController) GetDesigns(w http.ResponseWriter, r *http.Request
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

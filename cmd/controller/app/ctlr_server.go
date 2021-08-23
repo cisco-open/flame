@@ -21,7 +21,7 @@ func StartController(dbInfo database.DBInfo, nsInfo objects.ServerInfo) error {
 	return nil
 }
 
-//connectDB initalize and connect to the database connection
+//connectDB initialize and connect to the database connection
 func connectDB(info database.DBInfo) {
 	zap.S().Infof("Connecting to %s database at %v", info.Name, info.URI)
 	database.NewDBService(info)
@@ -60,7 +60,15 @@ func startServer() {
 	DevServiceApi := openapi.NewDevApiService()
 	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
 
-	router := openapi.NewRouter(DesignApiController, DesignsApiController, DesignSchemaApiController, JobServiceApiController, JobsServiceApiController, DevServiceApiController, AgentServiceApiController)
+	router := openapi.NewRouter(
+		DesignApiController,
+		DesignsApiController,
+		DesignSchemaApiController,
+		JobServiceApiController,
+		JobsServiceApiController,
+		DevServiceApiController,
+		AgentServiceApiController,
+	)
 	addr := fmt.Sprintf(":%d", util.ControllerRestApiPort)
 	zap.S().Fatal(http.ListenAndServe(addr, router))
 }

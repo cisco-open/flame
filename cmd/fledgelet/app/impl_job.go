@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -57,7 +58,7 @@ func NewJobInit(info objects.AppConf) {
 
 //NewJobStart starts the application on the agent
 func NewJobStart(info objects.AppConf) {
-	if App.State != util.RunningState{
+	if App.State != util.RunningState {
 		req := objects.AgentStatus{
 			UpdateType: util.JobStatus,
 			Status:     "",
@@ -84,16 +85,16 @@ func JobReload(info objects.AppConf) (string, error) {
 
 func initApp(info objects.AppConf) error {
 	//directory path
-	fp := filepath.Join("/fledge/job/" , Agent.uuid , info.JobInfo.ID)
+	fp := filepath.Join("/fledge/job/", Agent.uuid, info.JobInfo.ID)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
 		zap.S().Debugf("Creating filepath: %s", fp)
-		os.MkdirAll(fp, 0700) // Create your file
+		os.MkdirAll(fp, util.FilePerm0700) // Create your file
 	}
 	confFilePath := fp + "/conf.json"
 
 	//create a configuration file for the application
 	file, _ := json.MarshalIndent(info, "", " ")
-	err := ioutil.WriteFile(confFilePath, file, 0644)
+	err := ioutil.WriteFile(confFilePath, file, util.FilePerm0644)
 	return err
 }
 
@@ -107,7 +108,7 @@ func startAppPolicy(info objects.AppConf) bool {
 	return false
 }
 
-func startApp(info objects.AppConf) (string, error) {
+func startApp(_ objects.AppConf) (string, error) {
 	//TODO only for development purpose. We should have single command command to start all applications example python3 main.py
 	//cmd := exec.Command("python3", Conf.Command...)
 	//cmd := exec.Command("echo", Conf.Command...)
@@ -136,7 +137,7 @@ func startApp(info objects.AppConf) (string, error) {
 func updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
 	//update application state
 	App.State = req.Message
-	if req.Status == util.StatusError{
+	if req.Status == util.StatusError {
 		App.State = util.ErrorState
 	}
 

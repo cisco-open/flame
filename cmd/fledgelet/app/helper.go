@@ -14,7 +14,7 @@ type AgentInfo struct {
 
 type AppInfo struct {
 	State string
-	Conf objects.AppConf
+	Conf  objects.AppConf
 }
 
 func CreateURI(endPoint string, uriMap map[string]string) string {

@@ -34,7 +34,8 @@ func NewJobApiService() JobApiServicer {
 // DeleteJob - Delete job by id.
 func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	// TODO - update DeleteJob with the required logic for this service method.
-	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
 	//return Response(200, nil),nil
@@ -54,7 +55,7 @@ func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string
 // GetJob - Get job detail.
 func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (objects.ImplResponse, error) {
 	//TODO - validate the input
-	zap.S().Debugf("Get job details recieved for user: %s | jobId: %v", user, jobId)
+	zap.S().Debugf("Get job details received for user: %s | jobId: %v", user, jobId)
 
 	//create controller request
 	uriMap := map[string]string{
@@ -78,7 +79,7 @@ func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (
 // SubmitJob - Submit a new job.
 func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	//TODO - validate the input
-	zap.S().Debugf("New job request recieved for user: %s | jobInfo: %v", user, jobInfo)
+	zap.S().Debugf("New job request received for user: %s | jobInfo: %v", user, jobInfo)
 
 	//create controller request
 	jobInfo.UserId = user
@@ -97,7 +98,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 
 	if code == http.StatusMultiStatus {
 		resp := map[string]interface{}{}
-		err := util.ByteToStruct(responseBody, &resp)
+		err = util.ByteToStruct(responseBody, &resp)
 		if err != nil {
 			zap.S().Errorf("error sending out mutlistatus response %v", err)
 		}
@@ -107,13 +108,19 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	//everything went well and response is a job id
 	resp := map[string]string{}
 	err = util.ByteToStruct(responseBody, &resp)
+	// TODO: simply printing the error doesn't look correct; rethink this again
+	if err != nil {
+		zap.S().Errorf("error sending out response %v", err)
+	}
+
 	return objects.Response(http.StatusCreated, resp), nil
 }
 
 // UpdateJob - Update job by id.
 func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string, jobInfo objects.JobInfo) (objects.ImplResponse, error) {
 	// TODO - update UpdateJobEndPoint with the required logic for this service method.
-	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation when updating open api generation.
+	// Add api_job_service.go to the .openapi-generator-ignore to avoid overwriting this service implementation
+	// when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
 	//return Response(200, nil),nil
@@ -125,7 +132,8 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 }
 
 // ChangeJobSchema - Change the schema for the given job
-func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, schemaId string, designId string) (objects.ImplResponse, error) {
+func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, schemaId string,
+	designId string) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Change design schema for the given jobId: %s | schemdId: %s | designId: %s", jobId, schemaId, designId)
 
@@ -144,7 +152,8 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 
 	//response to the user
 	if err != nil {
-		return objects.Response(http.StatusInternalServerError, nil), errors.New("error while changing the design schema for the given job")
+		errMsg := "error while changing the design schema for the given job"
+		return objects.Response(http.StatusInternalServerError, nil), errors.New(errMsg)
 	}
 	return objects.Response(http.StatusOK, nil), err
 }

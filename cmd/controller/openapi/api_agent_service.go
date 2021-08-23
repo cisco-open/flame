@@ -15,6 +15,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
 	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/grpc"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
@@ -34,12 +35,15 @@ func NewAgentApiService() AgentApiServicer {
 }
 
 // UpdateAgentStatus - Update agent status for job id.
-func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jobId string, agentId string, agentStatus objects.AgentStatus) (objects.ImplResponse, error) {
+func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jobId string, agentId string,
+	agentStatus objects.AgentStatus) (objects.ImplResponse, error) {
 	zap.S().Debugf("Update agent status agentId: %s | jobId: %s | update type: %s", agentId, jobId, agentStatus.UpdateType)
 
-	//JobStatus implies agent sending a status about the init/start state of the application.
-	//When a job is submitted the first notification from the agents for a non data consumer nodes should be running/error while for a data consumer node it would be ready.
-	//As applications start to come up, after every update we will check if the trainers (also called as data consumers) are required to be started.
+	// JobStatus implies agent sending a status about the init/start state of the application.
+	// When a job is submitted the first, notification from the agents for a non data consumer nodes
+	// should be running/error while for a data consumer node it would be ready.
+	// As applications start to come up, after every update we will check if the trainers
+	// (also called as data consumers) are required to be started.
 	if agentStatus.UpdateType == util.JobStatus {
 		//Step 1 - status update
 		err := updateJobStatus(jobId, agentId, agentStatus)
@@ -125,7 +129,7 @@ func updateJobStatus(jobId string, agentId string, agentStatus objects.AgentStat
 	for index, agent := range Cache.jobAgents[jobId] {
 		if agent.Uuid == agentId {
 			state := util.ErrorState
-			if state = util.ErrorState; agentStatus.Status == util.StatusSuccess {
+			if agentStatus.Status == util.StatusSuccess {
 				state = agentStatus.Message
 			}
 			//update database
@@ -137,6 +141,7 @@ func updateJobStatus(jobId string, agentId string, agentStatus objects.AgentStat
 				zap.S().Errorf("error updating the node status in db")
 				return err
 			}
+
 			//update cache
 			Cache.jobAgents[jobId][index].State = state
 			isFound = true

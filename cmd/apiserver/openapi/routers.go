@@ -12,13 +12,13 @@ package openapi
 import (
 	"encoding/json"
 	"errors"
-	"github.com/gorilla/mux"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"strconv"
-	"strings"
+
+	"github.com/gorilla/mux"
 )
 
 // A Route defines the parameters for an api endpoint
@@ -83,7 +83,8 @@ func ReadFormFileToTempFile(r *http.Request, key string) (*os.File, error) {
 
 // ReadFormFilesToTempFiles reads files array data from a request form and writes it to a temporary files
 func ReadFormFilesToTempFiles(r *http.Request, key string) ([]*os.File, error) {
-	if err := r.ParseMultipartForm(32 << 20); err != nil {
+	maxMemory := 32 << 20 // 32MB
+	if err := r.ParseMultipartForm(int64(maxMemory)); err != nil {
 		return nil, err
 	}
 
@@ -127,6 +128,7 @@ func readFileHeaderToTempFile(fileHeader *multipart.FileHeader) (*os.File, error
 	return file, nil
 }
 
+/*
 // parseInt64Parameter parses a string parameter to an int64.
 func parseInt64Parameter(param string, required bool) (int64, error) {
 	if param == "" {
@@ -139,6 +141,7 @@ func parseInt64Parameter(param string, required bool) (int64, error) {
 
 	return strconv.ParseInt(param, 10, 64)
 }
+*/
 
 // parseInt32Parameter parses a string parameter to an int32.
 func parseInt32Parameter(param string, required bool) (int32, error) {
@@ -150,7 +153,9 @@ func parseInt32Parameter(param string, required bool) (int32, error) {
 		return 0, nil
 	}
 
-	val, err := strconv.ParseInt(param, 10, 32)
+	base := 10
+	bitSize := 32
+	val, err := strconv.ParseInt(param, base, bitSize)
 	if err != nil {
 		return -1, err
 	}
@@ -158,6 +163,7 @@ func parseInt32Parameter(param string, required bool) (int32, error) {
 	return int32(val), nil
 }
 
+/*
 // parseBoolParameter parses a string parameter to a bool
 func parseBoolParameter(param string) (bool, error) {
 	val, err := strconv.ParseBool(param)
@@ -215,3 +221,4 @@ func parseInt32ArrayParameter(param, delim string, required bool) ([]int32, erro
 
 	return ints, nil
 }
+*/

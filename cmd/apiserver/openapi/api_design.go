@@ -64,7 +64,6 @@ func (c *DesignApiController) CreateDesign(w http.ResponseWriter, r *http.Reques
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // GetDesign - Get design template information
@@ -82,5 +81,4 @@ func (c *DesignApiController) GetDesign(w http.ResponseWriter, r *http.Request) 
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

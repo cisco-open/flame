@@ -61,7 +61,6 @@ func (c *DesignCodeApiController) GetDesignCode(w http.ResponseWriter, r *http.R
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // UpdateDesignCode - Update a design doce
@@ -85,5 +84,4 @@ func (c *DesignCodeApiController) UpdateDesignCode(w http.ResponseWriter, r *htt
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

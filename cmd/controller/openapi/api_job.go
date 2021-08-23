@@ -83,7 +83,6 @@ func (c *JobApiController) ChangeJobSchema(w http.ResponseWriter, r *http.Reques
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // DeleteJob - Delete job by id.
@@ -101,7 +100,6 @@ func (c *JobApiController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // GetJob - Get job detail.
@@ -119,7 +117,6 @@ func (c *JobApiController) GetJob(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // SubmitJob - Submit a new job.
@@ -140,7 +137,6 @@ func (c *JobApiController) SubmitJob(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // UpdateJob - Update job by id.
@@ -163,5 +159,4 @@ func (c *JobApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

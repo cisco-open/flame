@@ -14,6 +14,7 @@ import (
 	"net/http"
 
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 
@@ -47,7 +48,7 @@ func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNode
 
 	eNodes := JobNodesInMem[dId].Nodes
 	//mark existing node flag as true
-	for j, _ := range eNodes {
+	for j := range eNodes {
 		eNodes[j].IsExistingNode = true
 	}
 

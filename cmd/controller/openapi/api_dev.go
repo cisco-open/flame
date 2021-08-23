@@ -64,7 +64,6 @@ func (c *DevApiController) JobNodes(w http.ResponseWriter, r *http.Request) {
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }
 
 // UpdateJobNodes - Update or add new nodes information for the job
@@ -85,5 +84,4 @@ func (c *DevApiController) UpdateJobNodes(w http.ResponseWriter, r *http.Request
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
-
 }

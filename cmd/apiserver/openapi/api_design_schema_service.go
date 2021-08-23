@@ -32,7 +32,8 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (objects.ImplResponse, error) {
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string,
+	getType string, schemaId string) (objects.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Get design schema details for user: %s | designId: %s | type: %s | schemaId: %s", user, designId, getType, schemaId)
 
@@ -58,9 +59,10 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string,
+	designSchema objects.DesignSchema) (objects.ImplResponse, error) {
 	//TODO input validation
-	zap.S().Debugf("Update/insert design schema request recieved for designId: %v", designId)
+	zap.S().Debugf("Update/insert design schema request received for designId: %v", designId)
 
 	//create controller request
 	uriMap := map[string]string{

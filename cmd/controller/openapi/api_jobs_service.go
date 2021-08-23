@@ -30,7 +30,8 @@ func NewJobsApiService() JobsApiServicer {
 }
 
 // GetJobs - Get list of all the jobs by the user or based on designId.
-func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string, limit int32) (objects.ImplResponse, error) {
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId string, getType string,
+	limit int32) (objects.ImplResponse, error) {
 	jInfo, err := database.GetJobs(user, getType, designId, limit)
 	if err != nil {
 		return objects.Response(http.StatusInternalServerError, nil), errors.New("get list of jobs request failed")

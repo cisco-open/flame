@@ -30,7 +30,8 @@ func NewDesignSchemaApiService() DesignSchemaApiServicer {
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string, schemaId string) (objects.ImplResponse, error) {
+func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user string, designId string, getType string,
+	schemaId string) (objects.ImplResponse, error) {
 	info, err := database.GetDesignSchema(user, designId, getType, schemaId)
 	if err != nil {
 		return objects.Response(http.StatusInternalServerError, nil), errors.New("get design schema details request failed")
@@ -39,7 +40,8 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 }
 
 // UpdateDesignSchema - Update a design schema
-func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, designSchema objects.DesignSchema) (objects.ImplResponse, error) {
+func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user string, designId string,
+	designSchema objects.DesignSchema) (objects.ImplResponse, error) {
 	if designSchema.ID == "" {
 		err := database.CreateDesignSchema(user, designId, designSchema)
 		if err != nil {
