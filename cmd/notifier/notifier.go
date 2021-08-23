@@ -3,7 +3,7 @@ package main
 import (
 	"go.uber.org/zap"
 
-	grpcnotify "wwwin-github.cisco.com/eti/fledge/cmd/notificationservice/grpc"
+	grpcnotify "wwwin-github.cisco.com/eti/fledge/cmd/notifier/grpc"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 

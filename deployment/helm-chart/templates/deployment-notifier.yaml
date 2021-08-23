@@ -20,7 +20,7 @@ spec:
       containers:
       - name: {{ .Values.servicename }}-notifier
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
-        command: ["/usr/bin/notificationservice"]
+        command: ["/usr/bin/notifier"]
         args: []
         ports:
         - containerPort: {{ .Values.componentPorts.notifier }}
