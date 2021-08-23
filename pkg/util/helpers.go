@@ -190,14 +190,14 @@ const (
 
 var URI = map[string]string{
 	// Design Template
-	CreateDesignEndPoint:       "/{{.user}}/design/",
-	GetDesignEndPoint:          "/{{.user}}/design/{{.designId}}/",
+	CreateDesignEndPoint:       "/{{.user}}/design",
+	GetDesignEndPoint:          "/{{.user}}/design/{{.designId}}",
 	GetDesignsEndPoint:         "/{{.user}}/designs/?limit={{.limit}}",
-	UpdateDesignSchemaEndPoint: "/{{.user}}/design/{{.designId}}/schema/",
+	UpdateDesignSchemaEndPoint: "/{{.user}}/design/{{.designId}}/schema",
 	GetDesignSchemaEndPoint:    "/{{.user}}/design/{{.designId}}/schema/?getType={{.type}}&schemaId={{.schemaId}}",
 
 	//Job
-	SubmitJobEndPoint:       "/{{.user}}/job/",
+	SubmitJobEndPoint:       "/{{.user}}/job",
 	GetJobEndPoint:          "/{{.user}}/job/{{.jobId}}",
 	GetJobsEndPoint:         "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
 	UpdateJobEndPoint:       "/{{.user}}/job/{{.jobId}}",
@@ -208,7 +208,7 @@ var URI = map[string]string{
 	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",
 
 	//TODO remove me after prototyping phase is done.
-	JobNodesEndPoint: "/{{.user}}/nodes/",
+	JobNodesEndPoint: "/{{.user}}/nodes",
 }
 
 func CreateURI(ip string, portNo int64, endPoint string, inputMap map[string]string) string {

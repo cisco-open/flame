@@ -7,7 +7,7 @@ info:
 servers:
   - url: /
 paths:
-  /{user}/designs/:
+  /{user}/designs:
     #------------------------------------#
     # Get Template - get list of all designs
     #------------------------------------#
@@ -58,7 +58,7 @@ paths:
           description: unexpected error
 
 
-  /{user}/design/:
+  /{user}/design:
     #------------------------------------#
     # Create New Design Template
     #------------------------------------#
@@ -141,7 +141,7 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
 
-  /{user}/design/{designId}/schema/:
+  /{user}/design/{designId}/schema:
     #------------------------------------#
     # Get Design Schema - all or by id
     #------------------------------------#
@@ -240,7 +240,7 @@ paths:
       tags:
         - designSchema
 
-  /{user}/design/{designId}/code/:
+  /{user}/design/{designId}/code:
     #------------------------------------#
     # Get Code Zip
     #------------------------------------#

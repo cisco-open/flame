@@ -126,7 +126,7 @@ paths:
                 $ref: '#/components/schemas/Error'
           description: unexpected error
 
-  /{user}/job/:
+  /{user}/job:
     #------------------------------------#
     # Submit New Job
     #------------------------------------#
@@ -212,7 +212,7 @@ paths:
           description: unexpected error
 
 
-  /{user}/jobs/:
+  /{user}/jobs:
     #------------------------------------#
     # Get Jobs by user or designId
     #------------------------------------#

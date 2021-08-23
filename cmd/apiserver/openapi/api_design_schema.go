@@ -34,13 +34,13 @@ func (c *DesignSchemaApiController) Routes() Routes {
 		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
-			"/{user}/design/{designId}/schema/",
+			"/{user}/design/{designId}/schema",
 			c.GetDesignSchema,
 		},
 		{
 			"UpdateDesignSchema",
 			strings.ToUpper("Post"),
-			"/{user}/design/{designId}/schema/",
+			"/{user}/design/{designId}/schema",
 			c.UpdateDesignSchema,
 		},
 	}

@@ -34,13 +34,13 @@ func (c *DesignCodeApiController) Routes() Routes {
 		{
 			"GetDesignCode",
 			strings.ToUpper("Get"),
-			"/{user}/design/{designId}/code/",
+			"/{user}/design/{designId}/code",
 			c.GetDesignCode,
 		},
 		{
 			"UpdateDesignCode",
 			strings.ToUpper("Post"),
-			"/{user}/design/{designId}/code/",
+			"/{user}/design/{designId}/code",
 			c.UpdateDesignCode,
 		},
 	}

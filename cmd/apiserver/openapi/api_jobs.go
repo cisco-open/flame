@@ -33,7 +33,7 @@ func (c *JobsApiController) Routes() Routes {
 		{
 			"GetJobs",
 			strings.ToUpper("Get"),
-			"/{user}/jobs/",
+			"/{user}/jobs",
 			c.GetJobs,
 		},
 	}

@@ -7,7 +7,7 @@ info:
 servers:
   - url: /
 paths:
-  /{user}/nodes/:
+  /{user}/nodes:
     #------------------------------------#
     # New Node for a job
     #------------------------------------#

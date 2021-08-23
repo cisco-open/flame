@@ -34,13 +34,13 @@ func (c *DevApiController) Routes() Routes {
 		{
 			"JobNodes",
 			strings.ToUpper("Post"),
-			"/{user}/nodes/",
+			"/{user}/nodes",
 			c.JobNodes,
 		},
 		{
 			"UpdateJobNodes",
 			strings.ToUpper("Put"),
-			"/{user}/nodes/",
+			"/{user}/nodes",
 			c.UpdateJobNodes,
 		},
 	}

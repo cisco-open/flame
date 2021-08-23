@@ -34,7 +34,7 @@ func (c *DesignApiController) Routes() Routes {
 		{
 			"CreateDesign",
 			strings.ToUpper("Post"),
-			"/{user}/design/",
+			"/{user}/design",
 			c.CreateDesign,
 		},
 		{

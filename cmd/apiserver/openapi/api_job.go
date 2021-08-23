@@ -52,7 +52,7 @@ func (c *JobApiController) Routes() Routes {
 		{
 			"SubmitJob",
 			strings.ToUpper("Post"),
-			"/{user}/job/",
+			"/{user}/job",
 			c.SubmitJob,
 		},
 		{
