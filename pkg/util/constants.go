@@ -49,10 +49,10 @@ const (
 	DBFieldNodes    = "nodes"
 
 	// Port numbers
-	ApiServerRestApiPort        = 10100 // REST API port
-	NotificationServiceGrpcPort = 10101 // for notification and push
-	ControllerRestApiPort       = 10102 // Controller REST API port
-	AgentGrpcPort               = 10103 // for fledgelet - application
+	ApiServerRestApiPort  = 10100 // REST API port
+	NotifierGrpcPort      = 10101 // for notification and push
+	ControllerRestApiPort = 10102 // Controller REST API port
+	AgentGrpcPort         = 10103 // for fledgelet - application
 
 	// Service names
 	Agent      = "fledgelet"

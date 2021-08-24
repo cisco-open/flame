@@ -56,8 +56,8 @@ var startControllerServerCmd = &cobra.Command{
 func init() {
 	ctlrServerCmd.AddCommand(startControllerServerCmd)
 
-	ctlrServerCmd.PersistentFlags().StringP("notifyIp", "i", "0.0.0.0", "Notification service ip")
-	ctlrServerCmd.PersistentFlags().Uint16P("notifyPort", "p", util.NotificationServiceGrpcPort, "Notification service port")
+	ctlrServerCmd.PersistentFlags().StringP("notifyIp", "i", "0.0.0.0", "Notifer IP")
+	ctlrServerCmd.PersistentFlags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
 	ctlrServerCmd.PersistentFlags().StringP("db", "d", util.MONGODB, "Database type")
 	ctlrServerCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
 	ctlrServerCmd.MarkPersistentFlagRequired("uri")

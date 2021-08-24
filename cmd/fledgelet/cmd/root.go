@@ -11,15 +11,6 @@ import (
 var agentCmd = &cobra.Command{
 	Use:   util.Agent,
 	Short: util.ProjectName + " Agent",
-	Run: func(cmd *cobra.Command, args []string) {
-		cmd.Help()
-	},
-}
-
-var startAgentCmd = &cobra.Command{
-	Use:   "start",
-	Short: "Start fledgelet",
-	Long:  "Start fledgelet",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
@@ -43,23 +34,29 @@ var startAgentCmd = &cobra.Command{
 			return err
 		}
 
-		if err := app.StartAgent(objects.ServerInfo{IP: notifyIp, Port: notifyPort}, objects.ServerInfo{IP: restIp, Port: restPort}); err != nil {
+		apiServerInfo := objects.ServerInfo{IP: restIp, Port: restPort}
+		notifierInfo := objects.ServerInfo{IP: notifyIp, Port: notifyPort}
+		agent, err := app.NewAgent(apiServerInfo, notifierInfo)
+		if err != nil {
 			return err
 		}
+
+		if err := agent.Start(); err != nil {
+			return err
+		}
+
 		return nil
 	},
 }
 
 func init() {
-	agentCmd.AddCommand(startAgentCmd)
+	agentCmd.Flags().StringP("notifyIp", "i", "0.0.0.0", "Notifier IP")
+	agentCmd.Flags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
+	agentCmd.Flags().StringP("apiIp", "a", "0.0.0.0", "REST API IP")
+	agentCmd.Flags().Uint16P("apiPort", "o", util.ApiServerRestApiPort, "REST API port")
 
-	startAgentCmd.Flags().StringP("notifyIp", "i", "0.0.0.0", "Notification service ip")
-	startAgentCmd.Flags().Uint16P("notifyPort", "p", util.NotificationServiceGrpcPort, "Notification service port")
-	startAgentCmd.Flags().StringP("apiIp", "a", "0.0.0.0", "REST API ip")
-	startAgentCmd.Flags().Uint16P("apiPort", "o", util.ApiServerRestApiPort, "REST API port")
-
-	startAgentCmd.MarkFlagRequired("notifyIp")
-	startAgentCmd.MarkFlagRequired("apiIp")
+	agentCmd.MarkFlagRequired("notifyIp")
+	agentCmd.MarkFlagRequired("apiIp")
 }
 
 func Execute() error {

@@ -13,5 +13,5 @@ func main() {
 	defer loggerMgr.Sync()
 
 	//start GRPC service
-	grpcnotify.StartGRPCService(util.NotificationServiceGrpcPort)
+	grpcnotify.StartGRPCService(util.NotifierGrpcPort)
 }

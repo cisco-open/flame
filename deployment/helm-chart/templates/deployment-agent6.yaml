@@ -21,7 +21,7 @@ spec:
       - name: {{ .Values.servicename }}-agent6
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/fledgelet"]
-        args: ["start", "--notifyIp", "{{ .Values.servicename }}-notifier", "--apiIp", "{{ .Values.servicename }}-apiserver"]
+        args: ["--notifyIp", "{{ .Values.servicename }}-notifier", "--apiIp", "{{ .Values.servicename }}-apiserver"]
 
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}

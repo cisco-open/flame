@@ -13,16 +13,13 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-//TODO refactor AgentStatus object
-var App AppInfo
-
-func NewJobInit(info objects.AppConf) {
-	App.Conf = info
+func (h *NotificationHandler) NewJobInit(info objects.AppConf) {
+	h.appInfo.Conf = info
 	job := info.JobInfo
 	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.ID, job.DesignId, job.SchemaId, info.Role)
 
 	//Step 1 : dump the information in application confirmation json file
-	err := initApp(info)
+	err := h.initApp(info)
 	req := objects.AgentStatus{
 		UpdateType: util.JobStatus,
 		Status:     "",
@@ -30,7 +27,7 @@ func NewJobInit(info objects.AppConf) {
 	}
 
 	if err != nil {
-		zap.S().Errorf("error intializing configuration details for application. %v", err)
+		zap.S().Errorf("Failed to initialize configuration details for application: %v", err)
 		req.Status = util.StatusError
 		req.Message = err.Error()
 	} else {
@@ -40,8 +37,8 @@ func NewJobInit(info objects.AppConf) {
 		req.Status = util.StatusSuccess
 		req.Message = util.ReadyState
 
-		if startAppPolicy(info) {
-			state, err := startApp(info)
+		if h.startAppPolicy(info) {
+			state, err := h.startApp(info)
 
 			if err != nil {
 				req.Status = util.StatusError
@@ -53,19 +50,19 @@ func NewJobInit(info objects.AppConf) {
 		}
 	}
 
-	updateJobStatus(job, req)
+	h.updateJobStatus(job, req)
 }
 
 //NewJobStart starts the application on the agent
-func NewJobStart(info objects.AppConf) {
-	if App.State != util.RunningState {
+func (h *NotificationHandler) NewJobStart(info objects.AppConf) {
+	if h.appInfo.State != util.RunningState {
 		req := objects.AgentStatus{
 			UpdateType: util.JobStatus,
 			Status:     "",
 			Message:    "",
 		}
 
-		state, err := startApp(info)
+		state, err := h.startApp(info)
 		if err != nil {
 			req.Status = util.StatusError
 			req.Message = err.Error()
@@ -73,19 +70,19 @@ func NewJobStart(info objects.AppConf) {
 			req.Status = util.StatusSuccess
 			req.Message = state
 		}
-		updateJobStatus(info.JobInfo, req)
+		h.updateJobStatus(info.JobInfo, req)
 	}
 }
 
-func JobReload(info objects.AppConf) (string, error) {
+func (h *NotificationHandler) JobReload(info objects.AppConf) (string, error) {
 	//TODO - update the appInfo - state/conf etc.
 	zap.S().Debugf("Reloading job ...")
 	return "", nil
 }
 
-func initApp(info objects.AppConf) error {
+func (h *NotificationHandler) initApp(info objects.AppConf) error {
 	//directory path
-	fp := filepath.Join("/fledge/job/", Agent.uuid, info.JobInfo.ID)
+	fp := filepath.Join("/fledge/job/", h.uuid, info.JobInfo.ID)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
 		zap.S().Debugf("Creating filepath: %s", fp)
 		os.MkdirAll(fp, util.FilePerm0700) // Create your file
@@ -98,7 +95,7 @@ func initApp(info objects.AppConf) error {
 	return err
 }
 
-func startAppPolicy(info objects.AppConf) bool {
+func (h *NotificationHandler) startAppPolicy(info objects.AppConf) bool {
 	//will start the application as part of the init if the node is not a data consumer
 	for _, role := range info.SchemaInfo.Roles {
 		if role.Name == info.Role && !role.IsDataConsumer {
@@ -108,15 +105,15 @@ func startAppPolicy(info objects.AppConf) bool {
 	return false
 }
 
-func startApp(_ objects.AppConf) (string, error) {
+func (h *NotificationHandler) startApp(_ objects.AppConf) (string, error) {
 	//TODO only for development purpose. We should have single command command to start all applications example python3 main.py
 	//cmd := exec.Command("python3", Conf.Command...)
 	//cmd := exec.Command("echo", Conf.Command...)
-	cmd := exec.Command(App.Conf.Command[0], App.Conf.Command[1:]...)
+	cmd := exec.Command(h.appInfo.Conf.Command[0], h.appInfo.Conf.Command[1:]...)
 	zap.S().Debugf("Starting application. Command : %v", cmd)
 
 	//dump output to a log file
-	outfile, err := os.Create("./application_" + Agent.name + ".log")
+	outfile, err := os.Create("./application_" + h.name + ".log")
 	if err != nil {
 		zap.S().Errorf("%v", err)
 		return util.ErrorState, err
@@ -134,11 +131,11 @@ func startApp(_ objects.AppConf) (string, error) {
 	return util.RunningState, nil
 }
 
-func updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
+func (h *NotificationHandler) updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
 	//update application state
-	App.State = req.Message
+	h.appInfo.State = req.Message
 	if req.Status == util.StatusError {
-		App.State = util.ErrorState
+		h.appInfo.State = util.ErrorState
 	}
 
 	//Update agents status
@@ -146,9 +143,10 @@ func updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
 	uriMap := map[string]string{
 		"user":    util.InternalUser,
 		"jobId":   job.ID,
-		"agentId": Agent.uuid,
+		"agentId": h.uuid,
 	}
-	url := CreateURI(util.UpdateAgentStatusEndPoint, uriMap)
+
+	url := util.CreateURI(h.apiServerInfo.IP, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
 
 	//send post request
 	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)

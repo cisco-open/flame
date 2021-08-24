@@ -8,9 +8,23 @@ import (
 	pbAgent "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent"
 )
 
+// appServer implement the fledgelet grpc service and include - proto unimplemented method and
+// maintains list of connected apps & their streams.
+type appServer struct {
+	clients       map[string]*pbAgent.AppInfo
+	clientStreams map[string]*pbAgent.StreamingStore_SetupAppStreamServer
+
+	pbAgent.UnimplementedStreamingStoreServer
+}
+
+func (s *appServer) init() {
+	s.clients = make(map[string]*pbAgent.AppInfo)
+	s.clientStreams = make(map[string]*pbAgent.StreamingStore_SetupAppStreamServer)
+}
+
 // SetupAppStream is called by the application to subscribe to the fledgelet.
 // Adds the client to the server client map and stores the client stream.
-func (s *agentServer) SetupAppStream(in *pbAgent.AppInfo, stream pbAgent.StreamingStore_SetupAppStreamServer) error {
+func (s *appServer) SetupAppStream(in *pbAgent.AppInfo, stream pbAgent.StreamingStore_SetupAppStreamServer) error {
 	s.addNewClient(in, &stream)
 	// the stream should not be killed so we do not return from this server
 	// loop infinitely to keep stream alive else this stream will be closed
@@ -21,7 +35,7 @@ func (s *agentServer) SetupAppStream(in *pbAgent.AppInfo, stream pbAgent.Streami
 }
 
 // addNewClient is responsible to add new client to the server map.
-func (s *agentServer) addNewClient(in *pbAgent.AppInfo, stream *pbAgent.StreamingStore_SetupAppStreamServer) {
+func (s *appServer) addNewClient(in *pbAgent.AppInfo, stream *pbAgent.StreamingStore_SetupAppStreamServer) {
 	uuid := in.GetUuid()
 	zap.S().Debugf("Adding new client to the collection | %v", in)
 	s.clientStreams[uuid] = stream
@@ -30,7 +44,7 @@ func (s *agentServer) addNewClient(in *pbAgent.AppInfo, stream *pbAgent.Streamin
 
 /*
 // pushNotification is called to push notification to the specific applications.
-func (s *agentServer) pushNotification(clientID string, notifyType pbAgent.StreamResponse_ResponseType, in interface{}) error {
+func (s *appServer) pushNotification(clientID string, notifyType pbAgent.StreamResponse_ResponseType, in interface{}) error {
 	zap.S().Debugf("Sending notification to client: %v", clientID)
 
 	//Step 1 - create notification object
@@ -52,7 +66,7 @@ func (s *agentServer) pushNotification(clientID string, notifyType pbAgent.Strea
 
 /*
 //sendNotifications send notification to list of clients in on go
-func (s *agentServer) pushNotifications(clients []string, notifyType pbAgent.StreamResponse_ResponseType,
+func (s *appServer) pushNotifications(clients []string, notifyType pbAgent.StreamResponse_ResponseType,
 	in interface{}) map[string]interface{} {
 	//create single notification object since same object is sent to all the clients
 	m, err := util.StructToMapInterface(in)
@@ -85,7 +99,7 @@ func (s *agentServer) pushNotifications(clients []string, notifyType pbAgent.Str
 }
 
 // broadcastNotification is called to broadcast notification to all the connected clients.
-func (s *agentServer) broadcastNotification(notifyType pbAgent.StreamResponse_ResponseType, in interface{}) map[string]interface{} {
+func (s *appServer) broadcastNotification(notifyType pbAgent.StreamResponse_ResponseType, in interface{}) map[string]interface{} {
 	var clients []string
 	for clientID := range s.clients {
 		clients = append(clients, clientID)
@@ -94,7 +108,7 @@ func (s *agentServer) broadcastNotification(notifyType pbAgent.StreamResponse_Re
 }
 
 //send implements helper method to push notification to the corresponding streams
-func (s *agentServer) send(clientID string, notifyType pbAgent.StreamResponse_ResponseType, msg *structpb.Struct) error {
+func (s *appServer) send(clientID string, notifyType pbAgent.StreamResponse_ResponseType, msg *structpb.Struct) error {
 	stream := s.clientStreams[clientID]
 
 	if stream == nil {
