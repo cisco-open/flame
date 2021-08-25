@@ -43,5 +43,8 @@ docker:
 database:
   name: fledge
   uri: mongodb://eks-development-1-mongodb.mongodb.svc:27017
+resources:
+  cpu: 200m
+  memory: 1Gi
 
 existingEnvSecret:

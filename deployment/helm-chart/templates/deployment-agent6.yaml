@@ -25,6 +25,10 @@ spec:
 
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.cpu }}
+            memory: {{ .Values.resources.memory }}
         envFrom:
           - configMapRef:
               name: {{ .Release.Name }}-configmap
