@@ -1,0 +1,45 @@
+version: '3'
+services:
+
+  database:
+    image: 'mongo'
+    container_name: 'fledge-db'
+    volumes:
+      - ./mongodata:/data/db
+    ports:
+      - '27017-27019:27017-27019'
+
+  notifier:
+    image: 'fledge'
+    container_name: 'fledge-notifier'
+    command: /fledge/notifier
+    ports:
+      - '10101:10101'
+    build:
+      context: ../
+      dockerfile: ./build/Dockerfile.dev
+      target: build
+
+  controller:
+    image: 'fledge'
+    container_name: 'fledge-controller'
+    # The ""sleep 5"" is to mitigate failure to connect mongodb
+    # if controler comes up before mongodb
+    # TODO: refactor controller code to retry connection in case of disconnection
+    command: >
+      bash -c "sleep 5 &&
+      /fledge/controller start
+      --db mongo
+      --uri mongodb://fledge-db:27017
+      --notifyIp fledge-notifier"
+    ports:
+      - '10102:10102'
+    depends_on: ['database', 'notifier']
+
+  apiserver:
+    image: 'fledge'
+    container_name: 'fledge-apiserver'
+    command: /fledge/apiserver start --ctlrIp fledge-controller
+    ports:
+      - '10100:10100'
+    depends_on: ['controller']

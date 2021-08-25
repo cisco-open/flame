@@ -36,3 +36,6 @@ yapf*.py
 
 # etc
 *.bak
+
+# fiab related
+mongodata
