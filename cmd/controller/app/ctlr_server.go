@@ -13,8 +13,8 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-func StartController(dbInfo database.DBInfo, nsInfo objects.ServerInfo) error {
-	connectDB(dbInfo)
+func StartController(uri string, nsInfo objects.ServerInfo) error {
+	connectDB(uri)
 	connectGRPC(nsInfo)
 	startServer()
 
@@ -22,9 +22,9 @@ func StartController(dbInfo database.DBInfo, nsInfo objects.ServerInfo) error {
 }
 
 //connectDB initialize and connect to the database connection
-func connectDB(info database.DBInfo) {
-	zap.S().Infof("Connecting to %s database at %v", info.Name, info.URI)
-	database.NewDBService(info)
+func connectDB(uri string) {
+	zap.S().Infof("Connecting to database at %s", uri)
+	database.NewDBService(uri)
 }
 
 func connectGRPC(nsInfo objects.ServerInfo) {

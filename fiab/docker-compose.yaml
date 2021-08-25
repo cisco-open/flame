@@ -28,8 +28,7 @@ services:
     # TODO: refactor controller code to retry connection in case of disconnection
     command: >
       bash -c "sleep 5 &&
-      /fledge/controller start
-      --db mongo
+      /fledge/controller
       --uri mongodb://fledge-db:27017
       --notifyIp fledge-notifier"
     ports:

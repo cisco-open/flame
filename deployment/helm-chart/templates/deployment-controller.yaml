@@ -22,9 +22,6 @@ spec:
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/controller"]
         args:
-          - "start"
-          - "--db"
-          - "{{ .Values.database.type }}"
           - "--uri"
           - "{{ .Values.database.uri }}"
           - "--notifyIp"

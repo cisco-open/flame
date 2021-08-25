@@ -37,7 +37,7 @@ const (
 	CompletedState  = "Completed"
 
 	// Database
-	MONGODB = "mongo"
+	MONGODB = "mongodb"
 	MySQL   = "mysql"
 
 	// Database Fields
