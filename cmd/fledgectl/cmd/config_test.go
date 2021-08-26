@@ -34,6 +34,6 @@ func TestLoadConfig(t *testing.T) {
 	config, err = loadConfig(configFilePath)
 	assert.Nil(t, err)
 	assert.Equal(t, "localhost", config.ApiServer.Host)
-	assert.Equal(t, 10100, config.ApiServer.Port)
+	assert.Equal(t, uint16(10100), config.ApiServer.Port)
 	assert.Equal(t, "john", config.User)
 }
