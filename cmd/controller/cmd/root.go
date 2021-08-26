@@ -8,7 +8,7 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-var ctlrServerCmd = &cobra.Command{
+var rootCmd = &cobra.Command{
 	Use:   util.Controller,
 	Short: util.ProjectName + util.Controller,
 	RunE: func(cmd *cobra.Command, args []string) error {
@@ -38,12 +38,12 @@ var ctlrServerCmd = &cobra.Command{
 }
 
 func init() {
-	ctlrServerCmd.PersistentFlags().StringP("notifyIp", "i", "0.0.0.0", "Notifer IP")
-	ctlrServerCmd.PersistentFlags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
-	ctlrServerCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
-	ctlrServerCmd.MarkPersistentFlagRequired("uri")
+	rootCmd.PersistentFlags().StringP("notifyIp", "i", "0.0.0.0", "Notifer IP")
+	rootCmd.PersistentFlags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
+	rootCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
+	rootCmd.MarkPersistentFlagRequired("uri")
 }
 
 func Execute() error {
-	return ctlrServerCmd.Execute()
+	return rootCmd.Execute()
 }
