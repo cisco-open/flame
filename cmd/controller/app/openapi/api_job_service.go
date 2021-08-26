@@ -17,8 +17,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
-	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/grpc"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
+	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/grpc"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"

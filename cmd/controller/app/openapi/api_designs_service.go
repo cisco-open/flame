@@ -14,7 +14,7 @@ import (
 	"errors"
 	"net/http"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 )
 

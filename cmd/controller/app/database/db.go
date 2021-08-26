@@ -5,7 +5,7 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/database/mongodb"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database/mongodb"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
