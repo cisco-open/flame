@@ -44,7 +44,7 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 		"type":     getType,
 		"schemaId": schemaId,
 	}
-	url := CreateURI(util.GetDesignSchemaEndPoint, uriMap)
+	url := CreateURL(util.GetDesignSchemaEndPoint, uriMap)
 
 	//send get request
 	responseBody, err := util.HTTPGet(url)
@@ -69,7 +69,7 @@ func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user st
 		"user":     user,
 		"designId": designId,
 	}
-	url := CreateURI(util.UpdateDesignSchemaEndPoint, uriMap)
+	url := CreateURL(util.UpdateDesignSchemaEndPoint, uriMap)
 
 	//send get request
 	_, _, err := util.HTTPPost(url, designSchema, "application/json")

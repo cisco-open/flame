@@ -38,7 +38,7 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes obje
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := CreateURI(util.JobNodesEndPoint, uriMap)
+	url := CreateURL(util.JobNodesEndPoint, uriMap)
 
 	//send get request
 	_, _, err := util.HTTPPost(url, jobNodes, "application/json")
@@ -58,7 +58,7 @@ func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNode
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := CreateURI(util.JobNodesEndPoint, uriMap)
+	url := CreateURL(util.JobNodesEndPoint, uriMap)
 
 	//send get request
 	_, _, err := util.HTTPPut(url, jobNodes, "application/json")

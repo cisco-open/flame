@@ -43,7 +43,7 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 		"user":  user,
 		"limit": strconv.Itoa(int(limit)),
 	}
-	url := CreateURI(util.GetDesignsEndPoint, uriMap)
+	url := CreateURL(util.GetDesignsEndPoint, uriMap)
 
 	//send get request
 	responseBody, err := util.HTTPGet(url)

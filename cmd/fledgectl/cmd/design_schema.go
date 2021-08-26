@@ -3,13 +3,12 @@ package cmd
 import (
 	"io/ioutil"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
-
-	"gopkg.in/yaml.v3"
-
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
+
+	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 var designSchemaCmd = &cobra.Command{
@@ -25,20 +24,6 @@ var createDesignSchemaCmd = &cobra.Command{
 	Short: "Create a new design schema",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		designId, err := flags.GetString("designId")
 		if err != nil {
@@ -65,10 +50,10 @@ var createDesignSchemaCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"designId": designId,
 		}
-		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateDesignSchemaEndPoint, uriMap)
 
 		//Send post request for each schema
 		for _, s := range y.Schemas {
@@ -92,20 +77,6 @@ var updateDesignSchemaCmd = &cobra.Command{
 	Short: "Update existing design schema",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		designId, err := flags.GetString("designId")
 		if err != nil {
@@ -139,10 +110,10 @@ var updateDesignSchemaCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"designId": designId,
 		}
-		url := util.CreateURI(ip, portNo, util.UpdateDesignSchemaEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateDesignSchemaEndPoint, uriMap)
 
 		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
 		if err != nil {
@@ -161,20 +132,6 @@ var getDesignSchemaCmd = &cobra.Command{
 	Long:  "Get design list or specific design schema for the user",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		dId, err := flags.GetString("designId")
 		if err != nil {
@@ -193,12 +150,12 @@ var getDesignSchemaCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"designId": dId,
 			"type":     getType,
 			"schemaId": schemaId,
 		}
-		url := util.CreateURI(ip, portNo, util.GetDesignSchemaEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignSchemaEndPoint, uriMap)
 
 		//send get request
 		responseBody, _ := util.HTTPGet(url)

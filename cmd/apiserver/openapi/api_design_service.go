@@ -40,7 +40,7 @@ func (s *DesignApiService) CreateDesign(ctx context.Context, user string, design
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := CreateURI(util.CreateDesignEndPoint, uriMap)
+	url := CreateURL(util.CreateDesignEndPoint, uriMap)
 
 	//send post request
 	_, _, err := util.HTTPPost(url, designInfo, "application/json")
@@ -62,7 +62,7 @@ func (s *DesignApiService) GetDesign(ctx context.Context, user string, designId 
 		"user":     user,
 		"designId": designId,
 	}
-	url := CreateURI(util.GetDesignEndPoint, uriMap)
+	url := CreateURL(util.GetDesignEndPoint, uriMap)
 
 	//send get request
 	responseBody, err := util.HTTPGet(url)

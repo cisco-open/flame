@@ -8,6 +8,7 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -31,20 +32,6 @@ var submitJobCmd = &cobra.Command{
 	Long:  "Submit a new job",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		designId, err := flags.GetString("designId")
 		if err != nil {
@@ -73,14 +60,14 @@ var submitJobCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user": user,
+			"user": config.User,
 		}
-		url := util.CreateURI(ip, portNo, util.SubmitJobEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.SubmitJobEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
 		postBody := objects.JobInfo{
-			UserId:      user,
+			UserId:      config.User,
 			DesignId:    designId,
 			SchemaId:    schemaId,
 			Name:        name,
@@ -120,20 +107,6 @@ var getJobCmd = &cobra.Command{
 	Long:  "Get job detail for given job id",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		jId, err := flags.GetString("jobId")
 		if err != nil {
@@ -142,10 +115,10 @@ var getJobCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":  user,
+			"user":  config.User,
 			"jobId": jId,
 		}
-		url := util.CreateURI(ip, portNo, util.GetJobEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetJobEndPoint, uriMap)
 
 		//send get request
 		responseBody, err := util.HTTPGet(url)
@@ -170,20 +143,6 @@ var getAllJobsCmd = &cobra.Command{
 	Long:  "Get all jobs for given userId or designId",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		dId, err := flags.GetString("designId")
 		if err != nil {
@@ -202,13 +161,13 @@ var getAllJobsCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"designId": dId,
 			"type":     getType,
 			"limit":    strconv.Itoa(int(limit)),
 		}
 
-		url := util.CreateURI(ip, portNo, util.GetJobsEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetJobsEndPoint, uriMap)
 
 		//send get request
 		responseBody, err := util.HTTPGet(url)
@@ -241,20 +200,6 @@ var changeJobSchemaCmd = &cobra.Command{
 	Short: "Change existing design schema associated with the job",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		jId, err := flags.GetString("jobId")
 		if err != nil {
@@ -273,13 +218,13 @@ var changeJobSchemaCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"jobId":    jId,
 			"schemaId": sId,
 			"designId": dId,
 		}
-		url := util.CreateURI(ip, portNo, util.ChangeJobSchemaEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.ChangeJobSchemaEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
 		code, responseBody, err := util.HTTPPost(url, objects.JobInfo{}, "application/json")
@@ -301,15 +246,6 @@ var testCmd = &cobra.Command{
 	Use: "test",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
 
 		jId, err := flags.GetString("jobId")
 		if err != nil {
@@ -328,7 +264,7 @@ var testCmd = &cobra.Command{
 			"jobId":   jId,
 			"agentId": uuid,
 		}
-		url := util.CreateURI(ip, portNo, util.UpdateAgentStatusEndPoint, uriMap)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateAgentStatusEndPoint, uriMap)
 
 		zap.S().Debugf("url .. %s", url)
 
@@ -352,13 +288,6 @@ var testCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(jobCmd)
 	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd, changeJobSchemaCmd, testCmd)
-
-	jobCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
-	jobCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
-	jobCmd.PersistentFlags().StringP("user", "u", "", "User id")
-
-	//required flags
-	jobCmd.MarkPersistentFlagRequired("user")
 
 	//local flags for each command
 	//SUBMIT JOB

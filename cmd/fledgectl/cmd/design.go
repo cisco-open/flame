@@ -27,20 +27,6 @@ var createDesignCmd = &cobra.Command{
 	Long:  "Create a new design template",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		name, err := flags.GetString("name")
 		if err != nil {
@@ -54,10 +40,10 @@ var createDesignCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user": user,
+			"user": config.User,
 		}
-		url := util.CreateURI(ip, portNo, util.CreateDesignEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.CreateDesignEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
 		postBody := objects.DesignInfo{
@@ -84,20 +70,6 @@ var getDesignCmd = &cobra.Command{
 	Long:  "Get design template for the user",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		dId, err := flags.GetString("designId")
 		if err != nil {
@@ -106,11 +78,11 @@ var getDesignCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":     user,
+			"user":     config.User,
 			"designId": dId,
 		}
-		url := util.CreateURI(ip, portNo, util.GetDesignEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
 		responseBody, _ := util.HTTPGet(url)
@@ -134,20 +106,6 @@ var getDesignsCmd = &cobra.Command{
 	Long:  "Get list of all design template for the user",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("user")
-		if err != nil {
-			return err
-		}
 
 		limit, err := flags.GetString("limit")
 		if err != nil {
@@ -156,11 +114,12 @@ var getDesignsCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user":  user,
+			"user":  config.User,
 			"limit": limit,
 		}
-		url := util.CreateURI(ip, portNo, util.GetDesignsEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignsEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
+
 		//send get request
 		responseBody, _ := util.HTTPGet(url)
 
@@ -187,12 +146,6 @@ var getDesignsCmd = &cobra.Command{
 func init() {
 	rootCmd.AddCommand(designCmd)
 	designCmd.AddCommand(createDesignCmd, getDesignCmd, getDesignsCmd)
-
-	designCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
-	designCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
-	designCmd.PersistentFlags().StringP("user", "u", "", "User id")
-	//required flags
-	designCmd.MarkPersistentFlagRequired("user")
 
 	//local flags for each command
 	//CREATE DESIGN

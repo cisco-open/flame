@@ -211,7 +211,7 @@ var URI = map[string]string{
 	JobNodesEndPoint: "/{{.user}}/nodes",
 }
 
-func CreateURI(ip string, portNo int64, endPoint string, inputMap map[string]string) string {
+func CreateURL(ip string, portNo uint16, endPoint string, inputMap map[string]string) string {
 	msg, err := FromTemplate(URI[endPoint], inputMap)
 	if err != nil {
 		zap.S().Errorf("error creating a uri. End point: %s", endPoint)

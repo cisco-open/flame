@@ -42,7 +42,7 @@ func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jo
 		"jobId":   jobId,
 		"agentId": agentId,
 	}
-	url := CreateURI(util.UpdateAgentStatusEndPoint, uriMap)
+	url := CreateURL(util.UpdateAgentStatusEndPoint, uriMap)
 
 	//send get request
 	_, _, err := util.HTTPPut(url, agentStatus, "application/json")

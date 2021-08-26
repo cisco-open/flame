@@ -18,6 +18,6 @@ type AppInfo struct {
 	controllerInfo objects.ServerInfo
 }
 
-func CreateURI(endPoint string, uriMap map[string]string) string {
-	return util.CreateURI(App.controllerInfo.IP, util.ControllerRestApiPort, endPoint, uriMap)
+func CreateURL(endPoint string, uriMap map[string]string) string {
+	return util.CreateURL(App.controllerInfo.IP, util.ControllerRestApiPort, endPoint, uriMap)
 }

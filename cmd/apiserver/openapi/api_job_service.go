@@ -62,7 +62,7 @@ func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (
 		"user":  user,
 		"jobId": jobId,
 	}
-	url := CreateURI(util.GetJobEndPoint, uriMap)
+	url := CreateURL(util.GetJobEndPoint, uriMap)
 
 	//send get request
 	responseBody, err := util.HTTPGet(url)
@@ -86,7 +86,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo obje
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := CreateURI(util.SubmitJobEndPoint, uriMap)
+	url := CreateURL(util.SubmitJobEndPoint, uriMap)
 
 	//send post request
 	code, responseBody, err := util.HTTPPost(url, jobInfo, "application/json")
@@ -145,7 +145,7 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 		"designId": designId,
 	}
 
-	url := CreateURI(util.ChangeJobSchemaEndPoint, uriMap)
+	url := CreateURL(util.ChangeJobSchemaEndPoint, uriMap)
 
 	//send get request
 	_, _, err := util.HTTPPost(url, nil, "application/json")

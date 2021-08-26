@@ -146,7 +146,7 @@ func (h *NotificationHandler) updateJobStatus(job objects.JobInfo, req objects.A
 		"agentId": h.uuid,
 	}
 
-	url := util.CreateURI(h.apiServerInfo.IP, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
+	url := util.CreateURL(h.apiServerInfo.IP, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
 
 	//send post request
 	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)

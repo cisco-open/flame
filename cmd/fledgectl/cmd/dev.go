@@ -25,22 +25,7 @@ var jobNodesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
 		designId, err := flags.GetString("designId")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("userId")
 		if err != nil {
 			return err
 		}
@@ -69,10 +54,10 @@ var jobNodesCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user": user,
+			"user": config.User,
 		}
-		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := objects.JobNodes{
 			DesignId: designId,
@@ -97,22 +82,7 @@ var updateJobNodesCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
-		portNo, err := flags.GetInt64("port")
-		if err != nil {
-			return err
-		}
-
-		ip, err := flags.GetString("ip")
-		if err != nil {
-			return err
-		}
-
 		designId, err := flags.GetString("designId")
-		if err != nil {
-			return err
-		}
-
-		user, err := flags.GetString("userId")
 		if err != nil {
 			return err
 		}
@@ -141,10 +111,10 @@ var updateJobNodesCmd = &cobra.Command{
 
 		//construct URL
 		uriMap := map[string]string{
-			"user": user,
+			"user": config.User,
 		}
-		url := util.CreateURI(ip, portNo, util.JobNodesEndPoint, uriMap)
-		printCmdInfo(ip, portNo, url)
+		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
+		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := objects.JobNodes{
 			DesignId: designId,
@@ -167,23 +137,16 @@ func init() {
 	rootCmd.AddCommand(devCmd)
 	devCmd.AddCommand(jobNodesCmd, updateJobNodesCmd)
 
-	devCmd.PersistentFlags().Int64P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
-	devCmd.PersistentFlags().StringP("ip", "i", "0.0.0.0", "IP address for API server")
-
 	//local flags for each command
 	//JOB NODES
-	jobNodesCmd.Flags().StringP("designId", "j", "", "Design id")
-	jobNodesCmd.Flags().StringP("userId", "u", "", "User id")
-	jobNodesCmd.Flags().StringP("conf", "c", "", "Configuration file with schema design")
+	jobNodesCmd.Flags().StringP("designId", "", "", "Design id")
+	jobNodesCmd.Flags().StringP("conf", "", "", "Configuration file with schema design")
 	jobNodesCmd.MarkFlagRequired("designId")
-	jobNodesCmd.MarkFlagRequired("userId")
 	jobNodesCmd.MarkFlagRequired("conf")
 
 	//JOB NODES
-	updateJobNodesCmd.Flags().StringP("designId", "j", "", "Design id")
-	updateJobNodesCmd.Flags().StringP("userId", "u", "", "User id")
-	updateJobNodesCmd.Flags().StringP("conf", "c", "", "Configuration file with schema design")
+	updateJobNodesCmd.Flags().StringP("designId", "", "", "Design id")
+	updateJobNodesCmd.Flags().StringP("conf", "", "", "Configuration file with schema design")
 	updateJobNodesCmd.MarkFlagRequired("designId")
-	updateJobNodesCmd.MarkFlagRequired("userId")
 	updateJobNodesCmd.MarkFlagRequired("conf")
 }

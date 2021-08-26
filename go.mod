@@ -6,6 +6,7 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.1
 	github.com/gorilla/mux v1.8.0
 	github.com/olekukonko/tablewriter v0.0.5
+	github.com/spf13/afero v1.2.2
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.5.3

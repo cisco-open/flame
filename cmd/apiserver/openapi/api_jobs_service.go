@@ -45,7 +45,7 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId stri
 		"type":     getType,
 		"limit":    strconv.Itoa(int(limit)),
 	}
-	url := CreateURI(util.GetJobsEndPoint, uriMap)
+	url := CreateURL(util.GetJobsEndPoint, uriMap)
 
 	//send get request
 	responseBody, err := util.HTTPGet(url)
