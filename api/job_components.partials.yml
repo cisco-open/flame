@@ -1,0 +1,68 @@
+#-----------------------#
+# Basic Job Information
+#-----------------------#
+JobInfo:
+  description: Basic job information.
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    userId:
+      type: string
+    designId:
+      type: string
+    schemaId:
+      type: string
+    priority:
+      type: string
+      enum: ["high", "low", "default"]
+    status:
+      type: string
+      enum: ["initializing", "running", "terminated", "completed"]
+    timestamp:
+      type: object
+      properties:
+        created_at:
+          format: int64
+          type: integer
+        started_at:
+          format: int64
+          type: integer
+        updated_at:
+          format: int64
+          type: integer
+        completed_at:
+          format: int64
+          type: integer
+    dataset:
+      type: object
+    codeBlock:
+      type: object
+    config:
+      type: object
+  required:
+    - name
+    - userId
+    - designId
+  example:
+    name: cancer detection model
+    description: Creating a new model from 2021 dataset to detect cancer
+    designId: "60d0d66716af12b787d9ef0a"
+    prority: "default"
+
+AgentStatus:
+  description: agent status object.
+  type: object
+  properties:
+    updateType:
+      type: string
+    status:
+      type: string
+    message:
+      type: object
+  required:
+    - updateType
+    - status
+    - message

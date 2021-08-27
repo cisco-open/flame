@@ -1,0 +1,24 @@
+openapi: 3.0.0
+info:
+  license:
+    name: MIT
+  title: Fledge REST API
+  version: 1.0.0
+servers:
+  - url: /
+paths:
+  {{> design_api.partials }}
+
+  {{> dev_api.partials }}
+
+  {{> job_api.partials }}
+  
+components:
+  schemas:
+    {{> design_components.partials }}
+
+    {{> dev_components.partials }}
+
+    {{> job_components.partials }}
+
+    {{> etc_components.partials }}

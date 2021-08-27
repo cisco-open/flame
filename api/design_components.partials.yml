@@ -1,0 +1,203 @@
+#-----------------------#
+# Basic Design Information
+#-----------------------#
+DesignInfo:
+  description: Only basic desgin information.
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    id:
+      format: int64
+      type: integer
+    userId:
+      type: string
+  required:
+    - id
+    - name
+  example:
+    name: diabete predict
+    description : Helps in quick diagnosis and prediction of diabetes among patients.
+    id: 1
+
+Design:
+  description: Design template details along with all the schemas.
+  type: object
+  allOf:
+    - $ref: '#/components/schemas/DesignInfo'
+    - $ref: '#/components/schemas/DesignSchemas'
+
+#-----------------------#
+# Schema
+#-----------------------#
+DesignSchemas:
+  description: A collection of design schemas related to design template
+  type: object
+  properties:
+    schemas:
+      type: array
+      items:
+        $ref : '#/components/schemas/DesignSchema'
+  required:
+    - schemas
+
+DesignSchema:
+  description: Schema to define the roles and their connections
+  properties:
+    id:
+      type: integer
+      format: int64
+    name:
+      type: string
+    description:
+      type: string
+    roles:
+      type: array
+      items:
+        $ref: '#/components/schemas/Role'
+    channels:
+      type: array
+      items:
+        $ref: '#/components/schemas/Channel'
+    connectors:
+      type: array
+      items:
+        $ref: '#/components/schemas/Connector'
+  required:
+    - id
+    - name
+    - roles
+    - channels
+  example:
+    - name: sample schema 1
+      description: Sample schema to demostrate a TAG layout.
+      roles:
+        - name: trainer
+          description: These are responsible to consume the data and train local model
+          isDataConsumer: true
+        - name: aggregator
+          description: These are responsible to aggregate the updates from trainer nodes.
+          replica: 2
+        - name: global_aggregator
+          description: It is responsible to aggregate the updates from all the aggregators and make a generic model.
+          replica: 2
+      channel:
+        - name: trainer-agg-channel
+          description: Model update is sent from trainer to aggregator and vice-versa.
+          pair: ["trainer", "aggregator"]
+          groupBy:
+            type: tag
+            value : ["us", "eu"]
+        - name: agg-global-channel
+          description: Model update is sent from all aggregators to the global aggregator and vice-versa.
+          pair: ["trainer", "aggregator"]
+          groupBy:
+            type: tag
+            value : ["us", "eu"]
+
+
+#-----------------------#
+# Roles
+#-----------------------#
+Role:
+  description: Define the role of a compute unit
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    isDataConsumer:
+      type: boolean
+    replica:
+      format: int32
+      type: integer
+  required:
+    - name
+  example:
+    - name: trainer
+      description: These are responsible to consume the data and train local model
+      isDataConsumer: true
+    - name: aggregator
+      description: These are responsible to aggregate the updates from trainer nodes.
+      replica: 2
+
+#-----------------------#
+# Channel between roles
+#-----------------------#
+Channel:
+  description: Defines how different roles are connected.
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    pair:
+      type: array
+      items:
+        type: string
+      minItems: 2
+      maxItems: 2
+    groupBy:
+      type: object
+      properties:
+        type:
+          type: string
+        value:
+          type: array
+          items:
+            type: string
+          # code generation for oneOf is not working
+          # https://github.com/OpenAPITools/openapi-generator/issues/8086
+          # oneOf:
+          #   - type: string
+          #   - type: integer
+          #   - type: array
+          #     items:
+          #       oneOf:
+          #         - type: string
+          #         - type: integer
+      required:
+        - type
+        - value
+    isBidirectional:
+      type: boolean
+  required:
+    - name
+    - pair
+    - groupby
+  example:
+    - name: directionalExample
+      description: An example to demostrate bi-directional channel creation. Data is sent from trainer to aggregator and vice-versa.
+      pair: ["trainer", "aggregator"]
+      groupBy:
+        type: tag
+        value : ["us", "eu"]
+
+    - name: non-directionalExample
+      description: An example to demostrate connection in one direction. Data is sent from aggregator to global aggregator but not the other way. isBidirectional flag allows you to define one way channels.
+      pair: ["aggregator", "global-aggregator"]
+      groupBy:
+        type: tag
+        value : ["us", "eu"]
+      isBidirectional: false
+
+#-----------------------#
+# Connectors for channels
+#-----------------------#
+Connector:
+  type: object
+  properties:
+    name:
+      type: string
+    description:
+      type: string
+    connection:
+      type: object
+  required:
+    - name
+    - pair
+    - connection

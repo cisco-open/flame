@@ -1,0 +1,32 @@
+#-----------------------#
+# Basic Job Information
+#-----------------------#
+ServerInfo:
+  description: server information
+  properties:
+    name:
+      type: string
+    ip:
+      type: string
+    port:
+      type: integer
+      format: int64
+    uuid:
+      type: string
+    tags:
+      type: string
+    role:
+      type: string
+    status:
+      type: string
+
+JobNodes:
+  description: Node information for the job.
+  type: object
+  properties:
+    designId:
+      type: string
+    nodes:
+      type: array
+      items:
+        $ref: '#/components/schemas/ServerInfo'
