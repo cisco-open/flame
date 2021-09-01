@@ -11,6 +11,7 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -147,11 +148,11 @@ func (h *NotificationHandler) updateJobStatus(job openapi.JobInfo, req openapi.A
 		"agentId": h.uuid,
 	}
 
-	url := util.CreateURL(h.apiServerInfo.Ip, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
+	url := restapi.CreateURL(h.apiServerInfo.Ip, util.ApiServerRestApiPort, restapi.UpdateAgentStatusEndPoint, uriMap)
 
 	//send post request
 	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)
-	code, response, err := util.HTTPPut(url, req, "application/json")
+	code, response, err := restapi.HTTPPut(url, req, "application/json")
 	if err != nil {
 		zap.S().Errorf("error while updating the agent status. %v", err)
 	} else {

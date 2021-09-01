@@ -17,7 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 )
 
 // DevApiService is a service that implents the logic for the DevApiServicer
@@ -39,10 +39,10 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes open
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := util.CreateURL(Host, Port, util.JobNodesEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.JobNodesEndPoint, uriMap)
 
 	//send get request
-	_, _, err := util.HTTPPost(url, jobNodes, "application/json")
+	_, _, err := restapi.HTTPPost(url, jobNodes, "application/json")
 
 	//response to the user
 	if err != nil {
@@ -59,10 +59,10 @@ func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNode
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := util.CreateURL(Host, Port, util.JobNodesEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.JobNodesEndPoint, uriMap)
 
 	//send get request
-	_, _, err := util.HTTPPut(url, jobNodes, "application/json")
+	_, _, err := restapi.HTTPPut(url, jobNodes, "application/json")
 
 	//response to the user
 	if err != nil {

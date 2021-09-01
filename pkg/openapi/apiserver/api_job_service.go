@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -62,10 +63,10 @@ func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (
 		"user":  user,
 		"jobId": jobId,
 	}
-	url := util.CreateURL(Host, Port, util.GetJobEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.GetJobEndPoint, uriMap)
 
 	//send get request
-	responseBody, err := util.HTTPGet(url)
+	responseBody, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
@@ -86,10 +87,10 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo open
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := util.CreateURL(Host, Port, util.SubmitJobEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.SubmitJobEndPoint, uriMap)
 
 	//send post request
-	code, responseBody, err := util.HTTPPost(url, jobInfo, "application/json")
+	code, responseBody, err := restapi.HTTPPost(url, jobInfo, "application/json")
 
 	//response to the user
 	if err != nil {
@@ -145,10 +146,10 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 		"designId": designId,
 	}
 
-	url := util.CreateURL(Host, Port, util.ChangeJobSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.ChangeJobSchemaEndPoint, uriMap)
 
 	//send get request
-	_, _, err := util.HTTPPost(url, nil, "application/json")
+	_, _, err := restapi.HTTPPost(url, nil, "application/json")
 
 	//response to the user
 	if err != nil {

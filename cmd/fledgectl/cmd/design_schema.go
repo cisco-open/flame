@@ -8,6 +8,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -53,10 +54,10 @@ var createDesignSchemaCmd = &cobra.Command{
 			"user":     config.User,
 			"designId": designId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateDesignSchemaEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
 		// send post request
-		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
+		_, responseBody, err := restapi.HTTPPost(url, schema, "application/json")
 		if err != nil {
 			zap.S().Errorf("Failed to add a new schema: %v", err)
 		} else {
@@ -109,9 +110,9 @@ var updateDesignSchemaCmd = &cobra.Command{
 			"user":     config.User,
 			"designId": designId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateDesignSchemaEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
-		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
+		_, responseBody, err := restapi.HTTPPost(url, schema, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while adding a new schema. %v", err)
 		} else {
@@ -152,10 +153,10 @@ var getDesignSchemaCmd = &cobra.Command{
 			"type":     getType,
 			"schemaId": schemaId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignSchemaEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetDesignSchemaEndPoint, uriMap)
 
 		// send get request
-		responseBody, _ := util.HTTPGet(url)
+		responseBody, _ := restapi.HTTPGet(url)
 
 		// format the output into prettyJson format
 		prettyJSON, err := util.FormatJSON(responseBody)

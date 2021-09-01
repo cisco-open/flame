@@ -18,6 +18,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -45,10 +46,10 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId stri
 		"type":     getType,
 		"limit":    strconv.Itoa(int(limit)),
 	}
-	url := util.CreateURL(Host, Port, util.GetJobsEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.GetJobsEndPoint, uriMap)
 
 	//send get request
-	responseBody, err := util.HTTPGet(url)
+	responseBody, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {

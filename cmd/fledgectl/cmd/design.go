@@ -9,6 +9,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -42,7 +43,7 @@ var createDesignCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.CreateDesignEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.CreateDesignEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
@@ -52,7 +53,7 @@ var createDesignCmd = &cobra.Command{
 		}
 
 		//send post request
-		code, responseBody, err := util.HTTPPost(url, postBody, "application/json")
+		code, responseBody, err := restapi.HTTPPost(url, postBody, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while creating a new design templated. %v", err)
 			return err
@@ -81,11 +82,11 @@ var getDesignCmd = &cobra.Command{
 			"user":     config.User,
 			"designId": dId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetDesignEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
-		responseBody, _ := util.HTTPGet(url)
+		responseBody, _ := restapi.HTTPGet(url)
 
 		//format the output into prettyJson format
 		prettyJSON, err := util.FormatJSON(responseBody)
@@ -117,11 +118,11 @@ var getDesignsCmd = &cobra.Command{
 			"user":  config.User,
 			"limit": limit,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignsEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetDesignsEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
-		responseBody, _ := util.HTTPGet(url)
+		responseBody, _ := restapi.HTTPGet(url)
 
 		//convert the response into list of struct
 		var infoList []openapi.DesignInfo

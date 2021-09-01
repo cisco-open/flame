@@ -8,7 +8,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 )
 
 var devCmd = &cobra.Command{
@@ -56,7 +56,7 @@ var jobNodesCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := openapi.JobNodes{
@@ -65,7 +65,7 @@ var jobNodesCmd = &cobra.Command{
 		}
 
 		//send post request
-		code, responseBody, err := util.HTTPPost(url, jN, "application/json")
+		code, responseBody, err := restapi.HTTPPost(url, jN, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while adding a new schema. %v", err)
 		} else {
@@ -113,7 +113,7 @@ var updateJobNodesCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := openapi.JobNodes{
@@ -122,7 +122,7 @@ var updateJobNodesCmd = &cobra.Command{
 		}
 
 		//send post request
-		code, responseBody, err := util.HTTPPut(url, jN, "application/json")
+		code, responseBody, err := restapi.HTTPPut(url, jN, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while adding a new schema. %v", err)
 		} else {

@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -62,7 +63,7 @@ var submitJobCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.SubmitJobEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.SubmitJobEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
@@ -76,7 +77,7 @@ var submitJobCmd = &cobra.Command{
 		}
 
 		//send post request
-		code, responseBody, err := util.HTTPPost(url, postBody, "application/json")
+		code, responseBody, err := restapi.HTTPPost(url, postBody, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while submiting a new job %v", err)
 		}
@@ -118,10 +119,10 @@ var getJobCmd = &cobra.Command{
 			"user":  config.User,
 			"jobId": jId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetJobEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetJobEndPoint, uriMap)
 
 		//send get request
-		responseBody, err := util.HTTPGet(url)
+		responseBody, err := restapi.HTTPGet(url)
 		if err != nil {
 			zap.S().Errorf("error while getting job information %v", err)
 			return err
@@ -167,10 +168,10 @@ var getAllJobsCmd = &cobra.Command{
 			"limit":    strconv.Itoa(int(limit)),
 		}
 
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetJobsEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetJobsEndPoint, uriMap)
 
 		//send get request
-		responseBody, err := util.HTTPGet(url)
+		responseBody, err := restapi.HTTPGet(url)
 
 		//handle response
 		if err != nil {
@@ -223,11 +224,11 @@ var changeJobSchemaCmd = &cobra.Command{
 			"schemaId": sId,
 			"designId": dId,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.ChangeJobSchemaEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.ChangeJobSchemaEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
-		code, responseBody, err := util.HTTPPost(url, openapi.JobInfo{}, "application/json")
+		code, responseBody, err := restapi.HTTPPost(url, openapi.JobInfo{}, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while changing to a new schema. %v", err)
 		} else {
@@ -264,7 +265,7 @@ var testCmd = &cobra.Command{
 			"jobId":   jId,
 			"agentId": uuid,
 		}
-		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateAgentStatusEndPoint, uriMap)
+		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.UpdateAgentStatusEndPoint, uriMap)
 
 		zap.S().Debugf("url .. %s", url)
 
@@ -275,7 +276,7 @@ var testCmd = &cobra.Command{
 		}
 
 		//send post request
-		code, response, err := util.HTTPPut(url, req, "application/json")
+		code, response, err := restapi.HTTPPut(url, req, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while updating the agent status. %v", err)
 		} else {

@@ -17,6 +17,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -44,10 +45,10 @@ func (s *DesignSchemaApiService) GetDesignSchema(ctx context.Context, user strin
 		"type":     getType,
 		"schemaId": schemaId,
 	}
-	url := util.CreateURL(Host, Port, util.GetDesignSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.GetDesignSchemaEndPoint, uriMap)
 
 	//send get request
-	responseBody, err := util.HTTPGet(url)
+	responseBody, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
@@ -69,10 +70,10 @@ func (s *DesignSchemaApiService) UpdateDesignSchema(ctx context.Context, user st
 		"user":     user,
 		"designId": designId,
 	}
-	url := util.CreateURL(Host, Port, util.UpdateDesignSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(Host, Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
 	//send get request
-	code, resp, err := util.HTTPPost(url, designSchema, "application/json")
+	code, resp, err := restapi.HTTPPost(url, designSchema, "application/json")
 	zap.S().Debugf("code: %d, resp: %s", code, string(resp))
 
 	//response to the user
