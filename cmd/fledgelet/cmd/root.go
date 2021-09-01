@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/fledgelet/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -34,8 +34,8 @@ var agentCmd = &cobra.Command{
 			return err
 		}
 
-		apiServerInfo := objects.ServerInfo{IP: restIp, Port: restPort}
-		notifierInfo := objects.ServerInfo{IP: notifyIp, Port: notifyPort}
+		apiServerInfo := openapi.ServerInfo{Ip: restIp, Port: int32(restPort)}
+		notifierInfo := openapi.ServerInfo{Ip: notifyIp, Port: int32(notifyPort)}
 		agent, err := app.NewAgent(apiServerInfo, notifierInfo)
 		if err != nil {
 			return err

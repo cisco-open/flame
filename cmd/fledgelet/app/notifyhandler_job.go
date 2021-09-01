@@ -10,17 +10,18 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 func (h *NotificationHandler) NewJobInit(info objects.AppConf) {
 	h.appInfo.Conf = info
 	job := info.JobInfo
-	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.ID, job.DesignId, job.SchemaId, info.Role)
+	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.Id, job.DesignId, job.SchemaId, info.Role)
 
 	//Step 1 : dump the information in application confirmation json file
 	err := h.initApp(info)
-	req := objects.AgentStatus{
+	req := openapi.AgentStatus{
 		UpdateType: util.JobStatus,
 		Status:     "",
 		Message:    "",
@@ -56,7 +57,7 @@ func (h *NotificationHandler) NewJobInit(info objects.AppConf) {
 //NewJobStart starts the application on the agent
 func (h *NotificationHandler) NewJobStart(info objects.AppConf) {
 	if h.appInfo.State != util.RunningState {
-		req := objects.AgentStatus{
+		req := openapi.AgentStatus{
 			UpdateType: util.JobStatus,
 			Status:     "",
 			Message:    "",
@@ -82,7 +83,7 @@ func (h *NotificationHandler) JobReload(info objects.AppConf) (string, error) {
 
 func (h *NotificationHandler) initApp(info objects.AppConf) error {
 	//directory path
-	fp := filepath.Join("/fledge/job/", h.uuid, info.JobInfo.ID)
+	fp := filepath.Join("/fledge/job/", h.uuid, info.JobInfo.Id)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
 		zap.S().Debugf("Creating filepath: %s", fp)
 		os.MkdirAll(fp, util.FilePerm0700) // Create your file
@@ -131,7 +132,7 @@ func (h *NotificationHandler) startApp(_ objects.AppConf) (string, error) {
 	return util.RunningState, nil
 }
 
-func (h *NotificationHandler) updateJobStatus(job objects.JobInfo, req objects.AgentStatus) {
+func (h *NotificationHandler) updateJobStatus(job openapi.JobInfo, req openapi.AgentStatus) {
 	//update application state
 	h.appInfo.State = req.Message
 	if req.Status == util.StatusError {
@@ -142,11 +143,11 @@ func (h *NotificationHandler) updateJobStatus(job objects.JobInfo, req objects.A
 	//construct URL
 	uriMap := map[string]string{
 		"user":    util.InternalUser,
-		"jobId":   job.ID,
+		"jobId":   job.Id,
 		"agentId": h.uuid,
 	}
 
-	url := util.CreateURL(h.apiServerInfo.IP, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
+	url := util.CreateURL(h.apiServerInfo.Ip, util.ApiServerRestApiPort, util.UpdateAgentStatusEndPoint, uriMap)
 
 	//send post request
 	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)

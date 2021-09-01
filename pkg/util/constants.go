@@ -43,9 +43,9 @@ const (
 	// Database Fields
 	//TODO append Field to distinguish the fields
 	DBFieldMongoID  = "_id"
-	DBFieldUserId   = "userId"
-	DesignId        = "designId"
-	DBFieldSchemaId = "schemaId"
+	DBFieldUserId   = "userid"
+	DBFieldDesignId = "designid"
+	DBFieldSchemaId = "schemaid"
 	DBFieldNodes    = "nodes"
 
 	// Port numbers

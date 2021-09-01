@@ -10,8 +10,7 @@ DesignInfo:
     description:
       type: string
     id:
-      format: int64
-      type: integer
+      type: string
     userId:
       type: string
   required:
@@ -20,7 +19,7 @@ DesignInfo:
   example:
     name: diabete predict
     description : Helps in quick diagnosis and prediction of diabetes among patients.
-    id: 1
+    id: "a0d0d66716af12b787d9ef0a"
 
 Design:
   description: Design template details along with all the schemas.
@@ -47,8 +46,7 @@ DesignSchema:
   description: Schema to define the roles and their connections
   properties:
     id:
-      type: integer
-      format: int64
+      type: string
     name:
       type: string
     description:
@@ -163,7 +161,7 @@ Channel:
       required:
         - type
         - value
-    isBidirectional:
+    isUnidirectional:
       type: boolean
   required:
     - name
@@ -183,7 +181,7 @@ Channel:
       groupBy:
         type: tag
         value : ["us", "eu"]
-      isBidirectional: false
+      isUnidirectional: false
 
 #-----------------------#
 # Connectors for channels

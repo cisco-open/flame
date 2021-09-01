@@ -3,9 +3,9 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 
+	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -44,9 +44,9 @@ var startApiServerCmd = &cobra.Command{
 			return err
 		}
 
-		if err := openapi.RunServer(portNo, objects.ServerInfo{
-			IP:   ctlrIp,
-			Port: ctlrPort,
+		if err := app.RunServer(portNo, openapi.ServerInfo{
+			Ip:   ctlrIp,
+			Port: int32(ctlrPort),
 		}); err != nil {
 			return err
 		}

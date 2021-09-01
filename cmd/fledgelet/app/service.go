@@ -11,20 +11,20 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbAgent "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 type AgentService struct {
-	apiServerInfo objects.ServerInfo
-	notifierInfo  objects.ServerInfo
+	apiServerInfo openapi.ServerInfo
+	notifierInfo  openapi.ServerInfo
 	name          string
 	uuid          string
 	nHandler      *NotificationHandler
 }
 
-func NewAgent(apiserverInfo objects.ServerInfo, notifierInfo objects.ServerInfo) (*AgentService, error) {
+func NewAgent(apiserverInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo) (*AgentService, error) {
 	// TODO: revisit name and id part;
 	// determining name and id can be done through api call
 	name, err := os.Hostname()

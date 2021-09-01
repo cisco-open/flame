@@ -9,7 +9,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -66,7 +66,7 @@ var submitJobCmd = &cobra.Command{
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
-		postBody := objects.JobInfo{
+		postBody := openapi.JobInfo{
 			UserId:      config.User,
 			DesignId:    designId,
 			SchemaId:    schemaId,
@@ -177,7 +177,7 @@ var getAllJobsCmd = &cobra.Command{
 			zap.S().Errorf("get jobs request failed %v", err)
 			return err
 		}
-		var infoList []objects.JobInfo
+		var infoList []openapi.JobInfo
 		err = util.ByteToStruct(responseBody, &infoList)
 		if err != nil {
 			zap.S().Errorf("error while decoding response %v", err)
@@ -188,7 +188,7 @@ var getAllJobsCmd = &cobra.Command{
 		table := tablewriter.NewWriter(os.Stdout)
 		table.SetHeader([]string{"ID", "Name", "Description", "DesignId", "Priority", "Created", "Updated", "Completed"})
 		for _, v := range infoList {
-			table.Append([]string{v.ID, v.Name, v.Description, v.DesignId, v.Priority})
+			table.Append([]string{v.Id, v.Name, v.Description, v.DesignId, v.Priority})
 		}
 		table.Render() // Send output
 		return nil
@@ -227,7 +227,7 @@ var changeJobSchemaCmd = &cobra.Command{
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//send get request
-		code, responseBody, err := util.HTTPPost(url, objects.JobInfo{}, "application/json")
+		code, responseBody, err := util.HTTPPost(url, openapi.JobInfo{}, "application/json")
 		if err != nil {
 			zap.S().Errorf("error while changing to a new schema. %v", err)
 		} else {
@@ -268,7 +268,7 @@ var testCmd = &cobra.Command{
 
 		zap.S().Debugf("url .. %s", url)
 
-		req := objects.AgentStatus{
+		req := openapi.AgentStatus{
 			UpdateType: util.JobStatus,
 			Status:     util.StatusSuccess,
 			Message:    util.RunningState,

@@ -10,14 +10,14 @@ ServerInfo:
       type: string
     port:
       type: integer
-      format: int64
+      format: int32
     uuid:
       type: string
     tags:
       type: string
     role:
       type: string
-    status:
+    state:
       type: string
 
 JobNodes:

@@ -8,7 +8,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -46,7 +46,7 @@ var createDesignCmd = &cobra.Command{
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		//Encode the data
-		postBody := objects.DesignInfo{
+		postBody := openapi.DesignInfo{
 			Name:        name,
 			Description: description,
 		}
@@ -124,7 +124,7 @@ var getDesignsCmd = &cobra.Command{
 		responseBody, _ := util.HTTPGet(url)
 
 		//convert the response into list of struct
-		var infoList []objects.DesignInfo
+		var infoList []openapi.DesignInfo
 		err = json.Unmarshal(responseBody, &infoList)
 		if err != nil {
 			return err
@@ -135,7 +135,7 @@ var getDesignsCmd = &cobra.Command{
 		table.SetHeader([]string{"ID", "Name", "Description"})
 
 		for _, v := range infoList {
-			table.Append([]string{v.ID.Hex(), v.Name, v.Description})
+			table.Append([]string{v.Id, v.Name, v.Description})
 		}
 		table.Render() // Send output
 
@@ -155,7 +155,8 @@ func init() {
 	createDesignCmd.MarkFlagRequired("name")
 
 	//GET DESIGN
-	getDesignCmd.Flags().StringP("designId", "l", "100", "Design id corresponding to the design template information")
+	getDesignCmd.Flags().StringP("designId", "l", "", "Design id corresponding to the design template information")
+	getDesignCmd.MarkFlagRequired("designId")
 
 	//GET DESIGNS
 	getDesignsCmd.Flags().StringP("limit", "l", "100", "List of all the designs by this user")

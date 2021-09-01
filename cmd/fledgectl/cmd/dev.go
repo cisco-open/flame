@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -44,7 +44,7 @@ var jobNodesCmd = &cobra.Command{
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
 		type Tmp struct {
-			Nodes []objects.ServerInfo `json:"nodes,omitempty"`
+			Nodes []openapi.ServerInfo `json:"nodes,omitempty"`
 		}
 		y := Tmp{}
 		err = yaml.Unmarshal(yamlFile, &y)
@@ -59,7 +59,7 @@ var jobNodesCmd = &cobra.Command{
 		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
-		jN := objects.JobNodes{
+		jN := openapi.JobNodes{
 			DesignId: designId,
 			Nodes:    y.Nodes,
 		}
@@ -101,7 +101,7 @@ var updateJobNodesCmd = &cobra.Command{
 		//Read schemas from the yaml file
 		//var y []objects.ServerInfo
 		type Tmp struct {
-			Nodes []objects.ServerInfo `json:"nodes,omitempty"`
+			Nodes []openapi.ServerInfo `json:"nodes,omitempty"`
 		}
 		y := Tmp{}
 		err = yaml.Unmarshal(yamlFile, &y)
@@ -116,7 +116,7 @@ var updateJobNodesCmd = &cobra.Command{
 		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
-		jN := objects.JobNodes{
+		jN := openapi.JobNodes{
 			DesignId: designId,
 			Nodes:    y.Nodes,
 		}

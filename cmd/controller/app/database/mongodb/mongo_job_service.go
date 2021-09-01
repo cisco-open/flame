@@ -9,14 +9,14 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // SubmitJob creates a new job and return the jobId which is used by the controller to inform the fledgelet about new job.
-func (db *MongoService) SubmitJob(userId string, info objects.JobInfo) (string, error) {
+func (db *MongoService) SubmitJob(userId string, info openapi.JobInfo) (string, error) {
 	t := time.Now()
-	info.Timestamp = objects.JobInfoTimestamp{
+	info.Timestamp = openapi.JobInfoTimestamp{
 		CreatedAt:   t.Unix(),
 		StartedAt:   0,
 		UpdatedAt:   0,
@@ -32,10 +32,10 @@ func (db *MongoService) SubmitJob(userId string, info objects.JobInfo) (string, 
 	return GetStringID(result.InsertedID), err
 }
 
-func (db *MongoService) GetJob(userId string, jobId string) (objects.JobInfo, error) {
+func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobInfo, error) {
 	zap.S().Debugf("mongodb get job for userId: %s with jobId: %s", userId, jobId)
 	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
-	var info objects.JobInfo
+	var info openapi.JobInfo
 	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&info)
 	if err != nil {
 		err = ErrorCheck(err)
@@ -43,24 +43,24 @@ func (db *MongoService) GetJob(userId string, jobId string) (objects.JobInfo, er
 	}
 	return info, nil
 }
-func (db *MongoService) GetJobs(userId string, getType string, designId string, limit int32) ([]objects.JobInfo, error) {
+func (db *MongoService) GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error) {
 	zap.S().Debugf("mongodb get jobs detail for userId: %s | | getType: %s | designId: %s ", userId, getType, designId)
 	filter := bson.M{util.DBFieldUserId: userId}
 	if getType == util.Design {
-		filter = bson.M{util.DBFieldUserId: userId, util.DesignId: designId}
+		filter = bson.M{util.DBFieldUserId: userId, util.DBFieldDesignId: designId}
 	}
 	return db.getJobsInfo(filter)
 }
 
-//func (db *MongoService) GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]objects.JobInfo, error) {
+//func (db *MongoService) GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]openapi.JobInfo, error) {
 //	if getType == util.GetBySchemaId {
-//		filter := bson.M{util.DesignId: in[util.DesignId], util.DBFieldSchemaId: in[util.DBFieldSchemaId]}
+//		filter := bson.M{util.DBFieldDesignId: in[util.DBFieldDesignId], util.DBFieldSchemaId: in[util.DBFieldSchemaId]}
 //		return db.getJobsInfo(filter)
 //	}
 //	return nil, nil
 //}
 
-func (db *MongoService) getJobsInfo(filter primitive.M) ([]objects.JobInfo, error) {
+func (db *MongoService) getJobsInfo(filter primitive.M) ([]openapi.JobInfo, error) {
 	cursor, err := db.jobCollection.Find(context.TODO(), filter)
 
 	if err != nil {
@@ -70,9 +70,9 @@ func (db *MongoService) getJobsInfo(filter primitive.M) ([]objects.JobInfo, erro
 	}
 
 	defer cursor.Close(context.TODO())
-	var infoList []objects.JobInfo
+	var infoList []openapi.JobInfo
 	for cursor.Next(context.TODO()) {
-		var d objects.JobInfo
+		var d openapi.JobInfo
 		if err = cursor.Decode(&d); err != nil {
 			err = ErrorCheck(err)
 			zap.S().Errorf("error while decoding job info. %v", err)
@@ -83,8 +83,8 @@ func (db *MongoService) getJobsInfo(filter primitive.M) ([]objects.JobInfo, erro
 	return infoList, nil
 }
 
-func (db *MongoService) UpdateJob(userId string, jobId string) (objects.JobInfo, error) {
-	return objects.JobInfo{}, nil
+func (db *MongoService) UpdateJob(userId string, jobId string) (openapi.JobInfo, error) {
+	return openapi.JobInfo{}, nil
 }
 func (db *MongoService) DeleteJob(userId string, jobId string) error {
 	return nil
@@ -108,7 +108,7 @@ func (db *MongoService) UpdateJobDetails(jobId string, updateType string, msg in
 }
 
 func (db *MongoService) addJobNodes(jobId string, msg interface{}) error {
-	nodesInfo := msg.([]objects.ServerInfo)
+	nodesInfo := msg.([]openapi.ServerInfo)
 	zap.S().Debugf("nodesInfo : %v", nodesInfo)
 
 	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
@@ -144,7 +144,7 @@ func (db *MongoService) changeJobSchema(jobId string, msg interface{}) error {
 	zap.S().Debugf("change job design schema. %v", info)
 
 	newSchemaId := info[util.DBFieldSchemaId].(string)
-	newNodes := info[util.DBFieldNodes].([]objects.ServerInfo)
+	newNodes := info[util.DBFieldNodes].([]openapi.ServerInfo)
 
 	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
 	update := bson.M{"$set": bson.M{util.DBFieldSchemaId: newSchemaId}}

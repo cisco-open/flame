@@ -4,7 +4,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		notificationInfo := objects.ServerInfo{IP: notifyIp, Port: notifyPort}
+		notificationInfo := openapi.ServerInfo{Ip: notifyIp, Port: int32(notifyPort)}
 		if err := app.StartController(uri, notificationInfo); err != nil {
 			return err
 		}

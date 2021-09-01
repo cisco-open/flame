@@ -1,12 +1,14 @@
 package objects
 
+import "wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+
 // JobNotification - job notification message.
 type JobNotification struct {
-	Agents []ServerInfo `json:"agents"`
+	Agents []openapi.ServerInfo `json:"agents"`
 
-	Job JobInfo `json:"job"`
+	Job openapi.JobInfo `json:"job"`
 
-	SchemaInfo DesignSchema `json:"schemaInfo"`
+	SchemaInfo openapi.DesignSchema `json:"schemaInfo"`
 
 	NotificationType string `json:"notificationType"`
 }

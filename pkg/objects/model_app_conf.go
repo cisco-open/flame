@@ -1,9 +1,11 @@
 package objects
 
-type AppConf struct {
-	JobInfo JobInfo `json:"jobInfo"`
+import "wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 
-	SchemaInfo DesignSchema `json:"schemaInfo"`
+type AppConf struct {
+	JobInfo openapi.JobInfo `json:"jobInfo"`
+
+	SchemaInfo openapi.DesignSchema `json:"schemaInfo"`
 
 	Role string `json:"role"`
 

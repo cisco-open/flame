@@ -1,13 +1,13 @@
 package cmd
 
 import (
+	"encoding/json"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
-	"gopkg.in/yaml.v3"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -35,39 +35,35 @@ var createDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
-		//read schema via conf file
-		yamlFile, err := ioutil.ReadFile(conf)
+		// read schema via conf file
+		jsonData, err := ioutil.ReadFile(conf)
 		if err != nil {
 			return err
 		}
 
-		// read schemas from the yaml file
-		y := objects.DesignSchemas{}
-		err = yaml.Unmarshal(yamlFile, &y)
+		// read schemas from the json file
+		schema := openapi.DesignSchema{}
+		err = json.Unmarshal(jsonData, &schema)
 		if err != nil {
 			return err
 		}
 
-		//construct URL
+		// construct URL
 		uriMap := map[string]string{
 			"user":     config.User,
 			"designId": designId,
 		}
 		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.UpdateDesignSchemaEndPoint, uriMap)
 
-		//Send post request for each schema
-		for _, s := range y.Schemas {
-			//postBody, _ := json.Marshal(s)
-
-			//send post request
-			_, responseBody, err := util.HTTPPost(url, s, "application/json")
-			if err != nil {
-				zap.S().Errorf("error while adding a new schema. %v", err)
-			} else {
-				sb := string(responseBody)
-				zap.S().Infof(sb)
-			}
+		// send post request
+		_, responseBody, err := util.HTTPPost(url, schema, "application/json")
+		if err != nil {
+			zap.S().Errorf("Failed to add a new schema: %v", err)
+		} else {
+			sb := string(responseBody)
+			zap.S().Infof(sb)
 		}
+
 		return nil
 	},
 }
@@ -93,20 +89,20 @@ var updateDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
-		//read schema via conf file
-		yamlFile, err := ioutil.ReadFile(conf)
+		// read schema via conf file
+		jsonData, err := ioutil.ReadFile(conf)
 		if err != nil {
 			return err
 		}
 
-		// read schemas from the yaml file
-		schema := objects.DesignSchema{}
-		err = yaml.Unmarshal(yamlFile, &schema)
+		// read schema from the json file
+		schema := openapi.DesignSchema{}
+		err = json.Unmarshal(jsonData, &schema)
 		if err != nil {
 			return err
 		}
 
-		schema.ID = schemaId
+		schema.Id = schemaId
 
 		//construct URL
 		uriMap := map[string]string{
@@ -122,6 +118,7 @@ var updateDesignSchemaCmd = &cobra.Command{
 			sb := string(responseBody)
 			zap.S().Infof(sb)
 		}
+
 		return nil
 	},
 }
@@ -148,7 +145,7 @@ var getDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
-		//construct URL
+		// construct URL
 		uriMap := map[string]string{
 			"user":     config.User,
 			"designId": dId,
@@ -157,10 +154,10 @@ var getDesignSchemaCmd = &cobra.Command{
 		}
 		url := util.CreateURL(config.ApiServer.Host, config.ApiServer.Port, util.GetDesignSchemaEndPoint, uriMap)
 
-		//send get request
+		// send get request
 		responseBody, _ := util.HTTPGet(url)
 
-		//format the output into prettyJson format
+		// format the output into prettyJson format
 		prettyJSON, err := util.FormatJSON(responseBody)
 		if err != nil {
 			zap.S().Errorf("error while formating json %v", err)

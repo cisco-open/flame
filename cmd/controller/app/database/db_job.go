@@ -1,26 +1,26 @@
 package database
 
 import (
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
-func SubmitJob(userId string, info objects.JobInfo) (string, error) {
+func SubmitJob(userId string, info openapi.JobInfo) (string, error) {
 	return DB.SubmitJob(userId, info)
 }
 
-func GetJob(userId string, jobId string) (objects.JobInfo, error) {
+func GetJob(userId string, jobId string) (openapi.JobInfo, error) {
 	return DB.GetJob(userId, jobId)
 }
 
-func GetJobs(userId string, getType string, designId string, limit int32) ([]objects.JobInfo, error) {
+func GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error) {
 	return DB.GetJobs(userId, getType, designId, limit)
 }
 
-//func GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]objects.JobInfo, error) {
+//func GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]openapi.JobInfo, error) {
 //	return DB.GetJobsDetailsBy(userId, getType, in)
 //}
 
-func UpdateJob(userId string, jobId string) (objects.JobInfo, error) {
+func UpdateJob(userId string, jobId string) (openapi.JobInfo, error) {
 	return DB.UpdateJob(userId, jobId)
 }
 

@@ -9,13 +9,14 @@ import (
 	"google.golang.org/grpc"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 type NotificationHandler struct {
-	apiServerInfo objects.ServerInfo
-	notifierInfo  objects.ServerInfo
+	apiServerInfo openapi.ServerInfo
+	notifierInfo  openapi.ServerInfo
 	name          string
 	uuid          string
 
@@ -28,7 +29,7 @@ type AppInfo struct {
 	Conf  objects.AppConf
 }
 
-func newNotificationHandler(apiSvrInfo objects.ServerInfo, notifierInfo objects.ServerInfo, name string, uuid string) *NotificationHandler {
+func newNotificationHandler(apiSvrInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo, name string, uuid string) *NotificationHandler {
 	return &NotificationHandler{
 		apiServerInfo: apiSvrInfo,
 		notifierInfo:  notifierInfo,

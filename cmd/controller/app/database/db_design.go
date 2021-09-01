@@ -1,30 +1,30 @@
 package database
 
 import (
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
 // CreateDesign - Create a new design template entry in the database.
-func CreateDesign(userId string, info objects.Design) error {
+func CreateDesign(userId string, info openapi.Design) error {
 	return DB.CreateDesign(userId, info)
 }
 
-func GetDesigns(userId string, limit int32) ([]objects.DesignInfo, error) {
+func GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error) {
 	return DB.GetDesigns(userId, limit)
 }
 
-func GetDesign(userId string, designId string) (objects.Design, error) {
+func GetDesign(userId string, designId string) (openapi.Design, error) {
 	return DB.GetDesign(userId, designId)
 }
 
-func GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]objects.DesignSchema, error) {
+func GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]openapi.DesignSchema, error) {
 	return DB.GetDesignSchema(userId, designId, getType, schemaId)
 }
 
-func CreateDesignSchema(userId string, designId string, info objects.DesignSchema) error {
+func CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error {
 	return DB.CreateDesignSchema(userId, designId, info)
 }
 
-func UpdateDesignSchema(userId string, designId string, info objects.DesignSchema) error {
+func UpdateDesignSchema(userId string, designId string, info openapi.DesignSchema) error {
 	return DB.UpdateDesignSchema(userId, designId, info)
 }

@@ -5,6 +5,8 @@ JobInfo:
   description: Basic job information.
   type: object
   properties:
+    id:
+      type: string
     name:
       type: string
     description:
@@ -43,6 +45,7 @@ JobInfo:
     config:
       type: object
   required:
+    - id
     - name
     - userId
     - designId
@@ -61,7 +64,7 @@ AgentStatus:
     status:
       type: string
     message:
-      type: object
+      type: string
   required:
     - updateType
     - status

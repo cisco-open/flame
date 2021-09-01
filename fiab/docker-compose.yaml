@@ -42,3 +42,11 @@ services:
     ports:
       - '10100:10100'
     depends_on: ['controller']
+
+  fledgelet:
+    image: 'fledge'
+    container_name: 'fledgelet'
+    command: /fledge/fledgelet --notifyIp fledge-notifier --apiIp fledge-apiserver
+    ports:
+      - '10103:10103'
+    depends_on: ['apiserver', 'notifier']
