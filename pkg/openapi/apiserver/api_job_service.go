@@ -11,7 +11,7 @@ package apiserver
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -50,7 +50,7 @@ func (s *JobApiService) DeleteJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
+	return openapi.Response(http.StatusNotImplemented, nil), fmt.Errorf("DeleteJob method not implemented")
 }
 
 // GetJob - Get job detail.
@@ -66,12 +66,17 @@ func (s *JobApiService) GetJob(ctx context.Context, user string, jobId string) (
 	url := restapi.CreateURL(Host, Port, restapi.GetJobEndPoint, uriMap)
 
 	//send get request
-	responseBody, err := restapi.HTTPGet(url)
+	code, responseBody, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), errors.New("get job details request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get job details request failed")
 	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
 	resp := openapi.JobInfo{}
 	err = util.ByteToStruct(responseBody, &resp)
 	return openapi.Response(http.StatusOK, resp), err
@@ -94,7 +99,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo open
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), errors.New("submit new job request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("submit new job request failed")
 	}
 
 	if code == http.StatusMultiStatus {
@@ -129,7 +134,7 @@ func (s *JobApiService) UpdateJob(ctx context.Context, user string, jobId string
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobEndPoint method not implemented")
+	return openapi.Response(http.StatusNotImplemented, nil), fmt.Errorf("UpdateJobEndPoint method not implemented")
 }
 
 // ChangeJobSchema - Change the schema for the given job
@@ -154,7 +159,7 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 	//response to the user
 	if err != nil {
 		errMsg := "error while changing the design schema for the given job"
-		return openapi.Response(http.StatusInternalServerError, nil), errors.New(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
 	}
 	return openapi.Response(http.StatusOK, nil), err
 }

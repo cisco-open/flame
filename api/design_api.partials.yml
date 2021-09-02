@@ -48,7 +48,6 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/design:
   #------------------------------------#
   # Create New Design Template
   #------------------------------------#
@@ -56,7 +55,7 @@
     operationId: createDesign
     summary: Create a new design template.
     tags:
-      - design
+      - designs
     parameters:
       - description: user name
         explode: false
@@ -83,7 +82,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/design/{designId}:
+/{user}/designs/{designId}:
   #------------------------------------#
   # Get Design via ID
   #------------------------------------#
@@ -91,7 +90,7 @@
     operationId: getDesign
     summary: Get design template information
     tags:
-      - design
+      - designs
     parameters:
       - name: user
         description: user id
@@ -131,14 +130,14 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/design/{designId}/schema:
+/{user}/designs/{designId}/schemas:
   #------------------------------------#
-  # Get Design Schema - all or by id
+  # Get All Design Schemas
   #------------------------------------#
   get:
-    operationId: getDesignSchema
+    operationId: getDesignSchemas
     tags:
-      - designSchema
+      - designSchemas
     parameters:
       - name: user
         description: user id
@@ -156,31 +155,12 @@
         style: simple
         explode: false
         required: true
-      - name: getType
-        description: Type of fetch based on id or all
-        in: query
-        schema:
-          type: string
-          enum: ["all", "id"]
-        style: form
-        explode: false
-        required: false
-      - name: schemaId
-        description: If type is ID this provides the design schema id
-        in: query
-        schema:
-          type: string
-        style: form
-        explode: true
-        required: false
     responses:
       "200":
         content:
           application/json:
             schema:
-              oneOf:
-                - $ref: '#/components/schemas/DesignSchema'
-                - $ref: '#/components/schemas/DesignSchemas'
+              $ref: '#/components/schemas/DesignSchemas'
         description: a design schema
       default:
         content:
@@ -188,13 +168,13 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
-    summary: Get a design schema owned by user
+    summary: Get all design schemas in a design
 
   #------------------------------------#
   # Create Design Schema
   #------------------------------------#
   post:
-    operationId: updateDesignSchema
+    operationId: createDesignSchema
     parameters:
       - name: user
         description: user id
@@ -228,55 +208,62 @@
         description: unexpected error
     summary: Update a design schema
     tags:
-      - designSchema
+      - designSchemas
 
-/{user}/design/{designId}/code:
+/{user}/designs/{designId}/schemas/{version}:
   #------------------------------------#
-  # Get Code Zip
+  # Get Design Schema
   #------------------------------------#
   get:
-    operationId: getDesignCode
+    operationId: getDesignSchema
+    tags:
+      - designSchemas
     parameters:
       - name: user
-        description: user name
-        explode: false
+        description: user id
         in: path
-        required: true
         schema:
           type: string
         style: simple
+        explode: false
+        required: true
       - name: designId
         description: design id
-        explode: false
         in: path
-        required: true
         schema:
           type: string
         style: simple
+        explode: false
+        required: true
+      - name: version
+        description: version string
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       "200":
         content:
-          application/octet-stream:
+          application/json:
             schema:
-              # a binary file of any type
-              type: string
-              format: binary
-        description: A design code file in zipped format
+              $ref: '#/components/schemas/DesignSchema'
+        description: a design schema
       default:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
-    summary: Get a zipped design code file owned by user
-    tags:
-      - designCode
-
+    summary: Get a design schema owned by user
+  
+/{user}/designs/{designId}/codes:
   #------------------------------------#
   # Upload Code Zip
   #------------------------------------#
   post:
-    operationId: updateDesignCode
+    operationId: createDesignCode
     parameters:
       - name: user
         description: user id
@@ -311,4 +298,54 @@
         description: unexpected error
     summary: Update a design doce
     tags:
-      - designCode
+      - designCodes
+
+/{user}/designs/{designId}/codes/{version}:
+  #------------------------------------#
+  # Get Code Zip
+  #------------------------------------#
+  get:
+    operationId: getDesignCode
+    parameters:
+      - name: user
+        description: user name
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: version
+        description: version string
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      "200":
+        content:
+          application/octet-stream:
+            schema:
+              # a binary file of any type
+              type: string
+              format: binary
+        description: A design code file in zipped format
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Get a zipped design code file owned by user
+    tags:
+      - designCodes

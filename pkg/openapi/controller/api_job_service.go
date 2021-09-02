@@ -75,7 +75,7 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo open
 	}
 
 	// get design detail that is passed to the nodes as part of notification
-	schemaInfo, err := database.GetDesignSchema(util.InternalUser, jobInfo.DesignId, util.ID, jobInfo.SchemaId)
+	schemaInfo, err := database.GetDesignSchema(util.InternalUser, jobInfo.DesignId, "FIXME")
 	if err != nil {
 		err = fmt.Errorf("submit new job request failed: %v", err)
 		return openapi.Response(http.StatusInternalServerError, nil), err
@@ -93,14 +93,14 @@ func (s *JobApiService) SubmitJob(ctx context.Context, user string, jobInfo open
 
 	//Step 3 - update cache
 	Cache.jobAgents[jId] = agentInfo
-	Cache.jobSchema[jId] = schemaInfo[0]
+	Cache.jobSchema[jId] = schemaInfo
 
 	//Step 4 - Notifying the agents of new job. Sending a init request allows to re-use the fledgelet nodes in the future, if needed.
 	jobInfo.Id = jId
 	jobMsg := objects.JobNotification{
 		Agents:           agentInfo,
 		Job:              jobInfo,
-		SchemaInfo:       schemaInfo[0],
+		SchemaInfo:       schemaInfo,
 		NotificationType: util.InitState,
 	}
 	zap.S().Debugf("Sending notification to all the agents (count: %d) for new job id: %s. Info: %v", len(agentInfo), jId, jobMsg)
@@ -158,13 +158,13 @@ func (s *JobApiService) ChangeJobSchema(ctx context.Context, user string, jobId 
 
 	//step 2 - get schema details for new schema id
 	//get design detail that is passed to the nodes as part of notification
-	res, err := database.GetDesignSchema(util.InternalUser, designId, util.ID, newSchemaId)
+	res, err := database.GetDesignSchema(util.InternalUser, designId, "FIXME")
 	if err != nil {
 		err = fmt.Errorf("change job schema request failed - job: %s | new schema id: %s | %v", jobId, newSchemaId, err)
 		zap.S().Error(err)
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
-	newSchema := res[0]
+	newSchema := res
 	zap.S().Debugf("schema : %v | %v", oldSchema, newSchema)
 
 	//step 3 - check the old and new schema to determine the -new nodes required and -determine changes in the existing nodes

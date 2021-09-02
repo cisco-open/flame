@@ -10,6 +10,7 @@
 package openapi
 
 import (
+	"encoding/json"
 	"net/http"
 	"strings"
 
@@ -30,12 +31,61 @@ func NewDesignsApiController(s DesignsApiServicer) Router {
 func (c *DesignsApiController) Routes() Routes {
 	return Routes{
 		{
+			"CreateDesign",
+			strings.ToUpper("Post"),
+			"/{user}/designs",
+			c.CreateDesign,
+		},
+		{
+			"GetDesign",
+			strings.ToUpper("Get"),
+			"/{user}/designs/{designId}",
+			c.GetDesign,
+		},
+		{
 			"GetDesigns",
 			strings.ToUpper("Get"),
 			"/{user}/designs",
 			c.GetDesigns,
 		},
 	}
+}
+
+// CreateDesign - Create a new design template.
+func (c *DesignsApiController) CreateDesign(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	designInfo := &DesignInfo{}
+	if err := json.NewDecoder(r.Body).Decode(&designInfo); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.CreateDesign(r.Context(), user, *designInfo)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// GetDesign - Get design template information
+func (c *DesignsApiController) GetDesign(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	designId := params["designId"]
+
+	result, err := c.service.GetDesign(r.Context(), user, designId)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
 // GetDesigns - Get list of all the designs created by the user.

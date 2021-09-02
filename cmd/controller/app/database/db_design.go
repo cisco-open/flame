@@ -17,8 +17,12 @@ func GetDesign(userId string, designId string) (openapi.Design, error) {
 	return DB.GetDesign(userId, designId)
 }
 
-func GetDesignSchema(userId string, designId string, getType string, schemaId string) ([]openapi.DesignSchema, error) {
-	return DB.GetDesignSchema(userId, designId, getType, schemaId)
+func GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error) {
+	return DB.GetDesignSchema(userId, designId, version)
+}
+
+func GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error) {
+	return DB.GetDesignSchemas(userId, designId)
 }
 
 func CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error {

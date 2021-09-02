@@ -16,18 +16,27 @@ import (
 func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	zap.S().Infof("Staring API server. Controller %v", ctlrInfo)
 
-	// Setting up REST API Server
+	// setting controller IP and port number for rest api call to the controller from the api server
 	apiserver.Host = ctlrInfo.Ip
 	apiserver.Port = uint16(ctlrInfo.Port)
 
-	DesignApiService := apiserver.NewDesignApiService()
-	DesignApiController := openapi.NewDesignApiController(DesignApiService)
+	// Setting up REST API Server
+	AgentServiceApi := apiserver.NewAgentApiService()
+	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
+
+	DesignCodesApiService := apiserver.NewDesignCodesApiService()
+	DesignCodesApiController := openapi.NewDesignCodesApiController(DesignCodesApiService)
+
+	DesignSchemasApiService := apiserver.NewDesignSchemasApiService()
+	DesignSchemasApiController := openapi.NewDesignSchemasApiController(DesignSchemasApiService)
 
 	DesignsApiService := apiserver.NewDesignsApiService()
 	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
 
-	DesignSchemaApiService := apiserver.NewDesignSchemaApiService()
-	DesignSchemaApiController := openapi.NewDesignSchemaApiController(DesignSchemaApiService)
+	// TODO remove me after prototyping phase is done.
+	// only for prototyping
+	DevServiceApi := apiserver.NewDevApiService()
+	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
 
 	JobServiceApi := apiserver.NewJobApiService()
 	JobServiceApiController := openapi.NewJobApiController(JobServiceApi)
@@ -35,22 +44,14 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	JobsServiceApi := apiserver.NewJobsApiService()
 	JobsServiceApiController := openapi.NewJobsApiController(JobsServiceApi)
 
-	AgentServiceApi := apiserver.NewAgentApiService()
-	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
-
-	// TODO remove me after prototyping phase is done.
-	// only for prototyping
-	DevServiceApi := apiserver.NewDevApiService()
-	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
-
 	router := openapi.NewRouter(
-		DesignApiController,
+		AgentServiceApiController,
 		DesignsApiController,
-		DesignSchemaApiController,
+		DesignCodesApiController,
+		DesignSchemasApiController,
+		DevServiceApiController,
 		JobServiceApiController,
 		JobsServiceApiController,
-		DevServiceApiController,
-		AgentServiceApiController,
 	)
 
 	addr := fmt.Sprintf(":%d", portNo)

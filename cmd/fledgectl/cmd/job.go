@@ -122,9 +122,13 @@ var getJobCmd = &cobra.Command{
 		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetJobEndPoint, uriMap)
 
 		//send get request
-		responseBody, err := restapi.HTTPGet(url)
+		code, responseBody, err := restapi.HTTPGet(url)
 		if err != nil {
 			zap.S().Errorf("error while getting job information %v", err)
+			return err
+		}
+
+		if err = restapi.CheckStatusCode(code); err != nil {
 			return err
 		}
 
@@ -171,13 +175,18 @@ var getAllJobsCmd = &cobra.Command{
 		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetJobsEndPoint, uriMap)
 
 		//send get request
-		responseBody, err := restapi.HTTPGet(url)
+		code, responseBody, err := restapi.HTTPGet(url)
 
 		//handle response
 		if err != nil {
 			zap.S().Errorf("get jobs request failed %v", err)
 			return err
 		}
+
+		if err = restapi.CheckStatusCode(code); err != nil {
+			return err
+		}
+
 		var infoList []openapi.JobInfo
 		err = util.ByteToStruct(responseBody, &infoList)
 		if err != nil {

@@ -11,7 +11,7 @@ package controller
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
@@ -29,11 +29,40 @@ func NewDesignsApiService() openapi.DesignsApiServicer {
 	return &DesignsApiService{}
 }
 
+// CreateDesign - Create a new design template.
+func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, designInfo openapi.DesignInfo) (openapi.ImplResponse, error) {
+	var d = openapi.Design{
+		Name:        designInfo.Name,
+		Description: designInfo.Description,
+		Id:          designInfo.Id,
+		UserId:      user,
+		Schemas:     []openapi.DesignSchema{},
+	}
+
+	err := database.CreateDesign(user, d)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new design: %v", err)
+	}
+
+	return openapi.Response(http.StatusCreated, nil), nil
+}
+
+// GetDesign - Get design template information
+func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	info, err := database.GetDesign(user, designId)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design: %v", err)
+	}
+
+	return openapi.Response(http.StatusOK, info), nil
+}
+
 // GetDesigns - Get list of all the designs created by the user.
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
 	designList, err := database.GetDesigns(user, limit)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), errors.New("get list of designs request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get list of designs: %v", err)
 	}
+
 	return openapi.Response(http.StatusOK, designList), nil
 }

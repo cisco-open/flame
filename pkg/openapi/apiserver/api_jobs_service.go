@@ -11,7 +11,7 @@ package apiserver
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -49,12 +49,17 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, designId stri
 	url := restapi.CreateURL(Host, Port, restapi.GetJobsEndPoint, uriMap)
 
 	//send get request
-	responseBody, err := restapi.HTTPGet(url)
+	code, responseBody, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), errors.New("get jobs list request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get jobs list request failed")
 	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
 	var resp []openapi.JobInfo
 	err = util.ByteToStruct(responseBody, &resp)
 	return openapi.Response(http.StatusOK, resp), err

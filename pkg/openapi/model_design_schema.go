@@ -11,7 +11,7 @@ package openapi
 
 // DesignSchema - Schema to define the roles and their connections
 type DesignSchema struct {
-	Id string `json:"id"`
+	Version string `json:"version"`
 
 	Name string `json:"name"`
 

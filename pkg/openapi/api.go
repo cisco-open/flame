@@ -22,34 +22,29 @@ type AgentApiRouter interface {
 	UpdateAgentStatus(http.ResponseWriter, *http.Request)
 }
 
-// DesignApiRouter defines the required methods for binding the api requests to a responses for the DesignApi
-// The DesignApiRouter implementation should parse necessary information from the http request,
-// pass the data to a DesignApiServicer to perform the required actions, then write the service results to the http response.
-type DesignApiRouter interface {
-	CreateDesign(http.ResponseWriter, *http.Request)
-	GetDesign(http.ResponseWriter, *http.Request)
-}
-
-// DesignCodeApiRouter defines the required methods for binding the api requests to a responses for the DesignCodeApi
-// The DesignCodeApiRouter implementation should parse necessary information from the http request,
-// pass the data to a DesignCodeApiServicer to perform the required actions, then write the service results to the http response.
-type DesignCodeApiRouter interface {
+// DesignCodesApiRouter defines the required methods for binding the api requests to a responses for the DesignCodesApi
+// The DesignCodesApiRouter implementation should parse necessary information from the http request,
+// pass the data to a DesignCodesApiServicer to perform the required actions, then write the service results to the http response.
+type DesignCodesApiRouter interface {
+	CreateDesignCode(http.ResponseWriter, *http.Request)
 	GetDesignCode(http.ResponseWriter, *http.Request)
-	UpdateDesignCode(http.ResponseWriter, *http.Request)
 }
 
-// DesignSchemaApiRouter defines the required methods for binding the api requests to a responses for the DesignSchemaApi
-// The DesignSchemaApiRouter implementation should parse necessary information from the http request,
-// pass the data to a DesignSchemaApiServicer to perform the required actions, then write the service results to the http response.
-type DesignSchemaApiRouter interface {
+// DesignSchemasApiRouter defines the required methods for binding the api requests to a responses for the DesignSchemasApi
+// The DesignSchemasApiRouter implementation should parse necessary information from the http request,
+// pass the data to a DesignSchemasApiServicer to perform the required actions, then write the service results to the http response.
+type DesignSchemasApiRouter interface {
+	CreateDesignSchema(http.ResponseWriter, *http.Request)
 	GetDesignSchema(http.ResponseWriter, *http.Request)
-	UpdateDesignSchema(http.ResponseWriter, *http.Request)
+	GetDesignSchemas(http.ResponseWriter, *http.Request)
 }
 
 // DesignsApiRouter defines the required methods for binding the api requests to a responses for the DesignsApi
 // The DesignsApiRouter implementation should parse necessary information from the http request,
 // pass the data to a DesignsApiServicer to perform the required actions, then write the service results to the http response.
 type DesignsApiRouter interface {
+	CreateDesign(http.ResponseWriter, *http.Request)
+	GetDesign(http.ResponseWriter, *http.Request)
 	GetDesigns(http.ResponseWriter, *http.Request)
 }
 
@@ -87,31 +82,23 @@ type AgentApiServicer interface {
 	UpdateAgentStatus(context.Context, string, string, string, AgentStatus) (ImplResponse, error)
 }
 
-// DesignApiServicer defines the api actions for the DesignApi service
+// DesignCodesApiServicer defines the api actions for the DesignCodesApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
-type DesignApiServicer interface {
-	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
-	GetDesign(context.Context, string, string) (ImplResponse, error)
+type DesignCodesApiServicer interface {
+	CreateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
+	GetDesignCode(context.Context, string, string, string) (ImplResponse, error)
 }
 
-// DesignCodeApiServicer defines the api actions for the DesignCodeApi service
+// DesignSchemasApiServicer defines the api actions for the DesignSchemasApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
-type DesignCodeApiServicer interface {
-	GetDesignCode(context.Context, string, string) (ImplResponse, error)
-	UpdateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
-}
-
-// DesignSchemaApiServicer defines the api actions for the DesignSchemaApi service
-// This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
-// and updated with the logic required for the API.
-type DesignSchemaApiServicer interface {
-	GetDesignSchema(context.Context, string, string, string, string) (ImplResponse, error)
-	UpdateDesignSchema(context.Context, string, string, DesignSchema) (ImplResponse, error)
+type DesignSchemasApiServicer interface {
+	CreateDesignSchema(context.Context, string, string, DesignSchema) (ImplResponse, error)
+	GetDesignSchema(context.Context, string, string, string) (ImplResponse, error)
+	GetDesignSchemas(context.Context, string, string) (ImplResponse, error)
 }
 
 // DesignsApiServicer defines the api actions for the DesignsApi service
@@ -119,6 +106,8 @@ type DesignSchemaApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignsApiServicer interface {
+	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
+	GetDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesigns(context.Context, string, int32) (ImplResponse, error)
 }
 

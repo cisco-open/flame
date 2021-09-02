@@ -19,7 +19,7 @@ DesignInfo:
   example:
     name: diabete predict
     description : Helps in quick diagnosis and prediction of diabetes among patients.
-    id: "a0d0d66716af12b787d9ef0a"
+    id: "diabete-predict"
 
 Design:
   description: Design template details along with all the schemas.
@@ -45,7 +45,7 @@ DesignSchemas:
 DesignSchema:
   description: Schema to define the roles and their connections
   properties:
-    id:
+    version:
       type: string
     name:
       type: string
@@ -64,7 +64,7 @@ DesignSchema:
       items:
         $ref: '#/components/schemas/Connector'
   required:
-    - id
+    - version
     - name
     - roles
     - channels
@@ -94,7 +94,6 @@ DesignSchema:
           groupBy:
             type: tag
             value : ["us", "eu"]
-
 
 #-----------------------#
 # Roles

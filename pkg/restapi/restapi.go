@@ -3,6 +3,7 @@ package restapi
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"reflect"
@@ -20,8 +21,11 @@ const (
 	CreateDesignEndPoint       = "CREATE_DESIGN"
 	GetDesignsEndPoint         = "GET_DESIGNS"
 	GetDesignEndPoint          = "GET_DESIGN"
-	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
+	CreateDesignSchemaEndPoint = "CREATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
+	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
+	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
+
 	//Job
 	SubmitJobEndPoint       = "SUBMIT_JOB"
 	GetJobEndPoint          = "GET_JOB"
@@ -39,11 +43,13 @@ const (
 
 var URI = map[string]string{
 	// Design Template
-	CreateDesignEndPoint:       "/{{.user}}/design",
-	GetDesignEndPoint:          "/{{.user}}/design/{{.designId}}",
+	CreateDesignEndPoint:       "/{{.user}}/designs",
+	GetDesignEndPoint:          "/{{.user}}/designs/{{.designId}}",
 	GetDesignsEndPoint:         "/{{.user}}/designs/?limit={{.limit}}",
-	UpdateDesignSchemaEndPoint: "/{{.user}}/design/{{.designId}}/schema",
-	GetDesignSchemaEndPoint:    "/{{.user}}/design/{{.designId}}/schema/?getType={{.type}}&schemaId={{.schemaId}}",
+	CreateDesignSchemaEndPoint: "/{{.user}}/designs/{{.designId}}/schemas",
+	GetDesignSchemaEndPoint:    "/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
+	GetDesignSchemasEndPoint:   "/{{.user}}/designs/{{.designId}}/schemas",
+	UpdateDesignSchemaEndPoint: "/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
 
 	//Job
 	SubmitJobEndPoint:       "/{{.user}}/job",
@@ -128,7 +134,7 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 	return resp.StatusCode, body, err
 }
 
-func HTTPGet(url string) ([]byte, error) {
+func HTTPGet(url string) (int, []byte, error) {
 	resp, err := http.Get(url)
 
 	//handle error
@@ -138,7 +144,7 @@ func HTTPGet(url string) ([]byte, error) {
 	body, err := ioutil.ReadAll(resp.Body)
 	ErrorNilCheck(GetFunctionName(HTTPGet), err)
 
-	return body, err
+	return resp.StatusCode, body, err
 }
 
 //ErrorNilCheck logger function to avoid re-writing the checks
@@ -150,4 +156,12 @@ func ErrorNilCheck(method string, err error) {
 
 func GetFunctionName(i interface{}) string {
 	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
+}
+
+func CheckStatusCode(code int) error {
+	if code >= 400 && code <= 599 {
+		return fmt.Errorf("status code: %d", code)
+	}
+
+	return nil
 }

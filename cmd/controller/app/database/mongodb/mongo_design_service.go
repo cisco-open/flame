@@ -2,10 +2,8 @@ package mongodb
 
 import (
 	"context"
-	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
@@ -14,8 +12,7 @@ import (
 
 // CreateDesign create a new design entry in the database
 func (db *MongoService) CreateDesign(userId string, design openapi.Design) error {
-	result, err := db.designCollection.InsertOne(context.TODO(), design)
-
+	_, err := db.designCollection.InsertOne(context.TODO(), design)
 	if err != nil {
 		err = ErrorCheck(err)
 		zap.S().Errorf("Failed to create new design: %v", err)
@@ -23,33 +20,7 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 		return err
 	}
 
-	Id, ok := result.InsertedID.(primitive.ObjectID)
-	if !ok {
-		err := fmt.Errorf("failed to type-assert primitive.ObjectID")
-		zap.S().Debug(err)
-		return err
-	}
-
-	design.Id = Id.Hex()
-	db.updateDesignId(Id)
-
 	zap.S().Debugf("New design for user: %s inserted with ID: %s", userId, design.Id)
-
-	return nil
-}
-
-func (db *MongoService) updateDesignId(Id primitive.ObjectID) error {
-	zap.S().Debugf("Updating design schema request for designId: %s", Id.Hex())
-
-	var updatedDoc openapi.Design
-	filter := bson.M{util.DBFieldMongoID: Id}
-	update := bson.M{"$set": bson.M{"id": Id.Hex()}}
-
-	err := db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
-	if err != nil {
-		zap.S().Errorf("Failed to update the design: %v", err)
-		return ErrorCheck(err)
-	}
 
 	return nil
 }
@@ -91,7 +62,7 @@ func (db *MongoService) GetDesign(userId string, designId string) (openapi.Desig
 
 	var design openapi.Design
 
-	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(designId), util.DBFieldUserId: userId}
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
 	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&design)
 	if err != nil {
 		err = ErrorCheck(err)
