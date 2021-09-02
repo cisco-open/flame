@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
+	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.uber.org/zap"
 )
 
@@ -14,6 +15,9 @@ const (
 	DatabaseName     = "fledge"
 	DesignCollection = "t_design"
 	JobCollection    = "t_job"
+
+	orderAscend  int32 = 1
+	orderDescend int32 = -1
 )
 
 type MongoService struct {
@@ -67,5 +71,37 @@ func NewMongoService(uri string) (*MongoService, error) {
 		jobCollection:    db.Collection(JobCollection),
 	}
 
+	kv := map[string]int32{"userid": orderAscend, "id": orderAscend}
+	if err := createUniqueIndex(mongoDB.designCollection, ctx, kv); err != nil {
+		return nil, err
+	}
+
 	return mongoDB, nil
+}
+
+func createUniqueIndex(coll *mongo.Collection, ctx context.Context, kv map[string]int32) error {
+	keysDoc := bsonx.Doc{}
+
+	for key, val := range kv {
+		if val != orderAscend && val != orderDescend {
+			val = orderAscend
+		}
+		keysDoc = keysDoc.Append(key, bsonx.Int32(val))
+	}
+
+	model := mongo.IndexModel{
+		Keys: keysDoc,
+		// create UniqueIndex option
+		Options: options.Index().SetUnique(true),
+	}
+
+	index, err := coll.Indexes().CreateOne(ctx, model)
+	if err != nil {
+		zap.S().Debugf("Failed to created index for %s: %v", coll.Name(), err)
+		return err
+	}
+
+	zap.S().Infof("Created index %s for %s successfully", index, coll.Name())
+
+	return nil
 }
