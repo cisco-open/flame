@@ -38,7 +38,8 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default: $HOME/.fledge/config.yaml)")
+	usage := "config file (default: $HOME/.fledge/config.yaml)"
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
 }
 
 func initConfig() {
@@ -62,6 +63,7 @@ func Execute() error {
 	return rootCmd.Execute()
 }
 
+// TODO: remove this
 func printCmdInfo(ip string, portNo uint16, url string) {
 	separator := "- - - - - - - - - - - - - - -"
 	fmt.Printf("%s\nServer: %s:%d\n", separator, ip, portNo)

@@ -83,15 +83,16 @@ func (db *MongoService) GetDesignSchemas(userId string, designId string) ([]open
 		return []openapi.DesignSchema{}, err
 	}
 
-	zap.S().Debug(updatedDoc.Schemas)
-
 	return updatedDoc.Schemas, err
 }
 
-func (db *MongoService) UpdateDesignSchema(userId string, designId string, ds openapi.DesignSchema) error {
-	zap.S().Debugf("Updating design schema request for userId: %s | designId: %s| version: %s", userId, designId, ds.Version)
+func (db *MongoService) UpdateDesignSchema(userId string, designId string, version string, ds openapi.DesignSchema) error {
+	zap.S().Debugf("Updating design schema request for userId: %s | designId: %s | version: %s", userId, designId, version)
 
-	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId, "schemas.version": ds.Version}
+	// set version in the design schema
+	ds.Version = version
+
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId, "schemas.version": version}
 	update := bson.M{"$set": bson.M{"schemas.$": ds}}
 
 	var updatedDoc openapi.Design

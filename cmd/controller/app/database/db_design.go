@@ -29,6 +29,6 @@ func CreateDesignSchema(userId string, designId string, info openapi.DesignSchem
 	return DB.CreateDesignSchema(userId, designId, info)
 }
 
-func UpdateDesignSchema(userId string, designId string, info openapi.DesignSchema) error {
-	return DB.UpdateDesignSchema(userId, designId, info)
+func UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error {
+	return DB.UpdateDesignSchema(userId, designId, version, info)
 }

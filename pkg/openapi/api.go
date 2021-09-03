@@ -37,6 +37,7 @@ type DesignSchemasApiRouter interface {
 	CreateDesignSchema(http.ResponseWriter, *http.Request)
 	GetDesignSchema(http.ResponseWriter, *http.Request)
 	GetDesignSchemas(http.ResponseWriter, *http.Request)
+	UpdateDesignSchema(http.ResponseWriter, *http.Request)
 }
 
 // DesignsApiRouter defines the required methods for binding the api requests to a responses for the DesignsApi
@@ -99,6 +100,7 @@ type DesignSchemasApiServicer interface {
 	CreateDesignSchema(context.Context, string, string, DesignSchema) (ImplResponse, error)
 	GetDesignSchema(context.Context, string, string, string) (ImplResponse, error)
 	GetDesignSchemas(context.Context, string, string) (ImplResponse, error)
+	UpdateDesignSchema(context.Context, string, string, string, DesignSchema) (ImplResponse, error)
 }
 
 // DesignsApiServicer defines the api actions for the DesignsApi service

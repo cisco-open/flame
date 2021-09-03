@@ -37,13 +37,6 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("insert design schema details request failed")
 	}
 
-	// TODO: use the following code when PUT is implemented
-	//
-	// err := database.UpdateDesignSchema(user, designId, designSchema)
-	// if err != nil {
-	// 	return openapi.Response(http.StatusInternalServerError, nil), errors.New("update design schema details request failed")
-	// }
-
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
@@ -64,4 +57,15 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
 	}
 	return openapi.Response(http.StatusOK, info), nil
+}
+
+// UpdateDesignSchema - Update a schema for a given design
+func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, version string,
+	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
+	err := database.UpdateDesignSchema(user, designId, version, designSchema)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("schema update request failed")
+	}
+
+	return openapi.Response(http.StatusOK, nil), nil
 }

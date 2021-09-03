@@ -7,7 +7,7 @@ import (
 )
 
 var getDesignSchemaCmd = &cobra.Command{
-	Use:   "schema [version]",
+	Use:   "schema <version>",
 	Short: "Get a design schema",
 	Long:  "This comand retrieves a design schema",
 	Args:  cobra.RangeArgs(1, 1),

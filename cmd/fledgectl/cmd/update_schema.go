@@ -10,6 +10,7 @@ var updateDesignSchemaCmd = &cobra.Command{
 	Use:   "schema <version>",
 	Short: "Update an existing design schema",
 	Long:  "Command to update an existing design schema",
+	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		version := args[0]
 

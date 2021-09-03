@@ -122,3 +122,32 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 
 	return openapi.Response(http.StatusOK, resp), err
 }
+
+// UpdateDesignSchema - Update a schema for a given design
+func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, version string,
+	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Update design schema request received for designId: %v", designId)
+
+	//create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+		"version":  version,
+	}
+	url := restapi.CreateURL(Host, Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
+
+	//send put request
+	code, resp, err := restapi.HTTPPut(url, designSchema, "application/json")
+	zap.S().Debugf("code: %d, resp: %s", code, string(resp))
+
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("error while updating design schema")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, nil), err
+}

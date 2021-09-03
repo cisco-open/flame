@@ -7,7 +7,7 @@ import (
 )
 
 var getDesignCmd = &cobra.Command{
-	Use:   "design [designId]",
+	Use:   "design <designId>",
 	Short: "Get the design template of a given design ID",
 	Long:  "This command retrieves the design template of a given design ID",
 	Args:  cobra.RangeArgs(1, 1),

@@ -7,7 +7,7 @@ import (
 )
 
 var createDesignCmd = &cobra.Command{
-	Use:   "design [designId]",
+	Use:   "design <designId>",
 	Short: "Create a new design template",
 	Long:  "This command creates a new design template",
 	Args:  cobra.RangeArgs(1, 1),

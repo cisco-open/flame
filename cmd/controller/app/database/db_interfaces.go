@@ -21,7 +21,7 @@ type DesignStore interface {
 	CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error
 	GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error)
 	GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error)
-	UpdateDesignSchema(userId string, designId string, info openapi.DesignSchema) error
+	UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error
 }
 
 type JobStore interface {

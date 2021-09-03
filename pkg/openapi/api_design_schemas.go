@@ -48,6 +48,12 @@ func (c *DesignSchemasApiController) Routes() Routes {
 			"/{user}/designs/{designId}/schemas",
 			c.GetDesignSchemas,
 		},
+		{
+			"UpdateDesignSchema",
+			strings.ToUpper("Put"),
+			"/{user}/designs/{designId}/schemas/{version}",
+			c.UpdateDesignSchema,
+		},
 	}
 }
 
@@ -100,6 +106,30 @@ func (c *DesignSchemasApiController) GetDesignSchemas(w http.ResponseWriter, r *
 	designId := params["designId"]
 
 	result, err := c.service.GetDesignSchemas(r.Context(), user, designId)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// UpdateDesignSchema - Update a schema for a given design
+func (c *DesignSchemasApiController) UpdateDesignSchema(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	designId := params["designId"]
+
+	version := params["version"]
+
+	designSchema := &DesignSchema{}
+	if err := json.NewDecoder(r.Body).Decode(&designSchema); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.UpdateDesignSchema(r.Context(), user, designId, version, *designSchema)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)
