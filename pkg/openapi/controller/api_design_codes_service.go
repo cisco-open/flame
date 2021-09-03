@@ -60,3 +60,19 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
 }
+
+// UpdateDesignCode - Update a design doce
+func (s *DesignCodesApiService) UpdateDesignCode(ctx context.Context, user string, designId string, version string,
+	body *os.File) (openapi.ImplResponse, error) {
+	// TODO - update UpdateDesignCode with the required logic for this service method.
+	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
+	// implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
+	//return Response(200, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDesignCode method not implemented")
+}

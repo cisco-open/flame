@@ -33,6 +33,7 @@ var rootCmd = &cobra.Command{
 		if err := app.StartController(uri, notificationInfo); err != nil {
 			return err
 		}
+
 		return nil
 	},
 }

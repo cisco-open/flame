@@ -28,6 +28,7 @@ type AgentApiRouter interface {
 type DesignCodesApiRouter interface {
 	CreateDesignCode(http.ResponseWriter, *http.Request)
 	GetDesignCode(http.ResponseWriter, *http.Request)
+	UpdateDesignCode(http.ResponseWriter, *http.Request)
 }
 
 // DesignSchemasApiRouter defines the required methods for binding the api requests to a responses for the DesignSchemasApi
@@ -90,6 +91,7 @@ type AgentApiServicer interface {
 type DesignCodesApiServicer interface {
 	CreateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
 	GetDesignCode(context.Context, string, string, string) (ImplResponse, error)
+	UpdateDesignCode(context.Context, string, string, string, *os.File) (ImplResponse, error)
 }
 
 // DesignSchemasApiServicer defines the api actions for the DesignSchemasApi service

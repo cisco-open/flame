@@ -43,6 +43,12 @@ func (c *DesignCodesApiController) Routes() Routes {
 			"/{user}/designs/{designId}/codes/{version}",
 			c.GetDesignCode,
 		},
+		{
+			"UpdateDesignCode",
+			strings.ToUpper("Put"),
+			"/{user}/designs/{designId}/codes/{version}",
+			c.UpdateDesignCode,
+		},
 	}
 }
 
@@ -78,6 +84,30 @@ func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.
 	version := params["version"]
 
 	result, err := c.service.GetDesignCode(r.Context(), user, designId, version)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// UpdateDesignCode - Update a design doce
+func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	designId := params["designId"]
+
+	version := params["version"]
+
+	body := &os.File{}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.UpdateDesignCode(r.Context(), user, designId, version, body)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

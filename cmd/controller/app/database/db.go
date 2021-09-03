@@ -1,9 +1,8 @@
 package database
 
 import (
+	"fmt"
 	"strings"
-
-	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database/mongodb"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
@@ -11,15 +10,21 @@ import (
 
 var DB StoreCollection
 
-func NewDBService(uri string) {
+func NewDBService(uri string) error {
 	dbName := strings.Split(uri, ":")[0]
+
+	var err error
+
 	switch dbName {
 	case util.MONGODB:
-		DB, _ = mongodb.NewMongoService(uri)
-		// TODO: add error handling
+		DB, err = mongodb.NewMongoService(uri)
+
 	case util.MySQL:
 		fallthrough
+
 	default:
-		zap.S().Fatalf("Unknown DB type: %s", dbName)
+		err = fmt.Errorf("unknown DB type: %s", dbName)
 	}
+
+	return err
 }

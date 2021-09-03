@@ -24,14 +24,14 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	AgentServiceApi := apiserver.NewAgentApiService()
 	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
 
+	DesignsApiService := apiserver.NewDesignsApiService()
+	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
+
 	DesignCodesApiService := apiserver.NewDesignCodesApiService()
 	DesignCodesApiController := openapi.NewDesignCodesApiController(DesignCodesApiService)
 
 	DesignSchemasApiService := apiserver.NewDesignSchemasApiService()
 	DesignSchemasApiController := openapi.NewDesignSchemasApiController(DesignSchemasApiService)
-
-	DesignsApiService := apiserver.NewDesignsApiService()
-	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
 
 	// TODO remove me after prototyping phase is done.
 	// only for prototyping

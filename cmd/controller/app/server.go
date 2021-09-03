@@ -14,17 +14,22 @@ import (
 )
 
 func StartController(uri string, nsInfo openapi.ServerInfo) error {
-	connectDB(uri)
+	err := connectDB(uri)
+	if err != nil {
+		zap.S().Fatalf("Failed to connect to DB: %v", err)
+	}
+
 	connectGRPC(nsInfo)
+
 	startServer()
 
 	return nil
 }
 
 //connectDB initialize and connect to the database connection
-func connectDB(uri string) {
+func connectDB(uri string) error {
 	zap.S().Infof("Connecting to database at %s", uri)
-	database.NewDBService(uri)
+	return database.NewDBService(uri)
 }
 
 func connectGRPC(nsInfo openapi.ServerInfo) {
@@ -38,6 +43,9 @@ func startServer() {
 
 	DesignsApiService := controller.NewDesignsApiService()
 	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
+
+	DesignCodesApiService := controller.NewDesignCodesApiService()
+	DesignCodesApiController := openapi.NewDesignCodesApiController(DesignCodesApiService)
 
 	DesignSchemasApiService := controller.NewDesignSchemasApiService()
 	DesignSchemasApiController := openapi.NewDesignSchemasApiController(DesignSchemasApiService)
@@ -60,12 +68,14 @@ func startServer() {
 
 	router := openapi.NewRouter(
 		DesignsApiController,
+		DesignCodesApiController,
 		DesignSchemasApiController,
 		JobServiceApiController,
 		JobsServiceApiController,
 		DevServiceApiController,
 		AgentServiceApiController,
 	)
+
 	addr := fmt.Sprintf(":%d", util.ControllerRestApiPort)
 	zap.S().Fatal(http.ListenAndServe(addr, router))
 }

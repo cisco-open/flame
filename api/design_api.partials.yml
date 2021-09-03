@@ -4,9 +4,6 @@
   #------------------------------------#
   get:
     operationId: getDesigns
-    summary: Get list of all the designs created by the user.
-    tags:
-      - designs
     parameters:
       - name: user
         description: user id
@@ -47,15 +44,15 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+    summary: Get list of all the designs created by the user.
+    tags:
+      - designs
 
   #------------------------------------#
   # Create New Design Template
   #------------------------------------#
   post:
     operationId: createDesign
-    summary: Create a new design template.
-    tags:
-      - designs
     parameters:
       - description: user name
         explode: false
@@ -81,6 +78,9 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+    summary: Create a new design template.
+    tags:
+      - designs
 
 /{user}/designs/{designId}:
   #------------------------------------#
@@ -88,9 +88,6 @@
   #------------------------------------#
   get:
     operationId: getDesign
-    summary: Get design template information
-    tags:
-      - designs
     parameters:
       - name: user
         description: user id
@@ -129,6 +126,9 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+    summary: Get design template information
+    tags:
+      - designs
 
 /{user}/designs/{designId}/schemas:
   #------------------------------------#
@@ -136,8 +136,6 @@
   #------------------------------------#
   get:
     operationId: getDesignSchemas
-    tags:
-      - designSchemas
     parameters:
       - name: user
         description: user id
@@ -169,6 +167,8 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
     summary: Get all design schemas in a design
+    tags:
+      - designSchemas
 
   #------------------------------------#
   # Create Design Schema
@@ -216,8 +216,6 @@
   #------------------------------------#
   get:
     operationId: getDesignSchema
-    tags:
-      - designSchemas
     parameters:
       - name: user
         description: user id
@@ -257,14 +255,14 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
     summary: Get a design schema owned by user
+    tags:
+      - designSchemas
 
   #------------------------------------#
   # Update Design Schema
   #------------------------------------#
   put:
     operationId: updateDesignSchema
-    tags:
-      - designSchemas
     parameters:
       - name: user
         description: user id
@@ -305,6 +303,8 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
     summary: Update a schema for a given design
+    tags:
+      - designSchemas
 
 /{user}/designs/{designId}/codes:
   #------------------------------------#
@@ -395,5 +395,54 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
     summary: Get a zipped design code file owned by user
+    tags:
+      - designCodes
+
+  #------------------------------------#
+  # Update Code Zip For Particular Version
+  #------------------------------------#
+  put:
+    operationId: updateDesignCode
+    parameters:
+      - name: user
+        description: user id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: version
+        description: version string
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    requestBody:
+      content:
+        application/octet-stream:
+          schema:
+            format: binary
+            type: string
+    responses:
+      "200":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Update a design doce
     tags:
       - designCodes
