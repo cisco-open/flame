@@ -89,9 +89,9 @@ type AgentApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignCodesApiServicer interface {
-	CreateDesignCode(context.Context, string, string, *os.File) (ImplResponse, error)
+	CreateDesignCode(context.Context, string, string, string, string, *os.File) (ImplResponse, error)
 	GetDesignCode(context.Context, string, string, string) (ImplResponse, error)
-	UpdateDesignCode(context.Context, string, string, string, *os.File) (ImplResponse, error)
+	UpdateDesignCode(context.Context, string, string, string, string, string, *os.File) (ImplResponse, error)
 }
 
 // DesignSchemasApiServicer defines the api actions for the DesignSchemasApi service

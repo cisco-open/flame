@@ -198,3 +198,22 @@ Connector:
     - name
     - pair
     - connection
+
+#-----------------------#
+# File
+#-----------------------#
+File:
+  type: object
+  properties:
+    fileName:
+      type: string
+    fileVer:
+      type: string
+    fileData:
+      type: string
+      maxLength: 10485760 # 10MB
+      format: binary
+  required:
+    - fileName
+    - fileVer
+    - fileData

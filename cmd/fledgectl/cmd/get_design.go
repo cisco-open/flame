@@ -14,12 +14,11 @@ var getDesignCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		designId := args[0]
 
-		params := design.Params{
-			Host:     config.ApiServer.Host,
-			Port:     config.ApiServer.Port,
-			User:     config.User,
-			DesignId: designId,
-		}
+		params := design.Params{}
+		params.Host = config.ApiServer.Host
+		params.Port = config.ApiServer.Port
+		params.User = config.User
+		params.DesignId = designId
 
 		return design.Get(params)
 	},
@@ -38,12 +37,11 @@ var getDesignsCmd = &cobra.Command{
 			return err
 		}
 
-		params := design.Params{
-			Host:  config.ApiServer.Host,
-			Port:  config.ApiServer.Port,
-			User:  config.User,
-			Limit: limit,
-		}
+		params := design.Params{}
+		params.Host = config.ApiServer.Host
+		params.Port = config.ApiServer.Port
+		params.User = config.User
+		params.Limit = limit
 
 		return design.GetMany(params)
 	},

@@ -10,9 +10,7 @@
 package openapi
 
 import (
-	"encoding/json"
 	"net/http"
-	"os"
 	"strings"
 
 	"github.com/gorilla/mux"
@@ -52,19 +50,27 @@ func (c *DesignCodesApiController) Routes() Routes {
 	}
 }
 
-// CreateDesignCode - Update a design doce
+// CreateDesignCode - Upload a new design code
 func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *http.Request) {
+	var maxMemory int64 = 32 << 20 // 32MB
+	if err := r.ParseMultipartForm(maxMemory); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	params := mux.Vars(r)
 	user := params["user"]
 
 	designId := params["designId"]
 
-	body := &os.File{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	fileName := r.FormValue("fileName")
+	fileVer := r.FormValue("fileVer")
+
+	fileData, err := ReadFormFileToTempFile(r, "fileData")
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	result, err := c.service.CreateDesignCode(r.Context(), user, designId, body)
+	result, err := c.service.CreateDesignCode(r.Context(), user, designId, fileName, fileVer, fileData)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)
@@ -93,8 +99,13 @@ func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// UpdateDesignCode - Update a design doce
+// UpdateDesignCode - Update a design code
 func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *http.Request) {
+	var maxMemory int64 = 32 << 20 // 32MB
+	if err := r.ParseMultipartForm(maxMemory); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
 	params := mux.Vars(r)
 	user := params["user"]
 
@@ -102,12 +113,15 @@ func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *ht
 
 	version := params["version"]
 
-	body := &os.File{}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	fileName := r.FormValue("fileName")
+	fileVer := r.FormValue("fileVer")
+
+	fileData, err := ReadFormFileToTempFile(r, "fileData")
+	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	result, err := c.service.UpdateDesignCode(r.Context(), user, designId, version, body)
+	result, err := c.service.UpdateDesignCode(r.Context(), user, designId, version, fileName, fileVer, fileData)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

@@ -21,14 +21,12 @@ var getDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
-		params := schema.Params{
-			Host: config.ApiServer.Host,
-			Port: config.ApiServer.Port,
-			User: config.User,
-
-			DesignId: designId,
-			Version:  version,
-		}
+		params := schema.Params{}
+		params.Host = config.ApiServer.Host
+		params.Port = config.ApiServer.Port
+		params.User = config.User
+		params.DesignId = designId
+		params.Version = version
 
 		return schema.Get(params)
 	},
@@ -47,13 +45,11 @@ var getDesignSchemasCmd = &cobra.Command{
 			return err
 		}
 
-		params := schema.Params{
-			Host: config.ApiServer.Host,
-			Port: config.ApiServer.Port,
-			User: config.User,
-
-			DesignId: designId,
-		}
+		params := schema.Params{}
+		params.Host = config.ApiServer.Host
+		params.Port = config.ApiServer.Port
+		params.User = config.User
+		params.DesignId = designId
 
 		return schema.GetMany(params)
 	},

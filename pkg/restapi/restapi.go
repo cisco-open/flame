@@ -4,8 +4,11 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"mime/multipart"
 	"net/http"
+	"os"
 	"reflect"
 	"runtime"
 	"strconv"
@@ -18,13 +21,18 @@ import (
 //API END POINTS
 const (
 	//Design
-	CreateDesignEndPoint       = "CREATE_DESIGN"
-	GetDesignsEndPoint         = "GET_DESIGNS"
-	GetDesignEndPoint          = "GET_DESIGN"
+	CreateDesignEndPoint = "CREATE_DESIGN"
+	GetDesignsEndPoint   = "GET_DESIGNS"
+	GetDesignEndPoint    = "GET_DESIGN"
+
 	CreateDesignSchemaEndPoint = "CREATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
 	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
+
+	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
+	GetDesignCodeEndPoint    = "GET_DESIGN_CODE"
+	UpdateDesignCodeEndPoint = "UPDATE_DESIGN_CODE"
 
 	//Job
 	SubmitJobEndPoint       = "SUBMIT_JOB"
@@ -42,14 +50,21 @@ const (
 )
 
 var URI = map[string]string{
-	// Design Template
-	CreateDesignEndPoint:       "/{{.user}}/designs",
-	GetDesignEndPoint:          "/{{.user}}/designs/{{.designId}}",
-	GetDesignsEndPoint:         "/{{.user}}/designs/?limit={{.limit}}",
+	// Design
+	CreateDesignEndPoint: "/{{.user}}/designs",
+	GetDesignEndPoint:    "/{{.user}}/designs/{{.designId}}",
+	GetDesignsEndPoint:   "/{{.user}}/designs/?limit={{.limit}}",
+
+	// Design schema
 	CreateDesignSchemaEndPoint: "/{{.user}}/designs/{{.designId}}/schemas",
 	GetDesignSchemaEndPoint:    "/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
 	GetDesignSchemasEndPoint:   "/{{.user}}/designs/{{.designId}}/schemas",
 	UpdateDesignSchemaEndPoint: "/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
+
+	// Design Code
+	CreateDesignCodeEndPoint: "/{{.user}}/designs/{{.designId}}/codes",
+	GetDesignCodeEndPoint:    "/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
+	UpdateDesignCodeEndPoint: "/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
 
 	//Job
 	SubmitJobEndPoint:       "/{{.user}}/job",
@@ -145,6 +160,37 @@ func HTTPGet(url string) (int, []byte, error) {
 	ErrorNilCheck(GetFunctionName(HTTPGet), err)
 
 	return resp.StatusCode, body, err
+}
+
+func CreateMultipartFormData(kv map[string]io.Reader) (*bytes.Buffer, *multipart.Writer, error) {
+	var buf bytes.Buffer
+	writer := multipart.NewWriter(&buf)
+	for key, reader := range kv {
+		var fw io.Writer
+		var err error
+		if x, ok := reader.(io.Closer); ok {
+			defer x.Close()
+		}
+
+		if x, ok := reader.(*os.File); ok {
+			// Add a file
+			if fw, err = writer.CreateFormFile(key, x.Name()); err != nil {
+				return nil, nil, err
+			}
+		} else {
+			// Add other fields
+			if fw, err = writer.CreateFormField(key); err != nil {
+				return nil, nil, err
+			}
+		}
+
+		if _, err = io.Copy(fw, reader); err != nil {
+			return nil, nil, err
+		}
+	}
+	writer.Close()
+
+	return &buf, writer, nil
 }
 
 //ErrorNilCheck logger function to avoid re-writing the checks

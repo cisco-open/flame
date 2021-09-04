@@ -26,15 +26,13 @@ var updateDesignSchemaCmd = &cobra.Command{
 			return err
 		}
 
-		params := schema.Params{
-			Host: config.ApiServer.Host,
-			Port: config.ApiServer.Port,
-			User: config.User,
-
-			DesignId:   designId,
-			SchemaPath: schemaPath,
-			Version:    version,
-		}
+		params := schema.Params{}
+		params.Host = config.ApiServer.Host
+		params.Port = config.ApiServer.Port
+		params.User = config.User
+		params.DesignId = designId
+		params.SchemaPath = schemaPath
+		params.Version = version
 
 		return schema.Update(params)
 	},

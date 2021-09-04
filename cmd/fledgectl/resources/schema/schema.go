@@ -7,15 +7,14 @@ import (
 
 	"go.uber.org/zap"
 
+	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 type Params struct {
-	Host string
-	Port uint16
-	User string
+	resources.CommonParams
 
 	DesignId   string
 	SchemaPath string

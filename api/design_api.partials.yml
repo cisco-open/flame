@@ -331,10 +331,9 @@
         style: simple
     requestBody:
       content:
-        application/octet-stream:
+        multipart/form-data:
           schema:
-            format: binary
-            type: string
+            $ref: '#/components/schemas/File'
     responses:
       "201":
         description: Null response
@@ -344,7 +343,7 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
-    summary: Update a design doce
+    summary: Upload a new design code
     tags:
       - designCodes
 
@@ -382,11 +381,9 @@
     responses:
       "200":
         content:
-          application/octet-stream:
+          multipart/form-data:
             schema:
-              # a binary file of any type
-              type: string
-              format: binary
+              $ref: '#/components/schemas/File'
         description: A design code file in zipped format
       default:
         content:
@@ -430,10 +427,9 @@
         style: simple
     requestBody:
       content:
-        application/octet-stream:
+        multipart/form-data:
           schema:
-            format: binary
-            type: string
+            $ref: '#/components/schemas/File'
     responses:
       "200":
         description: Null response
@@ -443,6 +439,6 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
-    summary: Update a design doce
+    summary: Update a design code
     tags:
       - designCodes

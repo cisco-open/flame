@@ -15,6 +15,8 @@ import (
 	"net/http"
 	"os"
 
+	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -29,9 +31,24 @@ func NewDesignCodesApiService() openapi.DesignCodesApiServicer {
 	return &DesignCodesApiService{}
 }
 
-// CreateDesignCode - Update a design doce
+// CreateDesignCode - Upload a new design code
 func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user string, designId string,
-	body *os.File) (openapi.ImplResponse, error) {
+	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
+
+	zap.S().Debugf("File name from fileData: %s", fileData.Name())
+
+	bufLen := 100
+	buf := make([]byte, bufLen)
+	n, err := fileData.Read(buf)
+
+	// Don't forget to close the temp file
+	defer fileData.Close()
+
+	zap.S().Debugf("Read: %d, err = %v", n, err)
+	zap.S().Debugf("Received data: %s", string(buf))
+	zap.S().Debugf("connection to controller will be implemented later")
+
 	// TODO - update CreateDesignCode with the required logic for this service method.
 	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
 	// implementation when updating open api generation.
@@ -52,8 +69,8 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
 	// implementation when updating open api generation.
 
-	//TODO: Uncomment the next line to return response Response(200, *os.File{}) or use other options such as http.Ok ...
-	//return Response(200, *os.File{}), nil
+	//TODO: Uncomment the next line to return response Response(200, File{}) or use other options such as http.Ok ...
+	//return Response(200, File{}), nil
 
 	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
 	//return Response(0, Error{}), nil
@@ -61,9 +78,9 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
 }
 
-// UpdateDesignCode - Update a design doce
+// UpdateDesignCode - Update a design code
 func (s *DesignCodesApiService) UpdateDesignCode(ctx context.Context, user string, designId string, version string,
-	body *os.File) (openapi.ImplResponse, error) {
+	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
 	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
 	// implementation when updating open api generation.

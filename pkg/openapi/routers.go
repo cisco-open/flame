@@ -12,6 +12,7 @@ package openapi
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"io/ioutil"
 	"mime/multipart"
 	"net/http"
@@ -83,8 +84,8 @@ func ReadFormFileToTempFile(r *http.Request, key string) (*os.File, error) {
 
 // ReadFormFilesToTempFiles reads files array data from a request form and writes it to a temporary files
 func ReadFormFilesToTempFiles(r *http.Request, key string) ([]*os.File, error) {
-	maxMemory := 32 << 20 // 32MB
-	if err := r.ParseMultipartForm(int64(maxMemory)); err != nil {
+	var maxMemory int64 = 32 << 20 // 32MB
+	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		return nil, err
 	}
 
@@ -116,14 +117,27 @@ func readFileHeaderToTempFile(fileHeader *multipart.FileHeader) (*os.File, error
 		return nil, err
 	}
 
-	file, err := ioutil.TempFile("", fileHeader.Filename)
+	// Note by Myungjin: fileHeader.Filename is not used because it can have
+	//                   path separator (e.g., /),  which cannot be used as prefix
+	//                   in tempfile generation, thus causing
+	//                   "pattern contains path separator" error
+	// file, err := ioutil.TempFile("", fileHeader.Filename)
+	file, err := ioutil.TempFile("", "fledge")
 	if err != nil {
 		return nil, err
 	}
 
-	defer file.Close()
+	// Note by Myungjin: the tmp file shouldn't be closed; otherwise, access to
+	//                   the temp file will fail close it only after the tempfile
+	//                   is processed
+	// defer file.Close()
 
 	file.Write(fileBytes)
+
+	// Note by Myungjin: This line is added to move the file descriptor to the start
+	//                   of the file so that the file can be accessed later on
+	// Rewind to the start of file
+	file.Seek(0, io.SeekStart)
 
 	return file, nil
 }
