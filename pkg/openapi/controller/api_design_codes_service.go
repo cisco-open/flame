@@ -12,9 +12,13 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 
+	"go.uber.org/zap"
+
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -32,17 +36,18 @@ func NewDesignCodesApiService() openapi.DesignCodesApiServicer {
 // CreateDesignCode - Upload a new design code
 func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user string, designId string,
 	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
-	// TODO - update CreateDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
+	zap.S().Debugf("File name from fileData: %s", fileData.Name())
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	// Don't forget to close the temp file
+	defer fileData.Close()
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	err := database.CreateDesignCode(user, designId, fileName, fileVer, fileData)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new code: %v", err)
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateDesignCode method not implemented")
+	return openapi.Response(http.StatusCreated, nil), nil
 }
 
 // GetDesignCode - Get a zipped design code file owned by user

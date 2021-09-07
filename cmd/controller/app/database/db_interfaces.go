@@ -1,6 +1,8 @@
 package database
 
 import (
+	"os"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -14,14 +16,15 @@ type StoreCollection interface {
 //TODO for all get methods - explicitly specify the fields to be retured as part of the object
 type DesignStore interface {
 	CreateDesign(userId string, info openapi.Design) error
-
-	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)
 	GetDesign(userId string, designId string) (openapi.Design, error)
+	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)
 
 	CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error
 	GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error)
 	GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error)
 	UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error
+
+	CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error
 }
 
 type JobStore interface {

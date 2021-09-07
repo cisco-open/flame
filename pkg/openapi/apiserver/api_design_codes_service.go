@@ -12,12 +12,16 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
+	"io"
 	"net/http"
 	"os"
+	"strings"
 
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 )
 
 // DesignCodesApiService is a service that implents the logic for the DesignCodesApiServicer
@@ -36,30 +40,42 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
 	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
 
-	zap.S().Debugf("File name from fileData: %s", fileData.Name())
-
-	bufLen := 100
-	buf := make([]byte, bufLen)
-	n, err := fileData.Read(buf)
-
 	// Don't forget to close the temp file
 	defer fileData.Close()
 
-	zap.S().Debugf("Read: %d, err = %v", n, err)
-	zap.S().Debugf("Received data: %s", string(buf))
-	zap.S().Debugf("connection to controller will be implemented later")
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+	}
+	url := restapi.CreateURL(Host, Port, restapi.CreateDesignCodeEndPoint, uriMap)
 
-	// TODO - update CreateDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
+	kv := map[string]io.Reader{
+		"fileName": strings.NewReader(fileName),
+		"fileVer":  strings.NewReader(fileVer),
+		"fileData": fileData,
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	// create multipart/form-data
+	buf, writer, err := restapi.CreateMultipartFormData(kv)
+	if err != nil {
+		respErr := fmt.Errorf("create multipart/form-data failed: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), respErr
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send post request
+	resp, err := http.Post(url, writer.FormDataContentType(), buf)
+	if err != nil {
+		respErr := fmt.Errorf("create new code request failed: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), respErr
+	}
+	defer resp.Body.Close()
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateDesignCode method not implemented")
+	if err = restapi.CheckStatusCode(resp.StatusCode); err != nil {
+		return openapi.Response(resp.StatusCode, nil), err
+	}
+
+	return openapi.Response(http.StatusCreated, nil), nil
 }
 
 // GetDesignCode - Get a zipped design code file owned by user

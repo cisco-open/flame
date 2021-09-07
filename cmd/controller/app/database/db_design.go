@@ -1,6 +1,8 @@
 package database
 
 import (
+	"os"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -31,4 +33,8 @@ func CreateDesignSchema(userId string, designId string, info openapi.DesignSchem
 
 func UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error {
 	return DB.UpdateDesignSchema(userId, designId, version, info)
+}
+
+func CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error {
+	return DB.CreateDesignCode(userId, designId, fileName, fileVer, fileData)
 }

@@ -3,7 +3,6 @@ package mongodb
 import (
 	"context"
 	"fmt"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
@@ -11,10 +10,6 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
-)
-
-const (
-	latestVersion = "latest"
 )
 
 // CreateDesignSchema adds schema design to the design template information
@@ -103,13 +98,4 @@ func (db *MongoService) UpdateDesignSchema(userId string, designId string, versi
 	}
 
 	return nil
-}
-
-func IncrementVersion(version string) string {
-	num, err := strconv.Atoi(version)
-	if err != nil {
-		return "1"
-	}
-
-	return fmt.Sprintf("%d", num+1)
 }
