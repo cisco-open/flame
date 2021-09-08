@@ -30,7 +30,7 @@ var createDesignCodeCmd = &cobra.Command{
 		params.User = config.User
 		params.DesignId = designId
 		params.CodePath = codePath
-		params.CodeVer = "1"
+		params.CodeVer = ""
 
 		return code.Create(params)
 	},

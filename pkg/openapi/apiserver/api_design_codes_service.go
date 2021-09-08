@@ -81,17 +81,29 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 // GetDesignCode - Get a zipped design code file owned by user
 func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
-	// TODO - update GetDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Get design code for user: %s | designId: %s | version: %s", user, designId, version)
 
-	//TODO: Uncomment the next line to return response Response(200, File{}) or use other options such as http.Ok ...
-	//return Response(200, File{}), nil
+	//create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+		"version":  version,
+	}
+	url := restapi.CreateURL(Host, Port, restapi.GetDesignCodeEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send get request
+	code, respBody, err := restapi.HTTPGet(url)
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design code request failed")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, respBody), nil
 }
 
 // UpdateDesignCode - Update a design code

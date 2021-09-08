@@ -10,8 +10,10 @@
 package openapi
 
 import (
+	"bytes"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/gorilla/mux"
 )
@@ -95,8 +97,13 @@ func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.
 		EncodeJSONResponse(err.Error(), &result.Code, w)
 		return
 	}
+
 	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
+	// EncodeJSONResponse(result.Body, &result.Code, w)
+
+	// Note by Myungjin: EncodeJSONResponse can't handle binary file transfer
+	//                   Use ServeContent instead.
+	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(result.Body.([]byte)))
 }
 
 // UpdateDesignCode - Update a design code

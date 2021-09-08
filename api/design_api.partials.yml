@@ -381,9 +381,10 @@
     responses:
       "200":
         content:
-          multipart/form-data:
+          application/octet-stream:
             schema:
-              $ref: '#/components/schemas/File'
+              type: string
+              format: binary
         description: A design code file in zipped format
       default:
         content:

@@ -38,3 +38,7 @@ func UpdateDesignSchema(userId string, designId string, version string, info ope
 func CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error {
 	return DB.CreateDesignCode(userId, designId, fileName, fileVer, fileData)
 }
+
+func GetDesignCode(userId string, designId string, version string) ([]byte, error) {
+	return DB.GetDesignCode(userId, designId, version)
+}

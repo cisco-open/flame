@@ -3,6 +3,7 @@ package code
 import (
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,6 +13,7 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources"
 	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 type Params struct {
@@ -33,7 +35,6 @@ func Create(params Params) error {
 	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
 	kv := map[string]io.Reader{
 		"fileName": strings.NewReader(filepath.Base(params.CodePath)),
-		"fileVer":  strings.NewReader(params.CodeVer),
 		"fileData": mustOpen(params.CodePath),
 	}
 
@@ -58,6 +59,33 @@ func Create(params Params) error {
 	}
 
 	fmt.Printf("Code created successfully for design %s\n", params.DesignId)
+
+	return nil
+}
+
+func Get(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":     params.User,
+		"designId": params.DesignId,
+		"version":  params.CodeVer,
+	}
+	url := restapi.CreateURL(params.Host, params.Port, restapi.GetDesignCodeEndPoint, uriMap)
+
+	code, respBody, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to retrieve a code of version %s - code: %d, error: %v\n", params.CodeVer, code, err)
+		return nil
+	}
+
+	fileName := params.DesignId + "_ver-" + params.CodeVer + ".zip"
+	err = ioutil.WriteFile(fileName, respBody, util.FilePerm0644)
+	if err != nil {
+		fmt.Printf("Failed to save %s: %v\n", fileName, err)
+		return nil
+	}
+
+	fmt.Printf("Downloaded %s successfully\n", fileName)
 
 	return nil
 }

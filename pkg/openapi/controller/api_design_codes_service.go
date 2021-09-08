@@ -37,7 +37,6 @@ func NewDesignCodesApiService() openapi.DesignCodesApiServicer {
 func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user string, designId string,
 	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
 	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
-	zap.S().Debugf("File name from fileData: %s", fileData.Name())
 
 	// Don't forget to close the temp file
 	defer fileData.Close()
@@ -53,17 +52,14 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 // GetDesignCode - Get a zipped design code file owned by user
 func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
-	// TODO - update GetDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Received GetDesignCode Get request: %s | %s | %s", user, designId, version)
 
-	//TODO: Uncomment the next line to return response Response(200, File{}) or use other options such as http.Ok ...
-	//return Response(200, File{}), nil
+	fileData, err := database.GetDesignCode(user, designId, version)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design code: %v", err)
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDesignCode method not implemented")
+	return openapi.Response(http.StatusOK, fileData), nil
 }
 
 // UpdateDesignCode - Update a design code

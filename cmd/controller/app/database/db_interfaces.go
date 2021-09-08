@@ -25,6 +25,7 @@ type DesignStore interface {
 	UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error
 
 	CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error
+	GetDesignCode(userId string, designId string, version string) ([]byte, error)
 }
 
 type JobStore interface {

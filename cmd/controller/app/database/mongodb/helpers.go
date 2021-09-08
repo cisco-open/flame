@@ -11,7 +11,8 @@ import (
 )
 
 const (
-	latestVersion = "latest"
+	latestVersion  = "latest"
+	unknownVersion = "unknown"
 )
 
 /*
