@@ -24,6 +24,9 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	AgentServiceApi := apiserver.NewAgentApiService()
 	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
 
+	DatasetsApiService := apiserver.NewDatasetsApiService()
+	DatasetsApiController := openapi.NewDatasetsApiController(DatasetsApiService)
+
 	DesignsApiService := apiserver.NewDesignsApiService()
 	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
 
@@ -46,6 +49,7 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 
 	router := openapi.NewRouter(
 		AgentServiceApiController,
+		DatasetsApiController,
 		DesignsApiController,
 		DesignCodesApiController,
 		DesignSchemasApiController,

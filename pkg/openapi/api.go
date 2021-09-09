@@ -22,6 +22,17 @@ type AgentApiRouter interface {
 	UpdateAgentStatus(http.ResponseWriter, *http.Request)
 }
 
+// DatasetsApiRouter defines the required methods for binding the api requests to a responses for the DatasetsApi
+// The DatasetsApiRouter implementation should parse necessary information from the http request,
+// pass the data to a DatasetsApiServicer to perform the required actions, then write the service results to the http response.
+type DatasetsApiRouter interface {
+	CreateDataset(http.ResponseWriter, *http.Request)
+	GetAllDatasets(http.ResponseWriter, *http.Request)
+	GetDataset(http.ResponseWriter, *http.Request)
+	GetDatasets(http.ResponseWriter, *http.Request)
+	UpdateDataset(http.ResponseWriter, *http.Request)
+}
+
 // DesignCodesApiRouter defines the required methods for binding the api requests to a responses for the DesignCodesApi
 // The DesignCodesApiRouter implementation should parse necessary information from the http request,
 // pass the data to a DesignCodesApiServicer to perform the required actions, then write the service results to the http response.
@@ -82,6 +93,18 @@ type JobsApiRouter interface {
 // and updated with the logic required for the API.
 type AgentApiServicer interface {
 	UpdateAgentStatus(context.Context, string, string, string, AgentStatus) (ImplResponse, error)
+}
+
+// DatasetsApiServicer defines the api actions for the DatasetsApi service
+// This interface intended to stay up to date with the openapi yaml used to generate it,
+// while the service implementation can ignored with the .openapi-generator-ignore file
+// and updated with the logic required for the API.
+type DatasetsApiServicer interface {
+	CreateDataset(context.Context, string, DatasetInfo) (ImplResponse, error)
+	GetAllDatasets(context.Context, int32) (ImplResponse, error)
+	GetDataset(context.Context, string, string) (ImplResponse, error)
+	GetDatasets(context.Context, string, int32) (ImplResponse, error)
+	UpdateDataset(context.Context, string, string, DatasetInfo) (ImplResponse, error)
 }
 
 // DesignCodesApiServicer defines the api actions for the DesignCodesApi service

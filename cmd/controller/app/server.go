@@ -38,8 +38,11 @@ func connectGRPC(nsInfo openapi.ServerInfo) {
 }
 
 func startServer() {
-	//Setting up REST API Server
+	// Setting up REST API Server
 	zap.S().Infof("Staring controller ... | Port : %d", util.ControllerRestApiPort)
+
+	DatasetsApiService := controller.NewDatasetsApiService()
+	DatasetsApiController := openapi.NewDatasetsApiController(DatasetsApiService)
 
 	DesignsApiService := controller.NewDesignsApiService()
 	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
@@ -67,6 +70,7 @@ func startServer() {
 	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
 
 	router := openapi.NewRouter(
+		DatasetsApiController,
 		DesignsApiController,
 		DesignCodesApiController,
 		DesignSchemasApiController,

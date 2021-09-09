@@ -1,0 +1,51 @@
+########################################
+# Dataset meta information
+########################################
+DatasetInfo:
+  description: dataset meta information
+  type: object
+  properties:
+    id:
+      type: string
+    userId:
+      type: string
+    name:
+      type: string
+    description:
+      type: string
+    url:
+      type: string
+    dataFormat:
+      type: string
+    # realm dictates the boundary where data can be loaded and used for training.
+    # It is a pipe-separated (i.e., separated by character |) notation. Its concept is similar
+    # to domain name. An empty realm (i.e., "") means that the dataset can be loaded into
+    # a compute node anywhere in the world.
+    # The realm consists of public boundaries (e.g., us) and private boundaries (e.g., cisco).
+    # The public boundaries are pre-populated while the private boundaries can be defined
+    # and extended by each private boundary's admin.
+    # The public boundaries represent geographical locations whereas the private boundaries
+    # represent logical boundaries.
+    #
+    # The fledge system maintain the mapping between the realm and a launcher (a program that
+    # helps launching an ML workload in a cluster or machine associated with the launcher).
+    realm:
+      type: string
+    # if it is not public, the dataset meta info is filtered when search is done by other users
+    isPublic:
+      type: boolean
+  required:
+    - id
+    - name
+    - url
+    - dataFormat
+    - realm
+  example:
+    id: "613157766667387296a5ada4"
+    userId: ""
+    name: mnist dataset
+    description: dataset containing hand-written digits
+    url: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
+    dataFormat: npy
+    realm: "us|west|org1|cluster1"
+    isPublic: true

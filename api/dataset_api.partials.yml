@@ -1,0 +1,213 @@
+/datasets:
+  ########################################
+  # Get the meta info on all datasets
+  ########################################
+  get:
+    operationId: getAllDatasets
+    parameters:
+      - name: limit
+        description: How many items to return at one time (max 100)
+        explode: true
+        in: query
+        required: false
+        schema:
+          format: int32
+          type: integer
+        style: form
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetInfo'
+        description: A paged array of meta info on datasets
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Get the meta info on all the datasets
+    tags:
+      - datasets
+
+/{user}/datasets:
+  ########################################
+  # Get the meta info on all datasets owned by user
+  ########################################
+  get:
+    operationId: getDatasets
+    parameters:
+      - name: user
+        description: user id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - description: How many items to return at one time (max 100)
+        explode: true
+        in: query
+        name: limit
+        required: false
+        schema:
+          format: int32
+          type: integer
+        style: form
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/DatasetInfo'
+        description: A paged array of meta info on datasets
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Get the meta info on all the datasets owned by user
+    tags:
+      - datasets
+
+  ########################################
+  # Create new meta info on a dataset
+  ########################################
+  post:
+    operationId: createDataset
+    parameters:
+      - description: user id
+        explode: false
+        in: path
+        name: user
+        required: true
+        schema:
+          type: string
+        style: simple
+    requestBody:
+      description: dataset information
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DatasetInfo'
+    responses:
+      "201":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Create meta info for a new dataset.
+    tags:
+      - datasets
+
+/{user}/datasets/{datasetId}:
+  ########################################
+  # Get dataset meta info via ID
+  ########################################
+  get:
+    operationId: getDataset
+    parameters:
+      - name: user
+        description: user id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: datasetId
+        description: dataset id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DatasetInfo'
+
+        description: A paged array of datasets
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Get dataset meta information
+    tags:
+      - datasets
+
+  ########################################
+  # Update dataset meta information
+  ########################################
+  put:
+    operationId: updateDataset
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: datasetId
+        description: dataset id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DatasetInfo'
+    responses:
+      "200":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Update meta info for a given dataset
+    tags:
+      - datasets
