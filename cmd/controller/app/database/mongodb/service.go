@@ -12,19 +12,26 @@ import (
 )
 
 const (
-	DatabaseName     = "fledge"
-	DesignCollection = "t_design"
-	JobCollection    = "t_job"
+	DatabaseName      = "fledge"
+	DatasetCollection = "t_dataset"
+	DesignCollection  = "t_design"
+	JobCollection     = "t_job"
 
 	orderAscend  int32 = 1
 	orderDescend int32 = -1
 )
 
 type MongoService struct {
-	client           *mongo.Client
-	database         *mongo.Database
-	designCollection *mongo.Collection
-	jobCollection    *mongo.Collection
+	client            *mongo.Client
+	database          *mongo.Database
+	datasetCollection *mongo.Collection
+	designCollection  *mongo.Collection
+	jobCollection     *mongo.Collection
+}
+
+type uniqueIndexInfo struct {
+	coll *mongo.Collection
+	kv   map[string]int32
 }
 
 var mongoDB = &MongoService{}
@@ -42,6 +49,7 @@ func NewMongoService(uri string) (*MongoService, error) {
 		zap.S().Fatalf("error creating mongo client: %+v", err)
 		panic(err)
 	}
+
 	// add disconnect call here
 	//todo can't call defer here because once method returns db connection closes. When to close the connection?
 	//https://codereview.stackexchange.com/questions/241739/connection-to-mongodb-in-golang
@@ -65,15 +73,27 @@ func NewMongoService(uri string) (*MongoService, error) {
 
 	db := client.Database(DatabaseName)
 	mongoDB = &MongoService{
-		client:           client,
-		database:         db,
-		designCollection: db.Collection(DesignCollection),
-		jobCollection:    db.Collection(JobCollection),
+		client:            client,
+		database:          db,
+		datasetCollection: db.Collection(DatasetCollection),
+		designCollection:  db.Collection(DesignCollection),
+		jobCollection:     db.Collection(JobCollection),
 	}
 
-	kv := map[string]int32{"userid": orderAscend, "id": orderAscend}
-	if err := createUniqueIndex(mongoDB.designCollection, ctx, kv); err != nil {
-		return nil, err
+	uiiList := []uniqueIndexInfo{
+		{
+			mongoDB.datasetCollection,
+			map[string]int32{"userid": orderAscend, "url": orderAscend},
+		},
+		{
+			mongoDB.designCollection,
+			map[string]int32{"userid": orderAscend, "id": orderAscend},
+		},
+	}
+	for _, uii := range uiiList {
+		if err := createUniqueIndex(uii.coll, ctx, uii.kv); err != nil {
+			return nil, err
+		}
 	}
 
 	return mongoDB, nil

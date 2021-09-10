@@ -12,8 +12,10 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -31,17 +33,12 @@ func NewDatasetsApiService() openapi.DatasetsApiServicer {
 // CreateDataset - Create meta info for a new dataset.
 func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	// TODO - update CreateDataset with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	err := database.CreateDataset(user, datasetInfo)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateDataset method not implemented")
+	return openapi.Response(http.StatusCreated, nil), nil
 }
 
 // GetAllDatasets - Get the meta info on all the datasets

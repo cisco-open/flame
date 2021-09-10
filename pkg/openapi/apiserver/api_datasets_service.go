@@ -12,9 +12,13 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
 )
 
 // DatasetsApiService is a service that implents the logic for the DatasetsApiServicer
@@ -31,17 +35,28 @@ func NewDatasetsApiService() openapi.DatasetsApiServicer {
 // CreateDataset - Create meta info for a new dataset.
 func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	// TODO - update CreateDataset with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	//TODO input validation
+	zap.S().Debugf("New dataset request received for user: %s | datasetInfo: %v", user, datasetInfo)
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	// create controller request
+	uriMap := map[string]string{
+		"user": user,
+	}
+	url := restapi.CreateURL(Host, Port, restapi.CreateDatasetEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send post request
+	code, _, err := restapi.HTTPPost(url, datasetInfo, "application/json")
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateDataset method not implemented")
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("create new dataset request failed")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	return openapi.Response(http.StatusCreated, nil), nil
 }
 
 // GetAllDatasets - Get the meta info on all the datasets

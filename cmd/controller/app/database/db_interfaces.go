@@ -15,6 +15,8 @@ type StoreCollection interface {
 // DesignStore is the collection of db APIs related to the designs
 //TODO for all get methods - explicitly specify the fields to be retured as part of the object
 type DesignStore interface {
+	CreateDataset(userId string, info openapi.DatasetInfo) error
+
 	CreateDesign(userId string, info openapi.Design) error
 	GetDesign(userId string, designId string) (openapi.Design, error)
 	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)

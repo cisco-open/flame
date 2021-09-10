@@ -35,8 +35,6 @@ DatasetInfo:
     isPublic:
       type: boolean
   required:
-    - id
-    - name
     - url
     - dataFormat
     - realm
@@ -44,7 +42,7 @@ DatasetInfo:
     id: "613157766667387296a5ada4"
     userId: ""
     name: mnist dataset
-    description: dataset containing hand-written digits
+    description: dataset containing handwritten digits
     url: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
     dataFormat: npy
     realm: "us|west|org1|cluster1"

@@ -11,11 +11,11 @@ package openapi
 
 // DatasetInfo - dataset meta information
 type DatasetInfo struct {
-	Id string `json:"id"`
+	Id string `json:"id,omitempty"`
 
 	UserId string `json:"userId,omitempty"`
 
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 
 	Description string `json:"description,omitempty"`
 

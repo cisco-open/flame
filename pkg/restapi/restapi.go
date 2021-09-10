@@ -20,16 +20,24 @@ import (
 //URI must always end with a backslash. Make sure the query params are not ended with a backslash
 //API END POINTS
 const (
-	//Design
+	// Dataset
+	CreateDatasetEndPoint  = "CREATE_DATASET"
+	GetDatasetEndPoint     = "GET_DATASET"
+	GetDatasetsEndPoint    = "GET_DATASETS"
+	GetAllDatasetsEndPoint = "GET_ALL_DATASETS"
+
+	// Design
 	CreateDesignEndPoint = "CREATE_DESIGN"
 	GetDesignsEndPoint   = "GET_DESIGNS"
 	GetDesignEndPoint    = "GET_DESIGN"
 
+	// Design Schema
 	CreateDesignSchemaEndPoint = "CREATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
 	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
 
+	// Design Code
 	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
 	GetDesignCodeEndPoint    = "GET_DESIGN_CODE"
 	UpdateDesignCodeEndPoint = "UPDATE_DESIGN_CODE"
@@ -50,6 +58,12 @@ const (
 )
 
 var URI = map[string]string{
+	// Dataset
+	CreateDatasetEndPoint:  "/{{.user}}/datasets",
+	GetDatasetEndPoint:     "/{{.user}}/datasets/{{.datasetId}}",
+	GetDatasetsEndPoint:    "/{{.user}}/datasets/?limit={{.limit}}",
+	GetAllDatasetsEndPoint: "/datasets",
+
 	// Design
 	CreateDesignEndPoint: "/{{.user}}/designs",
 	GetDesignEndPoint:    "/{{.user}}/designs/{{.designId}}",
@@ -99,7 +113,7 @@ func CreateURL(ip string, portNo uint16, endPoint string, inputMap map[string]st
 		zap.S().Errorf("error creating a uri. End point: %s", endPoint)
 		return ""
 	}
-	//TODO - change it to https
+	// TODO: change it to https
 	url := "http://" + ip + ":" + strconv.Itoa(int(portNo)) + msg
 	return url
 }
@@ -112,16 +126,18 @@ func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, err
 	}
 
 	resp, err := http.Post(url, contentType, bytes.NewBuffer(postBody))
-
-	//Handle Error
-	ErrorNilCheck(GetFunctionName(HTTPPost), err)
+	if ErrorNilCheck(GetFunctionName(HTTPPost), err) != nil {
+		return -1, nil, err
+	}
 	defer resp.Body.Close()
 
 	//Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
-	ErrorNilCheck(GetFunctionName(HTTPPost), err)
+	if ErrorNilCheck(GetFunctionName(HTTPPost), err) != nil {
+		return -1, nil, err
+	}
 
-	return resp.StatusCode, body, err
+	return resp.StatusCode, body, nil
 }
 
 func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, error) {
@@ -132,34 +148,43 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 	}
 
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(putBody))
-	ErrorNilCheck(GetFunctionName(HTTPPut), err)
+	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
+		return -1, nil, err
+	}
+
 	req.Header.Set("Content-Type", "application/json; charset=utf-8")
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 
-	//Handle Error
-	ErrorNilCheck(GetFunctionName(HTTPPut), err)
+	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
+		return -1, nil, err
+	}
 	defer resp.Body.Close()
 
 	//Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
-	ErrorNilCheck(GetFunctionName(HTTPPut), err)
+	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
+		return -1, nil, err
+	}
 
-	return resp.StatusCode, body, err
+	return resp.StatusCode, body, nil
 }
 
 func HTTPGet(url string) (int, []byte, error) {
 	resp, err := http.Get(url)
 
-	//handle error
-	ErrorNilCheck(GetFunctionName(HTTPGet), err)
+	if ErrorNilCheck(GetFunctionName(HTTPGet), err) != nil {
+		return -1, nil, err
+	}
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
-	ErrorNilCheck(GetFunctionName(HTTPGet), err)
+	if ErrorNilCheck(GetFunctionName(HTTPGet), err) != nil {
+		return -1, nil, err
+	}
 
-	return resp.StatusCode, body, err
+	return resp.StatusCode, body, nil
 }
 
 func CreateMultipartFormData(kv map[string]io.Reader) (*bytes.Buffer, *multipart.Writer, error) {
@@ -194,10 +219,12 @@ func CreateMultipartFormData(kv map[string]io.Reader) (*bytes.Buffer, *multipart
 }
 
 //ErrorNilCheck logger function to avoid re-writing the checks
-func ErrorNilCheck(method string, err error) {
+func ErrorNilCheck(method string, err error) error {
 	if err != nil {
 		zap.S().Errorf("[%s] an error occurred %v", method, err)
 	}
+
+	return err
 }
 
 func GetFunctionName(i interface{}) string {
