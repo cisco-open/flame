@@ -1,0 +1,22 @@
+{
+    "designId": "test",
+    "schemaVersion": "1",
+    "codeVersion": "1",
+    "datasetIds" : [
+	"613abab241d0aea976a6e00f",
+	"613abab241d0aea976a6e00f"
+    ],
+    
+    "backend": "mqtt",
+    "maxRunTime": 300,
+
+    "initialModelId": "",
+    "hyperparameters": {
+	"rounds": 5,
+	"batchSize": 32,
+	"learningRate": 0.01
+    },
+    "dependencies" : [
+	"numpy >= 1.2.0"
+    ]
+}
