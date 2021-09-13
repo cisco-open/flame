@@ -6,6 +6,7 @@
 	"613abab241d0aea976a6e00f",
 	"613abab241d0aea976a6e00f"
     ],
+    "priority": "low",
     
     "backend": "mqtt",
     "maxRunTime": 300,

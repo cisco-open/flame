@@ -1,59 +1,93 @@
-#-----------------------#
-# Basic Job Information
-#-----------------------#
-JobInfo:
-  description: Basic job information.
+########################################
+# Job specification
+########################################
+JobSpec:
+  description: Job specification
   type: object
   properties:
     id:
-      type: string
-    name:
-      type: string
-    description:
       type: string
     userId:
       type: string
     designId:
       type: string
-    schemaId:
+    schemaVersion:
       type: string
+    codeVersion:
+      type: string
+    datasetIds:
+      type: array
+      items:
+        type: string
     priority:
       type: string
-      enum: ["high", "low", "default"]
-    status:
+      enum: ["low", "medium", "high"]
+      default: "low"
+    backend:
       type: string
-      enum: ["initializing", "running", "terminated", "completed"]
-    timestamp:
-      type: object
-      properties:
-        created_at:
-          format: int64
-          type: integer
-        started_at:
-          format: int64
-          type: integer
-        updated_at:
-          format: int64
-          type: integer
-        completed_at:
-          format: int64
-          type: integer
-    dataset:
-      type: object
-    codeBlock:
-      type: object
-    config:
-      type: object
+      enum: ["mqtt", "p2p"]
+      default: "mqtt"
+    maxRunTime:
+      type: int32
+      default: 600 # 600s = 10min
+    initialModelId:
+      type: string
+    hyperparameters:
+      type: array
+      items:
+        type: object
+    dependencies:
+      type: array
+      items:
+        type: string
   required:
-    - id
-    - name
     - userId
     - designId
+    - schemaVersion
+    - codeVersion
   example:
-    name: cancer detection model
-    description: Creating a new model from 2021 dataset to detect cancer
+    userId: "john"
     designId: "60d0d66716af12b787d9ef0a"
-    prority: "default"
+    schemaVersion: "1"
+    codeVersion: "1"
+    prority: "low"
+    backend: "mqtt"
+    maxRunTime: 600
+    initialModelId: "30d0ea38169f1207b7f9e00b"
+    hyperparameters:
+      - rounds: 5
+      - runningRate: 0.01
+    dependencies:
+      - numpy >= 1.2.0
+
+########################################
+# Job status
+########################################
+JobStatus:
+  description: Job status
+  type: object
+  properties:
+    id:
+      type: string
+    state:
+      type: string
+      enum: ["ready", "deploying", "stopping", "running", "failed", "terminated", "completed"]
+      default: "ready"
+    createdAt:
+      type: string
+      format: date-time
+    startedAt:
+      type: string
+      format: date-time
+    updatedAt:
+      type: string
+      format: date-time
+    endedAt:
+      type: string
+      format: date-time
+  required:
+    - id
+    - state
 
 AgentStatus:
   description: agent status object.

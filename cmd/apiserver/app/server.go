@@ -41,9 +41,6 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	DevServiceApi := apiserver.NewDevApiService()
 	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
 
-	JobServiceApi := apiserver.NewJobApiService()
-	JobServiceApiController := openapi.NewJobApiController(JobServiceApi)
-
 	JobsServiceApi := apiserver.NewJobsApiService()
 	JobsServiceApiController := openapi.NewJobsApiController(JobsServiceApi)
 
@@ -54,7 +51,6 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 		DesignCodesApiController,
 		DesignSchemasApiController,
 		DevServiceApiController,
-		JobServiceApiController,
 		JobsServiceApiController,
 	)
 

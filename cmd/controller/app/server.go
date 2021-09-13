@@ -53,9 +53,6 @@ func startServer() {
 	DesignSchemasApiService := controller.NewDesignSchemasApiService()
 	DesignSchemasApiController := openapi.NewDesignSchemasApiController(DesignSchemasApiService)
 
-	JobServiceApi := controller.NewJobApiService()
-	JobServiceApiController := openapi.NewJobApiController(JobServiceApi)
-
 	JobsServiceApi := controller.NewJobsApiService()
 	JobsServiceApiController := openapi.NewJobsApiController(JobsServiceApi)
 
@@ -74,7 +71,6 @@ func startServer() {
 		DesignsApiController,
 		DesignCodesApiController,
 		DesignSchemasApiController,
-		JobServiceApiController,
 		JobsServiceApiController,
 		DevServiceApiController,
 		AgentServiceApiController,

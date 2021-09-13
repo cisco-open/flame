@@ -1,12 +1,95 @@
-/{user}/job/{jobId}:
-  #------------------------------------#
-  # Get Job by jobId
-  #------------------------------------#
+/{user}/jobs:
+  ########################################
+  # Create new job
+  ########################################
+  post:
+    operationId: createJob
+    summary: Create a new job specification
+    tags:
+      - jobs
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/JobSpec'
+    responses:
+      "201":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/{user}/jobs/status:
+  ########################################
+  # Get status of jobs
+  ########################################
+  get:
+    operationId: getJobsStatus
+    summary: Get status info on all the jobs owned by user
+    tags:
+      - jobs
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: limit
+        description: How many items to return at one time (max 100)
+        in: query
+        schema:
+          format: int32
+          type: integer
+        style: form
+        explode: true
+        required: false
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/JobStatus'
+        description: A paged array of status on jobs
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/{user}/jobs/{jobId}:
+  ########################################
+  # Get job specification given an ID
+  ########################################
   get:
     operationId: getJob
-    summary: Get job detail.
+    summary: Get a job specification
     tags:
-      - job
+      - jobs
     parameters:
       - name: user
         description: user id
@@ -29,7 +112,7 @@
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/JobInfo'
+              $ref: '#/components/schemas/JobSpec'
         description: Information about submitted job
       default:
         content:
@@ -38,14 +121,14 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-  #------------------------------------#
-  # Update Job
-  #------------------------------------#
+  ########################################
+  # Update job specification
+  ########################################
   put:
     operationId: updateJob
-    summary: Update job by id.
+    summary: Update a job specification
     tags:
-      - job
+      - jobs
     parameters:
       - name: user
         description: user id
@@ -67,10 +150,12 @@
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/JobInfo'
+            $ref: '#/components/schemas/JobSpec'
     responses:
       '200':
         description: Updated
+      '401':
+        description: Unauthorized
       default:
         content:
           application/json:
@@ -78,14 +163,14 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-  #------------------------------------#
+  ########################################
   # Delete Job
-  #------------------------------------#
+  ########################################
   delete:
     operationId: deleteJob
-    summary: Delete job by id.
+    summary: Delete job specification
     tags:
-      - job
+      - jobs
     parameters:
       - name: user
         description: user id
@@ -107,7 +192,7 @@
       '200':
         description: Deleted
       '404':
-        description: id not found
+        description: Job id not found
       '401':
         description: Unauthorized
       default:
@@ -117,18 +202,66 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/job:
-  #------------------------------------#
-  # Submit New Job
-  #------------------------------------#
-  post:
-    operationId: submitJob
-    summary: Submit a new job.
+
+/{user}/jobs/{jobId}/status:
+  ########################################
+  # Get job status
+  ########################################
+  get:
+    operationId: getJobStatus
+    summary: Get job status of a given jobId
     tags:
-      - job
+      - jobs
     parameters:
       - name: user
         description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobStatus'
+        description: Information about submitted job
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+  ########################################
+  # Update job status to start/stop/apply a job
+  ########################################
+  put:
+    operationId: updateJobStatus
+    summary: Update a job's status
+    tags:
+      - jobs
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
         in: path
         schema:
           type: string
@@ -139,10 +272,12 @@
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/JobInfo'
+            $ref: '#/components/schemas/JobStatus'
     responses:
-      "201":
-        description: Null response
+      '200':
+        description: Updated status
+      '401':
+        description: Unauthorized
       default:
         content:
           application/json:
@@ -150,7 +285,8 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/job/{jobId}/schema/{schemaId}/design/{designId}:
+# TODO: revise below
+/{user}/jobs/{jobId}/schema/{schemaId}/design/{designId}:
   #------------------------------------#
   # Change Job Schema
   #------------------------------------#
@@ -158,7 +294,7 @@
     operationId: changeJobSchema
     summary: Change the schema for the given job
     tags:
-      - job
+      - jobs
     parameters:
       - name: user
         description: user id
@@ -202,76 +338,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-
-/{user}/jobs:
-  #------------------------------------#
-  # Get Jobs by user or designId
-  #------------------------------------#
-  get:
-    operationId: getJobs
-    summary: Get list of all the jobs by the user or based on designId.
-    tags:
-      - jobs
-    parameters:
-      - name: user
-        description: user id
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-      - name: designId
-        description: design id
-        in: query
-        schema:
-          type: string
-        style: form
-        explode: true
-        required: false
-      - name: getType
-        description: Type of fetch based on id or all
-        in: query
-        schema:
-          type: string
-          enum: ["all", "design"]
-        style: form
-        explode: true
-        required: false
-      - name: limit
-        description: How many items to return at one time (max 100)
-        in: query
-        schema:
-          format: int32
-          type: integer
-        style: form
-        explode: true
-        required: false
-    responses:
-      "200":
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/JobInfo'
-        description: A paged array of jobs
-        headers:
-          x-next:
-            description: A link to the next page of responses
-            explode: false
-            schema:
-              type: string
-            style: simple
-      default:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Error'
-        description: unexpected error
-
-
-/{user}/job/{jobId}/agent/{agentId}:
+/{user}/jobs/{jobId}/agent/{agentId}:
   #------------------------------------#
   # Update Status
   #------------------------------------#

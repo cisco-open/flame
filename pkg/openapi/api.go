@@ -69,22 +69,18 @@ type DevApiRouter interface {
 	UpdateJobNodes(http.ResponseWriter, *http.Request)
 }
 
-// JobApiRouter defines the required methods for binding the api requests to a responses for the JobApi
-// The JobApiRouter implementation should parse necessary information from the http request,
-// pass the data to a JobApiServicer to perform the required actions, then write the service results to the http response.
-type JobApiRouter interface {
-	ChangeJobSchema(http.ResponseWriter, *http.Request)
-	DeleteJob(http.ResponseWriter, *http.Request)
-	GetJob(http.ResponseWriter, *http.Request)
-	SubmitJob(http.ResponseWriter, *http.Request)
-	UpdateJob(http.ResponseWriter, *http.Request)
-}
-
 // JobsApiRouter defines the required methods for binding the api requests to a responses for the JobsApi
 // The JobsApiRouter implementation should parse necessary information from the http request,
 // pass the data to a JobsApiServicer to perform the required actions, then write the service results to the http response.
 type JobsApiRouter interface {
-	GetJobs(http.ResponseWriter, *http.Request)
+	ChangeJobSchema(http.ResponseWriter, *http.Request)
+	CreateJob(http.ResponseWriter, *http.Request)
+	DeleteJob(http.ResponseWriter, *http.Request)
+	GetJob(http.ResponseWriter, *http.Request)
+	GetJobStatus(http.ResponseWriter, *http.Request)
+	GetJobsStatus(http.ResponseWriter, *http.Request)
+	UpdateJob(http.ResponseWriter, *http.Request)
+	UpdateJobStatus(http.ResponseWriter, *http.Request)
 }
 
 // AgentApiServicer defines the api actions for the AgentApi service
@@ -147,22 +143,17 @@ type DevApiServicer interface {
 	UpdateJobNodes(context.Context, string, JobNodes) (ImplResponse, error)
 }
 
-// JobApiServicer defines the api actions for the JobApi service
-// This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
-// and updated with the logic required for the API.
-type JobApiServicer interface {
-	ChangeJobSchema(context.Context, string, string, string, string) (ImplResponse, error)
-	DeleteJob(context.Context, string, string) (ImplResponse, error)
-	GetJob(context.Context, string, string) (ImplResponse, error)
-	SubmitJob(context.Context, string, JobInfo) (ImplResponse, error)
-	UpdateJob(context.Context, string, string, JobInfo) (ImplResponse, error)
-}
-
 // JobsApiServicer defines the api actions for the JobsApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobsApiServicer interface {
-	GetJobs(context.Context, string, string, string, int32) (ImplResponse, error)
+	ChangeJobSchema(context.Context, string, string, string, string) (ImplResponse, error)
+	CreateJob(context.Context, string, JobSpec) (ImplResponse, error)
+	DeleteJob(context.Context, string, string) (ImplResponse, error)
+	GetJob(context.Context, string, string) (ImplResponse, error)
+	GetJobStatus(context.Context, string, string) (ImplResponse, error)
+	GetJobsStatus(context.Context, string, int32) (ImplResponse, error)
+	UpdateJob(context.Context, string, string, JobSpec) (ImplResponse, error)
+	UpdateJobStatus(context.Context, string, string, JobStatus) (ImplResponse, error)
 }

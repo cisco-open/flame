@@ -17,32 +17,30 @@ import (
 	"go.uber.org/zap"
 )
 
-//URI must always end with a backslash. Make sure the query params are not ended with a backslash
-//API END POINTS
 const (
-	// Dataset
+	// Keys for dataset endpoints
 	CreateDatasetEndPoint  = "CREATE_DATASET"
 	GetDatasetEndPoint     = "GET_DATASET"
 	GetDatasetsEndPoint    = "GET_DATASETS"
 	GetAllDatasetsEndPoint = "GET_ALL_DATASETS"
 
-	// Design
+	// Keys for design endpoints
 	CreateDesignEndPoint = "CREATE_DESIGN"
 	GetDesignsEndPoint   = "GET_DESIGNS"
 	GetDesignEndPoint    = "GET_DESIGN"
 
-	// Design Schema
+	// Keys for design schema endpoints
 	CreateDesignSchemaEndPoint = "CREATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
 	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
 
-	// Design Code
+	// Keys for design code endpoints
 	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
 	GetDesignCodeEndPoint    = "GET_DESIGN_CODE"
 	UpdateDesignCodeEndPoint = "UPDATE_DESIGN_CODE"
 
-	//Job
+	// Keys for job endpoints
 	SubmitJobEndPoint       = "SUBMIT_JOB"
 	GetJobEndPoint          = "GET_JOB"
 	GetJobsEndPoint         = "GET_JOBS"
