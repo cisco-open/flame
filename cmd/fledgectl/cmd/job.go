@@ -117,46 +117,6 @@ var submitJobCmd = &cobra.Command{
 	},
 }
 
-var getJobCmd = &cobra.Command{
-	Use:   "getJob",
-	Short: "Get job detail for given job id",
-	Long:  "Get job detail for given job id",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
-
-		jId, err := flags.GetString("jobId")
-		if err != nil {
-			return err
-		}
-
-		//construct URL
-		uriMap := map[string]string{
-			"user":  config.User,
-			"jobId": jId,
-		}
-		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.GetJobEndPoint, uriMap)
-
-		//send get request
-		code, responseBody, err := restapi.HTTPGet(url)
-		if err != nil {
-			zap.S().Errorf("error while getting job information %v", err)
-			return err
-		}
-
-		if err = restapi.CheckStatusCode(code); err != nil {
-			return err
-		}
-
-		prettyJSON, err := util.FormatJSON(responseBody)
-		if err != nil {
-			zap.S().Errorf("error while unpacking response %v", err)
-		} else {
-			zap.S().Infof("job details : %v", string(prettyJSON))
-		}
-		return nil
-	},
-}
-
 var getAllJobsCmd = &cobra.Command{
 	Use:   "getAllJobs",
 	Short: "Get all jobs for given userId or designId",
@@ -312,7 +272,7 @@ var testCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(jobCmd)
-	jobCmd.AddCommand(submitJobCmd, getJobCmd, getAllJobsCmd, changeJobSchemaCmd, testCmd)
+	jobCmd.AddCommand(submitJobCmd, getAllJobsCmd, changeJobSchemaCmd, testCmd)
 
 	//local flags for each command
 	//SUBMIT JOB
@@ -325,10 +285,6 @@ func init() {
 	submitJobCmd.MarkFlagRequired("name")
 	submitJobCmd.MarkFlagRequired("designId")
 	submitJobCmd.MarkFlagRequired("schemaId")
-
-	//GET JOB
-	getJobCmd.Flags().StringP("jobId", "j", "", "Job Id")
-	getJobCmd.MarkFlagRequired("designId")
 
 	//GET JOB(s)
 	getAllJobsCmd.Flags().StringP("type", "t", "all", "Fetch list of all jobs for given user based on type. Options - all/design")

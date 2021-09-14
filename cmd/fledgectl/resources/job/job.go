@@ -28,8 +28,8 @@ import (
 type Params struct {
 	resources.CommonParams
 
-	JobFile   string
-	DatasetId string
+	JobFile string
+	JobId   string
 }
 
 func Create(params Params) error {
@@ -70,6 +70,55 @@ func Create(params Params) error {
 	fmt.Printf("New job created successfully\n")
 	fmt.Printf("\tID: %s\n", jobStatus.Id)
 	fmt.Printf("\tstate: %s\n", jobStatus.State)
+
+	return nil
+}
+
+func Get(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func GetStatus(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func GetStatusMany(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func Update(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func Remove(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func Start(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
+
+	return nil
+}
+
+func Stop(params Params) error {
+	// TODO: implement me!
+	fmt.Println("Not yet implemented")
 
 	return nil
 }
