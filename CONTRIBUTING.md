@@ -19,8 +19,9 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 5. Make sure your code lints.
 6. Issue that pull request!
 
-## Any contributions you make will be under the XXX Software License
-In short, when you submit code changes, your submissions are understood to be under the same [XXX License]() that covers the project. Feel free to contact the maintainers if that's a concern.
+## Any contributions you make will be under the Apache License, Version 2
+In short, when you submit code changes, your submissions are understood to be under the same [Apache License](LICENSE) that covers the project.
+Feel free to contact the maintainers if that's a concern.
 
 ## Report bugs using Github's [issues]()
 We use GitHub issues to track public bugs. Report a bug by [opening a new issue](). 
@@ -45,7 +46,7 @@ There is no strict coding style guideline, but some basic suggestions are:
 Place a new line between each group of packages.
 
 ## License
-By contributing, you agree that your contributions will be licensed under its XXX License.
+By contributing, you agree that your contributions will be licensed under its Apache License, Version 2.
 
 ## References
 This document was adapted from [here](https://gist.github.com/briandk/3d2e8b3ec8daf5a27a62).
