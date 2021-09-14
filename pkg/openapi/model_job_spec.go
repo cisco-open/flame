@@ -13,7 +13,7 @@ package openapi
 type JobSpec struct {
 	Id string `json:"id,omitempty"`
 
-	UserId string `json:"userId"`
+	UserId string `json:"userId,omitempty"`
 
 	DesignId string `json:"designId"`
 
@@ -23,15 +23,15 @@ type JobSpec struct {
 
 	DatasetIds []string `json:"datasetIds,omitempty"`
 
-	Priority string `json:"priority,omitempty"`
+	Priority JobPriority `json:"priority,omitempty"`
 
-	Backend string `json:"backend,omitempty"`
+	Backend CommBackend `json:"backend,omitempty"`
 
 	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
 	InitialModelId string `json:"initialModelId,omitempty"`
 
-	Hyperparameters []map[string]interface{} `json:"hyperparameters,omitempty"`
+	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 
 	Dependencies []string `json:"dependencies,omitempty"`
 }

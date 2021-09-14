@@ -24,6 +24,7 @@ const (
 	StatusSuccess = "Success"
 	StatusError   = "Error"
 
+	// TODO: remove these as state is defined in openapi package
 	// States
 	State           = "state"
 	InitState       = "Init"

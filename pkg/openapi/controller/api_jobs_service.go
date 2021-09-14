@@ -12,8 +12,12 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"go.uber.org/zap"
+
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -28,35 +32,16 @@ func NewJobsApiService() openapi.JobsApiServicer {
 	return &JobsApiService{}
 }
 
-// ChangeJobSchema - Change the schema for the given job
-func (s *JobsApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, schemaId string,
-	designId string) (openapi.ImplResponse, error) {
-	// TODO - update ChangeJobSchema with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("ChangeJobSchema method not implemented")
-}
-
 // CreateJob - Create a new job specification
 func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	// TODO - update CreateJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	jobStatus, err := database.CreateJob(user, jobSpec)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
+		zap.S().Debugf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateJob method not implemented")
+	return openapi.Response(http.StatusCreated, jobStatus), nil
 }
 
 // DeleteJob - Delete job specification
@@ -144,7 +129,7 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJob method not implemented")
 }
 
-// UpdateJobStatus - Update a job&#39;s status
+// UpdateJobStatus - Update the status of a job
 func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId string,
 	jobStatus openapi.JobStatus) (openapi.ImplResponse, error) {
 	// TODO - update UpdateJobStatus with the required logic for this service method.

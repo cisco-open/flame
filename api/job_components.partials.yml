@@ -20,28 +20,21 @@ JobSpec:
       items:
         type: string
     priority:
-      type: string
-      enum: ["low", "medium", "high"]
-      default: "low"
+      $ref: '#/components/schemas/JobPriority'
     backend:
-      type: string
-      enum: ["mqtt", "p2p"]
-      default: "mqtt"
+      $ref: '#/components/schemas/CommBackend'
     maxRunTime:
       type: int32
       default: 600 # 600s = 10min
     initialModelId:
       type: string
     hyperparameters:
-      type: array
-      items:
-        type: object
+      type: object
     dependencies:
       type: array
       items:
         type: string
   required:
-    - userId
     - designId
     - schemaVersion
     - codeVersion
@@ -60,6 +53,17 @@ JobSpec:
     dependencies:
       - numpy >= 1.2.0
 
+JobPriority:
+  enum:
+    - low
+    - medium
+    - high
+
+CommBackend:
+  enum:
+    - mqtt
+    - p2p
+
 ########################################
 # Job status
 ########################################
@@ -70,9 +74,7 @@ JobStatus:
     id:
       type: string
     state:
-      type: string
-      enum: ["ready", "deploying", "stopping", "running", "failed", "terminated", "completed"]
-      default: "ready"
+      $ref: '#/components/schemas/JobState'
     createdAt:
       type: string
       format: date-time
@@ -88,6 +90,17 @@ JobStatus:
   required:
     - id
     - state
+
+JobState:
+  enum:
+    - ready
+    - applying
+    - deploying
+    - stopping
+    - running
+    - failed
+    - terminated
+    - completed
 
 AgentStatus:
   description: agent status object.

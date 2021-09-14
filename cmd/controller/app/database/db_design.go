@@ -6,10 +6,6 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
-func CreateDataset(userId string, info openapi.DatasetInfo) error {
-	return DB.CreateDataset(userId, info)
-}
-
 // CreateDesign - Create a new design template entry in the database.
 func CreateDesign(userId string, info openapi.Design) error {
 	return DB.CreateDesign(userId, info)

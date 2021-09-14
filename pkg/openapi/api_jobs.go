@@ -31,12 +31,6 @@ func NewJobsApiController(s JobsApiServicer) Router {
 func (c *JobsApiController) Routes() Routes {
 	return Routes{
 		{
-			"ChangeJobSchema",
-			strings.ToUpper("Post"),
-			"/{user}/jobs/{jobId}/schema/{schemaId}/design/{designId}",
-			c.ChangeJobSchema,
-		},
-		{
 			"CreateJob",
 			strings.ToUpper("Post"),
 			"/{user}/jobs",
@@ -79,27 +73,6 @@ func (c *JobsApiController) Routes() Routes {
 			c.UpdateJobStatus,
 		},
 	}
-}
-
-// ChangeJobSchema - Change the schema for the given job
-func (c *JobsApiController) ChangeJobSchema(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	user := params["user"]
-
-	jobId := params["jobId"]
-
-	schemaId := params["schemaId"]
-
-	designId := params["designId"]
-
-	result, err := c.service.ChangeJobSchema(r.Context(), user, jobId, schemaId, designId)
-	// If an error occurred, encode the error with the status code
-	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
-		return
-	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
 // CreateJob - Create a new job specification

@@ -17,7 +17,7 @@ import (
 type JobStatus struct {
 	Id string `json:"id"`
 
-	State string `json:"state"`
+	State JobState `json:"state"`
 
 	CreatedAt time.Time `json:"createdAt,omitempty"`
 

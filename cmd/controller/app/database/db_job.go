@@ -4,6 +4,14 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
+func CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error) {
+	return DB.CreateJob(userId, jobSpec)
+}
+
+func UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error {
+	return DB.UpdateJobStatus(userId, jobId, jobStatus)
+}
+
 func SubmitJob(userId string, info openapi.JobInfo) (string, error) {
 	return DB.SubmitJob(userId, info)
 }

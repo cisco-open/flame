@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,6 +13,82 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
+
+// CreateJob creates a new job specification and returns JobStatus
+func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error) {
+	// override userId in jobSpec to prevent an incorrect record in the db
+	jobSpec.UserId = userId
+
+	result, err := db.jobCollection.InsertOne(context.TODO(), jobSpec)
+	if err != nil {
+		err = ErrorCheck(err)
+		zap.S().Errorf("Failed to create a new job: %v", err)
+
+		return openapi.JobStatus{}, err
+	}
+
+	jobStatus := openapi.JobStatus{
+		Id:    GetStringID(result.InsertedID),
+		State: openapi.READY,
+	}
+
+	err = db.UpdateJobStatus(userId, jobStatus.Id, jobStatus)
+	if err != nil {
+		err = ErrorCheck(err)
+		zap.S().Errorf("Failed to update job status: %v", err)
+
+		return openapi.JobStatus{}, err
+	}
+
+	zap.S().Debugf("Successfully created a new job for user %s with job ID %s", userId, jobStatus.Id)
+	return jobStatus, err
+}
+
+// UpdateJobStatus update Job's status
+func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error {
+	dateKey := ""
+	switch jobStatus.State {
+	case openapi.READY:
+		dateKey = "createdat"
+
+	case openapi.RUNNING:
+		dateKey = "startedat"
+
+	case openapi.APPLYING:
+		dateKey = "updatedat"
+
+	case openapi.FAILED:
+		fallthrough
+	case openapi.TERMINATED:
+		fallthrough
+	case openapi.COMPLETED:
+		dateKey = "endedat"
+
+	case openapi.DEPLOYING:
+		fallthrough
+	case openapi.STOPPING:
+		dateKey = ""
+
+	default:
+		return fmt.Errorf("unknown state: %s", jobStatus.State)
+	}
+
+	setElements := bson.M{util.DBFieldId: jobId, "state": jobStatus.State}
+	if dateKey != "" {
+		setElements[dateKey] = time.Now()
+	}
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
+	update := bson.M{"$set": setElements}
+
+	updatedDoc := openapi.JobStatus{}
+	err := db.jobCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
+	if err != nil {
+		return ErrorCheck(err)
+	}
+
+	return nil
+}
 
 // SubmitJob creates a new job and return the jobId which is used by the controller to inform the fledgelet about new job.
 func (db *MongoService) SubmitJob(userId string, info openapi.JobInfo) (string, error) {

@@ -8,15 +8,18 @@ import (
 
 // StoreCollection provides collection of all the db stores in the application.
 type StoreCollection interface {
+	DatasetStore
 	DesignStore
 	JobStore
+}
+
+type DatasetStore interface {
+	CreateDataset(userId string, info openapi.DatasetInfo) error
 }
 
 // DesignStore is the collection of db APIs related to the designs
 //TODO for all get methods - explicitly specify the fields to be retured as part of the object
 type DesignStore interface {
-	CreateDataset(userId string, info openapi.DatasetInfo) error
-
 	CreateDesign(userId string, info openapi.Design) error
 	GetDesign(userId string, designId string) (openapi.Design, error)
 	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)
@@ -31,6 +34,9 @@ type DesignStore interface {
 }
 
 type JobStore interface {
+	CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error)
+	UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error
+
 	SubmitJob(userId string, info openapi.JobInfo) (string, error)
 
 	GetJob(userId string, jobId string) (openapi.JobInfo, error)

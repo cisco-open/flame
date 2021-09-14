@@ -12,9 +12,14 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // JobsApiService is a service that implents the logic for the JobsApiServicer
@@ -28,35 +33,39 @@ func NewJobsApiService() openapi.JobsApiServicer {
 	return &JobsApiService{}
 }
 
-// ChangeJobSchema - Change the schema for the given job
-func (s *JobsApiService) ChangeJobSchema(ctx context.Context, user string, jobId string, schemaId string,
-	designId string) (openapi.ImplResponse, error) {
-	// TODO - update ChangeJobSchema with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("ChangeJobSchema method not implemented")
-}
-
 // CreateJob - Create a new job specification
 func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	// TODO - update CreateJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	// TODO: validate the input
+	zap.S().Debugf("New job request received for user: %s | jobSpec: %v", user, jobSpec)
 
-	//TODO: Uncomment the next line to return response Response(201, {}) or use other options such as http.Ok ...
-	//return Response(201, nil),nil
+	// create controller request
+	uriMap := map[string]string{
+		"user": user,
+	}
+	url := restapi.CreateURL(Host, Port, restapi.CreateJobEndpoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send post request
+	code, responseBody, err := restapi.HTTPPost(url, jobSpec, "application/json")
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("CreateJob method not implemented")
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("create new job request failed")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	// everything went well and response is a job id
+	resp := openapi.JobStatus{}
+	err = util.ByteToStruct(responseBody, &resp)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to construct response message: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusCreated, resp), nil
 }
 
 // DeleteJob - Delete job specification
@@ -144,7 +153,7 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJob method not implemented")
 }
 
-// UpdateJobStatus - Update a job&#39;s status
+// UpdateJobStatus - Update the status of a job
 func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId string,
 	jobStatus openapi.JobStatus) (openapi.ImplResponse, error) {
 	// TODO - update UpdateJobStatus with the required logic for this service method.
