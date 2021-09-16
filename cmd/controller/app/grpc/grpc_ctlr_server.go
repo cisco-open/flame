@@ -16,7 +16,6 @@
 package grpcctlr
 
 import (
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
 )
 
@@ -29,6 +28,6 @@ type controllerGRPC struct {
 }
 
 // InitGRPCService starts the controller grpc server and establishes connection with the notification service
-func InitGRPCService(notificationServer openapi.ServerInfo) {
-	ControllerGRPC.connectToNotificationService(notificationServer)
+func InitGRPCService(endpoint string) {
+	ControllerGRPC.connectToNotificationService(endpoint)
 }

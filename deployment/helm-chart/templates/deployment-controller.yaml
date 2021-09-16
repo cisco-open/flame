@@ -22,10 +22,10 @@ spec:
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
         command: ["/usr/bin/controller"]
         args:
-          - "--uri"
+          - "--db"
           - "{{ .Values.database.uri }}"
-          - "--notifyIp"
-          - "{{ .Values.servicename }}-notifier"
+          - "--notifier"
+          - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
         ports:
         - containerPort: {{ .Values.componentPorts.controller }}
         envFrom:

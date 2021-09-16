@@ -66,7 +66,7 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 	case openapi.READY:
 		dateKey = "createdat"
 
-	case openapi.RUNNING:
+	case openapi.STARTING:
 		dateKey = "startedat"
 
 	case openapi.APPLYING:
@@ -79,6 +79,8 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 	case openapi.COMPLETED:
 		dateKey = "endedat"
 
+	case openapi.RUNNING:
+		fallthrough
 	case openapi.DEPLOYING:
 		fallthrough
 	case openapi.STOPPING:

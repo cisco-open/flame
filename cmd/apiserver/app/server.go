@@ -36,38 +36,18 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	apiserver.Port = uint16(ctlrInfo.Port)
 
 	// Setting up REST API Server
-	AgentServiceApi := apiserver.NewAgentApiService()
-	AgentServiceApiController := openapi.NewAgentApiController(AgentServiceApi)
+	apiRouters := []openapi.Router{
+		openapi.NewAgentApiController(apiserver.NewAgentApiService()),
+		openapi.NewDatasetsApiController(apiserver.NewDatasetsApiService()),
+		openapi.NewDesignsApiController(apiserver.NewDesignsApiService()),
+		openapi.NewDesignCodesApiController(apiserver.NewDesignCodesApiService()),
+		openapi.NewDesignSchemasApiController(apiserver.NewDesignSchemasApiService()),
+		// TODO: remove me after prototyping phase is done. it's only for prototyping.
+		openapi.NewDevApiController(apiserver.NewDevApiService()),
+		openapi.NewJobsApiController(apiserver.NewJobsApiService()),
+	}
 
-	DatasetsApiService := apiserver.NewDatasetsApiService()
-	DatasetsApiController := openapi.NewDatasetsApiController(DatasetsApiService)
-
-	DesignsApiService := apiserver.NewDesignsApiService()
-	DesignsApiController := openapi.NewDesignsApiController(DesignsApiService)
-
-	DesignCodesApiService := apiserver.NewDesignCodesApiService()
-	DesignCodesApiController := openapi.NewDesignCodesApiController(DesignCodesApiService)
-
-	DesignSchemasApiService := apiserver.NewDesignSchemasApiService()
-	DesignSchemasApiController := openapi.NewDesignSchemasApiController(DesignSchemasApiService)
-
-	// TODO remove me after prototyping phase is done.
-	// only for prototyping
-	DevServiceApi := apiserver.NewDevApiService()
-	DevServiceApiController := openapi.NewDevApiController(DevServiceApi)
-
-	JobsServiceApi := apiserver.NewJobsApiService()
-	JobsServiceApiController := openapi.NewJobsApiController(JobsServiceApi)
-
-	router := openapi.NewRouter(
-		AgentServiceApiController,
-		DatasetsApiController,
-		DesignsApiController,
-		DesignCodesApiController,
-		DesignSchemasApiController,
-		DevServiceApiController,
-		JobsServiceApiController,
-	)
+	router := openapi.NewRouter(apiRouters...)
 
 	addr := fmt.Sprintf(":%d", portNo)
 	zap.S().Fatal(http.ListenAndServe(addr, router))

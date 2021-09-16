@@ -94,6 +94,7 @@ JobStatus:
 JobState:
   enum:
     - ready
+    - starting
     - applying
     - deploying
     - stopping

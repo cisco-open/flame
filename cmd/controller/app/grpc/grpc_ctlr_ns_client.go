@@ -21,7 +21,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+
 	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -36,8 +36,8 @@ var notificationApiStore map[string]fn
 
 // ConnectToNotificationService establishes connection to the notification service and stores the client object.
 // The client object is later used by the controller to pass information to the notification service which passes it to the fledgelet.
-func (s *controllerGRPC) connectToNotificationService(sInfo openapi.ServerInfo) {
-	conn, err := grpc.Dial(sInfo.GetAddress(), grpc.WithInsecure())
+func (s *controllerGRPC) connectToNotificationService(endpoint string) {
+	conn, err := grpc.Dial(endpoint, grpc.WithInsecure())
 	if err != nil {
 		zap.S().Fatalf("cannot connect to notification service %v", err)
 	}
@@ -50,7 +50,7 @@ func (s *controllerGRPC) connectToNotificationService(sInfo openapi.ServerInfo) 
 		JobNotification: s.notificationServiceClient.JobNotification,
 	}
 
-	zap.S().Infof("Controller -- Notification service connection established. Notification service at %v", sInfo)
+	zap.S().Infof("Controller -- Notification service connection established. Notification service at %s", endpoint)
 }
 
 //SendNotification implements the generic method to call notification service end points.

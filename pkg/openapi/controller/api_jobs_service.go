@@ -29,22 +29,29 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/jobeventq"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+)
+
+const (
+	defaultWaitTime = 10 * time.Second
 )
 
 // JobsApiService is a service that implents the logic for the JobsApiServicer
 // This service should implement the business logic for every endpoint for the JobsApi API.
 // Include any external packages or services that will be required by this service.
 type JobsApiService struct {
+	jobEventQ *jobeventq.EventQ
 }
 
 // NewJobsApiService creates a default api service
-func NewJobsApiService() openapi.JobsApiServicer {
-	return &JobsApiService{}
+func NewJobsApiService(jobEventQ *jobeventq.EventQ) openapi.JobsApiServicer {
+	return &JobsApiService{jobEventQ: jobEventQ}
 }
 
 // CreateJob - Create a new job specification
@@ -52,7 +59,7 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	jobStatus, err := database.CreateJob(user, jobSpec)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
-		zap.S().Debugf(errMsg)
+		zap.S().Debug(errMsg)
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
 	}
 
@@ -147,18 +154,23 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 // UpdateJobStatus - Update the status of a job
 func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId string,
 	jobStatus openapi.JobStatus) (openapi.ImplResponse, error) {
-	// TODO - update UpdateJobStatus with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	// override jobId in the jobStatus
+	jobStatus.Id = jobId
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	event := jobeventq.NewJobEvent(jobStatus)
+	s.jobEventQ.Enqueue(event)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	select {
+	case <-time.After(defaultWaitTime):
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("response timed out")
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	case err := <-event.ErrCh:
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to update job status to %s: %v", jobStatus.State, err)
+			zap.S().Debug(errMsg)
+			return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+		}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJobStatus method not implemented")
+		return openapi.Response(http.StatusOK, nil), nil
+	}
 }

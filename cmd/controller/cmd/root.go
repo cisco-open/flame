@@ -16,10 +16,11 @@
 package cmd
 
 import (
+	"fmt"
+
 	"github.com/spf13/cobra"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -29,35 +30,41 @@ var rootCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
-		notifyIp, err := flags.GetString("notifyIp")
+		dbUri, err := flags.GetString("db")
 		if err != nil {
 			return err
 		}
 
-		notifyPort, err := flags.GetUint16("notifyPort")
+		notifier, err := flags.GetString("notifier")
 		if err != nil {
 			return err
 		}
 
-		uri, err := flags.GetString("uri")
+		port, err := flags.GetString("port")
 		if err != nil {
 			return err
 		}
 
-		notificationInfo := openapi.ServerInfo{Ip: notifyIp, Port: int32(notifyPort)}
-		if err := app.StartController(uri, notificationInfo); err != nil {
-			return err
+		instance, err := app.NewController(dbUri, notifier, port)
+		if err != nil {
+			fmt.Printf("Failed to create a new controller instance\n")
+			return nil
 		}
+		instance.Start()
 
 		return nil
 	},
 }
 
 func init() {
-	rootCmd.PersistentFlags().StringP("notifyIp", "i", "0.0.0.0", "Notifer IP")
-	rootCmd.PersistentFlags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
-	rootCmd.PersistentFlags().StringP("uri", "u", "", "Database connection URI")
-	rootCmd.MarkPersistentFlagRequired("uri")
+	rootCmd.PersistentFlags().StringP("db", "d", "", "Database connection URI")
+	rootCmd.MarkPersistentFlagRequired("db")
+
+	defaultEndpoint := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
+	rootCmd.PersistentFlags().StringP("notifier", "n", defaultEndpoint, "Notifier endpoint")
+
+	defaultCtrlPort := fmt.Sprintf("%d", util.ControllerRestApiPort)
+	rootCmd.PersistentFlags().StringP("port", "p", defaultCtrlPort, "Port for controller's REST API service")
 }
 
 func Execute() error {

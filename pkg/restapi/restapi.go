@@ -57,12 +57,12 @@ const (
 
 	// Keys for job endpoints
 	CreateJobEndpoint       = "CREATE_JOB"
-	SubmitJobEndPoint       = "SUBMIT_JOB"
 	GetJobEndPoint          = "GET_JOB"
 	GetJobsEndPoint         = "GET_JOBS"
 	DeleteJobEndPoint       = "DELETE_JOB"
 	UpdateJobEndPoint       = "UPDATE_JOB"
 	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
+	UpdateJobStatusEndPoint = "UPDATE_JOB_STATUS"
 
 	//Agent
 	UpdateAgentStatusEndPoint = "UPDATE_AGENT_STATUS"
@@ -96,12 +96,12 @@ var URI = map[string]string{
 
 	// Job
 	CreateJobEndpoint:       "/{{.user}}/jobs",
-	SubmitJobEndPoint:       "/{{.user}}/jobs",
 	GetJobEndPoint:          "/{{.user}}/jobs/{{.jobId}}",
 	GetJobsEndPoint:         "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	DeleteJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
+	UpdateJobStatusEndPoint: "/{.user}/jobs/{.jobId}/status",
 
 	//Agent
 	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",

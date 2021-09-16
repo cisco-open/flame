@@ -110,8 +110,25 @@ func Remove(params Params) error {
 }
 
 func Start(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Host, params.Port, restapi.UpdateJobStatusEndPoint, uriMap)
+
+	jobStatus := openapi.JobStatus{
+		Id:    params.JobId,
+		State: openapi.STARTING,
+	}
+
+	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to start a job - code: %d, error: %v\n", code, err)
+		return nil
+	}
+
+	fmt.Printf("Initiated to start a job successfully\n")
 
 	return nil
 }
