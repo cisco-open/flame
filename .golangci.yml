@@ -138,6 +138,9 @@ run:
     - internal/renameio
     - internal/robustio
 
+  skip-files:
+    - ".*\\_test\\.go$"
+
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration
 service:

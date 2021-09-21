@@ -26,7 +26,7 @@ JobSpec:
     maxRunTime:
       type: int32
       default: 600 # 600s = 10min
-    initialModelId:
+    baseModelId:
       type: string
     hyperparameters:
       type: object

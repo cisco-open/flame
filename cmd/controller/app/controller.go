@@ -23,7 +23,7 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/grpc"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/jobeventq"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/job"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi/controller"
 )
@@ -33,11 +33,11 @@ type Controller struct {
 	notifierEp string
 	restPort   string
 
-	jobEventQ *jobeventq.EventQ
+	jobEventQ *job.EventQ
 }
 
 func NewController(dbUri string, notifierEp string, restPort string) (*Controller, error) {
-	jobEventQ := jobeventq.NewEventQ(0)
+	jobEventQ := job.NewEventQ(0)
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("failed to create a job event queue")
 	}
@@ -60,7 +60,7 @@ func (c *Controller) Start() {
 		zap.S().Fatalf("Failed to connect to DB: %v", err)
 	}
 
-	jobMgr, err := NewJobManager(c.jobEventQ)
+	jobMgr, err := job.NewManager(c.jobEventQ)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

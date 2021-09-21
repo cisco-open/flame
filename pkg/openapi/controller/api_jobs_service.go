@@ -34,7 +34,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/jobeventq"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/job"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -46,11 +46,11 @@ const (
 // This service should implement the business logic for every endpoint for the JobsApi API.
 // Include any external packages or services that will be required by this service.
 type JobsApiService struct {
-	jobEventQ *jobeventq.EventQ
+	jobEventQ *job.EventQ
 }
 
 // NewJobsApiService creates a default api service
-func NewJobsApiService(jobEventQ *jobeventq.EventQ) openapi.JobsApiServicer {
+func NewJobsApiService(jobEventQ *job.EventQ) openapi.JobsApiServicer {
 	return &JobsApiService{jobEventQ: jobEventQ}
 }
 
@@ -157,7 +157,7 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 	// override jobId in the jobStatus
 	jobStatus.Id = jobId
 
-	event := jobeventq.NewJobEvent(jobStatus)
+	event := job.NewJobEvent(user, jobStatus)
 	s.jobEventQ.Enqueue(event)
 
 	select {

@@ -1,5 +1,5 @@
 {
-    "designId": "test",
+    "designId": "mnist-test",
     "schemaVersion": "1",
     "codeVersion": "1",
     "datasetIds" : [

@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jobeventq
+package job
 
 import (
 	"testing"
@@ -25,7 +25,7 @@ import (
 
 func TestNewJobEvent(t *testing.T) {
 	jobStatus := openapi.JobStatus{}
-	jobEvent := NewJobEvent(jobStatus)
+	jobEvent := NewJobEvent("some_user", jobStatus)
 	assert.NotNil(t, jobEvent)
 	assert.NotNil(t, jobEvent.ErrCh)
 }
@@ -50,7 +50,7 @@ func TestEnqueue(t *testing.T) {
 	assert.Equal(t, "error channel in jobEvent not initialized", err.Error())
 
 	jobStatus := openapi.JobStatus{}
-	jobEvent = NewJobEvent(jobStatus)
+	jobEvent = NewJobEvent("some_user", jobStatus)
 	err = eventQ.Enqueue(jobEvent)
 	assert.Nil(t, err)
 
@@ -64,7 +64,7 @@ func TestDequeue(t *testing.T) {
 	assert.NotNil(t, eventQ)
 
 	jobStatus := openapi.JobStatus{Id: "12345"}
-	jobEvent := NewJobEvent(jobStatus)
+	jobEvent := NewJobEvent("some_user", jobStatus)
 	err := eventQ.Enqueue(jobEvent)
 	assert.Nil(t, err)
 

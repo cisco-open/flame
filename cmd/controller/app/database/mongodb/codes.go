@@ -16,13 +16,9 @@
 package mongodb
 
 import (
-	"archive/zip"
-	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
-	"path/filepath"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
@@ -31,22 +27,16 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-type FileData struct {
-	BaseName string `json:"basename"`
-	FullName string `json:"fullname"`
-	Data     string `json:"data"`
-}
-
 type FileInfo struct {
-	ZipName string     `json:"zipname"`
-	Version string     `json:"version"`
-	DataSet []FileData `json:"dataset"`
+	ZipName string          `json:"zipname"`
+	Version string          `json:"version"`
+	DataSet []util.FileData `json:"dataset"`
 }
 
 func (db *MongoService) CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error {
 	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", userId, designId, fileName, fileVer)
 
-	fdList, err := unzipFile(fileData)
+	fdList, err := util.UnzipFile(fileData)
 	if err != nil {
 		zap.S().Errorf("Failed to read the file: %v", err)
 		return err
@@ -209,76 +199,5 @@ func (db *MongoService) GetDesignCode(userId string, designId string, fileVer st
 		return nil, fmt.Errorf("no design code found")
 	}
 
-	return zipFile(updatedDoc.DataSet)
-}
-
-func unzipFile(file *os.File) ([]FileData, error) {
-	reader, err := zip.OpenReader(file.Name())
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-
-	fdList := []FileData{}
-	for _, f := range reader.File {
-		rc, err := f.Open()
-		if err != nil {
-			return nil, err
-		}
-
-		if f.FileInfo().IsDir() {
-			// No need to store directory information
-			rc.Close()
-			continue
-		}
-
-		data, err := ioutil.ReadAll(rc)
-		if err != nil {
-			rc.Close()
-			return nil, err
-		}
-
-		fd := FileData{
-			BaseName: filepath.Base(f.Name),
-			FullName: f.Name,
-			Data:     string(data),
-		}
-
-		fdList = append(fdList, fd)
-
-		rc.Close()
-	}
-
-	if len(fdList) == 0 {
-		return nil, fmt.Errorf("no file found in %s", file.Name())
-	}
-
-	return fdList, nil
-}
-
-func zipFile(fdList []FileData) ([]byte, error) {
-	// Create a buffer to write an archive to
-	buf := new(bytes.Buffer)
-
-	// Create a new zip archive
-	writer := zip.NewWriter(buf)
-	for _, fd := range fdList {
-		f, err := writer.Create(fd.FullName)
-		if err != nil {
-			return nil, err
-		}
-
-		_, err = f.Write([]byte(fd.Data))
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	// Make sure to check the error on Close
-	err := writer.Close()
-	if err != nil {
-		return nil, err
-	}
-
-	return buf.Bytes(), nil
+	return util.ZipFile(updatedDoc.DataSet)
 }

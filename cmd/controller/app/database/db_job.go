@@ -23,16 +23,16 @@ func CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error
 	return DB.CreateJob(userId, jobSpec)
 }
 
+func GetJob(userId string, jobId string) (openapi.JobSpec, error) {
+	return DB.GetJob(userId, jobId)
+}
+
+func GetJobStatus(userId string, jobId string) (openapi.JobStatus, error) {
+	return DB.GetJobStatus(userId, jobId)
+}
+
 func UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error {
 	return DB.UpdateJobStatus(userId, jobId, jobStatus)
-}
-
-func SubmitJob(userId string, info openapi.JobInfo) (string, error) {
-	return DB.SubmitJob(userId, info)
-}
-
-func GetJob(userId string, jobId string) (openapi.JobInfo, error) {
-	return DB.GetJob(userId, jobId)
 }
 
 func GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error) {

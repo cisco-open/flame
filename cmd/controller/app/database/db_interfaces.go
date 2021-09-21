@@ -30,6 +30,7 @@ type StoreCollection interface {
 
 type DatasetStore interface {
 	CreateDataset(userId string, info openapi.DatasetInfo) error
+	GetDatasetById(datasetId string) (openapi.DatasetInfo, error)
 }
 
 // DesignStore is the collection of db APIs related to the designs
@@ -50,14 +51,11 @@ type DesignStore interface {
 
 type JobStore interface {
 	CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error)
+	GetJob(userId string, jobId string) (openapi.JobSpec, error)
+	GetJobStatus(userId string, jobId string) (openapi.JobStatus, error)
 	UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error
 
-	SubmitJob(userId string, info openapi.JobInfo) (string, error)
-
-	GetJob(userId string, jobId string) (openapi.JobInfo, error)
 	GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error)
-	//GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]openapi.JobInfo, error)
-
 	UpdateJob(userId string, jobId string) (openapi.JobInfo, error)
 	DeleteJob(userId string, jobId string) error
 

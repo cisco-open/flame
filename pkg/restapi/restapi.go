@@ -101,7 +101,7 @@ var URI = map[string]string{
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	DeleteJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
-	UpdateJobStatusEndPoint: "/{.user}/jobs/{.jobId}/status",
+	UpdateJobStatusEndPoint: "/{{.user}}/jobs/{{.jobId}}/status",
 
 	//Agent
 	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",

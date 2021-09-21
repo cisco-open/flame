@@ -36,10 +36,9 @@ func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (opena
 
 	result, err := db.jobCollection.InsertOne(context.TODO(), jobSpec)
 	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("Failed to create a new job: %v", err)
+		zap.S().Warnf("Failed to create a new job: %v", err)
 
-		return openapi.JobStatus{}, err
+		return openapi.JobStatus{}, ErrorCheck(err)
 	}
 
 	jobStatus := openapi.JobStatus{
@@ -49,14 +48,44 @@ func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (opena
 
 	err = db.UpdateJobStatus(userId, jobStatus.Id, jobStatus)
 	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("Failed to update job status: %v", err)
+		zap.S().Warnf("Failed to update job status: %v", err)
 
-		return openapi.JobStatus{}, err
+		return openapi.JobStatus{}, ErrorCheck(err)
 	}
 
-	zap.S().Debugf("Successfully created a new job for user %s with job ID %s", userId, jobStatus.Id)
+	zap.S().Infof("Successfully created a new job for user %s with job ID %s", userId, jobStatus.Id)
+
 	return jobStatus, err
+}
+
+func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobSpec, error) {
+	zap.S().Infof("get job specification for userId: %s with jobId: %s", userId, jobId)
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), "userid": userId}
+	var jobSpec openapi.JobSpec
+	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&jobSpec)
+	if err != nil {
+		zap.S().Warnf("failed to fetch job specification: %v", err)
+
+		return openapi.JobSpec{}, ErrorCheck(err)
+	}
+
+	return jobSpec, nil
+}
+
+func (db *MongoService) GetJobStatus(userId string, jobId string) (openapi.JobStatus, error) {
+	zap.S().Debugf("get job status for userId: %s with jobId: %s", userId, jobId)
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), "userid": userId}
+	jobStatus := openapi.JobStatus{}
+	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&jobStatus)
+	if err != nil {
+		zap.S().Warnf("failed to fetch job status: %v", err)
+
+		return openapi.JobStatus{}, ErrorCheck(err)
+	}
+
+	return jobStatus, nil
 }
 
 // UpdateJobStatus update Job's status
@@ -107,36 +136,8 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 	return nil
 }
 
-// SubmitJob creates a new job and return the jobId which is used by the controller to inform the fledgelet about new job.
-func (db *MongoService) SubmitJob(userId string, info openapi.JobInfo) (string, error) {
-	t := time.Now()
-	info.Timestamp = openapi.JobInfoTimestamp{
-		CreatedAt:   t.Unix(),
-		StartedAt:   0,
-		UpdatedAt:   0,
-		CompletedAt: 0,
-	}
-	info.Status = util.InitState
-	result, err := db.jobCollection.InsertOne(context.TODO(), info)
-	zap.S().Debugf("mongodb new job request for userId: %v inserted with ID: %v", userId, result.InsertedID)
-	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("error while submitting new job request. %v", err)
-	}
-	return GetStringID(result.InsertedID), err
-}
+// TODO: revisit and revise all the functions below
 
-func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobInfo, error) {
-	zap.S().Debugf("mongodb get job for userId: %s with jobId: %s", userId, jobId)
-	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
-	var info openapi.JobInfo
-	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&info)
-	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("error while fetching job details. %v", err)
-	}
-	return info, nil
-}
 func (db *MongoService) GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error) {
 	zap.S().Debugf("mongodb get jobs detail for userId: %s | | getType: %s | designId: %s ", userId, getType, designId)
 	filter := bson.M{util.DBFieldUserId: userId}
@@ -145,14 +146,6 @@ func (db *MongoService) GetJobs(userId string, getType string, designId string, 
 	}
 	return db.getJobsInfo(filter)
 }
-
-//func (db *MongoService) GetJobsDetailsBy(userId string, getType string, in map[string]string) ([]openapi.JobInfo, error) {
-//	if getType == util.GetBySchemaId {
-//		filter := bson.M{util.DBFieldDesignId: in[util.DBFieldDesignId], util.DBFieldSchemaId: in[util.DBFieldSchemaId]}
-//		return db.getJobsInfo(filter)
-//	}
-//	return nil, nil
-//}
 
 func (db *MongoService) getJobsInfo(filter primitive.M) ([]openapi.JobInfo, error) {
 	cursor, err := db.jobCollection.Find(context.TODO(), filter)

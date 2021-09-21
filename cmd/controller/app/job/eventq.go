@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package jobeventq
+package job
 
 import (
 	"fmt"
@@ -26,6 +26,7 @@ const (
 )
 
 type JobEvent struct {
+	Requester string
 	JobStatus openapi.JobStatus
 	ErrCh     chan error
 }
@@ -34,8 +35,9 @@ type EventQ struct {
 	buf chan *JobEvent
 }
 
-func NewJobEvent(jobStatus openapi.JobStatus) *JobEvent {
+func NewJobEvent(requester string, jobStatus openapi.JobStatus) *JobEvent {
 	jobEvent := &JobEvent{
+		Requester: requester,
 		JobStatus: jobStatus,
 		ErrCh:     make(chan error, 1),
 	}

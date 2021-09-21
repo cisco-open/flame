@@ -62,3 +62,18 @@ func (db *MongoService) setDatasetId(docId primitive.ObjectID) error {
 
 	return nil
 }
+
+func (db *MongoService) GetDatasetById(datasetId string) (openapi.DatasetInfo, error) {
+	zap.S().Infof("get dataset info for datasetId: %s", datasetId)
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(datasetId)}
+	var datasetInfo openapi.DatasetInfo
+	err := db.datasetCollection.FindOne(context.TODO(), filter).Decode(&datasetInfo)
+	if err != nil {
+		zap.S().Warnf("failed to fetch dataset info: %v", err)
+
+		return openapi.DatasetInfo{}, ErrorCheck(err)
+	}
+
+	return datasetInfo, nil
+}
