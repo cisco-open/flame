@@ -202,7 +202,6 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-
 /{user}/jobs/{jobId}/status:
   ########################################
   # Get job status
@@ -278,6 +277,46 @@
         description: Updated status
       '401':
         description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/jobs/{jobId}/{agentId}/payload:
+  ########################################
+  # Get job payload
+  ########################################
+  get:
+    operationId: getPayload
+    summary: Get a job payload for a given job and agent
+    tags:
+      - jobs
+    parameters:
+      - name: jobId
+        description: job id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: agentId
+        description: fledgelet agent Id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      "200":
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Payload'
+        description: job payload containing config and code
       default:
         content:
           application/json:

@@ -149,6 +149,21 @@ func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit i
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobsStatus method not implemented")
 }
 
+// GetPayload - Get a job payload for a given job and agent
+func (s *JobsApiService) GetPayload(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
+	// TODO - update GetPayload with the required logic for this service method.
+	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
+	// implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, Payload{}) or use other options such as http.Ok ...
+	//return Response(200, Payload{}), nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetPayload method not implemented")
+}
+
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {

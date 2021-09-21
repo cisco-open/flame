@@ -159,7 +159,7 @@ func (b *jobBuilder) getPayloadTemplates() ([]string, map[string]*payloadTemplat
 		jobConfig.BaseModelId = b.jobSpec.BaseModelId
 		jobConfig.Hyperparameters = b.jobSpec.Hyperparameters
 		jobConfig.Dependencies = b.jobSpec.Dependencies
-		jobConfig.BackEnd = string(b.jobSpec.Backend)
+		jobConfig.Backend = string(b.jobSpec.Backend)
 		jobConfig.Broker = broker
 		// Dataset url will be populated when datasets are handled
 		jobConfig.DatasetUrl = ""
@@ -488,7 +488,7 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 ////////////////////////////////////////////////////////////////////////////////
 
 type JobConfig struct {
-	BackEnd  string            `json:"backend"`
+	Backend  string            `json:"backend"`
 	Broker   string            `json:"broker,omitempty"`
 	JobId    string            `json:"jobid"`
 	Role     string            `json:"role"`
@@ -506,7 +506,7 @@ type JobConfig struct {
 // For debugging purpose during development
 func (jc JobConfig) print() {
 	fmt.Println("---")
-	fmt.Printf("backend: %s\n", jc.BackEnd)
+	fmt.Printf("backend: %s\n", jc.Backend)
 	fmt.Printf("broker: %s\n", jc.Broker)
 	fmt.Printf("JobId: %s\n", jc.JobId)
 	fmt.Printf("Role: %s\n", jc.Role)

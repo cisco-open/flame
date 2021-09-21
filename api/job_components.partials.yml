@@ -91,6 +91,9 @@ JobStatus:
     - id
     - state
 
+########################################
+# Job state
+########################################
 JobState:
   enum:
     - ready
@@ -103,6 +106,24 @@ JobState:
     - terminated
     - completed
 
+########################################
+# Payload
+########################################
+Payload:
+  description: job payload that contains job config and code
+  type: object
+  properties:
+    config:
+      type: string
+      format: binary
+    code:
+      type: string
+      format: binary
+  required:
+    - config
+    - code
+
+# TODO: revise below
 AgentStatus:
   description: agent status object.
   type: object
