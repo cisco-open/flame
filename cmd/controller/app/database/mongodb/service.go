@@ -31,6 +31,7 @@ const (
 	DatasetCollection = "t_dataset"
 	DesignCollection  = "t_design"
 	JobCollection     = "t_job"
+	PayloadCollection = "t_payload"
 
 	orderAscend  int32 = 1
 	orderDescend int32 = -1
@@ -42,6 +43,7 @@ type MongoService struct {
 	datasetCollection *mongo.Collection
 	designCollection  *mongo.Collection
 	jobCollection     *mongo.Collection
+	payloadCollection *mongo.Collection
 }
 
 type uniqueIndexInfo struct {
@@ -93,6 +95,7 @@ func NewMongoService(uri string) (*MongoService, error) {
 		datasetCollection: db.Collection(DatasetCollection),
 		designCollection:  db.Collection(DesignCollection),
 		jobCollection:     db.Collection(JobCollection),
+		payloadCollection: db.Collection(PayloadCollection),
 	}
 
 	uiiList := []uniqueIndexInfo{
@@ -103,6 +106,10 @@ func NewMongoService(uri string) (*MongoService, error) {
 		{
 			mongoDB.designCollection,
 			map[string]int32{"userid": orderAscend, "id": orderAscend},
+		},
+		{
+			mongoDB.payloadCollection,
+			map[string]int32{"jobid": orderAscend, "agentid": orderAscend},
 		},
 	}
 	for _, uii := range uiiList {

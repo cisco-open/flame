@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -32,11 +33,6 @@ const (
 	broker   = "mqtt.eclipseprojects.io"
 	realmSep = "|"
 )
-
-type Payload struct {
-	jobConfig  JobConfig
-	zippedCode []byte
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Job Builder related code
@@ -54,7 +50,7 @@ func newJobBuilder(jobSpec openapi.JobSpec) *jobBuilder {
 	return &jobBuilder{jobSpec: jobSpec, datasets: make([]openapi.DatasetInfo, 0)}
 }
 
-func (b *jobBuilder) getPayloads() ([]Payload, error) {
+func (b *jobBuilder) getPayloads() ([]objects.Payload, error) {
 	err := b.setup()
 	if err != nil {
 		return nil, err
@@ -117,8 +113,8 @@ func (b *jobBuilder) setup() error {
 	return nil
 }
 
-func (b *jobBuilder) build() ([]Payload, error) {
-	payloads := make([]Payload, 0)
+func (b *jobBuilder) build() ([]objects.Payload, error) {
+	payloads := make([]objects.Payload, 0)
 
 	dataRoles, templates := b.getPayloadTemplates()
 	if err := b.preCheck(dataRoles, templates); err != nil {
@@ -152,28 +148,28 @@ func (b *jobBuilder) getPayloadTemplates() ([]string, map[string]*payloadTemplat
 
 	for _, role := range b.schema.Roles {
 		template := &payloadTemplate{}
-		jobConfig := &template.jobConfig
+		JobConfig := &template.JobConfig
 
-		jobConfig.JobId = b.jobSpec.Id
-		jobConfig.MaxRunTime = b.jobSpec.MaxRunTime
-		jobConfig.BaseModelId = b.jobSpec.BaseModelId
-		jobConfig.Hyperparameters = b.jobSpec.Hyperparameters
-		jobConfig.Dependencies = b.jobSpec.Dependencies
-		jobConfig.Backend = string(b.jobSpec.Backend)
-		jobConfig.Broker = broker
+		JobConfig.JobId = b.jobSpec.Id
+		JobConfig.MaxRunTime = b.jobSpec.MaxRunTime
+		JobConfig.BaseModelId = b.jobSpec.BaseModelId
+		JobConfig.Hyperparameters = b.jobSpec.Hyperparameters
+		JobConfig.Dependencies = b.jobSpec.Dependencies
+		JobConfig.BackEnd = string(b.jobSpec.Backend)
+		JobConfig.Broker = broker
 		// Dataset url will be populated when datasets are handled
-		jobConfig.DatasetUrl = ""
+		JobConfig.DatasetUrl = ""
 
-		jobConfig.Role = role.Name
+		JobConfig.Role = role.Name
 		// Realm will be updated when datasets are handled
-		jobConfig.Realm = ""
-		jobConfig.Channels = b.extractChannels(role.Name, b.schema.Channels)
+		JobConfig.Realm = ""
+		JobConfig.Channels = b.extractChannels(role.Name, b.schema.Channels)
 
 		template.isDataConsumer = role.IsDataConsumer
 		if role.IsDataConsumer {
 			dataRoles = append(dataRoles, role.Name)
 		}
-		template.zippedCode = b.roleCode[role.Name]
+		template.ZippedCode = b.roleCode[role.Name]
 
 		templates[role.Name] = template
 	}
@@ -247,7 +243,7 @@ func (b *jobBuilder) isTemplatesConnected(templates map[string]*payloadTemplate)
 		// dequeue
 		queue.Remove(elmt)
 
-		for _, channel := range tmpl.jobConfig.Channels {
+		for _, channel := range tmpl.JobConfig.Channels {
 			peerTmpl := tmpl.getPeerTemplate(channel, templates)
 			// peer is already visited
 			if peerTmpl == nil || peerTmpl.done {
@@ -286,7 +282,7 @@ func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*payl
 	for _, dataRole := range dataRoles {
 		tmpl := templates[dataRole]
 		tmpl.done = true
-		for _, channel := range tmpl.jobConfig.Channels {
+		for _, channel := range tmpl.JobConfig.Channels {
 			peerTmpl := tmpl.getPeerTemplate(channel, templates)
 			if peerTmpl == nil || peerTmpl.done || peerTmpl.isDataConsumer {
 				continue
@@ -328,7 +324,7 @@ func _walkForGroupByCheck(templates map[string]*payloadTemplate, prevTmpl *paylo
 	tmpl.done = true
 
 	// compute minLen of groupBy field for already visited roles
-	for _, channel := range tmpl.jobConfig.Channels {
+	for _, channel := range tmpl.JobConfig.Channels {
 		peerTmpl := tmpl.getPeerTemplate(channel, templates)
 		if prevTmpl != peerTmpl {
 			continue
@@ -354,7 +350,7 @@ func _walkForGroupByCheck(templates map[string]*payloadTemplate, prevTmpl *paylo
 		break
 	}
 
-	for _, channel := range tmpl.jobConfig.Channels {
+	for _, channel := range tmpl.JobConfig.Channels {
 		peerTmpl := tmpl.getPeerTemplate(channel, templates)
 		if peerTmpl == nil || peerTmpl.done || peerTmpl.isDataConsumer || prevTmpl == peerTmpl {
 			continue
@@ -373,7 +369,7 @@ func _walkForGroupByCheck(templates map[string]*payloadTemplate, prevTmpl *paylo
 ////////////////////////////////////////////////////////////////////////////////
 
 type payloadTemplate struct {
-	Payload
+	objects.Payload
 
 	isDataConsumer bool
 
@@ -383,12 +379,12 @@ type payloadTemplate struct {
 }
 
 func (tmpl *payloadTemplate) getPeerTemplate(channel openapi.Channel, templates map[string]*payloadTemplate) *payloadTemplate {
-	if !contains(channel.Pair, tmpl.jobConfig.Role) {
+	if !contains(channel.Pair, tmpl.JobConfig.Role) {
 		return nil
 	}
 
 	peer := channel.Pair[0]
-	if tmpl.jobConfig.Role == peer {
+	if tmpl.JobConfig.Role == peer {
 		peer = channel.Pair[1]
 	}
 
@@ -401,8 +397,8 @@ func (tmpl *payloadTemplate) getPeerTemplate(channel openapi.Channel, templates 
 }
 
 func (tmpl *payloadTemplate) walk(prevPeer string, templates map[string]*payloadTemplate,
-	datasets []openapi.DatasetInfo) ([]Payload, error) {
-	payloads := make([]Payload, 0)
+	datasets []openapi.DatasetInfo) ([]objects.Payload, error) {
+	payloads := make([]objects.Payload, 0)
 
 	populated := tmpl.buildPayloads(prevPeer, templates, datasets)
 	if len(populated) > 0 {
@@ -410,14 +406,14 @@ func (tmpl *payloadTemplate) walk(prevPeer string, templates map[string]*payload
 	}
 
 	// if template is not for data consumer role
-	for _, channel := range tmpl.jobConfig.Channels {
+	for _, channel := range tmpl.JobConfig.Channels {
 		peerTmpl := tmpl.getPeerTemplate(channel, templates)
 		// peer is already handled
 		if peerTmpl == nil || peerTmpl.done {
 			continue
 		}
 
-		populated, err := peerTmpl.walk(tmpl.jobConfig.Role, templates, datasets)
+		populated, err := peerTmpl.walk(tmpl.JobConfig.Role, templates, datasets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to populdate template")
 		}
@@ -430,8 +426,8 @@ func (tmpl *payloadTemplate) walk(prevPeer string, templates map[string]*payload
 
 // buildPayloads returns an array of Payload generated from template; this function should be called via walk()
 func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string]*payloadTemplate,
-	datasets []openapi.DatasetInfo) []Payload {
-	payloads := make([]Payload, 0)
+	datasets []openapi.DatasetInfo) []objects.Payload {
+	payloads := make([]objects.Payload, 0)
 
 	defer func() {
 		// handling this template is done
@@ -443,12 +439,14 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 		// TODO: currently, one data role is assumed; therefore, datasets are used for one data role.
 		//       to support more than one data role, datasets should be associated with each role.
 		//       this needs job spec modification.
-		for _, dataset := range datasets {
+		for i, dataset := range datasets {
 			payload := tmpl.Payload
-			payload.jobConfig.DatasetUrl = dataset.Url
-			payload.jobConfig.Realm = dataset.Realm
+			payload.JobConfig.DatasetUrl = dataset.Url
+			payload.JobConfig.Realm = dataset.Realm
 			// no need to copy byte array; assignment suffices
-			payload.zippedCode = tmpl.Payload.zippedCode
+			payload.ZippedCode = tmpl.Payload.ZippedCode
+			payload.JobId = payload.JobConfig.JobId
+			payload.GenerateAgentId(i)
 
 			payloads = append(payloads, payload)
 		}
@@ -457,16 +455,17 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 	}
 
 	prevTmpl := templates[prevPeer]
-	for _, channel := range prevTmpl.jobConfig.Channels {
-		if !contains(channel.Pair, tmpl.jobConfig.Role) {
+	for _, channel := range prevTmpl.JobConfig.Channels {
+		if !contains(channel.Pair, tmpl.JobConfig.Role) {
 			continue
 		}
 
 		i := 0
 		for i < len(channel.GroupBy.Value) {
 			payload := tmpl.Payload
-
-			payload.jobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			payload.JobId = payload.JobConfig.JobId
+			payload.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			payload.GenerateAgentId(i)
 
 			payloads = append(payloads, payload)
 			i++
@@ -476,53 +475,16 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 		// which means that groupby is not specified; so,
 		// we have to create a default payload
 		if len(payloads) == 0 {
-			payloads = append(payloads, tmpl.Payload)
+			payload := tmpl.Payload
+			payload.JobId = payload.JobConfig.JobId
+			payload.GenerateAgentId(0)
+
+			payloads = append(payloads, payload)
 		}
 	}
 
 	return payloads
 }
-
-////////////////////////////////////////////////////////////////////////////////
-// Job Config related code
-////////////////////////////////////////////////////////////////////////////////
-
-type JobConfig struct {
-	Backend  string            `json:"backend"`
-	Broker   string            `json:"broker,omitempty"`
-	JobId    string            `json:"jobid"`
-	Role     string            `json:"role"`
-	Realm    string            `json:"realm"`
-	Channels []openapi.Channel `json:"channels"`
-
-	MaxRunTime      int32                  `json:"maxRunTime,omitempty"`
-	BaseModelId     string                 `json:"baseModelId,omitempty"`
-	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
-	Dependencies    []string               `json:"dependencies,omitempty"`
-	DatasetUrl      string                 `json:"dataset,omitempty"`
-}
-
-/*
-// For debugging purpose during development
-func (jc JobConfig) print() {
-	fmt.Println("---")
-	fmt.Printf("backend: %s\n", jc.Backend)
-	fmt.Printf("broker: %s\n", jc.Broker)
-	fmt.Printf("JobId: %s\n", jc.JobId)
-	fmt.Printf("Role: %s\n", jc.Role)
-	fmt.Printf("Realm: %s\n", jc.Realm)
-	for i, channel := range jc.Channels {
-		fmt.Printf("\t[%d] channel: %v\n", i, channel)
-	}
-
-	fmt.Printf("MaxRunTime: %d\n", jc.MaxRunTime)
-	fmt.Printf("BaseModelId: %s\n", jc.BaseModelId)
-	fmt.Printf("Hyperparameters: %v\n", jc.Hyperparameters)
-	fmt.Printf("Dependencies: %v\n", jc.Dependencies)
-	fmt.Printf("DatasetUrl: %s\n", jc.DatasetUrl)
-	fmt.Println("")
-}
-*/
 
 ////////////////////////////////////////////////////////////////////////////////
 // Etc

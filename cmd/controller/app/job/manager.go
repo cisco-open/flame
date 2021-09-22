@@ -144,7 +144,12 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 		event.ErrCh <- fmt.Errorf("failed to generate payloads: %v", err)
 		return
 	}
-	zap.S().Infof("len (payloads) = %d", len(payloads))
+
+	err = database.CreatePayloads(payloads)
+	if err != nil {
+		event.ErrCh <- err
+		return
+	}
 
 	err = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 	if err != nil {

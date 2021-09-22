@@ -18,6 +18,7 @@ package database
 import (
 	"os"
 
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
@@ -26,6 +27,7 @@ type StoreCollection interface {
 	DatasetStore
 	DesignStore
 	JobStore
+	PayloadStore
 }
 
 type DatasetStore interface {
@@ -61,4 +63,8 @@ type JobStore interface {
 
 	//TODO would like to not expose these methods as they are for internal use.
 	UpdateJobDetails(jobId string, updateType string, msg interface{}) error
+}
+
+type PayloadStore interface {
+	CreatePayloads([]objects.Payload) error
 }
