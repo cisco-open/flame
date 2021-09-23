@@ -51,14 +51,14 @@ func (s *notificationServer) pushNotification(agentId string, event *pbNotify.Ev
 	stream := s.clientStreams[agentId]
 	if stream == nil {
 		errMsg := fmt.Sprintf("agent %s is unregistered", agentId)
-		zap.S().Errorf(errMsg)
+		zap.S().Warn(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
 	err := (*stream).Send(event)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to push notification to agent %s: %v", agentId, err)
-		zap.S().Errorf(errMsg)
+		zap.S().Warn(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 

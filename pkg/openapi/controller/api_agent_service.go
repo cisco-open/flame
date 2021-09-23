@@ -32,10 +32,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/grpc"
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -68,10 +65,11 @@ func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jo
 		}
 
 		//Step 2 - check and start training process
-		err = startTraining(jobId, agentId)
-		if err != nil {
-			return openapi.Response(http.StatusInternalServerError, err), err
-		}
+		// TODO: commented out by MLEE; revisit this later
+		// err = startTraining(jobId, agentId)
+		// if err != nil {
+		// 	return openapi.Response(http.StatusInternalServerError, err), err
+		// }
 	} else {
 		zap.S().Errorf("Invalid update type.")
 		return openapi.Response(http.StatusInternalServerError, nil), errors.New("invalid update type")
@@ -80,6 +78,8 @@ func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jo
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
+/*
+// TODO: commented out by MLEE; revisit this later
 //startTraining first validate the starting policy and sends notification to the trainer (aka data consumer nodes)
 func startTraining(jobId string, agentId string) error {
 	//implementing a simple policy where once all the non training nodes are up send the job start notification to the training nodes.
@@ -139,6 +139,7 @@ func startTraining(jobId string, agentId string) error {
 
 	return nil
 }
+*/
 
 func updateJobStatus(jobId string, agentId string, agentStatus openapi.AgentStatus) error {
 	isFound := false

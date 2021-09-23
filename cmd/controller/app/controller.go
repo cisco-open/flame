@@ -22,7 +22,6 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/grpc"
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/job"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi/controller"
@@ -60,13 +59,10 @@ func (c *Controller) Start() {
 		zap.S().Fatalf("Failed to connect to DB: %v", err)
 	}
 
-	jobMgr, err := job.NewManager(c.jobEventQ)
+	jobMgr, err := job.NewManager(c.jobEventQ, c.notifierEp)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}
-
-	// GRPC server & connections
-	grpcctlr.InitGRPCService(c.notifierEp)
 
 	go jobMgr.Do()
 

@@ -46,6 +46,10 @@ services:
   fledgelet:
     image: 'fledge'
     container_name: 'fledgelet'
+    # NOTE: update FLEDGE_AGENT_ID based on the payload
+    # to use in the t_payload collection in the DB
+    environment:
+      FLEDGE_AGENT_ID: f7973f5a9f16b722545d84b704e5f8be4f773a3b
     command: /fledge/fledgelet --notifyIp fledge-notifier --apiIp fledge-apiserver
     ports:
       - '10103:10103'

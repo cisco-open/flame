@@ -31,38 +31,48 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
+const (
+	envAgentId = "FLEDGE_AGENT_ID"
+)
+
 type AgentService struct {
 	apiServerInfo openapi.ServerInfo
 	notifierInfo  openapi.ServerInfo
 	name          string
-	uuid          string
+	id            string
 	nHandler      *NotificationHandler
 }
 
 func NewAgent(apiserverInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo) (*AgentService, error) {
-	// TODO: revisit name and id part;
-	// determining name and id can be done through api call
 	name, err := os.Hostname()
 	if err != nil {
 		return nil, err
 	}
 
-	hash := md5.Sum([]byte(name))
-	uuid := hex.EncodeToString(hash[:])
+	agentId := os.Getenv(envAgentId)
+	// in case agent id env variable is not set
+	if agentId == "" {
+		// TODO: revisit name and id part;
+		// determining name and id can be done through api call
+		hash := md5.Sum([]byte(name))
+		id := hex.EncodeToString(hash[:])
 
-	if name == "" || uuid == "" {
-		err := fmt.Errorf("missing fledgelet name or id")
-		zap.S().Error(err)
-		return nil, err
+		if name == "" || id == "" {
+			err := fmt.Errorf("missing fledgelet name or id")
+			zap.S().Error(err)
+			return nil, err
+		}
+
+		agentId = id
 	}
 
-	nHandler := newNotificationHandler(apiserverInfo, notifierInfo, name, uuid)
+	nHandler := newNotificationHandler(apiserverInfo, notifierInfo, name, agentId)
 
 	agent := &AgentService{
 		apiServerInfo: apiserverInfo,
 		notifierInfo:  notifierInfo,
 		name:          name,
-		uuid:          uuid,
+		id:            agentId,
 		nHandler:      nHandler,
 	}
 
@@ -70,7 +80,7 @@ func NewAgent(apiserverInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo)
 }
 
 func (agent *AgentService) Start() error {
-	zap.S().Infof("Starting %s... name: %s | id: %s", util.Agent, agent.name, agent.uuid)
+	zap.S().Infof("Starting %s... name: %s | id: %s", util.Agent, agent.name, agent.id)
 
 	agent.nHandler.start()
 

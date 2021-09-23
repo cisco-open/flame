@@ -23,7 +23,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 )
@@ -32,23 +31,18 @@ type NotificationHandler struct {
 	apiServerInfo openapi.ServerInfo
 	notifierInfo  openapi.ServerInfo
 	name          string
-	uuid          string
+	agentId       string
 
-	stream  pbNotify.EventRoute_GetEventClient
-	appInfo AppInfo
+	stream pbNotify.EventRoute_GetEventClient
 }
 
-type AppInfo struct {
-	State string
-	Conf  objects.AppConf
-}
-
-func newNotificationHandler(apiSvrInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo, name string, uuid string) *NotificationHandler {
+func newNotificationHandler(apiSvrInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo, name string,
+	agentId string) *NotificationHandler {
 	return &NotificationHandler{
 		apiServerInfo: apiSvrInfo,
 		notifierInfo:  notifierInfo,
 		name:          name,
-		uuid:          uuid,
+		agentId:       agentId,
 	}
 }
 
@@ -80,7 +74,7 @@ func (h *NotificationHandler) connect() error {
 
 	client := pbNotify.NewEventRouteClient(conn)
 	in := &pbNotify.AgentInfo{
-		Id:       h.uuid,
+		Id:       h.agentId,
 		Hostname: h.name,
 	}
 
@@ -113,18 +107,15 @@ func (h *NotificationHandler) do() {
 
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
 func (h *NotificationHandler) dealWith(in *pbNotify.Event) {
-	// TODO: dprecate AppConf
-	jobMsg := objects.AppConf{}
-
 	switch in.GetType() {
 	case pbNotify.EventType_START_JOB:
-		h.StartJob(jobMsg)
+		h.StartJob(in.JobId)
 
 	case pbNotify.EventType_STOP_JOB:
-		h.StopJob(jobMsg)
+		h.StopJob(in.JobId)
 
 	case pbNotify.EventType_UPDATE_JOB:
-		h.UpdateJob(jobMsg)
+		h.UpdateJob(in.JobId)
 
 	case pbNotify.EventType_UNKNOWN_EVENT_TYPE:
 		fallthrough

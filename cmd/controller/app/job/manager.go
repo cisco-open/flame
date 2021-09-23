@@ -23,21 +23,26 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 )
 
 type Manager struct {
 	jobEventQ *EventQ
 
+	notifierEp string
+
 	jobDoneMap sync.Map
 }
 
-func NewManager(jobEventQ *EventQ) (*Manager, error) {
+func NewManager(jobEventQ *EventQ, notifierEp string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
 	}
 
 	manager := &Manager{
 		jobEventQ: jobEventQ,
+
+		notifierEp: notifierEp,
 	}
 
 	return manager, nil
@@ -117,6 +122,8 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 	// 4-2. If the condition in 5-1 is not met for a certain duration, cancel the provisioning of
 	//      the compute resources and destroy the provisioned compute resources; set the state to FAILED
 
+	// 5. send start-job event to the agent (i.e., fledgelet) in all the provisioned compute nodes
+
 	defer mgr.jobDoneMap.Delete(event.JobStatus.Id)
 
 	zap.S().Infof("requester: %s, jobId: %s", event.Requester, event.JobStatus.Id)
@@ -165,7 +172,26 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 
 	// TODO: spin up compute resources
 
-	// TODO: send notification to compute resources via notifier
+	req := &pbNotify.EventRequest{
+		Type:     pbNotify.EventType_START_JOB,
+		AgentIds: make([]string, 0),
+	}
+
+	for _, payload := range payloads {
+		req.JobId = payload.JobId
+		req.AgentIds = append(req.AgentIds, payload.AgentId)
+	}
+
+	resp, err := newNotifyClient(mgr.notifierEp).sendNotification(req)
+	if err != nil || resp.Status == pbNotify.Response_ERROR {
+		event.JobStatus.State = openapi.FAILED
+		_ = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
+		// TODO: need to rollback the changes
+		return
+	}
+
+	event.JobStatus.State = openapi.DEPLOYING
+	_ = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 }
 
 func (mgr *Manager) handleStop(event *JobEvent) {
