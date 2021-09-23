@@ -25,8 +25,7 @@ import (
 
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 )
 
 type NotificationHandler struct {
@@ -35,7 +34,7 @@ type NotificationHandler struct {
 	name          string
 	uuid          string
 
-	stream  pbNotification.NotificationStreamingStore_SetupAgentStreamClient
+	stream  pbNotify.EventRoute_GetEventClient
 	appInfo AppInfo
 }
 
@@ -79,14 +78,14 @@ func (h *NotificationHandler) connect() error {
 		return err
 	}
 
-	client := pbNotification.NewNotificationStreamingStoreClient(conn)
-	in := &pbNotification.AgentInfo{
-		Uuid: h.uuid,
-		Name: h.name,
+	client := pbNotify.NewEventRouteClient(conn)
+	in := &pbNotify.AgentInfo{
+		Id:       h.uuid,
+		Hostname: h.name,
 	}
 
 	// setup notification stream
-	stream, err := client.SetupAgentStream(context.Background(), in)
+	stream, err := client.GetEvent(context.Background(), in)
 	if err != nil {
 		zap.S().Debugf("Open stream error: %v", err)
 		return err
@@ -113,21 +112,23 @@ func (h *NotificationHandler) do() {
 }
 
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
-func (h *NotificationHandler) dealWith(in *pbNotification.StreamResponse) {
+func (h *NotificationHandler) dealWith(in *pbNotify.Event) {
+	// TODO: dprecate AppConf
 	jobMsg := objects.AppConf{}
-	err := util.ProtoStructToStruct(in.GetMessage(), &jobMsg)
-	if err != nil {
-		zap.S().Errorf("error processing the job request. %v", err)
-	} else {
-		switch in.GetType() {
-		case pbNotification.StreamResponse_JOB_NOTIFICATION_INIT:
-			h.NewJobInit(jobMsg)
-		case pbNotification.StreamResponse_JOB_NOTIFICATION_START:
-			h.NewJobStart(jobMsg)
-		case pbNotification.StreamResponse_JOB_NOTIFICATION_RELOAD:
-			h.JobReload(jobMsg)
-		default:
-			zap.S().Errorf("Invalid message type: %s", in.GetType())
-		}
+
+	switch in.GetType() {
+	case pbNotify.EventType_START_JOB:
+		h.StartJob(jobMsg)
+
+	case pbNotify.EventType_STOP_JOB:
+		h.StopJob(jobMsg)
+
+	case pbNotify.EventType_UPDATE_JOB:
+		h.UpdateJob(jobMsg)
+
+	case pbNotify.EventType_UNKNOWN_EVENT_TYPE:
+		fallthrough
+	default:
+		zap.S().Errorf("Invalid message type: %s", in.GetType())
 	}
 }

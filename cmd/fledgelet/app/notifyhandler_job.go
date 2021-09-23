@@ -30,7 +30,28 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-func (h *NotificationHandler) NewJobInit(info objects.AppConf) {
+// StartJob starts the application on the agent
+func (h *NotificationHandler) StartJob(info objects.AppConf) {
+	if h.appInfo.State != util.RunningState {
+		req := openapi.AgentStatus{
+			UpdateType: util.JobStatus,
+			Status:     "",
+			Message:    "",
+		}
+
+		state, err := h.startApp(info)
+		if err != nil {
+			req.Status = util.StatusError
+			req.Message = err.Error()
+		} else {
+			req.Status = util.StatusSuccess
+			req.Message = state
+		}
+		h.updateJobStatus(info.JobInfo, req)
+	}
+}
+
+func (h *NotificationHandler) StopJob(info objects.AppConf) {
 	h.appInfo.Conf = info
 	job := info.JobInfo
 	zap.S().Debugf("Init new job. Job id: %s | design id: %s | schema id: %s | role: %s", job.Id, job.DesignId, job.SchemaId, info.Role)
@@ -70,28 +91,7 @@ func (h *NotificationHandler) NewJobInit(info objects.AppConf) {
 	h.updateJobStatus(job, req)
 }
 
-//NewJobStart starts the application on the agent
-func (h *NotificationHandler) NewJobStart(info objects.AppConf) {
-	if h.appInfo.State != util.RunningState {
-		req := openapi.AgentStatus{
-			UpdateType: util.JobStatus,
-			Status:     "",
-			Message:    "",
-		}
-
-		state, err := h.startApp(info)
-		if err != nil {
-			req.Status = util.StatusError
-			req.Message = err.Error()
-		} else {
-			req.Status = util.StatusSuccess
-			req.Message = state
-		}
-		h.updateJobStatus(info.JobInfo, req)
-	}
-}
-
-func (h *NotificationHandler) JobReload(info objects.AppConf) (string, error) {
+func (h *NotificationHandler) UpdateJob(info objects.AppConf) (string, error) {
 	//TODO - update the appInfo - state/conf etc.
 	zap.S().Debugf("Reloading job ...")
 	return "", nil

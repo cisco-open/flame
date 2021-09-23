@@ -1,51 +1,57 @@
 syntax = "proto3";
 
 package grpcNotification;
-option go_package = "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification";
+option go_package = "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification";
 
-import "google/protobuf/struct.proto";
+////////////////////////////////////////////////////////////////////////////////
+// Definitions for EventRoute
+////////////////////////////////////////////////////////////////////////////////
 
-service NotificationStreamingStore{
-  rpc SetupAgentStream(AgentInfo) returns (stream StreamResponse) {}
+// EventRoute service defines communication between agent and notifier
+service EventRoute {
+  // This implements a server side streaming RPC
+  rpc GetEvent(AgentInfo) returns (stream Event) {}
 }
 
-service NotificationControllerStore{
-  rpc JobNotification(JsonRequest) returns (Response) {}        //  called by controller to schedule a new job at the agent
-  rpc SchemaUpdateNotification(SchemaUpdateMessage) returns(Response){} //  called by controller to notify about the changes in design schema
+enum EventType {
+  UNKNOWN_EVENT_TYPE = 0; // default
+  START_JOB = 1;
+  STOP_JOB = 2;
+  UPDATE_JOB = 3;
 }
 
-message AgentInfo{
-  string uuid = 1;
-  string name = 2;
+message AgentInfo {
+  string id = 1;
+  string hostname = 2;
 }
 
-message SchemaUpdateMessage{
-  string design_id = 1;
-  string schema_id = 2;
+message Event {
+  EventType type = 1;
+  string job_id = 2;
 }
 
-message JsonRequest {
-  google.protobuf.Struct details = 1;
+////////////////////////////////////////////////////////////////////////////////
+// Definitions for TriggerRoute
+////////////////////////////////////////////////////////////////////////////////
+
+// TriggerRoute service defines communication between controller and notifier
+service TriggerRoute {
+  rpc Notify(EventRequest) returns (Response) {}
 }
 
-message StreamResponse {
-  enum ResponseType {
-    JOB_NOTIFICATION_INIT = 0;
-    JOB_NOTIFICATION_START = 1;
-    JOB_NOTIFICATION_RELOAD = 2;
-  }
-  ResponseType type = 1;  //identifier to determine the type of message
-  google.protobuf.Struct message = 2; //call details
-  string agent_uuid = 3;
+message EventRequest {
+  EventType type = 1;
+  string job_id = 2;
+  repeated string agent_ids = 3;
 }
 
 message Response{
-  enum ResponseStatus {
-    ERROR = 0;
-    SUCCESS = 1;
-    SUCCESS_WITH_ERROR = 2; //example- notification sent to all but one node
+  enum Status {
+    ERROR = 0; // default
+    PARTIAL_SUCCESS = 1; // e.g., not all agents received event
+    SUCCESS = 2;
   }
-  ResponseStatus status = 1;
+  Status status = 1;
   string message = 2;
-  google.protobuf.Struct details = 3;
+  repeated string failed_agents = 3;
 }

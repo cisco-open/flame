@@ -22,7 +22,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
+	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -30,7 +30,7 @@ const (
 	JobNotification = "JobNotification"
 )
 
-type fn func(context.Context, *pbNotification.JsonRequest, ...grpc.CallOption) (*pbNotification.Response, error)
+type fn func(context.Context, *pbNotify.EventRequest, ...grpc.CallOption) (*pbNotify.Response, error)
 
 var notificationApiStore map[string]fn
 
@@ -43,18 +43,18 @@ func (s *controllerGRPC) connectToNotificationService(endpoint string) {
 	}
 
 	//grpc client for future reuse
-	s.notificationServiceClient = pbNotification.NewNotificationControllerStoreClient(conn)
+	s.notificationServiceClient = pbNotify.NewTriggerRouteClient(conn)
 
 	//adding grpc end points for generic use through SendNotification method
 	notificationApiStore = map[string]fn{
-		JobNotification: s.notificationServiceClient.JobNotification,
+		JobNotification: s.notificationServiceClient.Notify,
 	}
 
 	zap.S().Infof("Controller -- Notification service connection established. Notification service at %s", endpoint)
 }
 
 //SendNotification implements the generic method to call notification service end points.
-func (s *controllerGRPC) SendNotification(endPoint string, in interface{}) (*pbNotification.Response, error) {
+func (s *controllerGRPC) SendNotification(endPoint string, in interface{}) (*pbNotify.Response, error) {
 	//TODO - use ToProtoStruct
 	//Step 1 - create notification object
 	m, err := util.StructToMapInterface(in)
@@ -62,14 +62,14 @@ func (s *controllerGRPC) SendNotification(endPoint string, in interface{}) (*pbN
 		zap.S().Errorf("error converting notification object into map interface. %v", err)
 		return nil, err
 	}
-	details, err := structpb.NewStruct(m)
+	_, err = structpb.NewStruct(m)
 	if err != nil {
 		zap.S().Errorf("error creating proto struct. %v", err)
 		return nil, err
 	}
-	req := &pbNotification.JsonRequest{
-		Details: details,
-	}
+
+	// FIXME: dummy event request
+	req := &pbNotify.EventRequest{}
 
 	//Step 2 - send grpc message
 	response, err := notificationApiStore[endPoint](context.Background(), req)

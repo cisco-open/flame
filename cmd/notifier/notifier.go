@@ -18,7 +18,7 @@ package main
 import (
 	"go.uber.org/zap"
 
-	grpcnotify "wwwin-github.cisco.com/eti/fledge/cmd/notifier/grpc"
+	"wwwin-github.cisco.com/eti/fledge/cmd/notifier/app"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -28,5 +28,5 @@ func main() {
 	defer loggerMgr.Sync()
 
 	//start GRPC service
-	grpcnotify.StartGRPCService(util.NotifierGrpcPort)
+	app.StartGRPCService(util.NotifierGrpcPort)
 }

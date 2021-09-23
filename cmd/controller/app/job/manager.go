@@ -164,6 +164,8 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 	event.ErrCh <- nil
 
 	// TODO: spin up compute resources
+
+	// TODO: send notification to compute resources via notifier
 }
 
 func (mgr *Manager) handleStop(event *JobEvent) {

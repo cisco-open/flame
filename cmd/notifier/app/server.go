@@ -13,7 +13,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpcnotify
+package app
 
 import (
 	"net"
@@ -22,25 +22,20 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
+	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 )
 
-//notificationServer implement the notification service and include - proto unimplemented method and
-//maintains list of connected clients & their streams.
+// notificationServer implement the notification service and include - proto unimplemented method and
+// maintains list of connected clients & their streams.
 type notificationServer struct {
-	clients       map[string]*pbNotification.AgentInfo
-	clientStreams map[string]*pbNotification.NotificationStreamingStore_SetupAgentStreamServer
+	clients       map[string]*pbNotify.AgentInfo
+	clientStreams map[string]*pbNotify.EventRoute_GetEventServer
 
-	pbNotification.UnimplementedNotificationStreamingStoreServer
-	pbNotification.UnimplementedNotificationControllerStoreServer
+	pbNotify.UnimplementedEventRouteServer
+	pbNotify.UnimplementedTriggerRouteServer
 }
 
-func (s *notificationServer) init() {
-	s.clients = make(map[string]*pbNotification.AgentInfo)
-	s.clientStreams = make(map[string]*pbNotification.NotificationStreamingStore_SetupAgentStreamServer)
-}
-
-//StartGRPCService starts the notification grpc server and register the corresponding stores implemented by notificationServer.
+// StartGRPCService starts the notification grpc server
 func StartGRPCService(portNo int) {
 	lis, err := net.Listen("tcp", ":"+strconv.Itoa(portNo))
 	if err != nil {
@@ -49,12 +44,14 @@ func StartGRPCService(portNo int) {
 
 	// create grpc server
 	s := grpc.NewServer()
-	server := &notificationServer{}
-	server.init()
+	server := &notificationServer{
+		clients:       make(map[string]*pbNotify.AgentInfo),
+		clientStreams: make(map[string]*pbNotify.EventRoute_GetEventServer),
+	}
 
-	//register grpc services
-	pbNotification.RegisterNotificationStreamingStoreServer(s, server)
-	pbNotification.RegisterNotificationControllerStoreServer(s, server)
+	// register grpc services
+	pbNotify.RegisterEventRouteServer(s, server)
+	pbNotify.RegisterTriggerRouteServer(s, server)
 
 	zap.S().Infof("Notification GRPC server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {

@@ -35,7 +35,7 @@ import (
 	grpcctlr "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/grpc"
 	"wwwin-github.cisco.com/eti/fledge/pkg/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	pbNotification "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/notification"
+	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -129,7 +129,7 @@ func startTraining(jobId string, agentId string) error {
 		}
 
 		//Check for partial error
-		if resp.GetStatus() == pbNotification.Response_SUCCESS_WITH_ERROR {
+		if resp.GetStatus() == pbNotify.Response_PARTIAL_SUCCESS {
 			zap.S().Errorf("error while sending out start job notification for jobId: %s. Only partial agents were notified.", jobId)
 			return errors.New("error while sending job start notification to some agents")
 		}
