@@ -16,8 +16,8 @@
 package app
 
 import (
+	"fmt"
 	"net"
-	"strconv"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -36,8 +36,8 @@ type notificationServer struct {
 }
 
 // StartGRPCService starts the notification grpc server
-func StartGRPCService(portNo int) {
-	lis, err := net.Listen("tcp", ":"+strconv.Itoa(portNo))
+func StartGRPCService(portNo uint16) {
+	lis, err := net.Listen("tcp", fmt.Sprintf(":%d", portNo))
 	if err != nil {
 		zap.S().Errorf("failed to listen grpc server: %v", err)
 	}
