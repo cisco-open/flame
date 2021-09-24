@@ -50,18 +50,18 @@ func newJobBuilder(jobSpec openapi.JobSpec) *jobBuilder {
 	return &jobBuilder{jobSpec: jobSpec, datasets: make([]openapi.DatasetInfo, 0)}
 }
 
-func (b *jobBuilder) getPayloads() ([]objects.Payload, error) {
+func (b *jobBuilder) getTasks() ([]objects.Task, error) {
 	err := b.setup()
 	if err != nil {
 		return nil, err
 	}
 
-	payloads, err := b.build()
+	tasks, err := b.build()
 	if err != nil {
 		return nil, err
 	}
 
-	return payloads, nil
+	return tasks, nil
 }
 
 func (b *jobBuilder) setup() error {
@@ -113,10 +113,10 @@ func (b *jobBuilder) setup() error {
 	return nil
 }
 
-func (b *jobBuilder) build() ([]objects.Payload, error) {
-	payloads := make([]objects.Payload, 0)
+func (b *jobBuilder) build() ([]objects.Task, error) {
+	tasks := make([]objects.Task, 0)
 
-	dataRoles, templates := b.getPayloadTemplates()
+	dataRoles, templates := b.getTaskTemplates()
 	if err := b.preCheck(dataRoles, templates); err != nil {
 		return nil, err
 	}
@@ -132,22 +132,22 @@ func (b *jobBuilder) build() ([]objects.Payload, error) {
 			return nil, err
 		}
 
-		payloads = append(payloads, populated...)
+		tasks = append(tasks, populated...)
 	}
 
 	if err := b.postCheck(dataRoles, templates); err != nil {
 		return nil, err
 	}
 
-	return payloads, nil
+	return tasks, nil
 }
 
-func (b *jobBuilder) getPayloadTemplates() ([]string, map[string]*payloadTemplate) {
+func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 	dataRoles := make([]string, 0)
-	templates := make(map[string]*payloadTemplate)
+	templates := make(map[string]*taskTemplate)
 
 	for _, role := range b.schema.Roles {
-		template := &payloadTemplate{}
+		template := &taskTemplate{}
 		JobConfig := &template.JobConfig
 
 		JobConfig.JobId = b.jobSpec.Id
@@ -190,7 +190,7 @@ func (b *jobBuilder) extractChannels(role string, channels []openapi.Channel) []
 }
 
 // preCheck checks sanity of templates
-func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*payloadTemplate) error {
+func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
 	// 1. a role shouled be associated with a code.
@@ -221,8 +221,8 @@ func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*payloadT
 	return nil
 }
 
-func (b *jobBuilder) isTemplatesConnected(templates map[string]*payloadTemplate) bool {
-	var start *payloadTemplate
+func (b *jobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) bool {
+	var start *taskTemplate
 	for _, tmpl := range templates {
 		start = tmpl
 		break
@@ -239,7 +239,7 @@ func (b *jobBuilder) isTemplatesConnected(templates map[string]*payloadTemplate)
 
 	for queue.Len() > 0 {
 		elmt := queue.Front()
-		tmpl := elmt.Value.(*payloadTemplate)
+		tmpl := elmt.Value.(*taskTemplate)
 		// dequeue
 		queue.Remove(elmt)
 
@@ -267,8 +267,8 @@ func (b *jobBuilder) isTemplatesConnected(templates map[string]*payloadTemplate)
 	return isConnected
 }
 
-func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*payloadTemplate) bool {
-	var start *payloadTemplate
+func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*taskTemplate) bool {
+	var start *taskTemplate
 	for _, tmpl := range templates {
 		start = tmpl
 		break
@@ -304,7 +304,7 @@ func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*payl
 	return ruleSatisfied
 }
 
-func (b *jobBuilder) postCheck(dataRoles []string, templates map[string]*payloadTemplate) error {
+func (b *jobBuilder) postCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// At the end of processing templates, the following invariants should be met:
 	//
@@ -313,7 +313,7 @@ func (b *jobBuilder) postCheck(dataRoles []string, templates map[string]*payload
 }
 
 // _walkForGroupByCheck determines if the convergence rule is violated or not; this method shouldn't be called directly
-func _walkForGroupByCheck(templates map[string]*payloadTemplate, prevTmpl *payloadTemplate, tmpl *payloadTemplate) bool {
+func _walkForGroupByCheck(templates map[string]*taskTemplate, prevTmpl *taskTemplate, tmpl *taskTemplate) bool {
 	funcMin := func(a int, b int) int {
 		if a < b {
 			return a
@@ -365,11 +365,11 @@ func _walkForGroupByCheck(templates map[string]*payloadTemplate, prevTmpl *paylo
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-// Payload Template related code
+// Task Template related code
 ////////////////////////////////////////////////////////////////////////////////
 
-type payloadTemplate struct {
-	objects.Payload
+type taskTemplate struct {
+	objects.Task
 
 	isDataConsumer bool
 
@@ -378,7 +378,7 @@ type payloadTemplate struct {
 	minGroupByTokenLen int
 }
 
-func (tmpl *payloadTemplate) getPeerTemplate(channel openapi.Channel, templates map[string]*payloadTemplate) *payloadTemplate {
+func (tmpl *taskTemplate) getPeerTemplate(channel openapi.Channel, templates map[string]*taskTemplate) *taskTemplate {
 	if !contains(channel.Pair, tmpl.JobConfig.Role) {
 		return nil
 	}
@@ -396,13 +396,13 @@ func (tmpl *payloadTemplate) getPeerTemplate(channel openapi.Channel, templates 
 	return peerTmpl
 }
 
-func (tmpl *payloadTemplate) walk(prevPeer string, templates map[string]*payloadTemplate,
-	datasets []openapi.DatasetInfo) ([]objects.Payload, error) {
-	payloads := make([]objects.Payload, 0)
+func (tmpl *taskTemplate) walk(prevPeer string, templates map[string]*taskTemplate,
+	datasets []openapi.DatasetInfo) ([]objects.Task, error) {
+	tasks := make([]objects.Task, 0)
 
-	populated := tmpl.buildPayloads(prevPeer, templates, datasets)
+	populated := tmpl.buildTasks(prevPeer, templates, datasets)
 	if len(populated) > 0 {
-		payloads = append(payloads, populated...)
+		tasks = append(tasks, populated...)
 	}
 
 	// if template is not for data consumer role
@@ -418,16 +418,16 @@ func (tmpl *payloadTemplate) walk(prevPeer string, templates map[string]*payload
 			return nil, fmt.Errorf("failed to populdate template")
 		}
 
-		payloads = append(payloads, populated...)
+		tasks = append(tasks, populated...)
 	}
 
-	return payloads, nil
+	return tasks, nil
 }
 
-// buildPayloads returns an array of Payload generated from template; this function should be called via walk()
-func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string]*payloadTemplate,
-	datasets []openapi.DatasetInfo) []objects.Payload {
-	payloads := make([]objects.Payload, 0)
+// buildTasks returns an array of Task generated from template; this function should be called via walk()
+func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*taskTemplate,
+	datasets []openapi.DatasetInfo) []objects.Task {
+	tasks := make([]objects.Task, 0)
 
 	defer func() {
 		// handling this template is done
@@ -440,18 +440,18 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 		//       to support more than one data role, datasets should be associated with each role.
 		//       this needs job spec modification.
 		for i, dataset := range datasets {
-			payload := tmpl.Payload
-			payload.JobConfig.DatasetUrl = dataset.Url
-			payload.JobConfig.Realm = dataset.Realm
+			task := tmpl.Task
+			task.JobConfig.DatasetUrl = dataset.Url
+			task.JobConfig.Realm = dataset.Realm
 			// no need to copy byte array; assignment suffices
-			payload.ZippedCode = tmpl.Payload.ZippedCode
-			payload.JobId = payload.JobConfig.JobId
-			payload.GenerateAgentId(i)
+			task.ZippedCode = tmpl.Task.ZippedCode
+			task.JobId = task.JobConfig.JobId
+			task.GenerateAgentId(i)
 
-			payloads = append(payloads, payload)
+			tasks = append(tasks, task)
 		}
 
-		return payloads
+		return tasks
 	}
 
 	prevTmpl := templates[prevPeer]
@@ -462,28 +462,28 @@ func (tmpl *payloadTemplate) buildPayloads(prevPeer string, templates map[string
 
 		i := 0
 		for i < len(channel.GroupBy.Value) {
-			payload := tmpl.Payload
-			payload.JobId = payload.JobConfig.JobId
-			payload.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
-			payload.GenerateAgentId(i)
+			task := tmpl.Task
+			task.JobId = task.JobConfig.JobId
+			task.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			task.GenerateAgentId(i)
 
-			payloads = append(payloads, payload)
+			tasks = append(tasks, task)
 			i++
 		}
 
-		// no payload is added to payloads (payload array),
+		// no task is added to tasks (task array),
 		// which means that groupby is not specified; so,
-		// we have to create a default payload
-		if len(payloads) == 0 {
-			payload := tmpl.Payload
-			payload.JobId = payload.JobConfig.JobId
-			payload.GenerateAgentId(0)
+		// we have to create a default task
+		if len(tasks) == 0 {
+			task := tmpl.Task
+			task.JobId = task.JobConfig.JobId
+			task.GenerateAgentId(0)
 
-			payloads = append(payloads, payload)
+			tasks = append(tasks, task)
 		}
 	}
 
-	return payloads
+	return tasks
 }
 
 ////////////////////////////////////////////////////////////////////////////////

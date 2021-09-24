@@ -93,7 +93,7 @@ type JobsApiRouter interface {
 	GetJob(http.ResponseWriter, *http.Request)
 	GetJobStatus(http.ResponseWriter, *http.Request)
 	GetJobsStatus(http.ResponseWriter, *http.Request)
-	GetPayload(http.ResponseWriter, *http.Request)
+	GetTask(http.ResponseWriter, *http.Request)
 	UpdateJob(http.ResponseWriter, *http.Request)
 	UpdateJobStatus(http.ResponseWriter, *http.Request)
 }
@@ -168,7 +168,7 @@ type JobsApiServicer interface {
 	GetJob(context.Context, string, string) (ImplResponse, error)
 	GetJobStatus(context.Context, string, string) (ImplResponse, error)
 	GetJobsStatus(context.Context, string, int32) (ImplResponse, error)
-	GetPayload(context.Context, string, string) (ImplResponse, error)
+	GetTask(context.Context, string, string) (ImplResponse, error)
 	UpdateJob(context.Context, string, string, JobSpec) (ImplResponse, error)
 	UpdateJobStatus(context.Context, string, string, JobStatus) (ImplResponse, error)
 }

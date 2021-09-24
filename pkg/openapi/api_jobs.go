@@ -76,10 +76,10 @@ func (c *JobsApiController) Routes() Routes {
 			c.GetJobsStatus,
 		},
 		{
-			"GetPayload",
+			"GetTask",
 			strings.ToUpper("Get"),
-			"/jobs/{jobId}/{agentId}/payload",
-			c.GetPayload,
+			"/jobs/{jobId}/{agentId}/task",
+			c.GetTask,
 		},
 		{
 			"UpdateJob",
@@ -188,14 +188,14 @@ func (c *JobsApiController) GetJobsStatus(w http.ResponseWriter, r *http.Request
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// GetPayload - Get a job payload for a given job and agent
-func (c *JobsApiController) GetPayload(w http.ResponseWriter, r *http.Request) {
+// GetTask - Get a job task for a given job and agent
+func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	jobId := params["jobId"]
 
 	agentId := params["agentId"]
 
-	result, err := c.service.GetPayload(r.Context(), jobId, agentId)
+	result, err := c.service.GetTask(r.Context(), jobId, agentId)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

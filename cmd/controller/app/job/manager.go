@@ -108,8 +108,8 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 	//      return error with a message that a job is not in a scheduleable state
 	// 1-2. Otherwise, proceed to the next step
 
-	// 2. Generate payload (configuration and ML code) based on the job spec
-	// 2-1. If payload generation failed, return error
+	// 2. Generate task (configuration and ML code) based on the job spec
+	// 2-1. If task generation failed, return error
 	// 2-2. Otherwise, proceed to the next step
 
 	// 3. update job state to STARTING in the db
@@ -146,13 +146,13 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 		return
 	}
 
-	payloads, err := newJobBuilder(jobSpec).getPayloads()
+	tasks, err := newJobBuilder(jobSpec).getTasks()
 	if err != nil {
-		event.ErrCh <- fmt.Errorf("failed to generate payloads: %v", err)
+		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return
 	}
 
-	err = database.CreatePayloads(payloads)
+	err = database.CreateTasks(tasks)
 	if err != nil {
 		event.ErrCh <- err
 		return
@@ -177,9 +177,9 @@ func (mgr *Manager) handleStart(event *JobEvent) {
 		AgentIds: make([]string, 0),
 	}
 
-	for _, payload := range payloads {
-		req.JobId = payload.JobId
-		req.AgentIds = append(req.AgentIds, payload.AgentId)
+	for _, task := range tasks {
+		req.JobId = task.JobId
+		req.AgentIds = append(req.AgentIds, task.AgentId)
 	}
 
 	resp, err := newNotifyClient(mgr.notifierEp).sendNotification(req)

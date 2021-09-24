@@ -110,7 +110,7 @@ var (
 	}
 )
 
-func TestGetPayloadTemplates(t *testing.T) {
+func TestGetTaskTemplates(t *testing.T) {
 	builder := newJobBuilder(testJobSpec)
 	assert.NotNil(t, builder)
 
@@ -118,7 +118,7 @@ func TestGetPayloadTemplates(t *testing.T) {
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
 
-	dataRoles, templates := builder.getPayloadTemplates()
+	dataRoles, templates := builder.getTaskTemplates()
 	assert.NotNil(t, dataRoles)
 	assert.Len(t, dataRoles, 1)
 	assert.Equal(t, "trainer", dataRoles[0])
@@ -133,7 +133,7 @@ func TestPreCheck(t *testing.T) {
 	builder.schema = testSchema
 	builder.datasets = testDatasets
 
-	dataRoles, templates := builder.getPayloadTemplates()
+	dataRoles, templates := builder.getTaskTemplates()
 	err := builder.preCheck(dataRoles, templates)
 	assert.NotNil(t, err)
 	assert.Equal(t, "no code found for role trainer", err.Error())
@@ -152,7 +152,7 @@ func TestIsTemplatesConnected(t *testing.T) {
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
 
-	_, templates := builder.getPayloadTemplates()
+	_, templates := builder.getTaskTemplates()
 	isConnected := builder.isTemplatesConnected(templates)
 	assert.True(t, isConnected)
 
@@ -160,7 +160,7 @@ func TestIsTemplatesConnected(t *testing.T) {
 	// disconnect one channel
 	builder.schema.Channels[0].Pair = []string{}
 
-	_, templates = builder.getPayloadTemplates()
+	_, templates = builder.getTaskTemplates()
 	isConnected = builder.isTemplatesConnected(templates)
 	assert.False(t, isConnected)
 	// restore connection
@@ -175,14 +175,14 @@ func TestIsConverging(t *testing.T) {
 	builder.schema = testSchema
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
-	dataRoles, templates := builder.getPayloadTemplates()
+	dataRoles, templates := builder.getTaskTemplates()
 	res := builder.isConverging(dataRoles, templates)
 	assert.True(t, res)
 
 	// failure case
 	testSchema.Channels[1].GroupBy.Type = "tag"
 	testSchema.Channels[1].GroupBy.Value = []string{"uk", "us"}
-	dataRoles, templates = builder.getPayloadTemplates()
+	dataRoles, templates = builder.getTaskTemplates()
 	res = builder.isConverging(dataRoles, templates)
 	assert.False(t, res)
 	// reset the changes
@@ -193,14 +193,14 @@ func TestIsConverging(t *testing.T) {
 	builder.schema = testSchemaWithTwoDataConsumers
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCodeWithTwoDataConsumers
-	dataRoles, templates = builder.getPayloadTemplates()
+	dataRoles, templates = builder.getTaskTemplates()
 	res = builder.isConverging(dataRoles, templates)
 	assert.True(t, res)
 
 	// failure case
 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = "tag"
 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{"uk", "us"}
-	dataRoles, templates = builder.getPayloadTemplates()
+	dataRoles, templates = builder.getTaskTemplates()
 	res = builder.isConverging(dataRoles, templates)
 	assert.False(t, res)
 	// reset the changes
@@ -214,7 +214,7 @@ func TestWalk(t *testing.T) {
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
 
-	dataRoles, templates := builder.getPayloadTemplates()
+	dataRoles, templates := builder.getTaskTemplates()
 	assert.NotNil(t, dataRoles)
 	assert.Len(t, dataRoles, 1)
 	assert.Equal(t, "trainer", dataRoles[0])
@@ -223,11 +223,7 @@ func TestWalk(t *testing.T) {
 
 	// trainer is data role
 	tmpl := templates["trainer"]
-	payloads, err := tmpl.walk("", templates, builder.datasets)
+	tasks, err := tmpl.walk("", templates, builder.datasets)
 	assert.Nil(t, err)
-	assert.Len(t, payloads, 5)
-	// for i, payload := range payloads {
-	// 	fmt.Printf("[%d] Role: %s\n", i, payload.jobConfig.Role)
-	// 	payload.jobConfig.print()
-	// }
+	assert.Len(t, tasks, 5)
 }

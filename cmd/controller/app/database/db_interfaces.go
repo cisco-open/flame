@@ -27,7 +27,7 @@ type StoreCollection interface {
 	DatasetStore
 	DesignStore
 	JobStore
-	PayloadStore
+	TaskStore
 }
 
 type DatasetStore interface {
@@ -65,6 +65,6 @@ type JobStore interface {
 	UpdateJobDetails(jobId string, updateType string, msg interface{}) error
 }
 
-type PayloadStore interface {
-	CreatePayloads([]objects.Payload) error
+type TaskStore interface {
+	CreateTasks([]objects.Task) error
 }

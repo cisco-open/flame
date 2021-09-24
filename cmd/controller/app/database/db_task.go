@@ -17,6 +17,6 @@ package database
 
 import "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
 
-func CreatePayloads(payloads []objects.Payload) error {
-	return DB.CreatePayloads(payloads)
+func CreateTasks(tasks []objects.Task) error {
+	return DB.CreateTasks(tasks)
 }

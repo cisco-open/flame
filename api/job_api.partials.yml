@@ -284,13 +284,13 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/jobs/{jobId}/{agentId}/payload:
+/jobs/{jobId}/{agentId}/task:
   ########################################
-  # Get job payload
+  # Get job task
   ########################################
   get:
-    operationId: getPayload
-    summary: Get a job payload for a given job and agent
+    operationId: getTask
+    summary: Get a job task for a given job and agent
     tags:
       - jobs
     parameters:
@@ -315,8 +315,8 @@
         content:
           multipart/form-data:
             schema:
-              $ref: '#/components/schemas/Payload'
-        description: job payload containing config and code
+              $ref: '#/components/schemas/Task'
+        description: job task containing config and code
       default:
         content:
           application/json:

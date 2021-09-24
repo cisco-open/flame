@@ -22,7 +22,7 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
-type Payload struct {
+type Task struct {
 	JobId   string `json:"jobid"`
 	AgentId string `json:"agentid"`
 
@@ -46,7 +46,7 @@ type JobConfig struct {
 	DatasetUrl      string                 `json:"dataset,omitempty"`
 }
 
-func (p *Payload) GenerateAgentId(idx int) {
+func (p *Task) GenerateAgentId(idx int) {
 	h := sha1.New()
 	data := fmt.Sprintf("%s-%d-%v", p.JobId, idx, p.JobConfig)
 	h.Write([]byte(data))

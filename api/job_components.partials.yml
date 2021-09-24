@@ -107,10 +107,10 @@ JobState:
     - completed
 
 ########################################
-# Payload
+# Task
 ########################################
-Payload:
-  description: job payload that contains job config and code
+Task:
+  description: job task that contains job config and code
   type: object
   properties:
     config:

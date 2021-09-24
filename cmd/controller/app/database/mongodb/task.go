@@ -27,9 +27,9 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
 )
 
-// CreatePayloads creates payload records in payload db collection
-func (db *MongoService) CreatePayloads(payloads []objects.Payload) error {
-	zap.S().Debugf("Calling CreatePayloads")
+// CreateTasks creates task records in task db collection
+func (db *MongoService) CreateTasks(tasks []objects.Task) error {
+	zap.S().Debugf("Calling CreateTasks")
 
 	success := false
 
@@ -41,17 +41,17 @@ func (db *MongoService) CreatePayloads(payloads []objects.Payload) error {
 		// TODO: implement this
 	}()
 
-	for _, payload := range payloads {
-		cfgData, err := json.Marshal(&payload.JobConfig)
+	for _, task := range tasks {
+		cfgData, err := json.Marshal(&task.JobConfig)
 		if err != nil {
-			return fmt.Errorf("failed to marshal payload: %v", err)
+			return fmt.Errorf("failed to marshal task: %v", err)
 		}
 
-		filter := bson.M{"jobid": payload.JobId, "agentid": payload.AgentId}
+		filter := bson.M{"jobid": task.JobId, "agentid": task.AgentId}
 		update := bson.M{
 			"$set": bson.M{
 				"config": cfgData,
-				"code":   payload.ZippedCode,
+				"code":   task.ZippedCode,
 			},
 		}
 
@@ -63,15 +63,15 @@ func (db *MongoService) CreatePayloads(payloads []objects.Payload) error {
 		}
 
 		var updatedDoc bson.M
-		err = db.payloadCollection.FindOneAndUpdate(context.TODO(), filter, update, &opts).Decode(&updatedDoc)
+		err = db.taskCollection.FindOneAndUpdate(context.TODO(), filter, update, &opts).Decode(&updatedDoc)
 		if err != nil {
-			zap.S().Errorf("Failed to insert a payload: %v", err)
+			zap.S().Errorf("Failed to insert a task: %v", err)
 			return err
 		}
 	}
 
 	success = true
-	zap.S().Debugf("Created payloads successufully")
+	zap.S().Debugf("Created tasks successufully")
 
 	return nil
 }
