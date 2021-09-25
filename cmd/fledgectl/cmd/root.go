@@ -16,7 +16,6 @@
 package cmd
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 
@@ -76,11 +75,4 @@ func initConfig() {
 
 func Execute() error {
 	return rootCmd.Execute()
-}
-
-// TODO: remove this
-func printCmdInfo(ip string, portNo uint16, url string) {
-	separator := "- - - - - - - - - - - - - - -"
-	fmt.Printf("%s\nServer: %s:%d\n", separator, ip, portNo)
-	fmt.Printf("URL: %s\n%s\n", url, separator)
 }

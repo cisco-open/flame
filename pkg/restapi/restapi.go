@@ -66,12 +66,6 @@ const (
 
 	// Keys for task
 	GetTaskEndpoint = "GET_TASK"
-
-	//Agent
-	UpdateAgentStatusEndPoint = "UPDATE_AGENT_STATUS"
-
-	//TODO remove me after prototyping phase is done.
-	JobNodesEndPoint = "JOB_NODES"
 )
 
 var URI = map[string]string{
@@ -108,12 +102,6 @@ var URI = map[string]string{
 
 	// Task
 	GetTaskEndpoint: "/jobs/{{.jobId}}/{{.agentId}}/task",
-
-	//Agent
-	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",
-
-	//TODO remove me after prototyping phase is done.
-	JobNodesEndPoint: "/{{.user}}/nodes",
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {

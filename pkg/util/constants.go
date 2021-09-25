@@ -18,12 +18,6 @@ package util
 const (
 	ProjectName = "fledge"
 
-	//Job
-	JobStatus       = "JobStatus"
-	AddJobNodes     = "AddJobNodes"
-	ChangeJobSchema = "ChangeJobSchema"
-	GetBySchemaId   = "GetBySchemaId"
-
 	// General
 	ALL          = "all"
 	ID           = "id"
@@ -38,19 +32,6 @@ const (
 	Status        = "status"
 	StatusSuccess = "Success"
 	StatusError   = "Error"
-
-	// TODO: remove these as state is defined in openapi package
-	// States
-	State           = "state"
-	InitState       = "Init"
-	StartState      = "Start"
-	ReadyState      = "Ready"
-	RunningState    = "Running"
-	ReloadState     = "Reload"
-	StopState       = "Stop"
-	TerminatedState = "Terminated"
-	ErrorState      = "Error"
-	CompletedState  = "Completed"
 
 	// Database
 	MONGODB = "mongodb"

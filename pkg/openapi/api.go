@@ -30,13 +30,6 @@ import (
 	"os"
 )
 
-// AgentApiRouter defines the required methods for binding the api requests to a responses for the AgentApi
-// The AgentApiRouter implementation should parse necessary information from the http request,
-// pass the data to a AgentApiServicer to perform the required actions, then write the service results to the http response.
-type AgentApiRouter interface {
-	UpdateAgentStatus(http.ResponseWriter, *http.Request)
-}
-
 // DatasetsApiRouter defines the required methods for binding the api requests to a responses for the DatasetsApi
 // The DatasetsApiRouter implementation should parse necessary information from the http request,
 // pass the data to a DatasetsApiServicer to perform the required actions, then write the service results to the http response.
@@ -76,14 +69,6 @@ type DesignsApiRouter interface {
 	GetDesigns(http.ResponseWriter, *http.Request)
 }
 
-// DevApiRouter defines the required methods for binding the api requests to a responses for the DevApi
-// The DevApiRouter implementation should parse necessary information from the http request,
-// pass the data to a DevApiServicer to perform the required actions, then write the service results to the http response.
-type DevApiRouter interface {
-	JobNodes(http.ResponseWriter, *http.Request)
-	UpdateJobNodes(http.ResponseWriter, *http.Request)
-}
-
 // JobsApiRouter defines the required methods for binding the api requests to a responses for the JobsApi
 // The JobsApiRouter implementation should parse necessary information from the http request,
 // pass the data to a JobsApiServicer to perform the required actions, then write the service results to the http response.
@@ -96,14 +81,6 @@ type JobsApiRouter interface {
 	GetTask(http.ResponseWriter, *http.Request)
 	UpdateJob(http.ResponseWriter, *http.Request)
 	UpdateJobStatus(http.ResponseWriter, *http.Request)
-}
-
-// AgentApiServicer defines the api actions for the AgentApi service
-// This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
-// and updated with the logic required for the API.
-type AgentApiServicer interface {
-	UpdateAgentStatus(context.Context, string, string, string, AgentStatus) (ImplResponse, error)
 }
 
 // DatasetsApiServicer defines the api actions for the DatasetsApi service
@@ -147,15 +124,6 @@ type DesignsApiServicer interface {
 	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
 	GetDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesigns(context.Context, string, int32) (ImplResponse, error)
-}
-
-// DevApiServicer defines the api actions for the DevApi service
-// This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
-// and updated with the logic required for the API.
-type DevApiServicer interface {
-	JobNodes(context.Context, string, JobNodes) (ImplResponse, error)
-	UpdateJobNodes(context.Context, string, JobNodes) (ImplResponse, error)
 }
 
 // JobsApiServicer defines the api actions for the JobsApi service

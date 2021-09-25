@@ -122,19 +122,3 @@ Task:
   required:
     - config
     - code
-
-# TODO: revise below
-AgentStatus:
-  description: agent status object.
-  type: object
-  properties:
-    updateType:
-      type: string
-    status:
-      type: string
-    message:
-      type: string
-  required:
-    - updateType
-    - status
-    - message

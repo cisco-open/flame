@@ -57,12 +57,7 @@ type JobStore interface {
 	GetJobStatus(userId string, jobId string) (openapi.JobStatus, error)
 	UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error
 
-	GetJobs(userId string, getType string, designId string, limit int32) ([]openapi.JobInfo, error)
-	UpdateJob(userId string, jobId string) (openapi.JobInfo, error)
 	DeleteJob(userId string, jobId string) error
-
-	//TODO would like to not expose these methods as they are for internal use.
-	UpdateJobDetails(jobId string, updateType string, msg interface{}) error
 }
 
 type TaskStore interface {

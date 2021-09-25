@@ -38,7 +38,7 @@ services:
   apiserver:
     image: 'fledge'
     container_name: 'fledge-apiserver'
-    command: /fledge/apiserver start --ctlrIp fledge-controller
+    command: /fledge/apiserver --controller fledge-controller:10102
     ports:
       - '10100:10100'
     depends_on: ['controller']

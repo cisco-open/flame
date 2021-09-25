@@ -81,11 +81,7 @@ func (c *Controller) serveRestApi() {
 		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService()),
 		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService()),
 		openapi.NewJobsApiController(controller.NewJobsApiService(c.jobEventQ)),
-		openapi.NewAgentApiController(controller.NewAgentApiService()),
-		// TODO: remove me after prototyping phase is done; it's only for prototyping
-		openapi.NewDevApiController(controller.NewDevApiService()),
 	}
-	controller.CacheInit()
 
 	router := openapi.NewRouter(apiRouters...)
 

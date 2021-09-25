@@ -28,21 +28,18 @@ import (
 //crate channel to listen for shutdown and other commands?
 //https://medium.com/@pinkudebnath/graceful-shutdown-of-golang-servers-using-context-and-os-signals-cc1fa2c55e97
 
-func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
-	zap.S().Infof("Staring API server. Controller %v", ctlrInfo)
+func RunServer(portNo uint16, ctlrEp string) error {
+	zap.S().Infof("Staring API server. Controller %s", ctlrEp)
 
-	// setting controller IP and port number for rest api call to the controller from the api server
-	apiserver.HostEndpoint = fmt.Sprintf("%s:%d", ctlrInfo.Ip, ctlrInfo.Port)
+	// setting controller endpoint  for rest api call to the controller from the api server
+	apiserver.HostEndpoint = ctlrEp
 
 	// Setting up REST API Server
 	apiRouters := []openapi.Router{
-		openapi.NewAgentApiController(apiserver.NewAgentApiService()),
 		openapi.NewDatasetsApiController(apiserver.NewDatasetsApiService()),
 		openapi.NewDesignsApiController(apiserver.NewDesignsApiService()),
 		openapi.NewDesignCodesApiController(apiserver.NewDesignCodesApiService()),
 		openapi.NewDesignSchemasApiController(apiserver.NewDesignSchemasApiService()),
-		// TODO: remove me after prototyping phase is done. it's only for prototyping.
-		openapi.NewDevApiController(apiserver.NewDevApiService()),
 		openapi.NewJobsApiController(apiserver.NewJobsApiService()),
 	}
 

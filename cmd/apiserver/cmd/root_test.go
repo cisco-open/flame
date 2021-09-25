@@ -22,7 +22,7 @@ import (
 )
 
 func TestExecuteFailure(t *testing.T) {
-	apiServerCmd.SetArgs([]string{"--unknown_flag"})
+	rootCmd.SetArgs([]string{"--unknown_flag"})
 	err := Execute()
 	assert.NotNil(t, err)
 	assert.Equal(t, "unknown flag: --unknown_flag", err.Error())
