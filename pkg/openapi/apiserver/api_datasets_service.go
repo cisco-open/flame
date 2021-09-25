@@ -57,7 +57,7 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.CreateDatasetEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
 	code, _, err := restapi.HTTPPost(url, datasetInfo, "application/json")

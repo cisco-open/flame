@@ -25,6 +25,7 @@ import (
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 // CreateTasks creates task records in task db collection
@@ -74,4 +75,28 @@ func (db *MongoService) CreateTasks(tasks []objects.Task) error {
 	zap.S().Debugf("Created tasks successufully")
 
 	return nil
+}
+
+func (db *MongoService) GetTask(jobId string, agentId string) (map[string][]byte, error) {
+	zap.S().Infof("Fetching task - jobId: %s, agentId: %s", jobId, agentId)
+	filter := bson.M{"jobid": jobId, "agentid": agentId}
+
+	type taskInMongo struct {
+		Config []byte `json:"config"`
+		Code   []byte `json:"code"`
+	}
+
+	var task taskInMongo
+	err := db.taskCollection.FindOne(context.TODO(), filter).Decode(&task)
+	if err != nil {
+		zap.S().Warnf("Failed to fetch task: %v", err)
+		return nil, err
+	}
+
+	taskMap := map[string][]byte{
+		util.TaskConfigFile: task.Config,
+		util.TaskCodeFile:   task.Code,
+	}
+
+	return taskMap, nil
 }

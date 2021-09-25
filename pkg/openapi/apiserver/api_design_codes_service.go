@@ -62,7 +62,7 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 		"user":     user,
 		"designId": designId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.CreateDesignCodeEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignCodeEndPoint, uriMap)
 
 	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
 	kv := map[string]io.Reader{
@@ -104,7 +104,7 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 		"designId": designId,
 		"version":  version,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.GetDesignCodeEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
 	// send get request
 	code, respBody, err := restapi.HTTPGet(url)

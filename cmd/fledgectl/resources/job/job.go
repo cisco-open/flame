@@ -51,7 +51,8 @@ func Create(params Params) error {
 	uriMap := map[string]string{
 		"user": params.User,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.CreateJobEndpoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
 	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
@@ -115,7 +116,8 @@ func Start(params Params) error {
 		"user":  params.User,
 		"jobId": params.JobId,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.UpdateJobStatusEndPoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
 	jobStatus := openapi.JobStatus{
 		Id:    params.JobId,

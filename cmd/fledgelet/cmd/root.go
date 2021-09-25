@@ -16,42 +16,43 @@
 package cmd
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/spf13/cobra"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/fledgelet/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-var agentCmd = &cobra.Command{
+const (
+	argApiserver = "apiserver"
+	argNotifier  = "notifier"
+)
+
+var rootCmd = &cobra.Command{
 	Use:   util.Agent,
 	Short: util.ProjectName + " Agent",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		flags := cmd.Flags()
 
-		notifyIp, err := flags.GetString("notifyIp")
+		apiserver, err := flags.GetString(argApiserver)
 		if err != nil {
 			return err
 		}
+		if len(strings.Split(apiserver, ":")) != util.NumTokensEndpoint {
+			return fmt.Errorf("incorrect format for apiserver endpoint: %s", apiserver)
+		}
 
-		notifyPort, err := flags.GetUint16("notifyPort")
+		notifier, err := flags.GetString(argNotifier)
 		if err != nil {
 			return err
 		}
-
-		restIp, err := flags.GetString("apiIp")
-		if err != nil {
-			return err
+		if len(strings.Split(notifier, ":")) != util.NumTokensEndpoint {
+			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
 		}
 
-		restPort, err := flags.GetUint16("apiPort")
-		if err != nil {
-			return err
-		}
-
-		apiServerInfo := openapi.ServerInfo{Ip: restIp, Port: int32(restPort)}
-		notifierInfo := openapi.ServerInfo{Ip: notifyIp, Port: int32(notifyPort)}
-		agent, err := app.NewAgent(apiServerInfo, notifierInfo)
+		agent, err := app.NewAgent(apiserver, notifier)
 		if err != nil {
 			return err
 		}
@@ -65,15 +66,15 @@ var agentCmd = &cobra.Command{
 }
 
 func init() {
-	agentCmd.Flags().StringP("notifyIp", "i", "0.0.0.0", "Notifier IP")
-	agentCmd.Flags().Uint16P("notifyPort", "p", util.NotifierGrpcPort, "Notifier port")
-	agentCmd.Flags().StringP("apiIp", "a", "0.0.0.0", "REST API IP")
-	agentCmd.Flags().Uint16P("apiPort", "o", util.ApiServerRestApiPort, "REST API port")
+	defaultApiServerEp := fmt.Sprintf("0.0.0.0:%d", util.ApiServerRestApiPort)
+	rootCmd.Flags().StringP(argApiserver, "a", defaultApiServerEp, "API server endpoint")
+	rootCmd.MarkFlagRequired(argApiserver)
 
-	agentCmd.MarkFlagRequired("notifyIp")
-	agentCmd.MarkFlagRequired("apiIp")
+	defaultNotifierEp := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
+	rootCmd.Flags().StringP(argNotifier, "n", defaultNotifierEp, "Notifier endpoint")
+	rootCmd.MarkFlagRequired(argNotifier)
 }
 
 func Execute() error {
-	return agentCmd.Execute()
+	return rootCmd.Execute()
 }

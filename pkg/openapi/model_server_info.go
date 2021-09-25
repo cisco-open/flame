@@ -24,8 +24,6 @@
 
 package openapi
 
-import "strconv"
-
 // ServerInfo - server information
 type ServerInfo struct {
 	Name string `json:"name,omitempty"`
@@ -52,9 +50,4 @@ type ServerInfo struct {
 	//required by the controller to check if anything related to the node got updated.
 	// Example - schema design change impacted this node so a notification is required to be sent.
 	IsUpdated bool `yaml:"is_updated" json:"is_updated"`
-}
-
-// TODO: FIXME - remove this after openapi refactoring is done
-func (s *ServerInfo) GetAddress() string {
-	return s.Ip + ":" + strconv.Itoa(int(s.Port))
 }

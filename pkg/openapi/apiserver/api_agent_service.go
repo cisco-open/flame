@@ -57,7 +57,7 @@ func (s *AgentApiService) UpdateAgentStatus(ctx context.Context, user string, jo
 		"jobId":   jobId,
 		"agentId": agentId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.UpdateAgentStatusEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateAgentStatusEndPoint, uriMap)
 
 	//send get request
 	_, _, err := restapi.HTTPPut(url, agentStatus, "application/json")

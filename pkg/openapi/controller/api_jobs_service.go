@@ -134,17 +134,12 @@ func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit i
 
 // GetTask - Get a job task for a given job and agent
 func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
-	// TODO - update GetTask with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	taskMap, err := database.GetTask(jobId, agentId)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get task")
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, Task{}) or use other options such as http.Ok ...
-	//return Response(200, Task{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetTask method not implemented")
+	return openapi.Response(http.StatusOK, taskMap), nil
 }
 
 // UpdateJob - Update a job specification

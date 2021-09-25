@@ -54,7 +54,7 @@ func (s *DevApiService) JobNodes(ctx context.Context, user string, jobNodes open
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.JobNodesEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.JobNodesEndPoint, uriMap)
 
 	//send get request
 	_, _, err := restapi.HTTPPost(url, jobNodes, "application/json")
@@ -74,7 +74,7 @@ func (s *DevApiService) UpdateJobNodes(ctx context.Context, user string, jobNode
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.JobNodesEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.JobNodesEndPoint, uriMap)
 
 	//send get request
 	_, _, err := restapi.HTTPPut(url, jobNodes, "application/json")

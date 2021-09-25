@@ -16,33 +16,140 @@
 package app
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"go.uber.org/zap"
+	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-// StartJob starts the application on the agent
-func (h *NotificationHandler) StartJob(jobId string) {
-	zap.S().Infof("not yet implemented; received start job request on job %s", jobId)
-	// NOTE: commented out by MLEE; revisit
-	// if h.appInfo.State != util.RunningState {
-	// 	req := openapi.AgentStatus{
-	// 		UpdateType: util.JobStatus,
-	// 		Status:     "",
-	// 		Message:    "",
-	// 	}
+const (
+	workDir = "/fledge/work"
+)
 
-	// 	state, err := h.startApp(info)
-	// 	if err != nil {
-	// 		req.Status = util.StatusError
-	// 		req.Message = err.Error()
-	// 	} else {
-	// 		req.Status = util.StatusSuccess
-	// 		req.Message = state
-	// 	}
-	// 	h.updateJobStatus(info.JobInfo, req)
-	// }
+// startJob starts the application on the agent
+func (h *NotifyHandler) startJob(jobId string) {
+	zap.S().Infof("Received start job request on job %s", jobId)
+
+	filePaths, err := h.getTask(jobId)
+	if err != nil {
+		zap.S().Warnf("Failed to download payload: %v", err)
+		return
+	}
+
+	err = h.prepareTask(filePaths)
+	if err != nil {
+		zap.S().Warnf("Failed to prepare task")
+		return
+	}
+
+	// TODO: implement/revise startApp method
+
+	// TODO: implement updateTaskStatus method
 }
 
-func (h *NotificationHandler) StopJob(jobId string) {
+func (h *NotifyHandler) getTask(jobId string) ([]string, error) {
+	// construct URL
+	uriMap := map[string]string{
+		"jobId":   jobId,
+		"agentId": h.agentId,
+	}
+	url := restapi.CreateURL(h.apiserverEp, restapi.GetTaskEndpoint, uriMap)
+
+	code, taskMap, err := restapi.HTTPGetMultipart(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		errMsg := fmt.Sprintf("Failed to fetch task - code: %d, error: %v", code, err)
+		zap.S().Warnf(errMsg)
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	filePaths := make([]string, 0)
+	for fileName, data := range taskMap {
+		filePath := filepath.Join("/tmp", fileName)
+		err = ioutil.WriteFile(filePath, data, util.FilePerm0755)
+		if err != nil {
+			zap.S().Warnf("Failed to save %s: %v\n", fileName, err)
+			return nil, err
+		}
+
+		filePaths = append(filePaths, filePath)
+
+		zap.S().Infof("Downloaded %s successfully\n", fileName)
+	}
+
+	return filePaths, nil
+}
+
+func (h *NotifyHandler) prepareTask(filePaths []string) error {
+	err := os.MkdirAll(workDir, util.FilePerm0755)
+	if err != nil {
+		return err
+	}
+
+	var fileDataList []util.FileData
+	var file *os.File
+	configFilePath := ""
+	configFound := false
+	codeFound := false
+	for _, filePath := range filePaths {
+		if strings.Contains(filePath, util.TaskConfigFile) {
+			configFound = true
+
+			configFilePath = filePath
+		} else if strings.Contains(filePath, util.TaskCodeFile) {
+			codeFound = true
+
+			file, err = os.Open(filePath)
+			if err != nil {
+				return fmt.Errorf("failed to open %s: %v", filePath, err)
+			}
+
+			fileDataList, err = util.UnzipFile(file)
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	if !configFound || !codeFound {
+		return fmt.Errorf("either %s or %s not found", util.TaskConfigFile, util.TaskCodeFile)
+	}
+
+	// copy config file to work directory
+	input, err := ioutil.ReadFile(configFilePath)
+	if err != nil {
+		return fmt.Errorf("failed to open config file %s: %v", configFilePath, err)
+	}
+
+	dstFilePath := filepath.Join(workDir, util.TaskConfigFile)
+	err = ioutil.WriteFile(dstFilePath, input, util.FilePerm0644)
+	if err != nil {
+		return fmt.Errorf("failed to copy config file: %v", err)
+	}
+
+	// copy code files to work directory
+	for _, fileData := range fileDataList {
+		dirPath := filepath.Join(workDir, filepath.Dir(fileData.FullName))
+		err := os.MkdirAll(dirPath, util.FilePerm0755)
+		if err != nil {
+			return fmt.Errorf("failed to create directory: %v", err)
+		}
+
+		filePath := filepath.Join(dirPath, fileData.BaseName)
+		err = ioutil.WriteFile(filePath, []byte(fileData.Data), util.FilePerm0644)
+		if err != nil {
+			return fmt.Errorf("failed to unzip file %s: %v", filePath, err)
+		}
+	}
+
+	return nil
+}
+
+func (h *NotifyHandler) stopJob(jobId string) {
 	zap.S().Infof("not yet implemented; received stop job request on job %s", jobId)
 	// h.appInfo.Conf = info
 	// job := info.JobInfo
@@ -83,13 +190,13 @@ func (h *NotificationHandler) StopJob(jobId string) {
 	// h.updateJobStatus(job, req)
 }
 
-func (h *NotificationHandler) UpdateJob(jobId string) (string, error) {
+func (h *NotifyHandler) updateJob(jobId string) (string, error) {
 	zap.S().Infof("not yet implemented; received update job request on job %s", jobId)
 	return "", nil
 }
 
 /*
-func (h *NotificationHandler) initApp(info objects.AppConf) error {
+func (h *NotifyHandler) initApp(info objects.AppConf) error {
 	//directory path
 	fp := filepath.Join("/fledge/job/", h.agentId, info.JobInfo.Id)
 	if _, err := os.Stat(fp); os.IsNotExist(err) {
@@ -104,7 +211,7 @@ func (h *NotificationHandler) initApp(info objects.AppConf) error {
 	return err
 }
 
-func (h *NotificationHandler) startAppPolicy(info objects.AppConf) bool {
+func (h *NotifyHandler) startAppPolicy(info objects.AppConf) bool {
 	//will start the application as part of the init if the node is not a data consumer
 	for _, role := range info.SchemaInfo.Roles {
 		if role.Name == info.Role && !role.IsDataConsumer {
@@ -114,7 +221,7 @@ func (h *NotificationHandler) startAppPolicy(info objects.AppConf) bool {
 	return false
 }
 
-func (h *NotificationHandler) startApp(_ objects.AppConf) (string, error) {
+func (h *NotifyHandler) startApp(_ objects.AppConf) (string, error) {
 	//TODO only for development purpose. We should have single command command to start all applications example python3 main.py
 	//cmd := exec.Command("python3", Conf.Command...)
 	//cmd := exec.Command("echo", Conf.Command...)
@@ -140,7 +247,7 @@ func (h *NotificationHandler) startApp(_ objects.AppConf) (string, error) {
 	return util.RunningState, nil
 }
 
-func (h *NotificationHandler) updateJobStatus(job openapi.JobInfo, req openapi.AgentStatus) {
+func (h *NotifyHandler) updateJobStatus(job openapi.JobInfo, req openapi.AgentStatus) {
 	//update application state
 	h.appInfo.State = req.Message
 	if req.Status == util.StatusError {
@@ -155,7 +262,7 @@ func (h *NotificationHandler) updateJobStatus(job openapi.JobInfo, req openapi.A
 		"agentId": h.agentId,
 	}
 
-	url := restapi.CreateURL(h.apiServerInfo.Ip, util.ApiServerRestApiPort, restapi.UpdateAgentStatusEndPoint, uriMap)
+	url := restapi.CreateURL(h.apiserverEp, restapi.UpdateAgentStatusEndPoint, uriMap)
 
 	//send post request
 	zap.S().Debugf("Sending update status call to controller. Current state: %s", req.Message)

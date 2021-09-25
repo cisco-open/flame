@@ -55,7 +55,8 @@ func Create(params Params) error {
 		"user":     params.User,
 		"designId": params.DesignId,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.CreateDesignSchemaEndPoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
 	// send post request
 	code, _, err := restapi.HTTPPost(url, schema, "application/json")
@@ -76,7 +77,8 @@ func Get(params Params) error {
 		"designId": params.DesignId,
 		"version":  params.Version,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.GetDesignSchemaEndPoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.GetDesignSchemaEndPoint, uriMap)
 
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -105,7 +107,8 @@ func GetMany(params Params) error {
 		"user":     params.User,
 		"designId": params.DesignId,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.GetDesignSchemasEndPoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.GetDesignSchemasEndPoint, uriMap)
 
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -147,7 +150,8 @@ func Update(params Params) error {
 		"designId": params.DesignId,
 		"version":  params.Version,
 	}
-	url := restapi.CreateURL(params.Host, params.Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
+	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
+	url := restapi.CreateURL(endpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
 	code, _, err := restapi.HTTPPut(url, schema, "application/json")
 	if err != nil && restapi.CheckStatusCode(code) != nil {

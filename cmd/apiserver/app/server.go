@@ -32,8 +32,7 @@ func RunServer(portNo uint16, ctlrInfo openapi.ServerInfo) error {
 	zap.S().Infof("Staring API server. Controller %v", ctlrInfo)
 
 	// setting controller IP and port number for rest api call to the controller from the api server
-	apiserver.Host = ctlrInfo.Ip
-	apiserver.Port = uint16(ctlrInfo.Port)
+	apiserver.HostEndpoint = fmt.Sprintf("%s:%d", ctlrInfo.Ip, ctlrInfo.Port)
 
 	// Setting up REST API Server
 	apiRouters := []openapi.Router{

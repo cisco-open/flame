@@ -26,6 +26,8 @@ package openapi
 
 import (
 	"encoding/json"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"strings"
 
@@ -201,8 +203,51 @@ func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 		EncodeJSONResponse(err.Error(), &result.Code, w)
 		return
 	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
+
+	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Accept"))
+	if err != nil {
+		code := http.StatusNotAcceptable
+		EncodeJSONResponse(err.Error(), &code, w)
+		return
+	}
+	if mediatype != "multipart/form-data" {
+		code := http.StatusMultipleChoices
+		EncodeJSONResponse("set Accept: multipart/form-data", &code, w)
+		return
+	}
+
+	mw := multipart.NewWriter(w)
+	w.Header().Set("Content-Type", mw.FormDataContentType())
+
+	taskMap, ok := result.Body.(map[string][]byte)
+	if !ok {
+		code := http.StatusNotFound
+		EncodeJSONResponse("task object not found", &code, w)
+		return
+	}
+
+	w.Header().Set("Content-Type", mw.FormDataContentType())
+	for filename, data := range taskMap {
+		fw, err := mw.CreateFormFile(filename, filename)
+		if err != nil {
+			code := http.StatusInternalServerError
+			EncodeJSONResponse(err.Error(), &code, w)
+			return
+		}
+		if _, err := fw.Write(data); err != nil {
+			code := http.StatusInternalServerError
+			EncodeJSONResponse(err.Error(), &code, w)
+			return
+		}
+	}
+
+	if err := mw.Close(); err != nil {
+		code := http.StatusInternalServerError
+		EncodeJSONResponse(err.Error(), &code, w)
+		return
+	}
+
+	w.WriteHeader(result.Code)
 }
 
 // UpdateJob - Update a job specification

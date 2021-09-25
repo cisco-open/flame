@@ -57,7 +57,7 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.CreateJobEndpoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
 	code, responseBody, err := restapi.HTTPPost(url, jobSpec, "application/json")
@@ -151,17 +151,22 @@ func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit i
 
 // GetTask - Get a job task for a given job and agent
 func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
-	// TODO - update GetTask with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	uriMap := map[string]string{
+		"jobId":   jobId,
+		"agentId": agentId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskEndpoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(200, Task{}) or use other options such as http.Ok ...
-	//return Response(200, Task{}), nil
+	code, taskMap, err := restapi.HTTPGetMultipart(url)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to fetch task")
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetTask method not implemented")
+	return openapi.Response(http.StatusOK, taskMap), nil
 }
 
 // UpdateJob - Update a job specification
@@ -193,7 +198,7 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 		"user":  user,
 		"jobId": jobId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.UpdateJobStatusEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
 	// send put request
 	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")

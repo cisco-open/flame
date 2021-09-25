@@ -82,4 +82,9 @@ const (
 	FilePerm0644 = 0644
 	FilePerm0700 = 0700
 	FilePerm0755 = 0755
+
+	NumTokensEndpoint = 2
+
+	TaskConfigFile = "config"
+	TaskCodeFile   = "code.zip"
 )

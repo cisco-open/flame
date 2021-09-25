@@ -67,4 +67,5 @@ type JobStore interface {
 
 type TaskStore interface {
 	CreateTasks([]objects.Task) error
+	GetTask(string, string) (map[string][]byte, error)
 }

@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"reflect"
 	"runtime"
-	"strconv"
 	"text/template"
 
 	"go.uber.org/zap"
@@ -63,6 +63,9 @@ const (
 	UpdateJobEndPoint       = "UPDATE_JOB"
 	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
 	UpdateJobStatusEndPoint = "UPDATE_JOB_STATUS"
+
+	// Keys for task
+	GetTaskEndpoint = "GET_TASK"
 
 	//Agent
 	UpdateAgentStatusEndPoint = "UPDATE_AGENT_STATUS"
@@ -103,6 +106,9 @@ var URI = map[string]string{
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
 	UpdateJobStatusEndPoint: "/{{.user}}/jobs/{{.jobId}}/status",
 
+	// Task
+	GetTaskEndpoint: "/jobs/{{.jobId}}/{{.agentId}}/task",
+
 	//Agent
 	UpdateAgentStatusEndPoint: "/{{.user}}/job/{{.jobId}}/agent/{{.agentId}}",
 
@@ -122,14 +128,14 @@ func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {
 	return buf.String(), nil
 }
 
-func CreateURL(ip string, portNo uint16, endPoint string, inputMap map[string]string) string {
+func CreateURL(hostEndpoint string, endPoint string, inputMap map[string]string) string {
 	msg, err := FromTemplate(URI[endPoint], inputMap)
 	if err != nil {
 		zap.S().Errorf("error creating a uri. End point: %s", endPoint)
 		return ""
 	}
 	// TODO: change it to https
-	url := "http://" + ip + ":" + strconv.Itoa(int(portNo)) + msg
+	url := "http://" + hostEndpoint + msg
 	return url
 }
 
@@ -200,6 +206,35 @@ func HTTPGet(url string) (int, []byte, error) {
 	}
 
 	return resp.StatusCode, body, nil
+}
+
+func HTTPGetMultipart(url string) (int, map[string][]byte, error) {
+	req, _ := http.NewRequest("GET", url, nil)
+	req.Header.Set("Accept", "multipart/form-data; charset=utf-8")
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return -1, nil, err
+	}
+	defer resp.Body.Close()
+
+	_, params, err := mime.ParseMediaType(resp.Header.Get("Content-Type"))
+	if err != nil {
+		return resp.StatusCode, nil, err
+	}
+
+	result := make(map[string][]byte)
+	mr := multipart.NewReader(resp.Body, params["boundary"])
+	for part, err := mr.NextPart(); err == nil; part, err = mr.NextPart() {
+		data, err := ioutil.ReadAll(part)
+		if err != nil {
+			return -1, nil, err
+		}
+
+		result[part.FormName()] = data
+	}
+
+	return resp.StatusCode, result, nil
 }
 
 func CreateMultipartFormData(kv map[string]io.Reader) (*bytes.Buffer, *multipart.Writer, error) {

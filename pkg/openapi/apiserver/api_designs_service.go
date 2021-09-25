@@ -57,7 +57,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 	uriMap := map[string]string{
 		"user": user,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.CreateDesignEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignEndPoint, uriMap)
 
 	// send post request
 	code, _, err := restapi.HTTPPost(url, designInfo, "application/json")
@@ -84,7 +84,7 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 		"user":     user,
 		"designId": designId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.GetDesignEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignEndPoint, uriMap)
 
 	//send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -115,7 +115,7 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 		"user":  user,
 		"limit": strconv.Itoa(int(limit)),
 	}
-	url := restapi.CreateURL(Host, Port, restapi.GetDesignsEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignsEndPoint, uriMap)
 
 	//send get request
 	code, responseBody, err := restapi.HTTPGet(url)

@@ -16,6 +16,7 @@
 package cmd
 
 import (
+	"fmt"
 	"io/ioutil"
 
 	"github.com/spf13/cobra"
@@ -71,7 +72,8 @@ var jobNodesCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.JobNodesEndPoint, uriMap)
+		endpoint := fmt.Sprintf("%s:%d", config.ApiServer.Host, config.ApiServer.Port)
+		url := restapi.CreateURL(endpoint, restapi.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := openapi.JobNodes{
@@ -128,7 +130,8 @@ var updateJobNodesCmd = &cobra.Command{
 		uriMap := map[string]string{
 			"user": config.User,
 		}
-		url := restapi.CreateURL(config.ApiServer.Host, config.ApiServer.Port, restapi.JobNodesEndPoint, uriMap)
+		endpoint := fmt.Sprintf("%s:%d", config.ApiServer.Host, config.ApiServer.Port)
+		url := restapi.CreateURL(endpoint, restapi.JobNodesEndPoint, uriMap)
 		printCmdInfo(config.ApiServer.Host, config.ApiServer.Port, url)
 
 		jN := openapi.JobNodes{

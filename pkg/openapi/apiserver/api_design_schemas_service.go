@@ -58,7 +58,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 		"user":     user,
 		"designId": designId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.CreateDesignSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
 	//send get request
 	code, resp, err := restapi.HTTPPost(url, designSchema, "application/json")
@@ -88,7 +88,7 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 		"designId": designId,
 		"version":  version,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.GetDesignSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemaEndPoint, uriMap)
 
 	//send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -118,7 +118,7 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 		"user":     user,
 		"designId": designId,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.GetDesignSchemasEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemasEndPoint, uriMap)
 
 	//send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -149,7 +149,7 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 		"designId": designId,
 		"version":  version,
 	}
-	url := restapi.CreateURL(Host, Port, restapi.UpdateDesignSchemaEndPoint, uriMap)
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
 	//send put request
 	code, resp, err := restapi.HTTPPut(url, designSchema, "application/json")

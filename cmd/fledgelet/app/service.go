@@ -26,7 +26,6 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbAgent "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
@@ -36,14 +35,14 @@ const (
 )
 
 type AgentService struct {
-	apiServerInfo openapi.ServerInfo
-	notifierInfo  openapi.ServerInfo
-	name          string
-	id            string
-	nHandler      *NotificationHandler
+	apiserverEp string
+	notifierEp  string
+	name        string
+	id          string
+	nHandler    *NotifyHandler
 }
 
-func NewAgent(apiserverInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo) (*AgentService, error) {
+func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 	name, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -66,14 +65,14 @@ func NewAgent(apiserverInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo)
 		agentId = id
 	}
 
-	nHandler := newNotificationHandler(apiserverInfo, notifierInfo, name, agentId)
+	nHandler := newNotifyHandler(apiserverEp, notifierEp, name, agentId)
 
 	agent := &AgentService{
-		apiServerInfo: apiserverInfo,
-		notifierInfo:  notifierInfo,
-		name:          name,
-		id:            agentId,
-		nHandler:      nHandler,
+		apiserverEp: apiserverEp,
+		notifierEp:  notifierEp,
+		name:        name,
+		id:          agentId,
+		nHandler:    nHandler,
 	}
 
 	return agent, nil

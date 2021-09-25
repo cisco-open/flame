@@ -23,35 +23,33 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
 )
 
-type NotificationHandler struct {
-	apiServerInfo openapi.ServerInfo
-	notifierInfo  openapi.ServerInfo
-	name          string
-	agentId       string
+type NotifyHandler struct {
+	apiserverEp string
+	notifierEp  string
+	name        string
+	agentId     string
 
 	stream pbNotify.EventRoute_GetEventClient
 }
 
-func newNotificationHandler(apiSvrInfo openapi.ServerInfo, notifierInfo openapi.ServerInfo, name string,
-	agentId string) *NotificationHandler {
-	return &NotificationHandler{
-		apiServerInfo: apiSvrInfo,
-		notifierInfo:  notifierInfo,
-		name:          name,
-		agentId:       agentId,
+func newNotifyHandler(apiserverEp string, notifierEp string, name string, agentId string) *NotifyHandler {
+	return &NotifyHandler{
+		apiserverEp: apiserverEp,
+		notifierEp:  notifierEp,
+		name:        name,
+		agentId:     agentId,
 	}
 }
 
 // start connects to the notifier via grpc and handles notifications from the notifier
-func (h *NotificationHandler) start() {
-	go h.do_start()
+func (h *NotifyHandler) start() {
+	go h.doStart()
 }
 
-func (h *NotificationHandler) do_start() {
+func (h *NotifyHandler) doStart() {
 	for {
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.MaxElapsedTime = 5 * time.Minute // max wait time: 5 minutes
@@ -64,9 +62,9 @@ func (h *NotificationHandler) do_start() {
 	}
 }
 
-func (h *NotificationHandler) connect() error {
+func (h *NotifyHandler) connect() error {
 	// dial server
-	conn, err := grpc.Dial(h.notifierInfo.GetAddress(), grpc.WithInsecure())
+	conn, err := grpc.Dial(h.notifierEp, grpc.WithInsecure())
 	if err != nil {
 		zap.S().Debugf("Cannot connect with notifier: %v", err)
 		return err
@@ -86,12 +84,12 @@ func (h *NotificationHandler) connect() error {
 	}
 
 	h.stream = stream
-	zap.S().Infof("Connected with notifier at %v", h.notifierInfo)
+	zap.S().Infof("Connected with notifier at %s", h.notifierEp)
 
 	return nil
 }
 
-func (h *NotificationHandler) do() {
+func (h *NotifyHandler) do() {
 	for {
 		resp, err := h.stream.Recv()
 		if err != nil {
@@ -106,16 +104,16 @@ func (h *NotificationHandler) do() {
 }
 
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
-func (h *NotificationHandler) dealWith(in *pbNotify.Event) {
+func (h *NotifyHandler) dealWith(in *pbNotify.Event) {
 	switch in.GetType() {
 	case pbNotify.EventType_START_JOB:
-		h.StartJob(in.JobId)
+		h.startJob(in.JobId)
 
 	case pbNotify.EventType_STOP_JOB:
-		h.StopJob(in.JobId)
+		h.stopJob(in.JobId)
 
 	case pbNotify.EventType_UPDATE_JOB:
-		h.UpdateJob(in.JobId)
+		h.updateJob(in.JobId)
 
 	case pbNotify.EventType_UNKNOWN_EVENT_TYPE:
 		fallthrough

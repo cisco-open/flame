@@ -15,8 +15,14 @@
 
 package database
 
-import "wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
+import (
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
+)
 
 func CreateTasks(tasks []objects.Task) error {
 	return DB.CreateTasks(tasks)
+}
+
+func GetTask(jobId string, agentId string) (map[string][]byte, error) {
+	return DB.GetTask(jobId, agentId)
 }
