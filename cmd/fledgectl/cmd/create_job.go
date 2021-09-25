@@ -30,8 +30,7 @@ var createJobCmd = &cobra.Command{
 		jobFile := args[0]
 
 		params := job.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.JobFile = jobFile
 

@@ -27,8 +27,7 @@ import (
 var (
 	testData = `
 apiserver:
-  host: localhost
-  port: 10100
+  endpoint: localhost:10100
 user: john
 `
 )
@@ -48,7 +47,6 @@ func TestLoadConfig(t *testing.T) {
 
 	config, err = loadConfig(configFilePath)
 	assert.Nil(t, err)
-	assert.Equal(t, "localhost", config.ApiServer.Host)
-	assert.Equal(t, uint16(10100), config.ApiServer.Port)
+	assert.Equal(t, "localhost:10100", config.ApiServer.Endpoint)
 	assert.Equal(t, "john", config.User)
 }

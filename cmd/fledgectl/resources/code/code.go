@@ -45,8 +45,7 @@ func Create(params Params) error {
 		"user":     params.User,
 		"designId": params.DesignId,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.CreateDesignCodeEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignCodeEndPoint, uriMap)
 
 	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
 	kv := map[string]io.Reader{
@@ -86,8 +85,7 @@ func Get(params Params) error {
 		"designId": params.DesignId,
 		"version":  params.CodeVer,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.GetDesignCodeEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
 	code, respBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {

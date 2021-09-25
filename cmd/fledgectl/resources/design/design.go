@@ -42,8 +42,7 @@ func Create(params Params) error {
 	uriMap := map[string]string{
 		"user": params.User,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.CreateDesignEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignEndPoint, uriMap)
 
 	//Encode the data
 	postBody := openapi.DesignInfo{
@@ -68,8 +67,7 @@ func Get(params Params) error {
 		"user":     params.User,
 		"designId": params.DesignId,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.GetDesignEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignEndPoint, uriMap)
 
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -97,8 +95,7 @@ func GetMany(params Params) error {
 		"user":  params.User,
 		"limit": params.Limit,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.GetDesignsEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignsEndPoint, uriMap)
 
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)

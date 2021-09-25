@@ -30,8 +30,7 @@ var getDesignCmd = &cobra.Command{
 		designId := args[0]
 
 		params := design.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
 
@@ -53,8 +52,7 @@ var getDesignsCmd = &cobra.Command{
 		}
 
 		params := design.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.Limit = limit
 

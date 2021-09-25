@@ -30,8 +30,7 @@ var createDatasetCmd = &cobra.Command{
 		datasetFile := args[0]
 
 		params := dataset.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DatasetFile = datasetFile
 

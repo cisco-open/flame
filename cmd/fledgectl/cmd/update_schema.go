@@ -42,8 +42,7 @@ var updateDesignSchemaCmd = &cobra.Command{
 		}
 
 		params := schema.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
 		params.SchemaPath = schemaPath

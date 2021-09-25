@@ -52,8 +52,7 @@ func Create(params Params) error {
 	uriMap := map[string]string{
 		"user": params.User,
 	}
-	endpoint := fmt.Sprintf("%s:%d", params.Host, params.Port)
-	url := restapi.CreateURL(endpoint, restapi.CreateDatasetEndPoint, uriMap)
+	url := restapi.CreateURL(params.Endpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
 	code, _, err := restapi.HTTPPost(url, datasetInfo, "application/json")

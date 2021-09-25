@@ -26,8 +26,7 @@ type Config struct {
 }
 
 type ApiServer struct {
-	Host string `yaml:"host"`
-	Port uint16 `yaml:"port"`
+	Endpoint string `yaml:"endpoint"`
 }
 
 var fs afero.Fs

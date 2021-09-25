@@ -37,8 +37,7 @@ var getDesignCodeCmd = &cobra.Command{
 		}
 
 		params := code.Params{}
-		params.Host = config.ApiServer.Host
-		params.Port = config.ApiServer.Port
+		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
 		params.CodeVer = codeVer
