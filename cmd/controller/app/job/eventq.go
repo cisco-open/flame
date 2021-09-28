@@ -75,3 +75,7 @@ func (q *EventQ) Enqueue(jobEvent *JobEvent) error {
 func (q *EventQ) Dequeue() *JobEvent {
 	return <-q.buf
 }
+
+func (q *EventQ) GetEventBuffer() <-chan *JobEvent {
+	return q.buf
+}

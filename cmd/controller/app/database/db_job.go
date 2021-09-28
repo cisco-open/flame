@@ -27,6 +27,10 @@ func GetJob(userId string, jobId string) (openapi.JobSpec, error) {
 	return DB.GetJob(userId, jobId)
 }
 
+func GetJobById(jobId string) (openapi.JobSpec, error) {
+	return DB.GetJobById(jobId)
+}
+
 func GetJobStatus(userId string, jobId string) (openapi.JobStatus, error) {
 	return DB.GetJobStatus(userId, jobId)
 }

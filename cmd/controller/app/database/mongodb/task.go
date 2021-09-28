@@ -100,3 +100,16 @@ func (db *MongoService) GetTask(jobId string, agentId string) (map[string][]byte
 
 	return taskMap, nil
 }
+
+func (db *MongoService) DeleteTasks(jobId string) error {
+	zap.S().Infof("Deleting tasks for job: %s", jobId)
+	filter := bson.M{"jobid": jobId}
+
+	_, err := db.taskCollection.DeleteMany(context.TODO(), filter)
+	if err != nil {
+		zap.S().Warnf("Failed to remove task: %v", err)
+		return err
+	}
+
+	return nil
+}

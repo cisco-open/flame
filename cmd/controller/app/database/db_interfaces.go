@@ -36,7 +36,6 @@ type DatasetStore interface {
 }
 
 // DesignStore is the collection of db APIs related to the designs
-//TODO for all get methods - explicitly specify the fields to be retured as part of the object
 type DesignStore interface {
 	CreateDesign(userId string, info openapi.Design) error
 	GetDesign(userId string, designId string) (openapi.Design, error)
@@ -54,6 +53,7 @@ type DesignStore interface {
 type JobStore interface {
 	CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error)
 	GetJob(userId string, jobId string) (openapi.JobSpec, error)
+	GetJobById(jobId string) (openapi.JobSpec, error)
 	GetJobStatus(userId string, jobId string) (openapi.JobStatus, error)
 	UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error
 
@@ -62,5 +62,6 @@ type JobStore interface {
 
 type TaskStore interface {
 	CreateTasks([]objects.Task) error
+	DeleteTasks(string) error
 	GetTask(string, string) (map[string][]byte, error)
 }

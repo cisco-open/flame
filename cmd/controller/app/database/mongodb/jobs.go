@@ -71,6 +71,21 @@ func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobSpec, er
 	return jobSpec, nil
 }
 
+func (db *MongoService) GetJobById(jobId string) (openapi.JobSpec, error) {
+	zap.S().Infof("get job specification for jobId: %s", jobId)
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId)}
+	var jobSpec openapi.JobSpec
+	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&jobSpec)
+	if err != nil {
+		zap.S().Warnf("failed to fetch job specification: %v", err)
+
+		return openapi.JobSpec{}, ErrorCheck(err)
+	}
+
+	return jobSpec, nil
+}
+
 func (db *MongoService) GetJobStatus(userId string, jobId string) (openapi.JobStatus, error) {
 	zap.S().Debugf("get job status for userId: %s with jobId: %s", userId, jobId)
 

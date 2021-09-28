@@ -23,6 +23,10 @@ func CreateTasks(tasks []objects.Task) error {
 	return DB.CreateTasks(tasks)
 }
 
+func DeleteTasks(jobId string) error {
+	return DB.DeleteTasks(jobId)
+}
+
 func GetTask(jobId string, agentId string) (map[string][]byte, error) {
 	return DB.GetTask(jobId, agentId)
 }
