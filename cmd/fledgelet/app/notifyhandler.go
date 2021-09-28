@@ -50,6 +50,8 @@ func (h *NotifyHandler) start() {
 }
 
 func (h *NotifyHandler) doStart() {
+	pauseTime := 10 * time.Second
+
 	for {
 		expBackoff := backoff.NewExponentialBackOff()
 		expBackoff.MaxElapsedTime = 5 * time.Minute // max wait time: 5 minutes
@@ -59,6 +61,11 @@ func (h *NotifyHandler) doStart() {
 		}
 
 		h.do()
+
+		// if connection is broken right after connection is made, this can cause
+		// too many connection/disconnection events. To migitage that, add some static
+		// pause time.
+		time.Sleep(pauseTime)
 	}
 }
 
