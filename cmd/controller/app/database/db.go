@@ -23,16 +23,14 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
-var DB StoreCollection
-
-func NewDBService(uri string) error {
+func NewDBService(uri string) (DBService, error) {
 	dbName := strings.Split(uri, ":")[0]
 
 	var err error
 
 	switch dbName {
 	case util.MONGODB:
-		DB, err = mongodb.NewMongoService(uri)
+		return mongodb.NewMongoService(uri)
 
 	case util.MySQL:
 		fallthrough
@@ -41,5 +39,5 @@ func NewDBService(uri string) error {
 		err = fmt.Errorf("unknown DB type: %s", dbName)
 	}
 
-	return err
+	return nil, err
 }

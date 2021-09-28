@@ -22,21 +22,22 @@ import (
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 )
 
-// StoreCollection provides collection of all the db stores in the application.
-type StoreCollection interface {
-	DatasetStore
-	DesignStore
-	JobStore
-	TaskStore
+// DBService defines a total set of collections for the application
+type DBService interface {
+	DatasetService
+	DesignService
+	JobService
+	TaskService
 }
 
-type DatasetStore interface {
+// DatasetService is an interface that defines a collection of APIs related to dataset
+type DatasetService interface {
 	CreateDataset(userId string, info openapi.DatasetInfo) error
 	GetDatasetById(datasetId string) (openapi.DatasetInfo, error)
 }
 
-// DesignStore is the collection of db APIs related to the designs
-type DesignStore interface {
+// DesignService is an interface that defines a collection of APIs related to design
+type DesignService interface {
 	CreateDesign(userId string, info openapi.Design) error
 	GetDesign(userId string, designId string) (openapi.Design, error)
 	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)
@@ -50,7 +51,8 @@ type DesignStore interface {
 	GetDesignCode(userId string, designId string, version string) ([]byte, error)
 }
 
-type JobStore interface {
+// JobService is an interface that defines a collection of APIs related to job
+type JobService interface {
 	CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error)
 	GetJob(userId string, jobId string) (openapi.JobSpec, error)
 	GetJobById(jobId string) (openapi.JobSpec, error)
@@ -60,7 +62,8 @@ type JobStore interface {
 	DeleteJob(userId string, jobId string) error
 }
 
-type TaskStore interface {
+// TaskService is an interface that defines a collection of APIs related to task
+type TaskService interface {
 	CreateTasks([]objects.Task) error
 	DeleteTasks(string) error
 	GetTask(string, string) (map[string][]byte, error)

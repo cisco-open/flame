@@ -37,11 +37,14 @@ import (
 // This service should implement the business logic for every endpoint for the DesignsApi API.
 // Include any external packages or services that will be required by this service.
 type DesignsApiService struct {
+	dbService database.DBService
 }
 
 // NewDesignsApiService creates a default api service
-func NewDesignsApiService() openapi.DesignsApiServicer {
-	return &DesignsApiService{}
+func NewDesignsApiService(dbService database.DBService) openapi.DesignsApiServicer {
+	return &DesignsApiService{
+		dbService: dbService,
+	}
 }
 
 // CreateDesign - Create a new design template.
@@ -54,7 +57,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 		Schemas:     []openapi.DesignSchema{},
 	}
 
-	err := database.CreateDesign(user, d)
+	err := s.dbService.CreateDesign(user, d)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new design: %v", err)
 	}
@@ -64,7 +67,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 
 // GetDesign - Get design template information
 func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	info, err := database.GetDesign(user, designId)
+	info, err := s.dbService.GetDesign(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design: %v", err)
 	}
@@ -74,7 +77,7 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 
 // GetDesigns - Get list of all the designs created by the user.
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
-	designList, err := database.GetDesigns(user, limit)
+	designList, err := s.dbService.GetDesigns(user, limit)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get list of designs: %v", err)
 	}

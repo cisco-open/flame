@@ -17,6 +17,7 @@ const (
 )
 
 type handler struct {
+	dbService  database.DBService
 	jobId      string
 	eventQ     *EventQ
 	jobQueues  map[string]*EventQ
@@ -32,8 +33,10 @@ type handler struct {
 	isDone chan bool
 }
 
-func NewHandler(jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex, notifierEp string) *handler {
+func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
+	notifierEp string) *handler {
 	return &handler{
+		dbService:  dbService,
 		jobId:      jobId,
 		eventQ:     eventQ,
 		jobQueues:  jobQueues,
@@ -51,7 +54,7 @@ func (h *handler) Do() {
 		zap.S().Infof("deleted an eventQ for %s from job queues", h.jobId)
 	}()
 
-	jobSpec, err := database.GetJobById(h.jobId)
+	jobSpec, err := h.dbService.GetJobById(h.jobId)
 	if err != nil {
 		zap.S().Errorf("failed to fetch job specification: %v", err)
 		return
@@ -86,13 +89,13 @@ func (h *handler) checkProgress() {
 		zap.S().Infof("Job timed out")
 
 		jobStatus := openapi.JobStatus{State: openapi.FAILED}
-		_ = database.UpdateJobStatus(h.jobSpec.UserId, h.jobId, jobStatus)
+		_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, jobStatus)
 
 		h.isDone <- true
 		return
 	}
 
-	jobStatus, err := database.GetJobStatus(h.jobSpec.UserId, h.jobId)
+	jobStatus, err := h.dbService.GetJobStatus(h.jobSpec.UserId, h.jobId)
 	if err != nil {
 		zap.S().Warnf("failed to get job status: %v", err)
 		return
@@ -161,7 +164,7 @@ func (h *handler) handleStart(event *JobEvent) {
 
 	zap.S().Infof("requester: %s, jobId: %s", event.Requester, event.JobStatus.Id)
 
-	curStatus, err := database.GetJobStatus(event.Requester, event.JobStatus.Id)
+	curStatus, err := h.dbService.GetJobStatus(event.Requester, event.JobStatus.Id)
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to check the current status: %v", err)
 		return
@@ -174,26 +177,26 @@ func (h *handler) handleStart(event *JobEvent) {
 	}
 
 	// Obtain job specification
-	jobSpec, err := database.GetJob(event.Requester, event.JobStatus.Id)
+	jobSpec, err := h.dbService.GetJob(event.Requester, event.JobStatus.Id)
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to fetch job spec")
 		return
 	}
 
-	tasks, err := newJobBuilder(jobSpec).getTasks()
+	tasks, err := newJobBuilder(h.dbService, jobSpec).getTasks()
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return
 	}
 
-	err = database.CreateTasks(tasks)
+	err = h.dbService.CreateTasks(tasks)
 	if err != nil {
 		event.ErrCh <- err
 		return
 	}
 
 	// set the job state to STARTING
-	err = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
+	err = h.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to set job state to %s: %v", event.JobStatus.State, err)
 
@@ -221,14 +224,14 @@ func (h *handler) handleStart(event *JobEvent) {
 	resp, err := newNotifyClient(h.notifierEp).sendNotification(req)
 	if err != nil || resp.Status == pbNotify.Response_ERROR {
 		event.JobStatus.State = openapi.FAILED
-		_ = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
+		_ = h.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 
 		h.isDone <- true
 		return
 	}
 
 	event.JobStatus.State = openapi.DEPLOYING
-	_ = database.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
+	_ = h.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 }
 
 func (h *handler) handleStop(event *JobEvent) {
@@ -246,7 +249,7 @@ func (h *handler) cleanup() {
 	// 1. decommission compute resources if they are in use
 
 	// 2. wipe out tasks in task DB collection
-	err := database.DeleteTasks(h.jobId)
+	err := h.dbService.DeleteTasks(h.jobId)
 	if err != nil {
 		zap.S().Warnf("failed to delete tasks for job %s: %v", h.jobId, err)
 	}

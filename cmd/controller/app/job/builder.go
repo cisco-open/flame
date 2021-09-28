@@ -39,15 +39,19 @@ const (
 ////////////////////////////////////////////////////////////////////////////////
 
 type jobBuilder struct {
-	jobSpec openapi.JobSpec
+	dbService database.DBService
+	jobSpec   openapi.JobSpec
 
 	schema   openapi.DesignSchema
 	datasets []openapi.DatasetInfo
 	roleCode map[string][]byte
 }
 
-func newJobBuilder(jobSpec openapi.JobSpec) *jobBuilder {
-	return &jobBuilder{jobSpec: jobSpec, datasets: make([]openapi.DatasetInfo, 0)}
+func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec) *jobBuilder {
+	return &jobBuilder{
+		dbService: dbService,
+		jobSpec:   jobSpec, datasets: make([]openapi.DatasetInfo, 0),
+	}
 }
 
 func (b *jobBuilder) getTasks() ([]objects.Task, error) {
@@ -68,13 +72,13 @@ func (b *jobBuilder) setup() error {
 	spec := &b.jobSpec
 	userId, designId, codeVersion := spec.UserId, spec.DesignId, spec.CodeVersion
 
-	schema, err := database.GetDesignSchema(userId, designId, codeVersion)
+	schema, err := b.dbService.GetDesignSchema(userId, designId, codeVersion)
 	if err != nil {
 		return err
 	}
 	b.schema = schema
 
-	zippedCode, err := database.GetDesignCode(userId, designId, codeVersion)
+	zippedCode, err := b.dbService.GetDesignCode(userId, designId, codeVersion)
 	if err != nil {
 		return err
 	}
@@ -102,7 +106,7 @@ func (b *jobBuilder) setup() error {
 
 	// update datasets
 	for _, datasetId := range b.jobSpec.DatasetIds {
-		datasetInfo, err := database.GetDatasetById(datasetId)
+		datasetInfo, err := b.dbService.GetDatasetById(datasetId)
 		if err != nil {
 			return err
 		}

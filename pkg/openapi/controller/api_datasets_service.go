@@ -38,17 +38,20 @@ import (
 // This service should implement the business logic for every endpoint for the DatasetsApi API.
 // Include any external packages or services that will be required by this service.
 type DatasetsApiService struct {
+	dbService database.DBService
 }
 
 // NewDatasetsApiService creates a default api service
-func NewDatasetsApiService() openapi.DatasetsApiServicer {
-	return &DatasetsApiService{}
+func NewDatasetsApiService(dbService database.DBService) openapi.DatasetsApiServicer {
+	return &DatasetsApiService{
+		dbService: dbService,
+	}
 }
 
 // CreateDataset - Create meta info for a new dataset.
 func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	err := database.CreateDataset(user, datasetInfo)
+	err := s.dbService.CreateDataset(user, datasetInfo)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
 	}

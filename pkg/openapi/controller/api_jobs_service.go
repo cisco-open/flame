@@ -46,17 +46,21 @@ const (
 // This service should implement the business logic for every endpoint for the JobsApi API.
 // Include any external packages or services that will be required by this service.
 type JobsApiService struct {
+	dbService database.DBService
 	jobEventQ *job.EventQ
 }
 
 // NewJobsApiService creates a default api service
-func NewJobsApiService(jobEventQ *job.EventQ) openapi.JobsApiServicer {
-	return &JobsApiService{jobEventQ: jobEventQ}
+func NewJobsApiService(dbService database.DBService, jobEventQ *job.EventQ) openapi.JobsApiServicer {
+	return &JobsApiService{
+		dbService: dbService,
+		jobEventQ: jobEventQ,
+	}
 }
 
 // CreateJob - Create a new job specification
 func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	jobStatus, err := database.CreateJob(user, jobSpec)
+	jobStatus, err := s.dbService.CreateJob(user, jobSpec)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
 		zap.S().Debug(errMsg)
@@ -134,7 +138,7 @@ func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit i
 
 // GetTask - Get a job task for a given job and agent
 func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
-	taskMap, err := database.GetTask(jobId, agentId)
+	taskMap, err := s.dbService.GetTask(jobId, agentId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get task")
 	}

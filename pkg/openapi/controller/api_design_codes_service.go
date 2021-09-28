@@ -41,11 +41,14 @@ import (
 // This service should implement the business logic for every endpoint for the DesignCodesApi API.
 // Include any external packages or services that will be required by this service.
 type DesignCodesApiService struct {
+	dbService database.DBService
 }
 
 // NewDesignCodesApiService creates a default api service
-func NewDesignCodesApiService() openapi.DesignCodesApiServicer {
-	return &DesignCodesApiService{}
+func NewDesignCodesApiService(dbService database.DBService) openapi.DesignCodesApiServicer {
+	return &DesignCodesApiService{
+		dbService: dbService,
+	}
 }
 
 // CreateDesignCode - Upload a new design code
@@ -56,7 +59,7 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 	// Don't forget to close the temp file
 	defer fileData.Close()
 
-	err := database.CreateDesignCode(user, designId, fileName, fileVer, fileData)
+	err := s.dbService.CreateDesignCode(user, designId, fileName, fileVer, fileData)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new code: %v", err)
 	}
@@ -69,7 +72,7 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	version string) (openapi.ImplResponse, error) {
 	zap.S().Debugf("Received GetDesignCode Get request: %s | %s | %s", user, designId, version)
 
-	fileData, err := database.GetDesignCode(user, designId, version)
+	fileData, err := s.dbService.GetDesignCode(user, designId, version)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design code: %v", err)
 	}

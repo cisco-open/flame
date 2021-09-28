@@ -37,17 +37,20 @@ import (
 // This service should implement the business logic for every endpoint for the DesignSchemasApi API.
 // Include any external packages or services that will be required by this service.
 type DesignSchemasApiService struct {
+	dbService database.DBService
 }
 
 // NewDesignSchemasApiService creates a default api service
-func NewDesignSchemasApiService() openapi.DesignSchemasApiServicer {
-	return &DesignSchemasApiService{}
+func NewDesignSchemasApiService(dbService database.DBService) openapi.DesignSchemasApiServicer {
+	return &DesignSchemasApiService{
+		dbService: dbService,
+	}
 }
 
 // CreateDesignSchema - Update a design schema
 func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user string, designId string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
-	err := database.CreateDesignSchema(user, designId, designSchema)
+	err := s.dbService.CreateDesignSchema(user, designId, designSchema)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("insert design schema details request failed")
 	}
@@ -58,7 +61,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 // GetDesignSchema - Get a design schema owned by user
 func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
-	info, err := database.GetDesignSchema(user, designId, version)
+	info, err := s.dbService.GetDesignSchema(user, designId, version)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
 	}
@@ -67,7 +70,7 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 
 // GetDesignSchemas - Get all design schemas in a design
 func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	info, err := database.GetDesignSchemas(user, designId)
+	info, err := s.dbService.GetDesignSchemas(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
 	}
@@ -77,7 +80,7 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 // UpdateDesignSchema - Update a schema for a given design
 func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, version string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
-	err := database.UpdateDesignSchema(user, designId, version, designSchema)
+	err := s.dbService.UpdateDesignSchema(user, designId, version, designSchema)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("schema update request failed")
 	}

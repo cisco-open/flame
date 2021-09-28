@@ -51,8 +51,6 @@ type uniqueIndexInfo struct {
 	kv   map[string]int32
 }
 
-var mongoDB = &MongoService{}
-
 func NewMongoService(uri string) (*MongoService, error) {
 	// create the base context, the context in which your application runs
 	//https://www.mongodb.com/blog/post/quick-start-golang-mongodb-starting-and-setup
@@ -63,8 +61,7 @@ func NewMongoService(uri string) (*MongoService, error) {
 
 	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
 	if err != nil {
-		zap.S().Fatalf("error creating mongo client: %+v", err)
-		panic(err)
+		return nil, err
 	}
 
 	// add disconnect call here
@@ -78,18 +75,17 @@ func NewMongoService(uri string) (*MongoService, error) {
 	//}()
 
 	if err := client.Connect(ctx); err != nil {
-		zap.S().Fatalf("failed to connect to MongoDB: %+v", err)
-		panic(err)
+		return nil, err
 	}
 
 	// Ping the primary to check connection establishment
 	if err := client.Ping(ctx, readpref.Primary()); err != nil {
-		panic(err)
+		return nil, err
 	}
 	zap.S().Infof("Successfully connected to database and pinged")
 
 	db := client.Database(DatabaseName)
-	mongoDB = &MongoService{
+	mongoDB := &MongoService{
 		client:            client,
 		database:          db,
 		datasetCollection: db.Collection(DatasetCollection),

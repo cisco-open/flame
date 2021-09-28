@@ -31,6 +31,7 @@ type Controller struct {
 	dbUri      string
 	notifierEp string
 	restPort   string
+	dbService  database.DBService
 
 	jobEventQ *job.EventQ
 }
@@ -41,10 +42,17 @@ func NewController(dbUri string, notifierEp string, restPort string) (*Controlle
 		return nil, fmt.Errorf("failed to create a job event queue")
 	}
 
+	zap.S().Infof("Connecting to database at %s", dbUri)
+	dbService, err := database.NewDBService(dbUri)
+	if err != nil {
+		return nil, err
+	}
+
 	instance := &Controller{
 		dbUri:      dbUri,
 		notifierEp: notifierEp,
 		restPort:   restPort,
+		dbService:  dbService,
 
 		jobEventQ: jobEventQ,
 	}
@@ -53,13 +61,7 @@ func NewController(dbUri string, notifierEp string, restPort string) (*Controlle
 }
 
 func (c *Controller) Start() {
-	zap.S().Infof("Connecting to database at %s", c.dbUri)
-	err := database.NewDBService(c.dbUri)
-	if err != nil {
-		zap.S().Fatalf("Failed to connect to DB: %v", err)
-	}
-
-	jobMgr, err := job.NewManager(c.jobEventQ, c.notifierEp)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifierEp)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}
@@ -76,11 +78,11 @@ func (c *Controller) serveRestApi() {
 	zap.S().Infof("Staring controller... | Port: %s", c.restPort)
 
 	apiRouters := []openapi.Router{
-		openapi.NewDatasetsApiController(controller.NewDatasetsApiService()),
-		openapi.NewDesignsApiController(controller.NewDesignsApiService()),
-		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService()),
-		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService()),
-		openapi.NewJobsApiController(controller.NewJobsApiService(c.jobEventQ)),
+		openapi.NewDatasetsApiController(controller.NewDatasetsApiService(c.dbService)),
+		openapi.NewDesignsApiController(controller.NewDesignsApiService(c.dbService)),
+		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService(c.dbService)),
+		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService(c.dbService)),
+		openapi.NewJobsApiController(controller.NewJobsApiService(c.dbService, c.jobEventQ)),
 	}
 
 	router := openapi.NewRouter(apiRouters...)

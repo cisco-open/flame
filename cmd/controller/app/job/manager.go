@@ -18,9 +18,12 @@ package job
 import (
 	"fmt"
 	"sync"
+
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
 )
 
 type Manager struct {
+	dbService database.DBService
 	jobEventQ *EventQ
 
 	notifierEp string
@@ -29,12 +32,13 @@ type Manager struct {
 	mutexQ    *sync.Mutex
 }
 
-func NewManager(jobEventQ *EventQ, notifierEp string) (*Manager, error) {
+func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
 	}
 
 	manager := &Manager{
+		dbService: dbService,
 		jobEventQ: jobEventQ,
 
 		notifierEp: notifierEp,
@@ -54,7 +58,7 @@ func (mgr *Manager) Do() {
 		if !ok {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
-			jobHandler := NewHandler(event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ, mgr.notifierEp)
+			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ, mgr.notifierEp)
 			go jobHandler.Do()
 		}
 		eventQ.Enqueue(event)
