@@ -1,5 +1,5 @@
 all: build 
-.PHONY: build test push clean dep fmt local local_test
+.PHONY: build push clean dep fmt local test
 
 user := $(shell whoami)
 registry := containers.cisco.com/research
@@ -14,11 +14,8 @@ dep:
 fmt:
 	@go fmt ./...
 
-build: test
-	@docker build -f build/Dockerfile.dev --target build --tag ${uri} .
-
-test:
-	@docker build -f build/Dockerfile.dev --target test .
+build:
+	@docker build -f build/Dockerfile.dev --target golang-build --tag ${uri} .
 
 push: build
 	@docker image tag ${uri} ${registry}/${uri}
@@ -31,5 +28,5 @@ local: dep
 	@mkdir -p ./build/bin
 	@go build -o ./build/bin ./...
 
-local_test: dep
+test: dep
 	@go test -v ./...

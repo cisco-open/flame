@@ -1,14 +1,22 @@
-FROM golang:1.16.4-buster AS base
-
+FROM golang:1.16.4-buster AS golang-build
 WORKDIR /src
 ENV CGO_ENABLED=0
+RUN --mount=target=. \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go test -v ./...
 
-FROM base AS build
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -o /fledge/ ./...
 
-FROM base AS test
-RUN --mount=target=. \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go test -v ./...
+FROM python:3.9.7-buster AS python-build
+WORKDIR /src
+COPY ./lib/python /src
+RUN python3 setup.py bdist_wheel && cp dist/fledge-*.whl /tmp/
+
+FROM python:3.9.7-buster
+COPY --from=golang-build /fledge/* /usr/bin/
+
+# Install fledge python library
+COPY --from=python-build /tmp/*.whl /tmp/
+RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl

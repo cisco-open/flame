@@ -55,9 +55,8 @@ structured logging.
 	)
 */
 func InitZapLog(service string) *zap.Logger {
-	dirPath := filepath.Join("/var/log", ProjectName)
-	logPath := filepath.Join(dirPath, service+".log")
-	err := os.MkdirAll(dirPath, FilePerm0755)
+	logPath := filepath.Join(LogDirPath, service+".log")
+	err := os.MkdirAll(LogDirPath, FilePerm0755)
 	if err != nil {
 		fmt.Printf("Can't create directory: %v\n", err)
 		return nil

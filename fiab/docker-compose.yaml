@@ -12,13 +12,12 @@ services:
   notifier:
     image: 'fledge'
     container_name: 'fledge-notifier'
-    command: /fledge/notifier
+    command: /usr/bin/notifier
     ports:
       - '10101:10101'
     build:
       context: ../
       dockerfile: ./build/Dockerfile.dev
-      target: build
 
   controller:
     image: 'fledge'
@@ -28,7 +27,7 @@ services:
     # TODO: refactor controller code to retry connection in case of disconnection
     command: >
       bash -c "sleep 5 &&
-      /fledge/controller
+      /usr/bin/controller
       --db mongodb://fledge-db:27017
       --notifier fledge-notifier:10101"
     ports:
@@ -38,7 +37,7 @@ services:
   apiserver:
     image: 'fledge'
     container_name: 'fledge-apiserver'
-    command: /fledge/apiserver --controller fledge-controller:10102
+    command: /usr/bin/apiserver --controller fledge-controller:10102
     ports:
       - '10100:10100'
     depends_on: ['controller']
@@ -50,7 +49,7 @@ services:
     # to use in the t_payload collection in the DB
     environment:
       FLEDGE_AGENT_ID: f7973f5a9f16b722545d84b704e5f8be4f773a3b
-    command: /fledge/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
     depends_on: ['apiserver', 'notifier']

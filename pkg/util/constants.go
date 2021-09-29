@@ -68,4 +68,6 @@ const (
 
 	TaskConfigFile = "config"
 	TaskCodeFile   = "code.zip"
+
+	LogDirPath = "/var/log/" + ProjectName
 )

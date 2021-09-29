@@ -39,7 +39,7 @@ type AgentService struct {
 	notifierEp  string
 	name        string
 	id          string
-	nHandler    *NotifyHandler
+	tHandler    *taskHandler
 }
 
 func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
@@ -65,14 +65,14 @@ func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 		agentId = id
 	}
 
-	nHandler := newNotifyHandler(apiserverEp, notifierEp, name, agentId)
+	tHandler := newTaskHandler(apiserverEp, notifierEp, name, agentId)
 
 	agent := &AgentService{
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
 		name:        name,
 		id:          agentId,
-		nHandler:    nHandler,
+		tHandler:    tHandler,
 	}
 
 	return agent, nil
@@ -81,7 +81,7 @@ func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 func (agent *AgentService) Start() error {
 	zap.S().Infof("Starting %s... name: %s | id: %s", util.Agent, agent.name, agent.id)
 
-	agent.nHandler.start()
+	agent.tHandler.start()
 
 	err := agent.startAppServer()
 
