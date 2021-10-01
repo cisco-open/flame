@@ -1,25 +1,31 @@
 {
-    "broker": "mqtt.eclipseprojects.io",
+    "agentid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
     "backend": "mqtt",
-    "agent": "local",
-    "job": {
-	"id": "67890",
-	"name": "keras-mnist-job"
-    },
-    "role": "aggregator",
-    "realm": "us",
-    "channel": [
-	{
-	    "name": "param-channel",
-	    "pair": ["aggregator", "trainer"],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "us"
-		]
-	    }
-	}
+    "broker": "mqtt.eclipseprojects.io",
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "",
+                "value": null
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ]
+        }
     ],
-    "hyperparams": null,
-    "datasets": null
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5
+    },
+    "jobid": "624d9fc4339579",
+    "maxRunTime": 300,
+    "realm": "",
+    "role": "aggregator"
 }

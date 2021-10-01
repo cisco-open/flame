@@ -1,25 +1,32 @@
 {
-    "broker": "mqtt.eclipseprojects.io",
+    "agentid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
     "backend": "mqtt",
-    "agent": "local",
-    "job": {
-	"id": "67890",
-	"name": "keras-mnist-job"
-    },
-    "role": "trainer",
-    "realm": "us",
-    "channel": [
-	{
-	    "name": "param-channel",
-	    "pair": ["aggregator", "trainer"],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "us"
-		]
-	    }
-	}
+    "broker": "mqtt.eclipseprojects.io",
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "",
+                "value": null
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ]
+        }
     ],
-    "hyperparams": null,
-    "datasets": null
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5
+    },
+    "jobid": "624d9fc4339579",
+    "maxRunTime": 300,
+    "realm": "us|west",
+    "role": "trainer"
 }

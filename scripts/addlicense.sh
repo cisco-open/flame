@@ -6,4 +6,4 @@ go install github.com/google/addlicense@v1.0.0
 find .. -type f -name *.go -exec ${HOME}/go/bin/addlicense -f ../LICENSE '{}' +
 
 # add license for python files
-find .. -type f -name *.go -exec ${HOME}/go/bin/addlicense -f ../LICENSE '{}' +
+find .. -type f -name *.py -exec ${HOME}/go/bin/addlicense -f ../LICENSE '{}' +

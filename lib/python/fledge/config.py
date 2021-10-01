@@ -16,15 +16,17 @@
 import json
 import sys
 
-CONF_KEY_MQTT_BROKER = 'broker'
-CONF_KEY_BACKEND = 'backend'
 CONF_KEY_AGENT = 'agent'
-CONF_KEY_JOB = 'job'
-CONF_KEY_JOB_ID = 'id'
-CONF_KEY_JOB_NAME = 'name'
-CONF_KEY_ROLE = 'role'
+CONF_KEY_AGENT_ID = 'agentid'
+CONF_KEY_BACKEND = 'backend'
+CONF_KEY_CHANNEL = 'channels'
+CONF_KEY_DATASET = 'dataset'
+CONF_KEY_HYPERPARAMS = 'hyperparameters'
+CONF_KEY_JOB_ID = 'jobid'
+CONF_KEY_MAX_RUN_TIME = 'maxRunTime'
+CONF_KEY_MQTT_BROKER = 'broker'
 CONF_KEY_REALM = 'realm'
-CONF_KEY_CHANNEL = 'channel'
+CONF_KEY_ROLE = 'role'
 
 CONF_KEY_CHANNEL_NAME = 'name'
 CONF_KEY_CHANNEL_PAIR = 'pair'
@@ -39,22 +41,12 @@ BACKEND_TYPE_LOCAL = 'local'
 BACKEND_TYPE_P2P = 'p2p'
 BACKEND_TYPE_MQTT = 'mqtt'
 
-REALM_SEPARATOR = '.'
+REALM_SEPARATOR = '|'
 
 backend_types = [BACKEND_TYPE_LOCAL, BACKEND_TYPE_P2P, BACKEND_TYPE_MQTT]
 
 
 class Config(object):
-    class Job(object):
-        def __init__(self, json_data=None):
-            self.job_id = json_data[CONF_KEY_JOB_ID]
-            self.name = json_data[CONF_KEY_JOB_NAME]
-
-        def print(self):
-            print('\t--- job ---')
-            print(f'\t{CONF_KEY_JOB_ID}: {self.job_id}')
-            print(f'\t{CONF_KEY_JOB_NAME}: {self.name}')
-
     class Channel(object):
         class GroupBy(object):
             def __init__(self, json_data=None):
@@ -68,6 +60,9 @@ class Config(object):
                 self.value = json_data[CONF_KEY_CHANNEL_GROUPBY_VALUE]
 
             def groupable_value(self, realm=''):
+                if self.value is None:
+                    return GROUPBY_DEFAULT_GROUP
+
                 for entry in self.value:
                     # check if an entry is a prefix of realm in a dot-separated
                     # fashion; if so, then return the matching entry
@@ -113,13 +108,30 @@ class Config(object):
             json_data = json.load(f)
             f.close()
 
-        self.broker = json_data[CONF_KEY_MQTT_BROKER]
+        self.agent = 'local'
+        if CONF_KEY_AGENT in json_data:
+            self.agent = json_data[CONF_KEY_AGENT]
+
+        self.agent_id = json_data[CONF_KEY_AGENT_ID]
+
         self.backend = json_data[CONF_KEY_BACKEND]
         if not self.is_valid(self.backend, backend_types):
             sys.exit(f'not a vailid backend type: {self.backend}')
+        self.broker = json_data[CONF_KEY_MQTT_BROKER]
 
-        self.agent = json_data[CONF_KEY_AGENT]
-        self.job = Config.Job(json_data[CONF_KEY_JOB])
+        self.dataset = ''
+        if CONF_KEY_DATASET in json_data:
+            self.dataset = json_data[CONF_KEY_DATASET]
+
+        self.hyperparameters = None
+        if CONF_KEY_HYPERPARAMS in json_data:
+            self.hyperparameters = json_data[CONF_KEY_HYPERPARAMS]
+
+        self.max_run_time = 300
+        if CONF_KEY_MAX_RUN_TIME in json_data:
+            self.max_run_time = json_data[CONF_KEY_MAX_RUN_TIME]
+
+        self.job_id = json_data[CONF_KEY_JOB_ID]
         self.role = json_data[CONF_KEY_ROLE]
         self.realm = json_data[CONF_KEY_REALM]
         self.channels = {}
@@ -137,6 +149,6 @@ class Config(object):
         print(f'{CONF_KEY_AGENT}: {self.agent}')
         print(f'{CONF_KEY_ROLE}: {self.role}')
         print(f'{CONF_KEY_REALM}: {self.realm}')
-        self.job.print()
+        print(f'{CONF_KEY_JOBID}: {self.jobid}')
         for _, channel in self.channels.items():
             channel.print()

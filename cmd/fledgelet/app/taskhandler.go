@@ -41,6 +41,9 @@ const (
 	taskPyFile    = "main.py"
 	logFilePrefix = "task"
 	logFileExt    = "log"
+
+	keyAgentId = "agentid"
+	keyRole    = "role"
 )
 
 type taskHandler struct {
@@ -237,10 +240,40 @@ func (t *taskHandler) prepareTask(filePaths []string) error {
 		return fmt.Errorf("either %s or %s not found", util.TaskConfigFile, util.TaskCodeFile)
 	}
 
+	err = t.prepareConfig(configFilePath)
+	if err != nil {
+		return err
+	}
+
+	err = t.prepareCode(fileDataList)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *taskHandler) prepareConfig(configFilePath string) error {
 	// copy config file to work directory
 	input, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open config file %s: %v", configFilePath, err)
+	}
+
+	tmp := make(map[string]interface{})
+	err = json.Unmarshal(input, &tmp)
+	if err != nil {
+		return fmt.Errorf("failed to unmarhsal config data")
+	}
+	t.role = tmp[keyRole].(string)
+
+	// add agent id in the config
+	tmp[keyAgentId] = t.agentId
+
+	// marshall the updated config
+	input, err = json.Marshal(&tmp)
+	if err != nil {
+		return fmt.Errorf("failed to marhsal config data")
 	}
 
 	dstFilePath := filepath.Join(workDir, util.TaskConfigFile)
@@ -249,18 +282,10 @@ func (t *taskHandler) prepareTask(filePaths []string) error {
 		return fmt.Errorf("failed to copy config file: %v", err)
 	}
 
-	type tmpStruct struct {
-		Role string `json:"role"`
-	}
+	return nil
+}
 
-	tmp := tmpStruct{}
-
-	err = json.Unmarshal(input, &tmp)
-	if err != nil {
-		return fmt.Errorf("failed to parse role")
-	}
-	t.role = tmp.Role
-
+func (t *taskHandler) prepareCode(fileDataList []util.FileData) error {
 	// copy code files to work directory
 	for _, fileData := range fileDataList {
 		dirPath := filepath.Join(workDir, filepath.Dir(fileData.FullName))

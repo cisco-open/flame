@@ -17,7 +17,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='fledge',
-    version='0.0.1',
+    version='0.0.2',
     author='Myungjin Lee',
     author_email='myungjle@cisco.com',
     include_package_data=True,

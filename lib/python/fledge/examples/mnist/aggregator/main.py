@@ -16,21 +16,24 @@
 import time
 
 import numpy as np
+from fledge.channel_manager import ChannelManager
+from fledge.config import Config
 from tensorflow import keras
 from tensorflow.keras import layers
-
-from ....channel_manager import ChannelManager
 
 # keras mnist example from https://keras.io/examples/vision/mnist_convnet/
 
 
 class Aggregator(object):
-    def __init__(self, config_file: str, rounds=1):
+    def __init__(self, config: Config):
+        self.config = config
         self.cm = ChannelManager()
-        self.cm(config_file)
+        self.cm(config)
         self.cm.join('param-channel')
 
-        self._rounds = rounds
+        self._rounds = 5
+        if 'rounds' in self.config.hyperparameters:
+            self._rounds = self.config.hyperparameters['rounds']
 
     def prepare(self):
         # Model / data parameters
@@ -127,20 +130,16 @@ class Aggregator(object):
             i += 1
 
 
-# example cmd: python3 -m fledge.examples.mnist.aggregator.main --rounds 3
-# run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument(
-        '--rounds', type=int, default=1, help='number of training rounds'
-    )
+    parser.add_argument('config', nargs='?', default="./config.json")
 
     args = parser.parse_args()
 
-    aggregator = Aggregator(
-        'fledge/examples/mnist/aggregator/config.json',
-        args.rounds,
-    )
+    config = Config(args.config)
+    aggregator = Aggregator(config)
+
+    print("Starting aggregator...")
     aggregator.run()

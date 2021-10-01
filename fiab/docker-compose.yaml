@@ -42,9 +42,9 @@ services:
       - '10100:10100'
     depends_on: ['controller']
 
-  fledgelet:
+  fledgelet1:
     image: 'fledge'
-    container_name: 'fledgelet'
+    container_name: 'fledgelet1'
     # NOTE: update FLEDGE_AGENT_ID based on the payload
     # to use in the t_payload collection in the DB
     environment:
@@ -52,4 +52,28 @@ services:
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
+    depends_on: ['apiserver', 'notifier']
+
+  fledgelet2:
+    image: 'fledge'
+    container_name: 'fledgelet2'
+    # NOTE: update FLEDGE_AGENT_ID based on the payload
+    # to use in the t_payload collection in the DB
+    environment:
+      FLEDGE_AGENT_ID: 505f9fc483cf4df68a2409257b5fad7d3c580370
+    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    ports:
+      - '10104:10104'
+    depends_on: ['apiserver', 'notifier']
+
+  fledgelet3:
+    image: 'fledge'
+    container_name: 'fledgelet3'
+    # NOTE: update FLEDGE_AGENT_ID based on the payload
+    # to use in the t_payload collection in the DB
+    environment:
+      FLEDGE_AGENT_ID: 49d06b7526964db86cf37c70e8e0cdb6bd7aa742
+    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    ports:
+      - '10105:10105'
     depends_on: ['apiserver', 'notifier']

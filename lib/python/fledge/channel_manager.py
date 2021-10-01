@@ -19,9 +19,8 @@ import logging
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (
-    MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME, BackendEvent
-)
+from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
+                               BackendEvent)
 from .common.util import background_thread_loop, run_async
 from .config import BACKEND_TYPE_MQTT, Config
 from .registry_agents import registry_agent_provider
@@ -52,10 +51,11 @@ class ChannelManager(object):
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
-    def __call__(self, config_file: str):
-        self._config = Config(config_file)
-        self._job_id = self._config.job.job_id
+    def __call__(self, config: Config):
+        self._config = config
+        self._job_id = self._config.job_id
         self._role = self._config.role
+        self._agent_id = self._config.agent_id
 
         self._channels = {}
 
@@ -63,7 +63,9 @@ class ChannelManager(object):
             self._loop = loop
 
         self._backend = backend_provider.get(self._config.backend)
-        self._backend.configure(self._config.broker, self._job_id)
+        self._backend.configure(
+            self._config.broker, self._job_id, self._agent_id
+        )
         self._registry_agent = registry_agent_provider.get(self._config.agent)
 
         async def inner():
@@ -116,10 +118,10 @@ class ChannelManager(object):
         )
         self._backend.add_channel(self._channels[name])
 
+        self._backend.notify(name)
         # format: /fledge/<job_id>/<channel_name>/<groupby>/<role>/+
         topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}/{name}/{groupby}/{other}/+'
         self._backend.subscribe(topic)
-        self._backend.notify(name)
 
         return True
 
@@ -218,5 +220,5 @@ class ChannelManager(object):
             return False
 
     def cleanup(self):
-        for task in asyncio.Task.all_tasks(self._backend.loop()):
+        for task in asyncio.all_tasks(self._backend.loop()):
             task.cancel()

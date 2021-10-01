@@ -17,7 +17,7 @@ import asyncio
 import hashlib
 import logging
 import time
-import uuid
+from collections import deque
 from enum import IntEnum
 from typing import Tuple
 
@@ -87,8 +87,6 @@ class MqttBackend(AbstractBackend):
 
         self._channels = {}
         self._cleanup_waits = {}
-        self._id = str(uuid.uuid1())
-        self._mqtt_client = mqtt.Client(self._id, protocol=MQTTv5)
 
         with background_thread_loop() as loop:
             self._loop = loop
@@ -116,16 +114,20 @@ class MqttBackend(AbstractBackend):
 
             await asyncio.sleep(period)
 
-    def configure(self, broker: str, job_id: str):
+    def configure(self, broker: str, job_id: str, agent_id: str):
         self._last_payload_sig: dict[str, Tuple[str, float]] = {}
         self._msg_chunks: dict[str, ChunkStore] = {}
-        self._got_message = None
 
         self._broker = broker
         self._job_id = job_id
+        self._id = agent_id
+
+        self._mqtt_client = mqtt.Client(self._id, protocol=MQTTv5)
+
         self._health_check_topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}'
 
         async def _setup_mqtt_client():
+            _ = asyncio.create_task(self._rx_task())
 
             self._mqtt_client.on_connect = self.on_connect
             self._mqtt_client.on_message = self.on_message
@@ -139,8 +141,6 @@ class MqttBackend(AbstractBackend):
 
             self._mqtt_client.connect(self._broker)
             self._mqtt_client.subscribe(self._health_check_topic)
-
-            _ = asyncio.create_task(self._rx_task())
 
         coro = _setup_mqtt_client()
         _ = run_async(coro, self._loop, 1)
@@ -169,6 +169,7 @@ class MqttBackend(AbstractBackend):
         if not channel.has(msg.end_id):
             # this is the first time to see this end,
             # so let's notify my presence to the end
+            logger.debug('acknowledge notification')
             self.notify(msg.channel_name)
 
         await channel.add(msg.end_id)
@@ -193,15 +194,19 @@ class MqttBackend(AbstractBackend):
             await rxq.put(payload)
 
     async def _rx_task(self):
+        self._rx_deque = deque()
+        self._rx_deque.append(self._loop.create_future())
+
         while True:
-            self._got_message = self._loop.create_future()
-            message = await self._got_message
+            message = await self._rx_deque[0]
+            self._rx_deque.popleft()
+
             if message.topic == self._health_check_topic:
                 self._handle_health_message(message)
                 continue
 
             logger.debug(
-                f'topic: {message.topic}; paylod length: {len(message.payload)}'
+                f'_rx_task - topic: {message.topic}; len: {len(message.payload)}'
             )
 
             any_msg = Any().FromString(message.payload)
@@ -212,8 +217,6 @@ class MqttBackend(AbstractBackend):
                 await self._handle_data(any_msg)
             else:
                 logger.debug('unknown message type')
-
-            self._got_message = None
 
     def uid(self):
         '''
@@ -234,13 +237,15 @@ class MqttBackend(AbstractBackend):
         )
 
     def on_message(self, client, userdata, message):
-        if not self._got_message:
-            logger.debug(f'got unexpected message: {message}')
-        else:
-            logger.debug(
-                f'topic: {message.topic}; paylod len: {len(message.payload)}'
-            )
-            self._got_message.set_result(message)
+        logger.debug(
+            f'on_message - topic: {message.topic}; len: {len(message.payload)}'
+        )
+
+        idx = len(self._rx_deque) - 1
+        # set result at the end of the queue
+        self._rx_deque[idx].set_result(message)
+        # add one extra future in the queue
+        self._rx_deque.append(self._loop.create_future())
 
     def assemble_chunks(self, msg: msg_pb2.Data) -> Tuple[bytes, bool]:
         if msg.end_id not in self._msg_chunks:
@@ -260,10 +265,12 @@ class MqttBackend(AbstractBackend):
             return b'', False
 
     def subscribe(self, topic):
+        logger.debug(f'subscribe topic: {topic}')
         self._mqtt_client.subscribe(topic, qos=MqttQoS.EXACTLY_ONCE)
 
     def notify(self, channel_name):
         if channel_name not in self._channels:
+            logger.debug(f'channel {channel_name} not found')
             return False
 
         channel = self._channels[channel_name]
@@ -278,6 +285,7 @@ class MqttBackend(AbstractBackend):
         any.Pack(msg)
         payload = any.SerializeToString()
 
+        logger.debug(f'notify: publish topic: {topic}')
         self._mqtt_client.publish(topic, payload, qos=MqttQoS.EXACTLY_ONCE)
 
         return True

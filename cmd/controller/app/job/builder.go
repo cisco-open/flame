@@ -70,9 +70,9 @@ func (b *jobBuilder) getTasks() ([]objects.Task, error) {
 
 func (b *jobBuilder) setup() error {
 	spec := &b.jobSpec
-	userId, designId, codeVersion := spec.UserId, spec.DesignId, spec.CodeVersion
+	userId, designId, schemaVersion, codeVersion := spec.UserId, spec.DesignId, spec.SchemaVersion, spec.CodeVersion
 
-	schema, err := b.dbService.GetDesignSchema(userId, designId, codeVersion)
+	schema, err := b.dbService.GetDesignSchema(userId, designId, schemaVersion)
 	if err != nil {
 		return err
 	}

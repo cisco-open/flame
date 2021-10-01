@@ -14,7 +14,7 @@ WORKDIR /src
 COPY ./lib/python /src
 RUN python3 setup.py bdist_wheel && cp dist/fledge-*.whl /tmp/
 
-FROM python:3.9.7-buster
+FROM myungjinlee/mlpack:cpu
 COPY --from=golang-build /fledge/* /usr/bin/
 
 # Install fledge python library
