@@ -25,7 +25,7 @@ spec:
           - "--apiserver"
           - "{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
           - "--notifier"
-          -"{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
+          - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
 
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}
