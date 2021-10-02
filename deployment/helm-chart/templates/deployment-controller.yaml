@@ -17,6 +17,7 @@ spec:
       #   prometheus.io/port: "{{ .Values.metricsPort }}"
       #   prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: controller
       containers:
       - name: {{ .Values.servicename }}-controller
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
