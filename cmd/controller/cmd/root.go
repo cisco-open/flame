@@ -21,6 +21,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/deployer"
 	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
@@ -45,7 +46,12 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		instance, err := app.NewController(dbUri, notifier, port)
+		platform, err := flags.GetString("platform")
+		if err != nil {
+			return err
+		}
+
+		instance, err := app.NewController(dbUri, notifier, port, platform)
 		if err != nil {
 			fmt.Printf("Failed to create a new controller instance\n")
 			return nil
@@ -65,6 +71,9 @@ func init() {
 
 	defaultCtrlPort := fmt.Sprintf("%d", util.ControllerRestApiPort)
 	rootCmd.PersistentFlags().StringP("port", "p", defaultCtrlPort, "Port for controller's REST API service")
+
+	desc := fmt.Sprintf("deployment platform; options: [ %s | %s ]", deployer.K8S, deployer.DOCKER)
+	rootCmd.PersistentFlags().StringP("platform", "", deployer.K8S, desc)
 }
 
 func Execute() error {

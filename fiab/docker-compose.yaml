@@ -29,7 +29,8 @@ services:
       bash -c "sleep 5 &&
       /usr/bin/controller
       --db mongodb://fledge-db:27017
-      --notifier fledge-notifier:10101"
+      --notifier fledge-notifier:10101
+      --platform docker"
     ports:
       - '10102:10102'
     depends_on: ['database', 'notifier']

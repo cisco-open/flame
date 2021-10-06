@@ -1,0 +1,32 @@
+{{=<% %>=}}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Values.servicename }}-agent-<% agentId %>
+  namespace: '{{ .Release.Namespace }}'
+spec:
+  template:
+    # activeDeadlineSeconds: <% maxWaitTime %>
+    # ttlSecondsAfterFinished: 180 # supported from v1.21
+    spec:
+      containers:
+      - name: {{ .Values.servicename }}-agent-<% agentId %>
+        image: "{{ .Values.generalFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
+        command: ["/usr/bin/fledgelet"]
+        args:
+          - "--apiserver"
+          - "{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
+          - "--notifier"
+          - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
+
+        ports:
+        - containerPort: {{ .Values.componentPorts.agent }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.cpu }}
+            memory: {{ .Values.resources.memory }}
+        env:
+        - name: FLEDGE_AGENT_ID
+          value: <% agentId %>
+      restartPolicy: Never
+<%={{ }}=%>

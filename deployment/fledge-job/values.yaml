@@ -1,0 +1,13 @@
+generalFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
+dimage: fledge
+tagversion: 2020.12.01-master-817b0fb-128
+
+servicename: fledge
+componentPorts:
+  apiserver: "10100"
+  notifier: "10101"
+  agent: "10103"
+
+resources:
+  cpu: 200m
+  memory: 1Gi

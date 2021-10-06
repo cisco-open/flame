@@ -21,13 +21,12 @@ import (
 	"go.uber.org/zap"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
-	"helm.sh/helm/v3/pkg/kube"
+	"helm.sh/helm/v3/pkg/cli"
 )
 
 type K8sDeployer struct {
-	clusterName    string
-	namespace      string
-	kubeconfigPath string
+	clusterName string // Currently not in use
+	namespace   string
 
 	actionConfig action.Configuration
 }
@@ -36,19 +35,40 @@ func NewK8sDeployer() (*K8sDeployer, error) {
 	return &K8sDeployer{}, nil
 }
 
-func (deployer *K8sDeployer) Initialize(clusterName string, namespace string, kubeconfigPath string) error {
+func (deployer *K8sDeployer) getEnvSettings(namespace string) (*cli.EnvSettings, error) {
+	envLock.Lock()
+	defer envLock.Unlock()
+
+	err := os.Setenv("HELM_NAMEPSACE", namespace)
+	if err != nil {
+		return nil, err
+	}
+
+	envSettings := cli.New()
+	err = os.Unsetenv("HELM_NAMEPSACE")
+	if err != nil {
+		return nil, err
+	}
+
+	return envSettings, nil
+}
+
+func (deployer *K8sDeployer) Initialize(clusterName string, namespace string) error {
 	deployer.clusterName = clusterName
 	deployer.namespace = namespace
-	deployer.kubeconfigPath = kubeconfigPath
+
+	settings, err := deployer.getEnvSettings(namespace)
+	if err != nil {
+		return err
+	}
 
 	actionConfig := new(action.Configuration)
-	config := kube.GetConfig(deployer.kubeconfigPath, "", deployer.namespace)
 
 	logger := func(format string, v ...interface{}) {
 		zap.S().Debugf(format, v)
 	}
 
-	err := actionConfig.Init(config, deployer.namespace, os.Getenv("HELM_DRIVER"), logger)
+	err = actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), logger)
 	if err != nil {
 		return err
 	}

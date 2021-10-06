@@ -3,7 +3,11 @@ FROM fledge:base as base-build
 FROM containers.cisco.com/research/dl-docker:latest-cpu
 
 # Copy fledge binaries
-COPY --from=base-build /fledge/* /usr/bin/
+COPY --from=base-build /fledge/ /usr/bin/
+
+# Copy fledge job heml template
+RUN mkdir -p /fledge/deployment
+COPY --from=base-build /tmp/fledge-job/ /fledge/deployment/
 
 # Install fledge python library
 COPY --from=base-build /tmp/*.whl /tmp/

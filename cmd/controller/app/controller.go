@@ -31,12 +31,13 @@ type Controller struct {
 	dbUri      string
 	notifierEp string
 	restPort   string
+	platform   string
 	dbService  database.DBService
 
 	jobEventQ *job.EventQ
 }
 
-func NewController(dbUri string, notifierEp string, restPort string) (*Controller, error) {
+func NewController(dbUri string, notifierEp string, restPort string, platform string) (*Controller, error) {
 	jobEventQ := job.NewEventQ(0)
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("failed to create a job event queue")
@@ -52,6 +53,7 @@ func NewController(dbUri string, notifierEp string, restPort string) (*Controlle
 		dbUri:      dbUri,
 		notifierEp: notifierEp,
 		restPort:   restPort,
+		platform:   platform,
 		dbService:  dbService,
 
 		jobEventQ: jobEventQ,
@@ -61,7 +63,7 @@ func NewController(dbUri string, notifierEp string, restPort string) (*Controlle
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifierEp)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifierEp, c.platform)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

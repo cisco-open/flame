@@ -17,18 +17,31 @@ package job
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
+	"github.com/cbroglie/mustache"
 	"go.uber.org/zap"
 
 	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/deployer"
+	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
 	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
 	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
+	"wwwin-github.cisco.com/eti/fledge/pkg/util"
 )
 
 const (
 	jobStatusCheckDuration = 1 * time.Minute
+
+	deploymentDir         = "/" + util.ProjectName + "/deployment"
+	deploymentTemplateDir = deploymentDir + "/templates"
+
+	jobDeploymentFilePrefix = "job-agent"
+	jobTemplatePath         = deploymentDir + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
 )
 
 type handler struct {
@@ -38,10 +51,13 @@ type handler struct {
 	jobQueues  map[string]*EventQ
 	mu         *sync.Mutex
 	notifierEp string
+	platform   string
 
 	jobSpec openapi.JobSpec
 
 	startTime time.Time
+
+	tasks []objects.Task
 
 	// isDone is set in case where nothing can be done by a handler
 	// isDone should be set only once as its buffer size is 1
@@ -49,7 +65,7 @@ type handler struct {
 }
 
 func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifierEp string) *handler {
+	notifierEp string, platform string) *handler {
 	return &handler{
 		dbService:  dbService,
 		jobId:      jobId,
@@ -57,6 +73,8 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		jobQueues:  jobQueues,
 		mu:         mu,
 		notifierEp: notifierEp,
+		platform:   platform,
+		tasks:      make([]objects.Task, 0),
 		isDone:     make(chan bool, 1),
 	}
 }
@@ -203,6 +221,7 @@ func (h *handler) handleStart(event *JobEvent) {
 		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return
 	}
+	h.tasks = tasks
 
 	err = h.dbService.CreateTasks(tasks)
 	if err != nil {
@@ -224,24 +243,26 @@ func (h *handler) handleStart(event *JobEvent) {
 	// the job will be scheduled.
 	event.ErrCh <- nil
 
-	// TODO: spin up compute resources
-
-	req := &pbNotify.EventRequest{
-		Type:     pbNotify.EventType_START_JOB,
-		AgentIds: make([]string, 0),
-	}
-
-	for _, task := range tasks {
-		req.JobId = task.JobId
-		req.AgentIds = append(req.AgentIds, task.AgentId)
-	}
-
-	resp, err := newNotifyClient(h.notifierEp).sendNotification(req)
-	if err != nil || resp.Status == pbNotify.Response_ERROR {
+	setJobFailure := func() {
 		event.JobStatus.State = openapi.FAILED
 		_ = h.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 
 		h.isDone <- true
+	}
+
+	err = h.allocateComputes()
+	if err != nil {
+		zap.S().Debugf("Failed to allocate compute resources: %v", err)
+
+		setJobFailure()
+		return
+	}
+
+	err = h.notify(pbNotify.EventType_START_JOB)
+	if err != nil {
+		zap.S().Debugf("%v", err)
+
+		setJobFailure()
 		return
 	}
 
@@ -263,9 +284,91 @@ func (h *handler) cleanup() {
 	// TODO: implement step 1
 	// 1. decommission compute resources if they are in use
 
-	// 2. wipe out tasks in task DB collection
+	// 2.delete all the job resource specification files
+	_ = os.RemoveAll(deploymentTemplateDir)
+
+	// 3. wipe out tasks in task DB collection
 	err := h.dbService.DeleteTasks(h.jobId)
 	if err != nil {
 		zap.S().Warnf("failed to delete tasks for job %s: %v", h.jobId, err)
 	}
+}
+
+func (h *handler) notify(evtType pbNotify.EventType) error {
+	req := &pbNotify.EventRequest{
+		Type:     evtType,
+		AgentIds: make([]string, 0),
+	}
+
+	for _, task := range h.tasks {
+		req.JobId = task.JobId
+		req.AgentIds = append(req.AgentIds, task.AgentId)
+	}
+
+	resp, err := newNotifyClient(h.notifierEp).sendNotification(req)
+	if err != nil || resp.Status == pbNotify.Response_ERROR {
+		return fmt.Errorf("failed to notify - err: %v, status: %d", err, resp.Status)
+	}
+
+	return nil
+}
+
+func (h *handler) allocateComputes() error {
+	if err := os.MkdirAll(deploymentTemplateDir, util.FilePerm0644); err != nil {
+		errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
+		zap.S().Debugf(errMsg)
+
+		return fmt.Errorf(errMsg)
+	}
+
+	for _, task := range h.tasks {
+		context := map[string]string{
+			"agentId": task.AgentId,
+		}
+		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to render a template for agent %s: %v", task.AgentId, err)
+			zap.S().Debugf(errMsg)
+
+			return fmt.Errorf(errMsg)
+		}
+
+		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, task.AgentId)
+		deploymentFilePath := filepath.Join(deploymentTemplateDir, deploymentFileName)
+		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", task.AgentId, err)
+			zap.S().Debugf(errMsg)
+
+			return fmt.Errorf(errMsg)
+		}
+	}
+
+	// TODO: when multiple clusters are supported,
+	//       set platform dynamically based on the target cluster type
+	deployer, err := deployer.NewDeployer(h.platform)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
+		zap.S().Debugf(errMsg)
+
+		return fmt.Errorf(errMsg)
+	}
+
+	err = deployer.Initialize("", util.ProjectName)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
+		zap.S().Debugf(errMsg)
+
+		return fmt.Errorf(errMsg)
+	}
+
+	err = deployer.Install("job-"+h.jobId, deploymentDir)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
+		zap.S().Debugf(errMsg)
+
+		return fmt.Errorf(errMsg)
+	}
+
+	return nil
 }

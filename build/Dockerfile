@@ -51,6 +51,12 @@ RUN if [ "${STATIC_ANALYSIS}" = "sa" ] ; then \
 RUN mkdir -p /fledge
 RUN go build -o /fledge ./...
 
+# TODO: the following creates the template files in the docker image
+#       this needs to be added dynamically (e.g., via api and database)
+# copy helm template for running a job
+RUN mkdir -p /tmp/fledge-job
+COPY deployment/fledge-job/ /tmp/fledge-job/
+
 # Compile fledge python package
 RUN apt-get update && apt-get -y upgrade
 RUN apt-get install -y python3-setuptools python3-pip

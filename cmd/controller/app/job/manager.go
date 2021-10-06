@@ -27,12 +27,13 @@ type Manager struct {
 	jobEventQ *EventQ
 
 	notifierEp string
+	platform   string
 
 	jobQueues map[string]*EventQ
 	mutexQ    *sync.Mutex
 }
 
-func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp string) (*Manager, error) {
+func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp string, platform string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
 	}
@@ -42,6 +43,7 @@ func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp stri
 		jobEventQ: jobEventQ,
 
 		notifierEp: notifierEp,
+		platform:   platform,
 		jobQueues:  make(map[string]*EventQ),
 		mutexQ:     new(sync.Mutex),
 	}
@@ -58,7 +60,8 @@ func (mgr *Manager) Do() {
 		if !ok {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
-			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ, mgr.notifierEp)
+			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
+				mgr.notifierEp, mgr.platform)
 			go jobHandler.Do()
 		}
 		eventQ.Enqueue(event)

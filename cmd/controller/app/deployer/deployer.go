@@ -15,17 +15,25 @@
 
 package deployer
 
-import "fmt"
+import (
+	"fmt"
+	"sync"
+)
 
 const (
-	AKE = "ake" // Microsoft’s Azure Kubernetes Service
-	EKS = "eks" // Amazon’s Elastic Kubernetes Service
-	GKE = "gke" // Google’s Kubernetes Engine
-	K8S = "k8s" // vanilla kubernetes
+	AKE    = "ake"    // Microsoft’s Azure Kubernetes Service
+	EKS    = "eks"    // Amazon’s Elastic Kubernetes Service
+	GKE    = "gke"    // Google’s Kubernetes Engine
+	K8S    = "k8s"    // vanilla kubernetes
+	DOCKER = "docker" // docker or docker compose; only for local dev
+)
+
+var (
+	envLock sync.Mutex
 )
 
 type Deployer interface {
-	Initialize(string, string, string) error
+	Initialize(string, string) error
 	Install(string, string) error
 	Uninstall(string) error
 	List() error
@@ -36,6 +44,8 @@ func NewDeployer(platform string) (Deployer, error) {
 	switch platform {
 	case K8S:
 		return NewK8sDeployer()
+	case DOCKER:
+		return NewDockerDeployer()
 	case AKE:
 		fallthrough
 	case EKS:
