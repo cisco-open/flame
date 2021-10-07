@@ -9,6 +9,9 @@ RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
     go build -o /fledge/ ./...
 
+RUN mkdir -p /tmp/fledge-job
+COPY ./deployment/fledge-job/ /tmp/fledge-job/
+
 FROM python:3.9.7-buster AS python-build
 WORKDIR /src
 COPY ./lib/python /src
@@ -16,6 +19,9 @@ RUN python3 setup.py bdist_wheel && cp dist/fledge-*.whl /tmp/
 
 FROM myungjinlee/mlpack:cpu
 COPY --from=golang-build /fledge/* /usr/bin/
+
+RUN mkdir -p /fledge/deployment
+COPY --from=golang-build /tmp/fledge-job/ /fledge/deployment/
 
 # Install fledge python library
 COPY --from=python-build /tmp/*.whl /tmp/
