@@ -37,11 +37,15 @@ import (
 const (
 	jobStatusCheckDuration = 1 * time.Minute
 
-	deploymentDir         = "/" + util.ProjectName + "/deployment"
-	deploymentTemplateDir = deploymentDir + "/templates"
+	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
+	deploymentTemplateDir = "templates"
 
 	jobDeploymentFilePrefix = "job-agent"
-	jobTemplatePath         = deploymentDir + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
+	jobTemplatePath         = deploymentDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
+)
+
+var (
+	helmChartFiles = []string{"Chart.yaml", "values.yaml"}
 )
 
 type handler struct {
@@ -285,7 +289,8 @@ func (h *handler) cleanup() {
 	// 1. decommission compute resources if they are in use
 
 	// 2.delete all the job resource specification files
-	_ = os.RemoveAll(deploymentTemplateDir)
+	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
+	_ = os.RemoveAll(deploymentChartPath)
 
 	// 3. wipe out tasks in task DB collection
 	err := h.dbService.DeleteTasks(h.jobId)
@@ -314,11 +319,26 @@ func (h *handler) notify(evtType pbNotify.EventType) error {
 }
 
 func (h *handler) allocateComputes() error {
-	if err := os.MkdirAll(deploymentTemplateDir, util.FilePerm0644); err != nil {
+	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
+	targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
+	if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
 		errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
 		zap.S().Debugf(errMsg)
 
 		return fmt.Errorf(errMsg)
+	}
+
+	// Copy helm chart files to destination folder
+	for _, chartFile := range helmChartFiles {
+		srcFilePath := filepath.Join(deploymentDirPath, chartFile)
+		dstFilePath := filepath.Join(deploymentChartPath, chartFile)
+		err := util.CopyFile(srcFilePath, dstFilePath)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
+			zap.S().Debugf(errMsg)
+
+			return fmt.Errorf(errMsg)
+		}
 	}
 
 	for _, task := range h.tasks {
@@ -334,7 +354,7 @@ func (h *handler) allocateComputes() error {
 		}
 
 		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, task.AgentId)
-		deploymentFilePath := filepath.Join(deploymentTemplateDir, deploymentFileName)
+		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
 		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", task.AgentId, err)
@@ -362,7 +382,7 @@ func (h *handler) allocateComputes() error {
 		return fmt.Errorf(errMsg)
 	}
 
-	err = deployer.Install("job-"+h.jobId, deploymentDir)
+	err = deployer.Install("job-"+h.jobId, deploymentChartPath)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
 		zap.S().Debugf(errMsg)
