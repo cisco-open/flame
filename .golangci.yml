@@ -73,6 +73,7 @@ linters:
     - dogsled
     - dupl
     - exhaustive
+    - exportloopref
     - funlen
     - goconst
     - gocyclo
@@ -82,13 +83,11 @@ linters:
     - goprintffuncname
     - govet
     - ineffassign
-    - interfacer
     - lll
     - misspell
     - nakedret
     - nolintlint
     - rowserrcheck
-    - scopelint
     - staticcheck
     - structcheck
     - typecheck
@@ -123,13 +122,6 @@ issues:
     - linters:
         - gocritic
       text: "unnecessaryDefer:"
-
-    # TODO temporary rule, must be removed
-    # seems related to v0.34.1, but I was not able to reproduce locally,
-    # I was also not able to reproduce in the CI of a fork,
-    # only the golangci-lint CI seems to be affected by this invalid analysis.
-    - path: pkg/golinters/scopelint.go
-      text: 'directive `//nolint:interfacer` is unused for linter interfacer'
 
 run:
   skip-dirs:

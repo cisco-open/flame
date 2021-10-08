@@ -7,15 +7,15 @@ while a python library facilitates composition of ML workloads.
 
 ## Development setup
 
-Development has been mainly conducted under macOS environment. For now, this section describes how to set up
-a development environment in macOS.
+The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
+For now, this section describes how to set up a development environment in macOS.
 
 The tested version for golang is 1.16+ and the tested version for python is 3.8+.
 
 ```
 brew install go
 brew install golangci-lint
-git clone git@wwwin-github.cisco.com:eti/fledge.git
+git clone git@github.com:cisco/fledge.git
 ```
 
 ### To compile locally
@@ -28,5 +28,6 @@ make local
 ### To run a linter
 ```
 cd fledge
-./lint.sh
+go get ./...
+golangci-lint run -v
 ```
