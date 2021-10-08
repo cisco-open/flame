@@ -46,10 +46,14 @@ services:
   fledgelet1:
     image: 'fledge'
     container_name: 'fledgelet1'
-    # NOTE: update FLEDGE_AGENT_ID based on the payload
-    # to use in the t_payload collection in the DB
+    # NOTE: update FLEDGE_AGENT_ID based on the task
+    #       when a job is first executed, it will fail.
+    #       log into controller container and check its logs to identify agent IDs
+    #       docker exec -it fledge-controller bash
+    #       cat /var/log/fledge/controller.log | grep "Creating task for agent"
+    #       use the IDs returned from the above grep search
     environment:
-      FLEDGE_AGENT_ID: f7973f5a9f16b722545d84b704e5f8be4f773a3b
+      FLEDGE_AGENT_ID: a07f656a6cc4aa5618ff79f3a0af3a6ba46ce957
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
@@ -58,10 +62,9 @@ services:
   fledgelet2:
     image: 'fledge'
     container_name: 'fledgelet2'
-    # NOTE: update FLEDGE_AGENT_ID based on the payload
-    # to use in the t_payload collection in the DB
+    # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: 505f9fc483cf4df68a2409257b5fad7d3c580370
+      FLEDGE_AGENT_ID: 792f51acfcba8b3e6a068e3f761b0a931abeabdb
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10104:10104'
@@ -70,10 +73,9 @@ services:
   fledgelet3:
     image: 'fledge'
     container_name: 'fledgelet3'
-    # NOTE: update FLEDGE_AGENT_ID based on the payload
-    # to use in the t_payload collection in the DB
+    # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: 49d06b7526964db86cf37c70e8e0cdb6bd7aa742
+      FLEDGE_AGENT_ID: a2f0520404d18030b34a81352b33f2d625e7e1bc
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10105:10105'

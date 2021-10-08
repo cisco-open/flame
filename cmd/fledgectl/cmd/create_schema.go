@@ -22,19 +22,16 @@ import (
 )
 
 var createDesignSchemaCmd = &cobra.Command{
-	Use:   "schema",
+	Use:   "schema <schema json file>",
 	Short: "Create a new design schema",
 	Long:  "Command to create a new design schema",
-	Args:  cobra.RangeArgs(0, 0),
+	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		schemaPath := args[0]
+
 		flags := cmd.Flags()
 
 		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
-
-		schemaPath, err := flags.GetString("path")
 		if err != nil {
 			return err
 		}
@@ -52,7 +49,5 @@ var createDesignSchemaCmd = &cobra.Command{
 func init() {
 	createDesignSchemaCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
 	createDesignSchemaCmd.MarkPersistentFlagRequired("design")
-	createDesignSchemaCmd.PersistentFlags().StringP("path", "p", "", "Path to schema json file")
-	createDesignSchemaCmd.MarkPersistentFlagRequired("path")
 	createCmd.AddCommand(createDesignSchemaCmd)
 }

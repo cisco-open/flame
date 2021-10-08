@@ -48,6 +48,7 @@ func (db *MongoService) CreateTasks(tasks []objects.Task) error {
 			return fmt.Errorf("failed to marshal task: %v", err)
 		}
 
+		zap.S().Debugf("Creating task for agent %s", task.AgentId)
 		filter := bson.M{"jobid": task.JobId, "agentid": task.AgentId}
 		update := bson.M{
 			"$set": bson.M{
