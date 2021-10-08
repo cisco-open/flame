@@ -22,7 +22,7 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 /*

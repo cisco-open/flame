@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"strings"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database/mongodb"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/controller/app/database/mongodb"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 func NewDBService(uri string) (DBService, error) {

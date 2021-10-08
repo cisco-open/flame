@@ -63,7 +63,7 @@ setup(
         )
     ],
     scripts=[],
-    url='https://wwwin-github.cisco.com/eti/fledge/',
+    url='https://github.com/cisco/fledge/',
     license='LICENSE.txt',
     description=
     'This package is a python library to run ML workloads in the fledge system',

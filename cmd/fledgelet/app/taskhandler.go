@@ -30,9 +30,9 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
-	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
+	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 const (

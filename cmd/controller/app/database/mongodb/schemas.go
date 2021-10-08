@@ -23,8 +23,8 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 // CreateDesignSchema adds schema design to the design template information

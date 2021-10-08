@@ -26,8 +26,8 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbAgent "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	pbAgent "github.com/cisco/fledge/pkg/proto/go/agent"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 const (

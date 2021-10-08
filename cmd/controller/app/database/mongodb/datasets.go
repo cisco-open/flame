@@ -22,8 +22,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 // CreateDataset creates a new dataset entry in the database

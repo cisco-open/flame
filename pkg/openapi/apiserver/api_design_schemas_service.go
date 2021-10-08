@@ -31,9 +31,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 // DesignSchemasApiService is a service that implents the logic for the DesignSchemasApiServicer

@@ -18,7 +18,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources/dataset"
+	"github.com/cisco/fledge/cmd/fledgectl/resources/dataset"
 )
 
 var createDatasetCmd = &cobra.Command{

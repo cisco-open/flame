@@ -22,10 +22,10 @@ import (
 	"math"
 	"strings"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/cmd/controller/app/objects"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 const (

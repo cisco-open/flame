@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"sync"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/cmd/controller/app/database"
 )
 
 type Manager struct {

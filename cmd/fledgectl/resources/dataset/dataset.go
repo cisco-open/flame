@@ -20,9 +20,9 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
+	"github.com/cisco/fledge/cmd/fledgectl/resources"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/restapi"
 )
 
 type Params struct {

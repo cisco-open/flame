@@ -1,7 +1,7 @@
 syntax = "proto3";
 
 package grpcAgent;
-option go_package = "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/fledgelet";
+option go_package = "github.com/cisco/fledge/pkg/proto/go/fledgelet";
 
 import "google/protobuf/struct.proto";
 
