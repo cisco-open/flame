@@ -55,12 +55,21 @@ func Create(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
-	code, _, err := restapi.HTTPPost(url, datasetInfo, "application/json")
+	code, resp, err := restapi.HTTPPost(url, datasetInfo, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
 		fmt.Printf("Failed to create a dataset - code: %d, error: %v\n", code, err)
 		return nil
 	}
 
+	var datasetId string
+	err = json.Unmarshal(resp, &datasetId)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to parse resp message: %v", err)
+		return nil
+	}
+
 	fmt.Println("New dataset created successfully")
+	fmt.Printf("\tdataset ID: %s\n", datasetId)
+
 	return nil
 }

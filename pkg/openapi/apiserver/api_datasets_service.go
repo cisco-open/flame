@@ -60,7 +60,7 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
-	code, _, err := restapi.HTTPPost(url, datasetInfo, "application/json")
+	code, resp, err := restapi.HTTPPost(url, datasetInfo, "application/json")
 
 	// response to the user
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 		return openapi.Response(code, nil), err
 	}
 
-	return openapi.Response(http.StatusCreated, nil), nil
+	return openapi.Response(http.StatusCreated, string(resp)), nil
 }
 
 // GetAllDatasets - Get the meta info on all the datasets

@@ -27,7 +27,7 @@ import (
 )
 
 // CreateDataset creates a new dataset entry in the database
-func (db *MongoService) CreateDataset(userId string, dataset openapi.DatasetInfo) error {
+func (db *MongoService) CreateDataset(userId string, dataset openapi.DatasetInfo) (string, error) {
 	// override user in the DatasetInfo struct to prevent wrong user name is recorded in the db
 	dataset.UserId = userId
 
@@ -36,18 +36,20 @@ func (db *MongoService) CreateDataset(userId string, dataset openapi.DatasetInfo
 		err = ErrorCheck(err)
 		zap.S().Errorf("Failed to create new dataset: %v", err)
 
-		return err
+		return "", err
 	}
 
 	err = db.setDatasetId(result.InsertedID.(primitive.ObjectID))
 	if err != nil {
 		zap.S().Errorf("Failed to set Id: %v", err)
-		return err
+		return "", err
 	}
+
+	dataset.Id = GetStringID(result.InsertedID.(primitive.ObjectID))
 
 	zap.S().Debugf("New dataset for user: %s inserted with ID: %s", userId, dataset.Id)
 
-	return nil
+	return dataset.Id, nil
 }
 
 func (db *MongoService) setDatasetId(docId primitive.ObjectID) error {

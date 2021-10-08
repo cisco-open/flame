@@ -51,12 +51,12 @@ func NewDatasetsApiService(dbService database.DBService) openapi.DatasetsApiServ
 // CreateDataset - Create meta info for a new dataset.
 func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	err := s.dbService.CreateDataset(user, datasetInfo)
+	datasetId, err := s.dbService.CreateDataset(user, datasetInfo)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
 	}
 
-	return openapi.Response(http.StatusCreated, nil), nil
+	return openapi.Response(http.StatusCreated, datasetId), nil
 }
 
 // GetAllDatasets - Get the meta info on all the datasets

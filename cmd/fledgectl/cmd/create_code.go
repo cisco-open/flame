@@ -22,19 +22,15 @@ import (
 )
 
 var createDesignCodeCmd = &cobra.Command{
-	Use:   "code",
+	Use:   "code <zipped code file>",
 	Short: "Create a new ML code for a design",
 	Long:  "Command to create a new ML code for a design",
-	Args:  cobra.RangeArgs(0, 0),
+	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		codePath := args[0]
 		flags := cmd.Flags()
 
 		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
-
-		codePath, err := flags.GetString("path")
 		if err != nil {
 			return err
 		}
@@ -53,7 +49,5 @@ var createDesignCodeCmd = &cobra.Command{
 func init() {
 	createDesignCodeCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
 	createDesignCodeCmd.MarkPersistentFlagRequired("design")
-	createDesignCodeCmd.PersistentFlags().StringP("path", "p", "", "Path to a zipped ML code file")
-	createDesignCodeCmd.MarkPersistentFlagRequired("path")
 	createCmd.AddCommand(createDesignCodeCmd)
 }

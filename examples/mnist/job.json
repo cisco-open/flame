@@ -1,10 +1,10 @@
 {
-    "designId": "mnist-test",
+    "designId": "mnist",
     "schemaVersion": "1",
     "codeVersion": "1",
     "datasetIds" : [
-	"613abab241d0aea976a6e00f",
-	"613abab241d0aea976a6e00f"
+	"61609290fa724deafdb2a4fa",
+	"61609290fa724deafdb2a4fa"
     ],
     "priority": "low",
     
