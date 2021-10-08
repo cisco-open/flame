@@ -95,6 +95,12 @@ func (c *JobsApiController) Routes() Routes {
 			"/{user}/jobs/{jobId}/status",
 			c.UpdateJobStatus,
 		},
+		{
+			"UpdateTaskStatus",
+			strings.ToUpper("Put"),
+			"/jobs/{jobId}/{agentId}/task/status",
+			c.UpdateTaskStatus,
+		},
 	}
 }
 
@@ -285,6 +291,28 @@ func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	result, err := c.service.UpdateJobStatus(r.Context(), user, jobId, *jobStatus)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// UpdateTaskStatus - Update the status of a task
+func (c *JobsApiController) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	jobId := params["jobId"]
+
+	agentId := params["agentId"]
+
+	taskStatus := &TaskStatus{}
+	if err := json.NewDecoder(r.Body).Decode(&taskStatus); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+	result, err := c.service.UpdateTaskStatus(r.Context(), jobId, agentId, *taskStatus)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

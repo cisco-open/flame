@@ -18,8 +18,8 @@ package job
 import (
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/stretchr/testify/assert"
 )
 
 var (

@@ -30,6 +30,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
+	"github.com/cisco/fledge/pkg/openapi"
 	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 	"github.com/cisco/fledge/pkg/restapi"
 	"github.com/cisco/fledge/pkg/util"
@@ -50,12 +51,16 @@ type taskHandler struct {
 	apiserverEp string
 	notifierEp  string
 	name        string
+	jobId       string
 	agentId     string
 
 	stream pbNotify.EventRoute_GetEventClient
 
 	// role of the task given to fledgelet
 	role string
+
+	state  openapi.JobState
+	cancel context.CancelFunc
 }
 
 func newTaskHandler(apiserverEp string, notifierEp string, name string, agentId string) *taskHandler {
@@ -64,6 +69,7 @@ func newTaskHandler(apiserverEp string, notifierEp string, name string, agentId 
 		notifierEp:  notifierEp,
 		name:        name,
 		agentId:     agentId,
+		state:       openapi.READY,
 	}
 }
 
@@ -156,7 +162,14 @@ func (t *taskHandler) dealWith(in *pbNotify.Event) {
 func (t *taskHandler) startJob(jobId string) {
 	zap.S().Infof("Received start job request on job %s", jobId)
 
-	filePaths, err := t.getTask(jobId)
+	if t.state == openapi.RUNNING {
+		zap.S().Infof("Task is already running job %s", jobId)
+		return
+	}
+	// assign job ID to task handler
+	t.jobId = jobId
+
+	filePaths, err := t.getTask()
 	if err != nil {
 		zap.S().Warnf("Failed to download payload: %v", err)
 		return
@@ -168,15 +181,15 @@ func (t *taskHandler) startJob(jobId string) {
 		return
 	}
 
-	go t.runTask(jobId)
+	go t.runTask()
 
 	// TODO: implement updateTaskStatus method
 }
 
-func (t *taskHandler) getTask(jobId string) ([]string, error) {
+func (t *taskHandler) getTask() ([]string, error) {
 	// construct URL
 	uriMap := map[string]string{
-		"jobId":   jobId,
+		"jobId":   t.jobId,
 		"agentId": t.agentId,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.GetTaskEndpoint, uriMap)
@@ -305,7 +318,22 @@ func (t *taskHandler) prepareCode(fileDataList []util.FileData) error {
 }
 
 func (t *taskHandler) stopJob(jobId string) {
-	zap.S().Infof("not yet implemented; received stop job request on job %s", jobId)
+	if t.jobId != jobId {
+		zap.S().Warnf("stop request on a wrong job %s", jobId)
+		return
+	}
+
+	if t.state != openapi.RUNNING {
+		zap.S().Warnf("job  %s is not in a running state", jobId)
+		return
+	}
+
+	if t.cancel == nil {
+		zap.S().Warnf("cancel function not specified for job %s", jobId)
+		return
+	}
+
+	t.cancel()
 }
 
 func (t *taskHandler) updateJob(jobId string) (string, error) {
@@ -313,15 +341,19 @@ func (t *taskHandler) updateJob(jobId string) (string, error) {
 	return "", nil
 }
 
-func (t *taskHandler) runTask(jobId string) {
+func (t *taskHandler) runTask() {
 	taskFilePath := filepath.Join(workDir, t.role, taskPyFile)
 	configFilePath := filepath.Join(workDir, util.TaskConfigFile)
 
+	ctx, cacnel := context.WithCancel(context.Background())
+	defer cacnel()
+	t.cancel = cacnel
+
 	// TODO: run the task in different user group with less privilege
-	cmd := exec.Command(pythonBin, taskFilePath, configFilePath)
+	cmd := exec.CommandContext(ctx, pythonBin, taskFilePath, configFilePath)
 	zap.S().Debugf("Running task with command: %v", cmd)
 
-	logFileName := fmt.Sprintf("%s-%s.%s", logFilePrefix, jobId, logFileExt)
+	logFileName := fmt.Sprintf("%s-%s.%s", logFilePrefix, t.jobId, logFileExt)
 	logFilePath := filepath.Join(util.LogDirPath, logFileName)
 	file, err := os.Create(logFilePath)
 	if err != nil {
@@ -336,8 +368,47 @@ func (t *taskHandler) runTask(jobId string) {
 	err = cmd.Start()
 	if err != nil {
 		zap.S().Errorf("Failed to start task: %v", err)
+		t.updateTaskStatus(openapi.FAILED)
 		return
 	}
 
-	zap.S().Infof("Started task for job %s successfully", jobId)
+	zap.S().Infof("Started task for job %s successfully", t.jobId)
+	t.updateTaskStatus(openapi.RUNNING)
+
+	err = cmd.Wait()
+	if err != nil {
+		if ctx.Err() == context.Canceled {
+			// cancel() function was called
+			zap.S().Infof("Task execution canceled for job %s: %v", t.jobId, err)
+			t.updateTaskStatus(openapi.TERMINATED)
+		} else {
+			zap.S().Infof("Task execution failed for job %s: %v", t.jobId, err)
+			t.updateTaskStatus(openapi.FAILED)
+		}
+	} else {
+		zap.S().Infof("Task execution successful for job %s", t.jobId)
+		t.updateTaskStatus(openapi.COMPLETED)
+	}
+}
+
+func (t *taskHandler) updateTaskStatus(state openapi.JobState) {
+	// update state in the task handler
+	t.state = state
+
+	// construct URL
+	uriMap := map[string]string{
+		"jobId":   t.jobId,
+		"agentId": t.agentId,
+	}
+	url := restapi.CreateURL(t.apiserverEp, restapi.UpdateTaskStatusEndPoint, uriMap)
+
+	taskStatus := openapi.TaskStatus{
+		State: state,
+	}
+
+	code, _, err := restapi.HTTPPut(url, taskStatus, "application/json")
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		zap.S().Warnf("Failed to update a task status - code: %d, error: %v\n", code, err)
+		return
+	}
 }

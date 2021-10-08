@@ -212,3 +212,28 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 
 	return openapi.Response(http.StatusOK, nil), nil
 }
+
+// UpdateTaskStatus - Update the status of a task
+func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, agentId string,
+	taskStatus openapi.TaskStatus) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Task status update request received for job %s | agent: %s", jobId, agentId)
+
+	// create controller request
+	uriMap := map[string]string{
+		"jobId":   jobId,
+		"agentId": agentId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateTaskStatusEndPoint, uriMap)
+
+	// send put request
+	code, _, err := restapi.HTTPPut(url, taskStatus, "application/json")
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("agent status update request failed")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, nil), nil
+}

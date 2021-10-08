@@ -188,3 +188,16 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 		return openapi.Response(http.StatusOK, nil), nil
 	}
 }
+
+// UpdateTaskStatus - Update the status of a task
+func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, agentId string,
+	taskStatus openapi.TaskStatus) (openapi.ImplResponse, error) {
+	err := s.dbService.UpdateTaskStatus(jobId, agentId, taskStatus)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to update a task status: %v", err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusCreated, nil), nil
+}

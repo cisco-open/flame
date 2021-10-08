@@ -81,6 +81,7 @@ type JobsApiRouter interface {
 	GetTask(http.ResponseWriter, *http.Request)
 	UpdateJob(http.ResponseWriter, *http.Request)
 	UpdateJobStatus(http.ResponseWriter, *http.Request)
+	UpdateTaskStatus(http.ResponseWriter, *http.Request)
 }
 
 // DatasetsApiServicer defines the api actions for the DatasetsApi service
@@ -139,4 +140,5 @@ type JobsApiServicer interface {
 	GetTask(context.Context, string, string) (ImplResponse, error)
 	UpdateJob(context.Context, string, string, JobSpec) (ImplResponse, error)
 	UpdateJobStatus(context.Context, string, string, JobStatus) (ImplResponse, error)
+	UpdateTaskStatus(context.Context, string, string, TaskStatus) (ImplResponse, error)
 }

@@ -65,7 +65,8 @@ const (
 	UpdateJobStatusEndPoint = "UPDATE_JOB_STATUS"
 
 	// Keys for task
-	GetTaskEndpoint = "GET_TASK"
+	GetTaskEndpoint          = "GET_TASK"
+	UpdateTaskStatusEndPoint = "UPDATE_TASK_STATUS"
 )
 
 var URI = map[string]string{
@@ -101,7 +102,8 @@ var URI = map[string]string{
 	UpdateJobStatusEndPoint: "/{{.user}}/jobs/{{.jobId}}/status",
 
 	// Task
-	GetTaskEndpoint: "/jobs/{{.jobId}}/{{.agentId}}/task",
+	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.agentId}}/task",
+	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.agentId}}/task/status",
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {

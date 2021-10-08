@@ -323,3 +323,46 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+
+/jobs/{jobId}/{agentId}/task/status:
+  ########################################
+  # Update task status from fledgelet agent
+  ########################################
+  put:
+    operationId: updateTaskStatus
+    summary: Update the status of a task
+    tags:
+      - jobs
+    parameters:
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: agentId
+        description: agent id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/TaskStatus'
+    responses:
+      '200':
+        description: Updated status
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
