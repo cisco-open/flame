@@ -26,12 +26,12 @@ import (
 	"github.com/cbroglie/mustache"
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/deployer"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/objects"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/cmd/controller/app/deployer"
+	"github.com/cisco/fledge/cmd/controller/app/objects"
+	"github.com/cisco/fledge/pkg/openapi"
+	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 const (

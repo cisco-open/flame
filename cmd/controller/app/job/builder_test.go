@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/openapi"
 )
 
 var (

@@ -22,7 +22,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
+	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 )
 
 // notifyClient implements a notification client that sends a notification request

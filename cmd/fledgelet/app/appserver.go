@@ -20,7 +20,7 @@ import (
 
 	"go.uber.org/zap"
 
-	pbAgent "wwwin-github.cisco.com/eti/fledge/pkg/proto/go/agent"
+	pbAgent "github.com/cisco/fledge/pkg/proto/go/agent"
 )
 
 // appServer implement the fledgelet grpc service and include - proto unimplemented method and

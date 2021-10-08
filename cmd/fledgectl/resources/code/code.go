@@ -26,9 +26,9 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources"
-	"wwwin-github.cisco.com/eti/fledge/pkg/restapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/fledgectl/resources"
+	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 type Params struct {

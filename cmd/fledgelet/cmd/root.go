@@ -21,8 +21,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/fledgelet/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/fledgelet/app"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 const (

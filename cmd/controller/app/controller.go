@@ -21,10 +21,10 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/job"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi/controller"
+	"github.com/cisco/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/cmd/controller/app/job"
+	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/openapi/controller"
 )
 
 type Controller struct {

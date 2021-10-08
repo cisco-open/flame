@@ -18,7 +18,7 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/fledgectl/resources/code"
+	"github.com/cisco/fledge/cmd/fledgectl/resources/code"
 )
 
 var getDesignCodeCmd = &cobra.Command{

@@ -1,4 +1,4 @@
-module wwwin-github.cisco.com/eti/fledge
+module github.com/cisco/fledge
 
 go 1.16
 

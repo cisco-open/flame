@@ -20,8 +20,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/cmd"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/apiserver/cmd"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 func main() {

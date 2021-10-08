@@ -18,7 +18,7 @@ package job
 import (
 	"fmt"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/openapi"
 )
 
 const (

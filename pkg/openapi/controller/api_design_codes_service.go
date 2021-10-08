@@ -33,8 +33,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/database"
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"github.com/cisco/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/pkg/openapi"
 )
 
 // DesignCodesApiService is a service that implents the logic for the DesignCodesApiServicer

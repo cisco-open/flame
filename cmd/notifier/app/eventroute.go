@@ -20,7 +20,7 @@ import (
 
 	"go.uber.org/zap"
 
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
+	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 )
 
 // GetEvent is called by the client to subscribe to the notification service.

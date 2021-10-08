@@ -20,8 +20,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/apiserver/app"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/apiserver/app"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 /*

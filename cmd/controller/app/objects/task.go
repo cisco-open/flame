@@ -19,7 +19,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 
-	"wwwin-github.cisco.com/eti/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/openapi"
 )
 
 type Task struct {

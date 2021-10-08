@@ -20,9 +20,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app"
-	"wwwin-github.cisco.com/eti/fledge/cmd/controller/app/deployer"
-	"wwwin-github.cisco.com/eti/fledge/pkg/util"
+	"github.com/cisco/fledge/cmd/controller/app"
+	"github.com/cisco/fledge/cmd/controller/app/deployer"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 var rootCmd = &cobra.Command{

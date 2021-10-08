@@ -21,7 +21,7 @@ import (
 
 	"go.uber.org/zap"
 
-	pbNotify "wwwin-github.cisco.com/eti/fledge/pkg/proto/notification"
+	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 )
 
 func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventRequest) (*pbNotify.Response, error) {
