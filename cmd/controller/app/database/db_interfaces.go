@@ -67,4 +67,5 @@ type TaskService interface {
 	CreateTasks([]objects.Task) error
 	DeleteTasks(string) error
 	GetTask(string, string) (map[string][]byte, error)
+	UpdateTaskStatus(string, string, openapi.TaskStatus) error
 }

@@ -122,3 +122,16 @@ Task:
   required:
     - config
     - code
+
+########################################
+# Task Status
+########################################
+TaskStatus:
+  description: Task status
+  type: object
+  properties:
+    state:
+      $ref: '#/components/schemas/JobState' # reuse job state
+    timestamp:
+      type: string
+      format: date-time
