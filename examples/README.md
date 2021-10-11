@@ -2,7 +2,7 @@
 
 This directory contains a few sample examples to explore functionality and workflow of fledge.
 
-The examples here can be executed within [fiab](../../fiab/README.md) environment.
+The examples here can be executed within [fiab](../fiab/README.md) environment.
 
 ## Setup
 `config.yaml` is a configuration file for local fiab environment. Place it in `$HOME/.fledge` folder.
