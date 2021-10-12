@@ -23,8 +23,8 @@ Pull requests are the best way to propose changes to the codebase. We actively w
 In short, when you submit code changes, your submissions are understood to be under the same [Apache License](LICENSE) that covers the project.
 Feel free to contact the maintainers if that's a concern.
 
-## Report bugs using Github's [issues]()
-We use GitHub issues to track public bugs. Report a bug by [opening a new issue](). 
+## Report bugs using Github's [issues](https://github.com/cisco/fledge/issues)
+We use GitHub issues to track public bugs. Report a bug by [opening a new issue](https://github.com/cisco/fledge/issues).
 
 ## Write bug reports with detail, background, and sample code
 
