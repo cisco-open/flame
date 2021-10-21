@@ -54,18 +54,18 @@ func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec) *jobBu
 	}
 }
 
-func (b *jobBuilder) getTasks() ([]objects.Task, error) {
+func (b *jobBuilder) getTasks() ([]objects.Task, []string, error) {
 	err := b.setup()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	tasks, err := b.build()
+	tasks, roles, err := b.build()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return tasks, nil
+	return tasks, roles, nil
 }
 
 func (b *jobBuilder) setup() error {
@@ -117,33 +117,38 @@ func (b *jobBuilder) setup() error {
 	return nil
 }
 
-func (b *jobBuilder) build() ([]objects.Task, error) {
+func (b *jobBuilder) build() ([]objects.Task, []string, error) {
 	tasks := make([]objects.Task, 0)
+	roles := make([]string, 0)
 
 	dataRoles, templates := b.getTaskTemplates()
 	if err := b.preCheck(dataRoles, templates); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	for _, roleName := range dataRoles {
 		tmpl, ok := templates[roleName]
 		if !ok {
-			return nil, fmt.Errorf("failed to locate template for role %s", roleName)
+			return nil, nil, fmt.Errorf("failed to locate template for role %s", roleName)
 		}
 
 		populated, err := tmpl.walk("", templates, b.datasets)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 
 		tasks = append(tasks, populated...)
 	}
 
 	if err := b.postCheck(dataRoles, templates); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return tasks, nil
+	for _, template := range templates {
+		roles = append(roles, template.Role)
+	}
+
+	return tasks, roles, nil
 }
 
 func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
@@ -174,6 +179,7 @@ func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 			dataRoles = append(dataRoles, role.Name)
 		}
 		template.ZippedCode = b.roleCode[role.Name]
+		template.Role = role.Name
 
 		templates[role.Name] = template
 	}

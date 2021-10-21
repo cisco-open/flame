@@ -7,15 +7,15 @@ The examples here can be executed within [fiab](../fiab/README.md) environment.
 ## Setup
 `config.yaml` is a configuration file for local fiab environment. Place it in `$HOME/.fledge` folder.
 
-## CLI tool: fledgelet
-To interact with the fledge system, there is a command line (CLI) tool called `fledgelet`.
+## CLI tool: fledgectl
+To interact with the fledge system, there is a command line (CLI) tool called `fledgectl`.
 
 Note that `fledgectl` produces logs in `/var/log/fledge/fledgectl.log`.
 Therefore, make sure that `fledgectl` is executed as root or modify access permission for `/var/log/fledge` appropriately.
 We assume that `fledgectl` is in a path specified in PATH environment variable.
 When the binary is created by `make local`, the tool is stored in `build/bin`.
 
-The following shows several key commands of `fledgelet`.
+The following shows several key commands of `fledgectl`.
 
 ### Basic commands
 To see the help menu, run `fledgectl` or `fledgectl -h`.

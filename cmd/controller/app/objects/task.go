@@ -25,6 +25,7 @@ import (
 type Task struct {
 	JobId   string `json:"jobid"`
 	AgentId string `json:"agentid"`
+	Role    string `json:"role"`
 
 	// the following are config and code
 	JobConfig  JobConfig
