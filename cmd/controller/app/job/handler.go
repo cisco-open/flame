@@ -62,6 +62,7 @@ type handler struct {
 	startTime time.Time
 
 	tasks []objects.Task
+	roles []string
 
 	// isDone is set in case where nothing can be done by a handler
 	// isDone should be set only once as its buffer size is 1
@@ -79,6 +80,7 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		notifierEp: notifierEp,
 		platform:   platform,
 		tasks:      make([]objects.Task, 0),
+		roles:      make([]string, 0),
 		isDone:     make(chan bool, 1),
 	}
 }
@@ -119,14 +121,11 @@ func (h *handler) Do() {
 // If the job is in completed/failed/terminated state, this method returns true (meaning that the thread can be finished).
 // It also returns true if the maximum wait time exceeds. Otherwise, it returns false.
 func (h *handler) checkProgress() {
-	zap.S().Infof("not yet fully implemented")
-
 	// if the job didn't finish after max wait time, we finish the job handling/monitoring work
 	if h.startTime.Add(time.Duration(h.jobSpec.MaxRunTime) * time.Second).Before(time.Now()) {
 		zap.S().Infof("Job timed out")
 
-		jobStatus := openapi.JobStatus{State: openapi.FAILED}
-		_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, jobStatus)
+		_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.TERMINATED})
 
 		h.isDone <- true
 		return
@@ -139,9 +138,32 @@ func (h *handler) checkProgress() {
 	}
 
 	if jobStatus.State == openapi.DEPLOYING {
-		// TODO: check if at least one node per role is running.
-		//       if so, set the job state to RUNNING.
-		zap.S().Info("not yet implemented")
+		if h.dbService.IsOneTaskInState(h.jobId, openapi.RUNNING) {
+			_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.RUNNING})
+		}
+	} else if jobStatus.State == openapi.RUNNING {
+		if h.dbService.IsOneTaskInState(h.jobId, openapi.RUNNING) {
+			// one task is at least in running state, there is nothing to do
+			return
+		}
+
+		// check if at least one task in each role is completed
+		for _, role := range h.roles {
+			if !h.dbService.IsOneTaskInStateWithRole(h.jobId, openapi.COMPLETED, role) {
+				// all tasks in some role were failed/terminated
+				// so the job can not be completed successfully
+				zap.S().Warnf("Job %s is failed", h.jobId)
+				_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.FAILED})
+				h.isDone <- true
+				return
+			}
+		}
+
+		zap.S().Infof("Job %s is completed", h.jobId)
+		// job is completed; update job state with COMPLETED
+		_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.COMPLETED})
+
+		h.isDone <- true
 	}
 }
 
@@ -220,12 +242,13 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 
-	tasks, err := newJobBuilder(h.dbService, jobSpec).getTasks()
+	tasks, roles, err := newJobBuilder(h.dbService, jobSpec).getTasks()
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return
 	}
 	h.tasks = tasks
+	h.roles = roles
 
 	err = h.dbService.CreateTasks(tasks)
 	if err != nil {
@@ -311,9 +334,11 @@ func (h *handler) notify(evtType pbNotify.EventType) error {
 	}
 
 	resp, err := newNotifyClient(h.notifierEp).sendNotification(req)
-	if err != nil || resp.Status == pbNotify.Response_ERROR {
-		return fmt.Errorf("failed to notify - err: %v, status: %d", err, resp.Status)
+	if err != nil {
+		return fmt.Errorf("failed to notify: %v", err)
 	}
+
+	zap.S().Infof("response status = %s", resp.Status.String())
 
 	return nil
 }

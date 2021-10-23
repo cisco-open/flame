@@ -68,4 +68,6 @@ type TaskService interface {
 	DeleteTasks(string) error
 	GetTask(string, string) (map[string][]byte, error)
 	UpdateTaskStatus(string, string, openapi.TaskStatus) error
+	IsOneTaskInState(string, openapi.JobState) bool
+	IsOneTaskInStateWithRole(string, openapi.JobState, string) bool
 }

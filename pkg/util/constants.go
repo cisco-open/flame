@@ -46,6 +46,8 @@ const (
 	DBFieldSchemaId = "schemaid"
 	DBFieldJobId    = "jobid"
 	DBFieldAgentId  = "agentid"
+	DBFieldState    = "state"
+	DBFieldRole     = "role"
 
 	// Port numbers
 	ApiServerRestApiPort  = 10100 // REST API port

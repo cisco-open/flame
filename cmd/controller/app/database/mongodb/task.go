@@ -54,8 +54,9 @@ func (db *MongoService) CreateTasks(tasks []objects.Task) error {
 		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldAgentId: task.AgentId}
 		update := bson.M{
 			"$set": bson.M{
-				"config": cfgData,
-				"code":   task.ZippedCode,
+				util.DBFieldRole: task.Role,
+				"config":         cfgData,
+				"code":           task.ZippedCode,
 			},
 		}
 
@@ -144,7 +145,7 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 
 	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
 
-	setElements := bson.M{"state": taskStatus.State, "timestamp": time.Now()}
+	setElements := bson.M{util.DBFieldState: taskStatus.State, "timestamp": time.Now()}
 
 	update := bson.M{"$set": setElements}
 
@@ -162,4 +163,30 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 	}
 
 	return nil
+}
+
+// IsOneTaskInState returns true if the state of at least one task is set to the given state.
+// Otherwise, it returns false.
+func (db *MongoService) IsOneTaskInState(jobId string, state openapi.JobState) bool {
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldState: state}
+
+	result := db.taskCollection.FindOne(context.TODO(), filter)
+
+	if result.Err() != nil {
+		return false
+	}
+
+	return true
+}
+
+func (db *MongoService) IsOneTaskInStateWithRole(jobId string, state openapi.JobState, role string) bool {
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldState: state, util.DBFieldRole: role}
+
+	result := db.taskCollection.FindOne(context.TODO(), filter)
+
+	if result.Err() != nil {
+		return false
+	}
+
+	return true
 }
