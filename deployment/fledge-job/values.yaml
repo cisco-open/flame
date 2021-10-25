@@ -1,6 +1,6 @@
 generalFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
 dimage: fledge
-tagversion: 2020.12.01-master-817b0fb-128
+tagversion: latest
 
 servicename: fledge
 componentPorts:
