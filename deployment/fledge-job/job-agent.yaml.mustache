@@ -9,6 +9,8 @@ spec:
     # activeDeadlineSeconds: <% maxWaitTime %>
     # ttlSecondsAfterFinished: 180 # supported from v1.21
     spec:
+      imagePullSecrets:
+      - name: ecr-pull-secret
       containers:
       - name: {{ .Values.servicename }}-agent-<% agentId %>
         image: "{{ .Values.generalFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
