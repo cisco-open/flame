@@ -18,6 +18,8 @@ spec:
       #   prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: controller
+      imagePullSecrets:
+      - name: ecr-pull-secret
       containers:
       - name: {{ .Values.servicename }}-controller
         image: "{{ .Values.docker.GeneralFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
