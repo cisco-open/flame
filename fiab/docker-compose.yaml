@@ -53,7 +53,7 @@ services:
     #       cat /var/log/fledge/controller.log | grep "Creating task for agent"
     #       use the IDs returned from the above grep search
     environment:
-      FLEDGE_AGENT_ID: a07f656a6cc4aa5618ff79f3a0af3a6ba46ce957
+      FLEDGE_AGENT_ID: 83892b04f461f93a77b85719e5084983d8d3420d
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
@@ -64,7 +64,7 @@ services:
     container_name: 'fledgelet2'
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: 792f51acfcba8b3e6a068e3f761b0a931abeabdb
+      FLEDGE_AGENT_ID: b49e0fbdc89aff1a1fce298e6c1216ce15348420
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10104:10104'
@@ -75,7 +75,7 @@ services:
     container_name: 'fledgelet3'
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: a2f0520404d18030b34a81352b33f2d625e7e1bc
+      FLEDGE_AGENT_ID: 8edd4b40475e6ca4e9c2dce9027c133d9688ed2c
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10105:10105'

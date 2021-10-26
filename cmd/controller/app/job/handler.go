@@ -91,12 +91,12 @@ func (h *handler) Do() {
 		h.mu.Lock()
 		delete(h.jobQueues, h.jobId)
 		h.mu.Unlock()
-		zap.S().Infof("deleted an eventQ for %s from job queues", h.jobId)
+		zap.S().Infof("Deleted an eventQ for %s from job queues", h.jobId)
 	}()
 
 	jobSpec, err := h.dbService.GetJobById(h.jobId)
 	if err != nil {
-		zap.S().Errorf("failed to fetch job specification: %v", err)
+		zap.S().Errorf("Failed to fetch job specification: %v", err)
 		return
 	}
 	h.jobSpec = jobSpec

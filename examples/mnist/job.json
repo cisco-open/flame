@@ -9,11 +9,11 @@
     "priority": "low",
     
     "backend": "mqtt",
-    "maxRunTime": 300,
+    "maxRunTime": 1800,
 
     "initialModelId": "",
     "hyperparameters": {
-	"rounds": 5,
+	"rounds": 2,
 	"batchSize": 32,
 	"learningRate": 0.01
     },
