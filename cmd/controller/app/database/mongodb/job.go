@@ -56,6 +56,10 @@ func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (opena
 	return jobStatus, err
 }
 
+func (db *MongoService) DeleteJob(userId string, jobId string) error {
+	return nil
+}
+
 func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobSpec, error) {
 	zap.S().Infof("get job specification for userId: %s with jobId: %s", userId, jobId)
 
@@ -99,6 +103,52 @@ func (db *MongoService) GetJobStatus(userId string, jobId string) (openapi.JobSt
 	}
 
 	return jobStatus, nil
+}
+
+func (db *MongoService) UpdateJob(userId string, jobId string, jobSpec openapi.JobSpec) error {
+	jobStatus, err := db.GetJobStatus(userId, jobId)
+	if err != nil {
+		return err
+	}
+
+	switch jobStatus.State {
+	case openapi.READY:
+		fallthrough
+	case openapi.FAILED:
+		fallthrough
+	case openapi.TERMINATED:
+		fallthrough
+	case openapi.COMPLETED:
+		// Do nothing
+
+	case openapi.STARTING:
+		fallthrough
+	case openapi.APPLYING:
+		fallthrough
+	case openapi.RUNNING:
+		fallthrough
+	case openapi.DEPLOYING:
+		fallthrough
+	case openapi.STOPPING:
+		fallthrough
+	default:
+		err = fmt.Errorf("The current job state (%s) is not an updatable state", jobStatus.State)
+		return err
+	}
+
+	jobSpec.Id = jobId
+	jobSpec.UserId = userId
+
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), util.DBFieldUserId: userId}
+	update := bson.M{"$set": jobSpec}
+
+	updatedDoc := openapi.JobSpec{}
+	err = db.jobCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
+	if err != nil {
+		return ErrorCheck(err)
+	}
+
+	return nil
 }
 
 // UpdateJobStatus update Job's status
@@ -146,9 +196,5 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 		return ErrorCheck(err)
 	}
 
-	return nil
-}
-
-func (db *MongoService) DeleteJob(userId string, jobId string) error {
 	return nil
 }

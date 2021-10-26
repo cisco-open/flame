@@ -149,20 +149,14 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	// TODO - update UpdateJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	err := s.dbService.UpdateJob(user, jobId, jobSpec)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJob method not implemented")
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // UpdateJobStatus - Update the status of a job

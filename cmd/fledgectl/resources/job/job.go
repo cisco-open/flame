@@ -96,8 +96,35 @@ func GetStatusMany(params Params) error {
 }
 
 func Update(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	data, err := ioutil.ReadFile(params.JobFile)
+	if err != nil {
+		fmt.Printf("Failed to read file %s: %v\n", params.JobFile, err)
+		return nil
+	}
+
+	// encode the data
+	jobSpec := openapi.JobSpec{}
+	err = json.Unmarshal(data, &jobSpec)
+	if err != nil {
+		fmt.Printf("Failed to parse %s\n", params.JobFile)
+		return nil
+	}
+
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobEndPoint, uriMap)
+
+	// send put request
+	code, _, err := restapi.HTTPPut(url, jobSpec, "application/json")
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to update a job - code: %d, error: %v\n", code, err)
+		return nil
+	}
+
+	fmt.Printf("Job updated successfully\n")
 
 	return nil
 }

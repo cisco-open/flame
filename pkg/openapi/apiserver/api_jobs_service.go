@@ -172,20 +172,28 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	// TODO - update UpdateJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Job update request received for user: %s | jobSpec: %v", user, jobSpec)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	// create controller request
+	uriMap := map[string]string{
+		"user":  user,
+		"jobId": jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	// send put request
+	code, _, err := restapi.HTTPPut(url, jobSpec, "application/json")
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("update job request failed")
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateJob method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, nil), err
 }
 
 // UpdateJobStatus - Update the status of a job

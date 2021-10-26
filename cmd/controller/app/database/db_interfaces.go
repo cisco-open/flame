@@ -53,13 +53,13 @@ type DesignService interface {
 
 // JobService is an interface that defines a collection of APIs related to job
 type JobService interface {
-	CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error)
-	GetJob(userId string, jobId string) (openapi.JobSpec, error)
-	GetJobById(jobId string) (openapi.JobSpec, error)
-	GetJobStatus(userId string, jobId string) (openapi.JobStatus, error)
-	UpdateJobStatus(userId string, jobId string, jobStatus openapi.JobStatus) error
-
-	DeleteJob(userId string, jobId string) error
+	CreateJob(string, openapi.JobSpec) (openapi.JobStatus, error)
+	DeleteJob(string, string) error
+	GetJob(string, string) (openapi.JobSpec, error)
+	GetJobById(string) (openapi.JobSpec, error)
+	GetJobStatus(string, string) (openapi.JobStatus, error)
+	UpdateJob(string, string, openapi.JobSpec) error
+	UpdateJobStatus(string, string, openapi.JobStatus) error
 }
 
 // TaskService is an interface that defines a collection of APIs related to task
