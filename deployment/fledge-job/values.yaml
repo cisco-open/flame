@@ -7,7 +7,3 @@ componentPorts:
   apiserver: "10100"
   notifier: "10101"
   agent: "10103"
-
-resources:
-  cpu: 200m
-  memory: 1Gi

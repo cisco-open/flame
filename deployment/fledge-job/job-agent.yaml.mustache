@@ -24,11 +24,11 @@ spec:
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}
 
-        # TODO: revisit resource request later
-        # resources:
-        #   requests:
-        #     cpu: {{ .Values.resources.cpu }}
-        #     memory: {{ .Values.resources.memory }}
+        resources:
+	  limits:
+	    memory: 2Gi
+          requests:
+            memory: 500Mi
 
         env:
         - name: FLEDGE_AGENT_ID
