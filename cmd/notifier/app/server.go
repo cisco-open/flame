@@ -18,6 +18,7 @@ package app
 import (
 	"fmt"
 	"net"
+	"sync"
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
@@ -28,8 +29,8 @@ import (
 // notificationServer implement the notification service and include - proto unimplemented method and
 // maintains list of connected clients & their streams.
 type notificationServer struct {
-	clients       map[string]*pbNotify.AgentInfo
-	clientStreams map[string]*pbNotify.EventRoute_GetEventServer
+	eventQueues map[string]chan *pbNotify.Event
+	mutex       sync.Mutex
 
 	pbNotify.UnimplementedEventRouteServer
 	pbNotify.UnimplementedTriggerRouteServer
@@ -45,8 +46,7 @@ func StartGRPCService(portNo uint16) {
 	// create grpc server
 	s := grpc.NewServer()
 	server := &notificationServer{
-		clients:       make(map[string]*pbNotify.AgentInfo),
-		clientStreams: make(map[string]*pbNotify.EventRoute_GetEventServer),
+		eventQueues: make(map[string]chan *pbNotify.Event),
 	}
 
 	// register grpc services

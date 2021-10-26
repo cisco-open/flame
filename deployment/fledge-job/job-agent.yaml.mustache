@@ -23,10 +23,13 @@ spec:
 
         ports:
         - containerPort: {{ .Values.componentPorts.agent }}
-        resources:
-          requests:
-            cpu: {{ .Values.resources.cpu }}
-            memory: {{ .Values.resources.memory }}
+
+        # TODO: revisit resource request later
+        # resources:
+        #   requests:
+        #     cpu: {{ .Values.resources.cpu }}
+        #     memory: {{ .Values.resources.memory }}
+
         env:
         - name: FLEDGE_AGENT_ID
           value: <% agentId %>
