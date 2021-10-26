@@ -16,8 +16,6 @@
 package app
 
 import (
-	"fmt"
-
 	"go.uber.org/zap"
 
 	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
@@ -26,41 +24,41 @@ import (
 // GetEvent is called by the client to subscribe to the notification service.
 // Adds the client to the server client map and stores the client stream.
 func (s *notificationServer) GetEvent(in *pbNotify.AgentInfo, stream pbNotify.EventRoute_GetEventServer) error {
-	s.addNewClient(in, &stream)
-
-	// the stream should not be killed so we do not return from this server
-	// loop infinitely to keep stream alive else this stream will be closed
-	// TODO: refactor this by using channel
-	select {}
-}
-
-// addNewClient is responsible to add new client to the server map.
-func (s *notificationServer) addNewClient(in *pbNotify.AgentInfo, stream *pbNotify.EventRoute_GetEventServer) {
-	zap.S().Debugf("Adding new agent to the collection | %v", in)
+	zap.S().Debugf("Serving event for agent %v", in)
 
 	agentId := in.GetId()
 
-	s.clientStreams[agentId] = stream
-	s.clients[agentId] = in
+	eventCh := s.getEventChannel(agentId)
+	for {
+		select {
+		case event := <-eventCh:
+			zap.S().Infof("Pushing event %v to agent %s", event, agentId)
+			err := stream.Send(event)
+			if err != nil {
+				zap.S().Warnf("Failed to push notification to agent %s: %v", agentId, err)
+			}
+
+		case <-stream.Context().Done():
+			zap.S().Infof("Stream context is done for agent %s", agentId)
+			s.mutex.Lock()
+			delete(s.eventQueues, agentId)
+			s.mutex.Unlock()
+			return nil
+		}
+	}
 }
 
-// pushNotification sends a notification message to a specific agent
-func (s *notificationServer) pushNotification(agentId string, event *pbNotify.Event) error {
-	zap.S().Debugf("Sending notification to client: %v", agentId)
+func (s *notificationServer) getEventChannel(agentId string) chan *pbNotify.Event {
+	var eventCh chan *pbNotify.Event
 
-	stream := s.clientStreams[agentId]
-	if stream == nil {
-		errMsg := fmt.Sprintf("agent %s is unregistered", agentId)
-		zap.S().Warn(errMsg)
-		return fmt.Errorf(errMsg)
+	s.mutex.Lock()
+	if _, ok := s.eventQueues[agentId]; !ok {
+		eventCh = make(chan *pbNotify.Event)
+		s.eventQueues[agentId] = eventCh
+	} else {
+		eventCh = s.eventQueues[agentId]
 	}
+	s.mutex.Unlock()
 
-	err := (*stream).Send(event)
-	if err != nil {
-		errMsg := fmt.Sprintf("failed to push notification to agent %s: %v", agentId, err)
-		zap.S().Warn(errMsg)
-		return fmt.Errorf(errMsg)
-	}
-
-	return nil
+	return eventCh
 }

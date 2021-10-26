@@ -43,23 +43,27 @@ func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventReque
 			JobId: in.JobId,
 		}
 
-		err := s.pushNotification(agentId, &event)
-		if err != nil {
+		eventCh := s.getEventChannel(agentId)
+
+		select {
+		case eventCh <- &event:
+			// Do nothing
+		default:
 			failedAgents = append(failedAgents, agentId)
 		}
 	}
 
 	resp := &pbNotify.Response{
 		Status:       pbNotify.Response_SUCCESS,
-		Message:      "successfully notified all the agents",
+		Message:      "Successfully registered event for all the agents",
 		FailedAgents: failedAgents,
 	}
 
 	if len(in.AgentIds) > 0 && len(failedAgents) == len(in.AgentIds) {
-		resp.Message = "failed to notify all the agents"
+		resp.Message = "Failed to register event all the agents"
 		resp.Status = pbNotify.Response_ERROR
 	} else if len(failedAgents) > 0 && len(failedAgents) < len(in.AgentIds) {
-		resp.Message = "notifed some of the agents successfully"
+		resp.Message = "Registered event for some of the agents successfully"
 		resp.Status = pbNotify.Response_PARTIAL_SUCCESS
 	}
 

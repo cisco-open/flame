@@ -64,6 +64,7 @@ type handler struct {
 	tasks []objects.Task
 	roles []string
 
+	dplyr deployer.Deployer
 	// isDone is set in case where nothing can be done by a handler
 	// isDone should be set only once as its buffer size is 1
 	isDone chan bool
@@ -306,10 +307,12 @@ func (h *handler) handleApply(event *JobEvent) {
 }
 
 func (h *handler) cleanup() {
-	zap.S().Infof("not yet implemented")
-
-	// TODO: implement step 1
 	// 1. decommission compute resources if they are in use
+	if h.dplyr != nil {
+		if err := h.dplyr.Uninstall("job-" + h.jobId); err != nil {
+			zap.S().Warnf("failed to release resources for job %s: %v", h.jobId, err)
+		}
+	}
 
 	// 2.delete all the job resource specification files
 	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
@@ -391,7 +394,7 @@ func (h *handler) allocateComputes() error {
 
 	// TODO: when multiple clusters are supported,
 	//       set platform dynamically based on the target cluster type
-	deployer, err := deployer.NewDeployer(h.platform)
+	dplyr, err := deployer.NewDeployer(h.platform)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
 		zap.S().Debugf(errMsg)
@@ -399,7 +402,7 @@ func (h *handler) allocateComputes() error {
 		return fmt.Errorf(errMsg)
 	}
 
-	err = deployer.Initialize("", util.ProjectName)
+	err = dplyr.Initialize("", util.ProjectName)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
 		zap.S().Debugf(errMsg)
@@ -407,13 +410,15 @@ func (h *handler) allocateComputes() error {
 		return fmt.Errorf(errMsg)
 	}
 
-	err = deployer.Install("job-"+h.jobId, deploymentChartPath)
+	err = dplyr.Install("job-"+h.jobId, deploymentChartPath)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
 		zap.S().Debugf(errMsg)
 
 		return fmt.Errorf(errMsg)
 	}
+
+	h.dplyr = dplyr
 
 	return nil
 }
