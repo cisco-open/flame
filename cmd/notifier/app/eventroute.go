@@ -21,6 +21,10 @@ import (
 	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 )
 
+const (
+	eventChannelLen = 1
+)
+
 // GetEvent is called by the client to subscribe to the notification service.
 // Adds the client to the server client map and stores the client stream.
 func (s *notificationServer) GetEvent(in *pbNotify.AgentInfo, stream pbNotify.EventRoute_GetEventServer) error {
@@ -53,7 +57,7 @@ func (s *notificationServer) getEventChannel(agentId string) chan *pbNotify.Even
 
 	s.mutex.Lock()
 	if _, ok := s.eventQueues[agentId]; !ok {
-		eventCh = make(chan *pbNotify.Event)
+		eventCh = make(chan *pbNotify.Event, eventChannelLen)
 		s.eventQueues[agentId] = eventCh
 	} else {
 		eventCh = s.eventQueues[agentId]

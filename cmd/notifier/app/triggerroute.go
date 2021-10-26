@@ -55,15 +55,15 @@ func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventReque
 
 	resp := &pbNotify.Response{
 		Status:       pbNotify.Response_SUCCESS,
-		Message:      "Successfully registered event for all the agents",
+		Message:      "Successfully registered event for all agents",
 		FailedAgents: failedAgents,
 	}
 
 	if len(in.AgentIds) > 0 && len(failedAgents) == len(in.AgentIds) {
-		resp.Message = "Failed to register event all the agents"
+		resp.Message = "Failed to register event for all agents"
 		resp.Status = pbNotify.Response_ERROR
 	} else if len(failedAgents) > 0 && len(failedAgents) < len(in.AgentIds) {
-		resp.Message = "Registered event for some of the agents successfully"
+		resp.Message = "Registered event for some agents successfully"
 		resp.Status = pbNotify.Response_PARTIAL_SUCCESS
 	}
 
