@@ -13,7 +13,8 @@
             "pair": [
                 "trainer",
                 "aggregator"
-            ]
+            ],
+	    "funcTags": ["fetch", "upload"]
         }
     ],
     "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
