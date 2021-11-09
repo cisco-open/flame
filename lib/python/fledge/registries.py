@@ -12,17 +12,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Model registry provider."""
 
+from typing import Union
+
+from .config import RegistryType
 from .object_factory import ObjectFactory
-from .registry.etcd_agent import EtcdRegistryAgent
-from .registry.local_agent import LocalRegistryAgent
+from .registry.mlflow import MLflowRegistryClient
 
 
-class RegsitryAgentProvider(ObjectFactory):
-    def get(self, agent_name, **kargs):
-        return self.create(agent_name, **kargs)
+class RegistryProvider(ObjectFactory):
+    """Model registry provider."""
+
+    #
+    def get(self, registry_name, **kargs) -> Union[MLflowRegistryClient]:
+        """Return a registry client for a given registry name."""
+        return self.create(registry_name, **kargs)
 
 
-registry_agent_provider = RegsitryAgentProvider()
-registry_agent_provider.register('local', LocalRegistryAgent)
-registry_agent_provider.register('etcd', EtcdRegistryAgent)
+registry_provider = RegistryProvider()
+registry_provider.register(RegistryType.MLFLOW, MLflowRegistryClient)

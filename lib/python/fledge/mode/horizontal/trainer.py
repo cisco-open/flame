@@ -57,19 +57,23 @@ class Trainer(Role, metaclass=ABCMeta):
             self._fetch_weights(tag)
 
     def _fetch_weights(self, tag: str) -> None:
+        logger.debug("calling _fetch_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
+            logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
             return
 
         ends = []
         while len(ends) == 0:
             ends = channel.ends()
             time.sleep(1)
+            logger.debug("[_fetch_weights] waiting for channel ends")
             continue
 
         # one aggregator is sufficient
         end = ends[0]
         (self._work_done, self.weights) = channel.recv(end)
+        logger.debug("fetching weights done")
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
@@ -77,14 +81,17 @@ class Trainer(Role, metaclass=ABCMeta):
             self._send_weights(tag)
 
     def _send_weights(self, tag: str) -> None:
+        logger.debug("calling _send_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
+            logger.debug(f"[_send_weights] channel not found with {tag}")
             return
 
         ends = []
         while len(ends) == 0:
             ends = channel.ends()
             time.sleep(1)
+            logger.debug("[_send_weights] waiting for channel ends")
             continue
 
         # one aggregator is sufficient
@@ -92,6 +99,7 @@ class Trainer(Role, metaclass=ABCMeta):
 
         data = (self.weights, self.dataset_size)
         channel.send(end, data)
+        logger.debug("sending weights done")
 
     def check_done(self) -> None:
         """Check if the work is over and raise an exception if so."""

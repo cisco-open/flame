@@ -23,7 +23,7 @@
 	    ],
 	    "groupBy": null,
 	    "funcTags": {
-		"trainer": ["fetch", "update"],
+		"trainer": ["fetch", "upload"],
 		"aggregator": ["distribute", "aggregate"]
 	    }
 	}

@@ -31,8 +31,8 @@ import (
 type Controller struct {
 	dbUri     string
 	notifier  string
-	registry  string
 	brokers   []config.Broker
+	registry  config.Registry
 	restPort  string
 	platform  string
 	dbService database.DBService
@@ -68,7 +68,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.brokers, c.platform)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.brokers, c.registry, c.platform)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

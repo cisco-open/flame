@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """MNIST horizontal FL aggregator."""
 
 import logging
@@ -34,6 +33,8 @@ class MnistAggregator(Aggregator):
         """Initialize a class instance."""
         self.config = config
         self.weights = None
+        self.metrics = None
+        self.model = None
 
         self.num_classes = 10
         self.input_shape = (28, 28, 1)
@@ -44,29 +45,30 @@ class MnistAggregator(Aggregator):
 
     def initialize(self):
         """Initialize role."""
-        model = keras.Sequential(
-            [
-                keras.Input(shape=self.input_shape),
-                layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-                layers.MaxPooling2D(pool_size=(2, 2)),
-                layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-                layers.MaxPooling2D(pool_size=(2, 2)),
-                layers.Flatten(),
-                layers.Dropout(0.5),
-                layers.Dense(self.num_classes, activation="softmax"),
-            ]
-        )
+        if not self.model:
+            model = keras.Sequential(
+                [
+                    keras.Input(shape=self.input_shape),
+                    layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+                    layers.MaxPooling2D(pool_size=(2, 2)),
+                    layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+                    layers.MaxPooling2D(pool_size=(2, 2)),
+                    layers.Flatten(),
+                    layers.Dropout(0.5),
+                    layers.Dense(self.num_classes, activation="softmax"),
+                ]
+            )
 
-        model.compile(
-            loss="categorical_crossentropy",
-            optimizer="adam",
-            metrics=["accuracy"]
-        )
+            model.compile(
+                loss="categorical_crossentropy",
+                optimizer="adam",
+                metrics=["accuracy"]
+            )
 
-        self._model = model
+            self.model = model
 
         # initialize the global model weights
-        self.weights = self._model.get_weights()
+        self.weights = self.model.get_weights()
 
     def load_data(self) -> None:
         """Load a test dataset."""
@@ -93,11 +95,16 @@ class MnistAggregator(Aggregator):
     def evaluate(self) -> None:
         """Evaluate (test) a model."""
         # set updated model weights
-        self._model.set_weights(self.weights)
+        self.model.set_weights(self.weights)
 
-        score = self._model.evaluate(self._x_test, self._y_test, verbose=0)
+        score = self.model.evaluate(self._x_test, self._y_test, verbose=0)
+
         logger.info(f"Test loss: {score[0]}")
         logger.info(f"Test accuracy: {score[1]}")
+
+        # set metrics after each evaluation so that the metrics can be logged
+        # in a model registry.
+        self.metrics = {'loss': score[0], 'accuracy': score[1]}
 
 
 if __name__ == "__main__":

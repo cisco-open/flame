@@ -6,10 +6,12 @@ metadata:
 data:
   controller.yaml: |
     ---
-    db: {{ .Values.database.uri }}
     brokers:
       - sort: mqtt
         host: mqtt.eclipseprojects.io
+    db: {{ .Values.database.uri }}
     notifier: {{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}
     platform: k8s
-    registry: http://mlflow:5000
+    registry:
+      sort: mlflow
+      uri: http://mlflow:5000

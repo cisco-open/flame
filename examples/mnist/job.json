@@ -7,11 +7,14 @@
 	"61609290fa724deafdb2a4fa"
     ],
     "priority": "low",
-    
+
     "backend": "mqtt",
     "maxRunTime": 1800,
 
-    "initialModelId": "",
+    "baseModel": {
+	"name": "",
+	"version": 0
+    },
     "hyperparameters": {
 	"rounds": 2,
 	"batchSize": 32,

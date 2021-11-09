@@ -1,6 +1,6 @@
-#-----------------------#
+#########################
 # Basic Design Information
-#-----------------------#
+#########################
 DesignInfo:
   description: Only basic desgin information.
   type: object
@@ -18,7 +18,7 @@ DesignInfo:
     - name
   example:
     name: diabete predict
-    description : Helps in quick diagnosis and prediction of diabetes among patients.
+    description: Helps in quick diagnosis and prediction of diabetes among patients.
     id: "diabete-predict"
 
 Design:
@@ -28,9 +28,9 @@ Design:
     - $ref: '#/components/schemas/DesignInfo'
     - $ref: '#/components/schemas/DesignSchemas'
 
-#-----------------------#
+#########################
 # Schema
-#-----------------------#
+#########################
 DesignSchemas:
   description: A collection of design schemas related to design template
   type: object
@@ -38,7 +38,7 @@ DesignSchemas:
     schemas:
       type: array
       items:
-        $ref : '#/components/schemas/DesignSchema'
+        $ref: '#/components/schemas/DesignSchema'
   required:
     - schemas
 
@@ -87,17 +87,17 @@ DesignSchema:
           pair: ["trainer", "aggregator"]
           groupBy:
             type: tag
-            value : ["us", "eu"]
+            value: ["us", "eu"]
         - name: agg-global-channel
           description: Model update is sent from all aggregators to the global aggregator and vice-versa.
           pair: ["trainer", "aggregator"]
           groupBy:
             type: tag
-            value : ["us", "eu"]
+            value: ["us", "eu"]
 
-#-----------------------#
+#########################
 # Roles
-#-----------------------#
+#########################
 Role:
   description: Define the role of a compute unit
   type: object
@@ -115,15 +115,15 @@ Role:
     - name
   example:
     - name: trainer
-      description: These are responsible to consume the data and train local model
+      description: These are responsible to consume the data and train local model.
       isDataConsumer: true
     - name: aggregator
       description: These are responsible to aggregate the updates from trainer nodes.
       replica: 2
 
-#-----------------------#
+#########################
 # Channel between roles
-#-----------------------#
+#########################
 Channel:
   description: Defines how different roles are connected.
   type: object
@@ -160,6 +160,12 @@ Channel:
       required:
         - type
         - value
+    funcTags:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
     isUnidirectional:
       type: boolean
   required:
@@ -172,19 +178,19 @@ Channel:
       pair: ["trainer", "aggregator"]
       groupBy:
         type: tag
-        value : ["us", "eu"]
+        value: ["us", "eu"]
 
     - name: non-directionalExample
       description: An example to demostrate connection in one direction. Data is sent from aggregator to global aggregator but not the other way. isBidirectional flag allows you to define one way channels.
       pair: ["aggregator", "global-aggregator"]
       groupBy:
         type: tag
-        value : ["us", "eu"]
+        value: ["us", "eu"]
       isUnidirectional: false
 
-#-----------------------#
+#########################
 # Connectors for channels
-#-----------------------#
+#########################
 Connector:
   type: object
   properties:
@@ -199,9 +205,9 @@ Connector:
     - pair
     - connection
 
-#-----------------------#
+#########################
 # File
-#-----------------------#
+#########################
 File:
   type: object
   properties:

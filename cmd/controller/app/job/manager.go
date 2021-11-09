@@ -29,13 +29,14 @@ type Manager struct {
 
 	notifier string
 	brokers  []config.Broker
+	registry config.Registry
 	platform string
 
 	jobQueues map[string]*EventQ
 	mutexQ    *sync.Mutex
 }
 
-func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string, brokers []config.Broker,
+func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string, brokers []config.Broker, registry config.Registry,
 	platform string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
@@ -47,6 +48,7 @@ func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string
 
 		notifier:  notifier,
 		brokers:   brokers,
+		registry:  registry,
 		platform:  platform,
 		jobQueues: make(map[string]*EventQ),
 		mutexQ:    new(sync.Mutex),
@@ -65,7 +67,7 @@ func (mgr *Manager) Do() {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
 			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
-				mgr.notifier, mgr.brokers, mgr.platform)
+				mgr.notifier, mgr.brokers, mgr.registry, mgr.platform)
 			go jobHandler.Do()
 		}
 		eventQ.Enqueue(event)

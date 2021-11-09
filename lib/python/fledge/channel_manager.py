@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Channel manager."""
 
 import asyncio
 import atexit
@@ -24,16 +25,15 @@ from .common.constants import (
     MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME, BackendEvent
 )
 from .common.util import background_thread_loop, run_async
-from .config import BACKEND_TYPE_MQTT, Config
-from .registry_agents import registry_agent_provider
+from .config import BackendType, Config
+from .discovery_clients import discovery_client_provider
 
 logger = logging.getLogger(__name__)
 
 
 class ChannelManager(object):
-    """
-    ChannelManager only allows a singleton instance
-    """
+    """ChannelManager manages channels and creates a singleton instance."""
+
     _instance = None
 
     _config = None
@@ -45,17 +45,19 @@ class ChannelManager(object):
     _loop = None
 
     _backend = None
-    _registry_agent = None
+    _discovery_client = None
 
     def __new__(cls):
+        """Create a singleton instance."""
         if cls._instance is None:
             logger.info('creating a ChannelManager instance')
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
     def __call__(self, config: Config):
+        """Initialize instance variables."""
         self._config = config
-        self._job_id = self._config.job_id
+        self._job_id = self._config.job.job_id
         self._role = self._config.role
         self._agent_id = self._config.agent_id
 
@@ -65,10 +67,11 @@ class ChannelManager(object):
             self._loop = loop
 
         self._backend = backend_provider.get(self._config.backend)
-        self._backend.configure(
-            self._config.broker, self._job_id, self._agent_id
+        broker = self._config.brokers.sort_to_host[self._config.backend]
+        self._backend.configure(broker, self._job_id, self._agent_id)
+        self._discovery_client = discovery_client_provider.get(
+            self._config.agent
         )
-        self._registry_agent = registry_agent_provider.get(self._config.agent)
 
         async def inner():
             # create a coroutine task
@@ -98,7 +101,7 @@ class ChannelManager(object):
             return True
 
         # TODO: Consider if all of these can be moved into Channel class
-        if self._config.backend == BACKEND_TYPE_MQTT:
+        if self._config.backend == BackendType.MQTT:
             return self._join_mqtt(name)
 
         return self._join_non_mqtt(name)
@@ -130,15 +133,13 @@ class ChannelManager(object):
 
     # TODO: groupby feature with non-mqtt backend should be implemented
     def _join_non_mqtt(self, name):
-        """
-        join a channel when backend is not mqtt
-        """
-        coro = self._registry_agent.connect()
+        """Join a channel when backend is not mqtt."""
+        coro = self._discovery_client.connect()
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
             return False
 
-        coro = self._registry_agent.register(
+        coro = self._discovery_client.register(
             self._job_id, name, self._role, self._backend.uid(),
             self._backend.endpoint()
         )
@@ -149,7 +150,7 @@ class ChannelManager(object):
         else:
             return False
 
-        coro = self._registry_agent.get(self._job_id, name)
+        coro = self._discovery_client.get(self._job_id, name)
         channel_info, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if not status:
             return False
@@ -181,7 +182,7 @@ class ChannelManager(object):
             coro = self._channels[name].add(end_id)
             _ = run_async(coro, self._backend.loop())
 
-        coro = self._registry_agent.close()
+        coro = self._discovery_client.close()
         _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
 
         return True
@@ -191,7 +192,9 @@ class ChannelManager(object):
         if not self.is_joined(name):
             return
 
-        coro = self._registry_agent.reset_channel(
+        # TODO: reset_channel isn't implemented; the whole discovery module
+        #       needs to be revisited.
+        coro = self._discovery_client.reset_channel(
             self._job_id, name, self._role, self._backend.uid()
         )
 

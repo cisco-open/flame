@@ -13,22 +13,42 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from abc import abstractmethod
+"""Abstract registry client."""
+
+from abc import ABC, abstractmethod
+from typing import Any, Optional
 
 
-class AbstractRegistryAgent:
+class AbstractRegistryClient(ABC):
+    """MLflow registry client."""
+
+    #
     @abstractmethod
-    def register(self, job, channel, role, uid, endpoint):
-        pass
-
-    @abstractmethod
-    def get(self, job, channel):
-        pass
-
-    @abstractmethod
-    def connect(self):
-        pass
+    def __call__(self, uri: str, job_id: str) -> None:
+        """Abstract method for initializing a registry client."""
 
     @abstractmethod
-    def close(self):
-        pass
+    def setup_run(self):
+        """Abstract method for setup a run."""
+
+    @abstractmethod
+    def save_metrics(
+        self, epoch: int, metrics: Optional[dict[str, float]]
+    ) -> None:
+        """Abstract method for saving metrics in a model registry."""
+
+    @abstractmethod
+    def save_params(self, hyperparameters: Optional[dict[str, float]]) -> None:
+        """Abstract method for saving hyperparameters in a model registry."""
+
+    @abstractmethod
+    def cleanup(self) -> None:
+        """Abstract method for cleanning up resources."""
+
+    @abstractmethod
+    def save_model(self, name: str, model: Any) -> None:
+        """Abstract method for saving a model in a model registry."""
+
+    @abstractmethod
+    def load_model(self, name: str, version: int) -> object:
+        """Abstract method for loading a model from a model registry."""

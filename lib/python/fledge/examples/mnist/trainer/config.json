@@ -1,7 +1,12 @@
 {
     "agentid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
     "backend": "mqtt",
-    "broker": "mqtt.eclipseprojects.io",
+    "brokers": [
+        {
+            "host": "mqtt.eclipseprojects.io",
+            "sort": "mqtt"
+        }
+    ],
     "channels": [
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",
@@ -14,7 +19,10 @@
                 "trainer",
                 "aggregator"
             ],
-	    "funcTags": ["fetch", "upload"]
+	    "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
         }
     ],
     "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
@@ -26,7 +34,18 @@
         "learningRate": 0.01,
         "rounds": 5
     },
-    "jobid": "624d9fc4339579",
+    "baseModel": {
+	"name": "mnist",
+	"version": 1
+    },
+    "job" : {
+	"id": "624d9fc43395791",
+	"name": "mnist"
+    },
+    "registry": {
+	"name": "mlflow",
+	"uri": "http://mlflow:5000"
+    },
     "maxRunTime": 300,
     "realm": "us|west",
     "role": "trainer"

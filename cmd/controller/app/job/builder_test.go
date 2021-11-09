@@ -18,6 +18,7 @@ package job
 import (
 	"testing"
 
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/stretchr/testify/assert"
 )
@@ -31,7 +32,6 @@ var (
 		CodeVersion:     "1",
 		Backend:         "mqtt",
 		MaxRunTime:      300,
-		BaseModelId:     "",
 		Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
 		Dependencies:    []string{"numpy >= 1.2.0"},
 	}
@@ -111,7 +111,7 @@ var (
 )
 
 func TestGetTaskTemplates(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil)
+	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -127,7 +127,7 @@ func TestGetTaskTemplates(t *testing.T) {
 }
 
 func TestPreCheck(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil)
+	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -145,7 +145,7 @@ func TestPreCheck(t *testing.T) {
 }
 
 func TestIsTemplatesConnected(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil)
+	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -168,7 +168,7 @@ func TestIsTemplatesConnected(t *testing.T) {
 }
 
 func TestIsConverging(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil)
+	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
 	assert.NotNil(t, builder)
 
 	// success case
@@ -209,7 +209,7 @@ func TestIsConverging(t *testing.T) {
 }
 
 func TestWalk(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil)
+	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
 	builder.schema = testSchema
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
