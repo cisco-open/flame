@@ -16,11 +16,13 @@
 import asyncio
 import atexit
 import logging
+from typing import Optional
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
-                               BackendEvent)
+from .common.constants import (
+    MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME, BackendEvent
+)
 from .common.util import background_thread_loop, run_async
 from .config import BACKEND_TYPE_MQTT, Config
 from .registry_agents import registry_agent_provider
@@ -85,10 +87,13 @@ class ChannelManager(object):
                 for _, channel in self._channels.items():
                     await channel.remove(info)
 
-    def join(self, name):
-        """
-        join a channel
-        """
+    def join_all(self) -> None:
+        """join_all ensures that a role joins all of its channels."""
+        for ch_name in self._config.channels.keys():
+            self.join(ch_name)
+
+    def join(self, name: str) -> bool:
+        """Join a channel."""
         if self.is_joined(name):
             return True
 
@@ -99,9 +104,7 @@ class ChannelManager(object):
         return self._join_non_mqtt(name)
 
     def _join_mqtt(self, name):
-        """
-        join a channel in case of mqtt backend
-        """
+        """Join a channel in case of mqtt backend."""
         channel_config = self._config.channels[name]
 
         if self._role == channel_config.pair[0]:
@@ -184,9 +187,7 @@ class ChannelManager(object):
         return True
 
     def leave(self, name):
-        """
-        leave a channel
-        """
+        """Leave a channel."""
         if not self.is_joined(name):
             return
 
@@ -200,10 +201,16 @@ class ChannelManager(object):
 
         return status
 
-    def get(self, name):
-        """
-        returns a channel object in the given channel
-        """
+    def get_by_tag(self, tag: str) -> Optional[Channel]:
+        """Return a channel object that matches a given function tag."""
+        if tag not in self._config.func_tag_map:
+            return None
+
+        channel_name = self._config.func_tag_map[tag]
+        return self.get(channel_name)
+
+    def get(self, name: str) -> Optional[Channel]:
+        """Return a channel object in a given channel name."""
         if not self.is_joined(name):
             # didn't join the channel yet
             return None
@@ -211,14 +218,13 @@ class ChannelManager(object):
         return self._channels[name]
 
     def is_joined(self, name):
-        """
-        check if node joined a channel or not
-        """
+        """Check if node joined a channel or not."""
         if name in self._channels:
             return True
         else:
             return False
 
     def cleanup(self):
+        """Clean up pending asyncio tasks."""
         for task in asyncio.all_tasks(self._backend.loop()):
             task.cancel()

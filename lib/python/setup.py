@@ -12,12 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Package setup script."""
 
 from setuptools import find_packages, setup
 
 setup(
     name='fledge',
-    version='0.0.2',
+    version='0.0.3',
     author='Myungjin Lee',
     author_email='myungjle@cisco.com',
     include_package_data=True,
@@ -65,8 +66,8 @@ setup(
     scripts=[],
     url='https://github.com/cisco/fledge/',
     license='LICENSE.txt',
-    description=
-    'This package is a python library to run ML workloads in the fledge system',
+    description="This package is a python library"
+    " to run ML workloads in the fledge system",
     long_description=open('README.md').read(),
     install_requires=['cloudpickle', 'paho-mqtt']
 )

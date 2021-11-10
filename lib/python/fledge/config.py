@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Config parser."""
 
 import json
 import sys
@@ -34,6 +35,7 @@ CONF_KEY_CHANNEL_IS_BIDIR = 'isBidirectional'
 CONF_KEY_CHANNEL_GROUPBY = 'groupBy'
 CONF_KEY_CHANNEL_GROUPBY_TYPE = 'type'
 CONF_KEY_CHANNEL_GROUPBY_VALUE = 'value'
+CONF_KEY_CHANNEL_FUNC_TAGS = 'funcTags'
 
 GROUPBY_DEFAULT_GROUP = 'default'
 
@@ -47,9 +49,19 @@ backend_types = [BACKEND_TYPE_LOCAL, BACKEND_TYPE_P2P, BACKEND_TYPE_MQTT]
 
 
 class Config(object):
+    """Config class."""
+
+    #
     class Channel(object):
+        """Channel class."""
+
+        #
         class GroupBy(object):
+            """GroupBy class."""
+
+            #
             def __init__(self, json_data=None):
+                """Initialize."""
                 self.gtype = ''
                 self.value = []
 
@@ -60,6 +72,7 @@ class Config(object):
                 self.value = json_data[CONF_KEY_CHANNEL_GROUPBY_VALUE]
 
             def groupable_value(self, realm=''):
+                """Return groupby value."""
                 if self.value is None:
                     return GROUPBY_DEFAULT_GROUP
 
@@ -75,11 +88,13 @@ class Config(object):
                 return GROUPBY_DEFAULT_GROUP
 
             def print(self):
+                """Print GroupBy info."""
                 print('\t\t--- groupby ---')
                 print(f'\t\t{CONF_KEY_CHANNEL_GROUPBY_TYPE}: {self.gtype}')
                 print(f'\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}')
 
         def __init__(self, json_data):
+            """Initialize."""
             self.name = json_data[CONF_KEY_CHANNEL_NAME]
             self.pair = json_data[CONF_KEY_CHANNEL_PAIR]
             if len(self.pair) != 2:
@@ -96,7 +111,12 @@ class Config(object):
             else:
                 self.groupby = Config.Channel.GroupBy()
 
+            self.func_tags = list()
+            if CONF_KEY_CHANNEL_FUNC_TAGS in json_data:
+                self.func_tags = json_data[CONF_KEY_CHANNEL_FUNC_TAGS]
+
         def print(self):
+            """Print channel info."""
             print('\t--- channel ---')
             print(f'\t{CONF_KEY_CHANNEL_NAME}: {self.name}')
             print(f'\t{CONF_KEY_CHANNEL_PAIR}: {self.pair}')
@@ -104,6 +124,7 @@ class Config(object):
             self.groupby.print()
 
     def __init__(self, config_file: str):
+        """Initialize."""
         with open(config_file) as f:
             json_data = json.load(f)
             f.close()
@@ -134,21 +155,30 @@ class Config(object):
         self.job_id = json_data[CONF_KEY_JOB_ID]
         self.role = json_data[CONF_KEY_ROLE]
         self.realm = json_data[CONF_KEY_REALM]
-        self.channels = {}
+
+        self.func_tag_map = dict()
+        self.channels = dict()
+
         for channel_info in json_data[CONF_KEY_CHANNEL]:
             channel_config = Config.Channel(channel_info)
             self.channels[channel_config.name] = channel_config
 
+            # build a map from function tag to channel name
+            for tag in channel_config.func_tags:
+                self.func_tag_map[tag] = channel_config.name
+
     def is_valid(self, needle, haystack):
+        """Return if key is found in json data."""
         return needle in haystack
 
     def print(self):
+        """Print config info."""
         print('--- config ---')
         print(f'{CONF_KEY_MQTT_BROKER}: {self.broker}')
         print(f'{CONF_KEY_BACKEND}: {self.backend}')
         print(f'{CONF_KEY_AGENT}: {self.agent}')
         print(f'{CONF_KEY_ROLE}: {self.role}')
         print(f'{CONF_KEY_REALM}: {self.realm}')
-        print(f'{CONF_KEY_JOBID}: {self.jobid}')
+        print(f'{CONF_KEY_JOB_ID}: {self.jobid}')
         for _, channel in self.channels.items():
             channel.print()

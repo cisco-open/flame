@@ -21,7 +21,11 @@
 		"trainer",
 		"aggregator"
 	    ],
-	    "groupBy": null
+	    "groupBy": null,
+	    "funcTags": {
+		"trainer": ["fetch", "update"],
+		"aggregator": ["distribute", "aggregate"]
+	    }
 	}
     ]
 }

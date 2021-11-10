@@ -13,9 +13,11 @@
             "pair": [
                 "trainer",
                 "aggregator"
-            ]
+            ],
+	    "funcTags": ["aggregate", "distribute"]
         }
     ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
     "dependencies": [
         "numpy >= 1.2.0"
     ],
