@@ -24,12 +24,10 @@ spec:
         args: []
         ports:
         - containerPort: {{ .Values.componentPorts.notifier }}
-        envFrom:
-          - configMapRef:
-              name: {{ .Release.Name }}-configmap
-        {{- if .Values.mongodbcredentials }}
-        volumes:
-          - name: {{ .Release.Name }}-mongodb
-            secret:
-              secretName: {{ .Release.Name }}-mongodb
-        {{- end }}
+
+      {{- if .Values.mongodbcredentials }}
+      volumes:
+        - name: {{ .Release.Name }}-mongodb
+          secret:
+            secretName: {{ .Release.Name }}-mongodb
+      {{- end }}
