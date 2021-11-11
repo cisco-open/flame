@@ -17,63 +17,55 @@ package cmd
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/spf13/cobra"
+	"go.uber.org/zap"
 
 	"github.com/cisco/fledge/cmd/controller/app"
-	"github.com/cisco/fledge/cmd/controller/app/deployer"
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/util"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   util.Controller,
-	Short: util.ProjectName + util.Controller,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
+var (
+	cfgFile string
+	cfg     *config.Config
 
-		dbUri, err := flags.GetString("db")
-		if err != nil {
-			return err
-		}
+	rootCmd = &cobra.Command{
+		Use:   util.Controller,
+		Short: util.ProjectName + util.Controller,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			instance, err := app.NewController(cfg)
+			if err != nil {
+				fmt.Printf("Failed to create a new controller instance\n")
+				return nil
+			}
+			instance.Start()
 
-		notifier, err := flags.GetString("notifier")
-		if err != nil {
-			return err
-		}
-
-		port, err := flags.GetString("port")
-		if err != nil {
-			return err
-		}
-
-		platform, err := flags.GetString("platform")
-		if err != nil {
-			return err
-		}
-
-		instance, err := app.NewController(dbUri, notifier, port, platform)
-		if err != nil {
-			fmt.Printf("Failed to create a new controller instance\n")
 			return nil
-		}
-		instance.Start()
-
-		return nil
-	},
-}
+		},
+	}
+)
 
 func init() {
-	rootCmd.PersistentFlags().StringP("db", "d", "", "Database connection URI")
-	rootCmd.MarkPersistentFlagRequired("db")
+	cobra.OnInitialize(initConfig)
 
-	defaultEndpoint := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
-	rootCmd.PersistentFlags().StringP("notifier", "n", defaultEndpoint, "Notifier endpoint")
+	usage := "config file (default: /etc/fledge/controller.yaml)"
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
+}
 
-	defaultCtrlPort := fmt.Sprintf("%d", util.ControllerRestApiPort)
-	rootCmd.PersistentFlags().StringP("port", "p", defaultCtrlPort, "Port for controller's REST API service")
+func initConfig() {
+	if cfgFile == "" {
+		cfgFile = filepath.Join("/etc/fledge/controller.yaml")
+	}
 
-	desc := fmt.Sprintf("deployment platform; options: [ %s | %s ]", deployer.K8S, deployer.DOCKER)
-	rootCmd.PersistentFlags().StringP("platform", "", deployer.K8S, desc)
+	var err error
+
+	cfg, err = config.LoadConfig(cfgFile)
+	if err != nil {
+		zap.S().Fatalf("Failed to load config %s: %v", cfgFile, err)
+	}
 }
 
 func Execute() error {

@@ -19,6 +19,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 )
 
@@ -34,7 +35,7 @@ type Task struct {
 
 type JobConfig struct {
 	BackEnd  string            `json:"backend"`
-	Broker   string            `json:"broker,omitempty"`
+	Brokers  []config.Broker   `json:"brokers,omitempty"`
 	JobId    string            `json:"jobid"`
 	Role     string            `json:"role"`
 	Realm    string            `json:"realm"`

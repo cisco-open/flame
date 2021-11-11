@@ -29,6 +29,7 @@ import (
 	"github.com/cisco/fledge/cmd/controller/app/database"
 	"github.com/cisco/fledge/cmd/controller/app/deployer"
 	"github.com/cisco/fledge/cmd/controller/app/objects"
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
 	"github.com/cisco/fledge/pkg/util"
@@ -49,13 +50,14 @@ var (
 )
 
 type handler struct {
-	dbService  database.DBService
-	jobId      string
-	eventQ     *EventQ
-	jobQueues  map[string]*EventQ
-	mu         *sync.Mutex
-	notifierEp string
-	platform   string
+	dbService database.DBService
+	jobId     string
+	eventQ    *EventQ
+	jobQueues map[string]*EventQ
+	mu        *sync.Mutex
+	notifier  string
+	brokers   []config.Broker
+	platform  string
 
 	jobSpec openapi.JobSpec
 
@@ -71,18 +73,19 @@ type handler struct {
 }
 
 func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifierEp string, platform string) *handler {
+	notifier string, brokers []config.Broker, platform string) *handler {
 	return &handler{
-		dbService:  dbService,
-		jobId:      jobId,
-		eventQ:     eventQ,
-		jobQueues:  jobQueues,
-		mu:         mu,
-		notifierEp: notifierEp,
-		platform:   platform,
-		tasks:      make([]objects.Task, 0),
-		roles:      make([]string, 0),
-		isDone:     make(chan bool, 1),
+		dbService: dbService,
+		jobId:     jobId,
+		eventQ:    eventQ,
+		jobQueues: jobQueues,
+		mu:        mu,
+		notifier:  notifier,
+		brokers:   brokers,
+		platform:  platform,
+		tasks:     make([]objects.Task, 0),
+		roles:     make([]string, 0),
+		isDone:    make(chan bool, 1),
 	}
 }
 
@@ -243,7 +246,7 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 
-	tasks, roles, err := newJobBuilder(h.dbService, jobSpec).getTasks()
+	tasks, roles, err := newJobBuilder(h.dbService, jobSpec, h.brokers).getTasks()
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return
@@ -336,7 +339,7 @@ func (h *handler) notify(evtType pbNotify.EventType) error {
 		req.AgentIds = append(req.AgentIds, task.AgentId)
 	}
 
-	resp, err := newNotifyClient(h.notifierEp).sendNotification(req)
+	resp, err := newNotifyClient(h.notifier).sendNotification(req)
 	if err != nil {
 		return fmt.Errorf("failed to notify: %v", err)
 	}
