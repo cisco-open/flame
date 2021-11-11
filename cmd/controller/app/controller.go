@@ -23,38 +23,43 @@ import (
 
 	"github.com/cisco/fledge/cmd/controller/app/database"
 	"github.com/cisco/fledge/cmd/controller/app/job"
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/openapi/controller"
 )
 
 type Controller struct {
-	dbUri      string
-	notifierEp string
-	restPort   string
-	platform   string
-	dbService  database.DBService
+	dbUri     string
+	notifier  string
+	registry  string
+	brokers   []config.Broker
+	restPort  string
+	platform  string
+	dbService database.DBService
 
 	jobEventQ *job.EventQ
 }
 
-func NewController(dbUri string, notifierEp string, restPort string, platform string) (*Controller, error) {
+func NewController(cfg *config.Config) (*Controller, error) {
 	jobEventQ := job.NewEventQ(0)
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("failed to create a job event queue")
 	}
 
-	zap.S().Infof("Connecting to database at %s", dbUri)
-	dbService, err := database.NewDBService(dbUri)
+	zap.S().Infof("Connecting to database at %s", cfg.Db)
+	dbService, err := database.NewDBService(cfg.Db)
 	if err != nil {
 		return nil, err
 	}
 
 	instance := &Controller{
-		dbUri:      dbUri,
-		notifierEp: notifierEp,
-		restPort:   restPort,
-		platform:   platform,
-		dbService:  dbService,
+		dbUri:     cfg.Db,
+		notifier:  cfg.Notifier,
+		registry:  cfg.Registry,
+		brokers:   cfg.Brokers,
+		restPort:  cfg.Port,
+		platform:  cfg.Platform,
+		dbService: dbService,
 
 		jobEventQ: jobEventQ,
 	}
@@ -63,7 +68,7 @@ func NewController(dbUri string, notifierEp string, restPort string, platform st
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifierEp, c.platform)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.brokers, c.platform)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

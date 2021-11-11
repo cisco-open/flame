@@ -20,20 +20,23 @@ import (
 	"sync"
 
 	"github.com/cisco/fledge/cmd/controller/app/database"
+	"github.com/cisco/fledge/cmd/controller/config"
 )
 
 type Manager struct {
 	dbService database.DBService
 	jobEventQ *EventQ
 
-	notifierEp string
-	platform   string
+	notifier string
+	brokers  []config.Broker
+	platform string
 
 	jobQueues map[string]*EventQ
 	mutexQ    *sync.Mutex
 }
 
-func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp string, platform string) (*Manager, error) {
+func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string, brokers []config.Broker,
+	platform string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
 	}
@@ -42,10 +45,11 @@ func NewManager(dbService database.DBService, jobEventQ *EventQ, notifierEp stri
 		dbService: dbService,
 		jobEventQ: jobEventQ,
 
-		notifierEp: notifierEp,
-		platform:   platform,
-		jobQueues:  make(map[string]*EventQ),
-		mutexQ:     new(sync.Mutex),
+		notifier:  notifier,
+		brokers:   brokers,
+		platform:  platform,
+		jobQueues: make(map[string]*EventQ),
+		mutexQ:    new(sync.Mutex),
 	}
 
 	return manager, nil
@@ -61,7 +65,7 @@ func (mgr *Manager) Do() {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
 			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
-				mgr.notifierEp, mgr.platform)
+				mgr.notifier, mgr.brokers, mgr.platform)
 			go jobHandler.Do()
 		}
 		eventQ.Enqueue(event)

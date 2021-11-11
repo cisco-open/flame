@@ -24,13 +24,12 @@ import (
 
 	"github.com/cisco/fledge/cmd/controller/app/database"
 	"github.com/cisco/fledge/cmd/controller/app/objects"
+	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/util"
 )
 
 const (
-	// TODO: for now, hard code the broker url; make this configurable
-	broker   = "mqtt.eclipseprojects.io"
 	realmSep = "|"
 )
 
@@ -41,16 +40,19 @@ const (
 type jobBuilder struct {
 	dbService database.DBService
 	jobSpec   openapi.JobSpec
+	brokers   []config.Broker
 
 	schema   openapi.DesignSchema
 	datasets []openapi.DatasetInfo
 	roleCode map[string][]byte
 }
 
-func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec) *jobBuilder {
+func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec, brokers []config.Broker) *jobBuilder {
 	return &jobBuilder{
 		dbService: dbService,
-		jobSpec:   jobSpec, datasets: make([]openapi.DatasetInfo, 0),
+		jobSpec:   jobSpec,
+		brokers:   brokers,
+		datasets:  make([]openapi.DatasetInfo, 0),
 	}
 }
 
@@ -165,7 +167,7 @@ func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		JobConfig.Hyperparameters = b.jobSpec.Hyperparameters
 		JobConfig.Dependencies = b.jobSpec.Dependencies
 		JobConfig.BackEnd = string(b.jobSpec.Backend)
-		JobConfig.Broker = broker
+		JobConfig.Brokers = b.brokers
 		// Dataset url will be populated when datasets are handled
 		JobConfig.DatasetUrl = ""
 

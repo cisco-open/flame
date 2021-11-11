@@ -26,13 +26,11 @@ services:
     # if controler comes up before mongodb
     # TODO: refactor controller code to retry connection in case of disconnection
     command: >
-      bash -c "sleep 5 &&
-      /usr/bin/controller
-      --db mongodb://fledge-db:27017
-      --notifier fledge-notifier:10101
-      --platform docker"
+      bash -c "sleep 5 && /usr/bin/controller"
     ports:
       - '10102:10102'
+    volumes:
+      - ${PWD}/controller.yaml:/etc/fledge/controller.yaml
     depends_on: ['database', 'notifier']
 
   apiserver:
@@ -53,7 +51,7 @@ services:
     #       cat /var/log/fledge/controller.log | grep "Creating task for agent"
     #       use the IDs returned from the above grep search
     environment:
-      FLEDGE_AGENT_ID: 83892b04f461f93a77b85719e5084983d8d3420d
+      FLEDGE_AGENT_ID: 899f61f470583dd22314da1e17214092338fbffa
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
@@ -64,7 +62,7 @@ services:
     container_name: 'fledgelet2'
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: b49e0fbdc89aff1a1fce298e6c1216ce15348420
+      FLEDGE_AGENT_ID: a65f8555a1d3a5bea0fe2861c11ae98b2520790f
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10104:10104'
@@ -75,7 +73,7 @@ services:
     container_name: 'fledgelet3'
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: 8edd4b40475e6ca4e9c2dce9027c133d9688ed2c
+      FLEDGE_AGENT_ID: bcbefeadacbc9b58747600ce573f18841edc3460
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10105:10105'

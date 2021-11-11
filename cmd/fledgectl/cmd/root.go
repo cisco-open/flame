@@ -54,6 +54,7 @@ func init() {
 
 	usage := "config file (default: $HOME/.fledge/config.yaml)"
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
+	rootCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
 func initConfig() {

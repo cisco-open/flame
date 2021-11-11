@@ -111,7 +111,7 @@ var (
 )
 
 func TestGetTaskTemplates(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec)
+	builder := newJobBuilder(nil, testJobSpec, nil)
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -127,7 +127,7 @@ func TestGetTaskTemplates(t *testing.T) {
 }
 
 func TestPreCheck(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec)
+	builder := newJobBuilder(nil, testJobSpec, nil)
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -145,7 +145,7 @@ func TestPreCheck(t *testing.T) {
 }
 
 func TestIsTemplatesConnected(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec)
+	builder := newJobBuilder(nil, testJobSpec, nil)
 	assert.NotNil(t, builder)
 
 	builder.schema = testSchema
@@ -168,7 +168,7 @@ func TestIsTemplatesConnected(t *testing.T) {
 }
 
 func TestIsConverging(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec)
+	builder := newJobBuilder(nil, testJobSpec, nil)
 	assert.NotNil(t, builder)
 
 	// success case
@@ -209,7 +209,7 @@ func TestIsConverging(t *testing.T) {
 }
 
 func TestWalk(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec)
+	builder := newJobBuilder(nil, testJobSpec, nil)
 	builder.schema = testSchema
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
