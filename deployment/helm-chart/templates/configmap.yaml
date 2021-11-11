@@ -1,21 +1,15 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-configmap
+  name: {{ .Release.Name }}-controller-configmap
   namespace: '{{ .Release.Namespace }}'
 data:
-  DB_NAME: '{{ .Values.database.name }}'
-  DB_URI: '{{ .Values.database.uri }}'
-  DB_TYPE: '{{ .Values.database.type }}'
-  # {{- with .Values.dbinfo }}
-  # DB_CONNECTION_INFO: {{ . }}
-  # {{- end }}
-  # {{- with .Values.dbname }}
-  # DB_NAME: {{ . }}
-  # {{- end }}
-  # IDP_LABEL: "okta"
-  # IDP_CLIENT_ID: "0oa91s018dBJZONqD5d6"
-  # IDP_ISSUER: "https://dev-75978588.okta.com/oauth2/aus91tuhgfSLmoQv65d6"
-  # IDP_AUDIENCE: "api://helloworld"
-  # IDP_LOGIN_CALLBACK: "https://helloworld.{{ .Values.cluster.apiDomainName }}/auth/login/token"
-  # IDP_ISSUER_LOGOUT_PATH : "/v1/logout"
+  controller.yaml: |
+    ---
+    db: mongodb://fledge-db:27017
+    brokers:
+      - sort: mqtt
+        host: mqtt.eclipseprojects.io
+    notifier: fledge-notifier:10101
+    platform: k8s
+    registry: http://mlflow:5000

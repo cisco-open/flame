@@ -30,13 +30,18 @@ spec:
           - "--notifier"
           - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
         ports:
-        - containerPort: {{ .Values.componentPorts.controller }}
-        envFrom:
-          - configMapRef:
-              name: {{ .Release.Name }}-configmap
+          - containerPort: {{ .Values.componentPorts.controller }}
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/fledge/controller.yaml
+            subPath: controller.yaml
+
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-controller-configmap
         {{- if .Values.mongodbcredentials }}
-        volumes:
-          - name: {{ .Release.Name }}-mongodb
-            secret:
-              secretName: {{ .Release.Name }}-mongodb
+        - name: {{ .Release.Name }}-mongodb
+          secret:
+            secretName: {{ .Release.Name }}-mongodb
         {{- end }}
