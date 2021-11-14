@@ -57,6 +57,7 @@ type handler struct {
 	mu        *sync.Mutex
 	notifier  string
 	brokers   []config.Broker
+	registry  config.Registry
 	platform  string
 
 	jobSpec openapi.JobSpec
@@ -73,7 +74,7 @@ type handler struct {
 }
 
 func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, brokers []config.Broker, platform string) *handler {
+	notifier string, brokers []config.Broker, registry config.Registry, platform string) *handler {
 	return &handler{
 		dbService: dbService,
 		jobId:     jobId,
@@ -82,6 +83,7 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		mu:        mu,
 		notifier:  notifier,
 		brokers:   brokers,
+		registry:  registry,
 		platform:  platform,
 		tasks:     make([]objects.Task, 0),
 		roles:     make([]string, 0),
@@ -246,7 +248,7 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 
-	tasks, roles, err := newJobBuilder(h.dbService, jobSpec, h.brokers).getTasks()
+	tasks, roles, err := newJobBuilder(h.dbService, jobSpec, h.brokers, h.registry).getTasks()
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
 		return

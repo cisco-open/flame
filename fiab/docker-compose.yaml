@@ -1,5 +1,30 @@
+---
 version: '3'
 services:
+  postgres:
+    image: 'postgres'
+    container_name: 'postgres'
+    volumes:
+      - ./postgresdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: mlflow
+      POSTGRES_PASSWORD: mlflow
+      POSTGRES_DB: mlflow
+
+  mlflow:
+    image: 'adacotechjp/mlflow:1.21.0'
+    container_name: 'mlflow'
+    entrypoint: ""
+    command: >
+      bash -c "mlflow server
+      --backend-store-uri postgresql://mlflow:mlflow@postgres/mlflow
+      --default-artifact-root file:./mlruns
+      --host 0.0.0.0"
+    ports:
+      - '5000:5000'
+    depends_on: ['postgres']
 
   database:
     image: 'mongo'
@@ -44,6 +69,9 @@ services:
   fledgelet1:
     image: 'fledge'
     container_name: 'fledgelet1'
+    volumes:
+      - ./mlruns:/mlruns
+      - ../:/src/fledge
     # NOTE: update FLEDGE_AGENT_ID based on the task
     #       when a job is first executed, it will fail.
     #       log into controller container and check its logs to identify agent IDs
@@ -51,7 +79,8 @@ services:
     #       cat /var/log/fledge/controller.log | grep "Creating task for agent"
     #       use the IDs returned from the above grep search
     environment:
-      FLEDGE_AGENT_ID: 899f61f470583dd22314da1e17214092338fbffa
+      FLEDGE_AGENT_ID: 9f1cae384620dbc68ae4070fe5a8a610f3ea456f
+      LOG_LEVEL: DEBUG
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
@@ -60,9 +89,13 @@ services:
   fledgelet2:
     image: 'fledge'
     container_name: 'fledgelet2'
+    volumes:
+      - ./mlruns:/mlruns
+      - ../:/src/fledge
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: a65f8555a1d3a5bea0fe2861c11ae98b2520790f
+      FLEDGE_AGENT_ID: d36a233e2e85d2d479470f86e61592395c02306f
+      LOG_LEVEL: DEBUG
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10104:10104'
@@ -71,9 +104,13 @@ services:
   fledgelet3:
     image: 'fledge'
     container_name: 'fledgelet3'
+    volumes:
+      - ./mlruns:/mlruns
+      - ../:/src/fledge
     # NOTE: update FLEDGE_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: bcbefeadacbc9b58747600ce573f18841edc3460
+      FLEDGE_AGENT_ID: 536b8978f8b8aa90576cdb9f80dceaa809c53852
+      LOG_LEVEL: DEBUG
     command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10105:10105'

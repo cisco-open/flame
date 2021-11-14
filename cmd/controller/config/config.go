@@ -31,12 +31,17 @@ type Config struct {
 	Notifier string   `yaml:"notifier"`
 	Platform string   `yaml:"platform,omitempty"`
 	Port     string   `yaml:"port,omitempty"`
-	Registry string   `yaml:"registry,omitempty"`
+	Registry Registry `yaml:"registry,omitempty"`
 }
 
 type Broker struct {
-	Sort string `yaml:"sort"`
-	Host string `yaml:"host"`
+	Sort string `json:"sort" yaml:"sort"`
+	Host string `json:"host" yaml:"host"`
+}
+
+type Registry struct {
+	Sort string `json:"sort" yaml:"sort"`
+	Uri  string `json:"uri" yaml:"uri"`
 }
 
 var fs afero.Fs

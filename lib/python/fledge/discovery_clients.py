@@ -12,24 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Factory for discovery clients."""
 
-from .backend.local import LocalBackend
-from .backend.mqtt import MqttBackend
-from .backend.p2p import PointToPointBackend
-from .config import BackendType
+from .discovery.local_client import LocalDiscoveryClient
 from .object_factory import ObjectFactory
 
 
-class BackendProvider(ObjectFactory):
-    """Backend Provider."""
+class DiscoveryClientProvider(ObjectFactory):
+    """Discovery client provider."""
 
     #
-    def get(self, backend_name, **kargs):
-        """Return a backend for a given backend name."""
-        return self.create(backend_name, **kargs)
+    def get(self, client_name, **kargs):
+        """Return a discovery client object given a name."""
+        return self.create(client_name, **kargs)
 
 
-backend_provider = BackendProvider()
-backend_provider.register(BackendType.LOCAL, LocalBackend)
-backend_provider.register(BackendType.P2P, PointToPointBackend)
-backend_provider.register(BackendType.MQTT, MqttBackend)
+discovery_client_provider = DiscoveryClientProvider()
+discovery_client_provider.register('local', LocalDiscoveryClient)

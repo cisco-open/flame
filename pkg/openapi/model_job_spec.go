@@ -44,7 +44,7 @@ type JobSpec struct {
 
 	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
-	BaseModelId string `json:"baseModelId,omitempty"`
+	BaseModel BaseModel `json:"baseModel,omitempty"`
 
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 

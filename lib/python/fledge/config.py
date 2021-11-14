@@ -16,6 +16,7 @@
 
 import json
 import sys
+from enum import Enum
 
 CONF_KEY_AGENT = 'agent'
 CONF_KEY_AGENT_ID = 'agentid'
@@ -23,9 +24,7 @@ CONF_KEY_BACKEND = 'backend'
 CONF_KEY_CHANNEL = 'channels'
 CONF_KEY_DATASET = 'dataset'
 CONF_KEY_HYPERPARAMS = 'hyperparameters'
-CONF_KEY_JOB_ID = 'jobid'
 CONF_KEY_MAX_RUN_TIME = 'maxRunTime'
-CONF_KEY_MQTT_BROKER = 'broker'
 CONF_KEY_REALM = 'realm'
 CONF_KEY_ROLE = 'role'
 
@@ -37,15 +36,40 @@ CONF_KEY_CHANNEL_GROUPBY_TYPE = 'type'
 CONF_KEY_CHANNEL_GROUPBY_VALUE = 'value'
 CONF_KEY_CHANNEL_FUNC_TAGS = 'funcTags'
 
+CONF_KEY_BASE_MODEL = 'baseModel'
+CONF_KEY_BASE_MODEL_NAME = 'name'
+CONF_KEY_BASE_MODEL_VERSION = 'version'
+
+CONF_KEY_BROKERS = 'brokers'
+CONF_KEY_BROKERS_HOST = 'host'
+CONF_KEY_BROKERS_SORT = 'sort'
+
+CONF_KEY_JOB = 'job'
+CONF_KEY_JOB_ID = 'id'
+CONF_KEY_JOB_NAME = 'name'
+
+CONF_KEY_REGISTRY = 'registry'
+CONF_KEY_REGISTRY_SORT = 'sort'
+CONF_KEY_REGISTRY_URI = 'uri'
+
 GROUPBY_DEFAULT_GROUP = 'default'
 
-BACKEND_TYPE_LOCAL = 'local'
-BACKEND_TYPE_P2P = 'p2p'
-BACKEND_TYPE_MQTT = 'mqtt'
+
+class BackendType(Enum):
+    """Define backend types."""
+
+    LOCAL = 1
+    P2P = 2
+    MQTT = 3
+
+
+class RegistryType(Enum):
+    """Define model registry types."""
+
+    MLFLOW = 1
+
 
 REALM_SEPARATOR = '|'
-
-backend_types = [BACKEND_TYPE_LOCAL, BACKEND_TYPE_P2P, BACKEND_TYPE_MQTT]
 
 
 class Config(object):
@@ -61,7 +85,7 @@ class Config(object):
 
             #
             def __init__(self, json_data=None):
-                """Initialize."""
+                """Initialize GroupBy instance."""
                 self.gtype = ''
                 self.value = []
 
@@ -70,6 +94,14 @@ class Config(object):
 
                 self.gtype = json_data[CONF_KEY_CHANNEL_GROUPBY_TYPE]
                 self.value = json_data[CONF_KEY_CHANNEL_GROUPBY_VALUE]
+
+            def __str__(self):
+                """Return GroupBy info as string."""
+                return (
+                    "\t\t--- groupby ---\n" +
+                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_TYPE}: {self.gtype}\n" +
+                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}\n"
+                )
 
             def groupable_value(self, realm=''):
                 """Return groupby value."""
@@ -87,14 +119,8 @@ class Config(object):
 
                 return GROUPBY_DEFAULT_GROUP
 
-            def print(self):
-                """Print GroupBy info."""
-                print('\t\t--- groupby ---')
-                print(f'\t\t{CONF_KEY_CHANNEL_GROUPBY_TYPE}: {self.gtype}')
-                print(f'\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}')
-
         def __init__(self, json_data):
-            """Initialize."""
+            """Initialize Channel instance."""
             self.name = json_data[CONF_KEY_CHANNEL_NAME]
             self.pair = json_data[CONF_KEY_CHANNEL_PAIR]
             if len(self.pair) != 2:
@@ -111,20 +137,112 @@ class Config(object):
             else:
                 self.groupby = Config.Channel.GroupBy()
 
-            self.func_tags = list()
+            self.func_tags = dict()
             if CONF_KEY_CHANNEL_FUNC_TAGS in json_data:
-                self.func_tags = json_data[CONF_KEY_CHANNEL_FUNC_TAGS]
+                for k, v in json_data[CONF_KEY_CHANNEL_FUNC_TAGS].items():
+                    # k: role, v: tag list
+                    self.func_tags[k] = v
 
-        def print(self):
-            """Print channel info."""
-            print('\t--- channel ---')
-            print(f'\t{CONF_KEY_CHANNEL_NAME}: {self.name}')
-            print(f'\t{CONF_KEY_CHANNEL_PAIR}: {self.pair}')
-            print(f'\t{CONF_KEY_CHANNEL_IS_BIDIR}: {self.is_bidrectional}')
-            self.groupby.print()
+        def __str__(self):
+            """Return channel info as string."""
+            return (
+                "\t--- channel ---\n" +
+                f"\t\t{CONF_KEY_CHANNEL_NAME}: {self.name}\n" +
+                f"\t\t{CONF_KEY_CHANNEL_PAIR}: {self.pair}\n" +
+                f"\t\t{CONF_KEY_CHANNEL_IS_BIDIR}: {self.is_bidrectional}\n" +
+                str(self.groupby)
+            )
+
+    class BaseModel(object):
+        """Base model class."""
+
+        #
+        def __init__(self, json_data=None):
+            """Initialize BaseModel instance."""
+            self.name = json_data[CONF_KEY_BASE_MODEL_NAME]
+            self.version = json_data[CONF_KEY_BASE_MODEL_VERSION]
+
+        def __str__(self):
+            """Return base model's detail as string."""
+            return (
+                "\t--- base model ---\n" +
+                f"\t\t{CONF_KEY_BASE_MODEL_NAME}: {self.name}\n" +
+                f"\t\t{CONF_KEY_BASE_MODEL_VERSION}: {self.version}\n"
+            )
+
+    class Brokers(object):
+        """Brokers class."""
+
+        #
+        def __init__(self, json_data=None):
+            """Initialize BaseModel instance."""
+            self.sort_to_host = dict()
+
+            for broker in json_data:
+                key = broker[CONF_KEY_BROKERS_SORT].upper()
+                try:
+                    sort = BackendType[key]
+                except KeyError:
+                    valid_types = [backend.name for backend in BackendType]
+                    sys.exit(
+                        f"invalid sort type: {key}\n" +
+                        f"broker's sort must be one of {valid_types}."
+                    )
+
+                host = broker[CONF_KEY_BROKERS_HOST]
+                self.sort_to_host[sort] = host
+
+        def __str__(self):
+            """Return brokers' details as string."""
+            info = ""
+            for sort, host in self.sort_to_host.items():
+                info += f"\t\t{sort}: {host}\n"
+            return ("\t--- brokers ---\n" + info)
+
+    class Job(object):
+        """Job class."""
+
+        #
+        def __init__(self, json_data=None):
+            """Initialize Job instance."""
+            self.job_id = json_data[CONF_KEY_JOB_ID]
+            self.name = json_data[CONF_KEY_JOB_NAME]
+
+        def __str__(self):
+            """Return job's detail in string format."""
+            return (
+                "\t--- job ---\n" + f"\t\t{CONF_KEY_JOB_ID}: {self.job_id}\n" +
+                f"\t\t{CONF_KEY_JOB_NAME}: {self.name}\n"
+            )
+
+    class Registry(object):
+        """Registry class."""
+
+        #
+        def __init__(self, json_data=None):
+            """Initialize Registry instance."""
+            sort = json_data[CONF_KEY_REGISTRY_SORT].upper()
+            try:
+                self.sort = RegistryType[sort]
+            except KeyError:
+                valid_types = [registry.name for registry in RegistryType]
+                sys.exit(
+                    f"invailid registry type: {sort}" +
+                    f"valid registry type(s) are {valid_types}"
+                )
+
+            self.uri = json_data[CONF_KEY_REGISTRY_URI]
+
+        def __str__(self):
+            """Return model registry's detail in string format."""
+            return (
+                "\t--- registry ---\n" +
+                f"\t\t{CONF_KEY_REGISTRY_SORT}: {self.sort}\n" +
+                f"\t\t{CONF_KEY_REGISTRY_URI}: {self.uri}\n"
+            )
 
     def __init__(self, config_file: str):
-        """Initialize."""
+        """Initialize Config instance."""
         with open(config_file) as f:
             json_data = json.load(f)
             f.close()
@@ -135,10 +253,17 @@ class Config(object):
 
         self.agent_id = json_data[CONF_KEY_AGENT_ID]
 
-        self.backend = json_data[CONF_KEY_BACKEND]
-        if not self.is_valid(self.backend, backend_types):
-            sys.exit(f'not a vailid backend type: {self.backend}')
-        self.broker = json_data[CONF_KEY_MQTT_BROKER]
+        backend_key = json_data[CONF_KEY_BACKEND].upper()
+        try:
+            self.backend = BackendType[backend_key]
+        except KeyError:
+            valid_types = [backend.name for backend in BackendType]
+            sys.exit(
+                f"invailid backend type: {backend_key}\n" +
+                f"valid backend type(s) are {valid_types}"
+            )
+
+        self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
 
         self.dataset = ''
         if CONF_KEY_DATASET in json_data:
@@ -152,7 +277,6 @@ class Config(object):
         if CONF_KEY_MAX_RUN_TIME in json_data:
             self.max_run_time = json_data[CONF_KEY_MAX_RUN_TIME]
 
-        self.job_id = json_data[CONF_KEY_JOB_ID]
         self.role = json_data[CONF_KEY_ROLE]
         self.realm = json_data[CONF_KEY_REALM]
 
@@ -164,21 +288,26 @@ class Config(object):
             self.channels[channel_config.name] = channel_config
 
             # build a map from function tag to channel name
-            for tag in channel_config.func_tags:
+            for tag in channel_config.func_tags[self.role]:
                 self.func_tag_map[tag] = channel_config.name
 
-    def is_valid(self, needle, haystack):
-        """Return if key is found in json data."""
-        return needle in haystack
+        self.base_model = None
+        if CONF_KEY_BASE_MODEL in json_data:
+            self.base_model = Config.BaseModel(json_data[CONF_KEY_BASE_MODEL])
 
-    def print(self):
-        """Print config info."""
-        print('--- config ---')
-        print(f'{CONF_KEY_MQTT_BROKER}: {self.broker}')
-        print(f'{CONF_KEY_BACKEND}: {self.backend}')
-        print(f'{CONF_KEY_AGENT}: {self.agent}')
-        print(f'{CONF_KEY_ROLE}: {self.role}')
-        print(f'{CONF_KEY_REALM}: {self.realm}')
-        print(f'{CONF_KEY_JOB_ID}: {self.jobid}')
+        self.job = Config.Job(json_data[CONF_KEY_JOB])
+        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
+
+    def __str__(self):
+        """Return config info as string."""
+        info = (
+            "--- config ---\n" + f"\t{CONF_KEY_BACKEND}: {self.backend}\n" +
+            f"\t{CONF_KEY_AGENT}: {self.agent}\n" +
+            f"\t{CONF_KEY_ROLE}: {self.role}\n" +
+            f"\t{CONF_KEY_REALM}: {self.realm}\n" + str(self.base_model) +
+            str(self.brokers) + str(self.job) + str(self.registry)
+        )
         for _, channel in self.channels.items():
-            channel.print()
+            info += str(channel)
+
+        return info

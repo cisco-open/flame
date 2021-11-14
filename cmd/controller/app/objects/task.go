@@ -33,16 +33,22 @@ type Task struct {
 	ZippedCode []byte
 }
 
+type JobIdName struct {
+	Id   string `json:"id"`
+	Name string `json:"name"`
+}
+
 type JobConfig struct {
 	BackEnd  string            `json:"backend"`
 	Brokers  []config.Broker   `json:"brokers,omitempty"`
-	JobId    string            `json:"jobid"`
+	Registry config.Registry   `json:"registry,omitempty"`
+	Job      JobIdName         `json:"job"`
 	Role     string            `json:"role"`
 	Realm    string            `json:"realm"`
 	Channels []openapi.Channel `json:"channels"`
 
 	MaxRunTime      int32                  `json:"maxRunTime,omitempty"`
-	BaseModelId     string                 `json:"baseModelId,omitempty"`
+	BaseModel       openapi.BaseModel      `json:"baseModel,omitempty"`
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 	Dependencies    []string               `json:"dependencies,omitempty"`
 	DatasetUrl      string                 `json:"dataset,omitempty"`

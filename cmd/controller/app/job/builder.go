@@ -41,17 +41,19 @@ type jobBuilder struct {
 	dbService database.DBService
 	jobSpec   openapi.JobSpec
 	brokers   []config.Broker
+	registry  config.Registry
 
 	schema   openapi.DesignSchema
 	datasets []openapi.DatasetInfo
 	roleCode map[string][]byte
 }
 
-func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec, brokers []config.Broker) *jobBuilder {
+func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec, brokers []config.Broker, registry config.Registry) *jobBuilder {
 	return &jobBuilder{
 		dbService: dbService,
 		jobSpec:   jobSpec,
 		brokers:   brokers,
+		registry:  registry,
 		datasets:  make([]openapi.DatasetInfo, 0),
 	}
 }
@@ -161,13 +163,16 @@ func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		template := &taskTemplate{}
 		JobConfig := &template.JobConfig
 
-		JobConfig.JobId = b.jobSpec.Id
+		JobConfig.Job.Id = b.jobSpec.Id
+		// DesignId is a string suitable as job's name
+		JobConfig.Job.Name = b.jobSpec.DesignId
 		JobConfig.MaxRunTime = b.jobSpec.MaxRunTime
-		JobConfig.BaseModelId = b.jobSpec.BaseModelId
+		JobConfig.BaseModel = b.jobSpec.BaseModel
 		JobConfig.Hyperparameters = b.jobSpec.Hyperparameters
 		JobConfig.Dependencies = b.jobSpec.Dependencies
 		JobConfig.BackEnd = string(b.jobSpec.Backend)
 		JobConfig.Brokers = b.brokers
+		JobConfig.Registry = b.registry
 		// Dataset url will be populated when datasets are handled
 		JobConfig.DatasetUrl = ""
 
@@ -457,7 +462,7 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			task.JobConfig.Realm = dataset.Realm
 			// no need to copy byte array; assignment suffices
 			task.ZippedCode = tmpl.Task.ZippedCode
-			task.JobId = task.JobConfig.JobId
+			task.JobId = task.JobConfig.Job.Id
 			task.GenerateAgentId(i)
 
 			tasks = append(tasks, task)
@@ -475,7 +480,7 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		i := 0
 		for i < len(channel.GroupBy.Value) {
 			task := tmpl.Task
-			task.JobId = task.JobConfig.JobId
+			task.JobId = task.JobConfig.Job.Id
 			task.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
 			task.GenerateAgentId(i)
 
@@ -488,7 +493,7 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		// we have to create a default task
 		if len(tasks) == 0 {
 			task := tmpl.Task
-			task.JobId = task.JobConfig.JobId
+			task.JobId = task.JobConfig.Job.Id
 			task.GenerateAgentId(0)
 
 			tasks = append(tasks, task)

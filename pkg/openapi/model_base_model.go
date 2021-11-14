@@ -24,17 +24,8 @@
 
 package openapi
 
-// Channel - Defines how different roles are connected.
-type Channel struct {
+type BaseModel struct {
 	Name string `json:"name"`
 
-	Description string `json:"description,omitempty"`
-
-	Pair []string `json:"pair"`
-
-	GroupBy ChannelGroupBy `json:"groupBy,omitempty"`
-
-	FuncTags map[string][]string `json:"funcTags,omitempty"`
-
-	IsUnidirectional bool `json:"isUnidirectional,omitempty"`
+	Version int32 `json:"version"`
 }

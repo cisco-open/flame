@@ -20,7 +20,7 @@ from ..common.constants import UNIX_SOCKET_PATH
 from ..proto import registry_msg_pb2 as msg_pb2
 
 
-class LocalRegistryAgent(object):
+class LocalDiscoveryClient(object):
     def __init__(self):
         self.reader = None
         self.writer = None
@@ -109,7 +109,7 @@ class LocalRegistryAgent(object):
 
 
 async def main():
-    agent = LocalRegistryAgent()
+    agent = LocalDiscoveryClient()
     await agent.connect()
     await agent.register('job1', 'ch1', 'role1', 'uid1', 'endpoint1')
     await agent.register('job1', 'ch3', 'role1', 'uid1', 'endpoint1')

@@ -26,8 +26,9 @@ JobSpec:
     maxRunTime:
       type: int32
       default: 600 # 600s = 10min
-    baseModelId:
-      type: string
+    baseModel:
+      type: object
+      $ref: '#/components/schemas/BaseModel'
     hyperparameters:
       type: object
     dependencies:
@@ -46,7 +47,9 @@ JobSpec:
     prority: "low"
     backend: "mqtt"
     maxRunTime: 600
-    initialModelId: "30d0ea38169f1207b7f9e00b"
+    baseModel:
+        name: mnist-624d9fc43395791
+        version: 2
     hyperparameters:
       - rounds: 5
       - runningRate: 0.01
@@ -63,6 +66,23 @@ CommBackend:
   enum:
     - mqtt
     - p2p
+
+########################################
+# Base Model
+########################################
+BaseModel:
+  type: object
+  properties:
+    name:
+      type: string
+    version:
+      type: int32
+  required:
+    - name
+    - version
+  example:
+    name: mnist-624d9fc43395791
+    version: 2
 
 ########################################
 # Job status
