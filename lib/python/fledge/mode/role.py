@@ -40,6 +40,15 @@ class Role(ABC):
     def compose(self) -> None:
         """Abstract method to compose role with tasklets."""
 
+    @abstractmethod
+    def run(self) -> None:
+        """Abstract method to run role."""
+
+    @classmethod
+    @abstractmethod
+    def get_func_tags(cls) -> list[str]:
+        """Abstract class method to get function tags associated with a role."""
+
     ###########################################################################
     # The following functions need to be implemented the grandchild class.
     ###########################################################################
