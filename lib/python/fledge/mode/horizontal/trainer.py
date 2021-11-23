@@ -134,3 +134,8 @@ class Trainer(Role, metaclass=ABCMeta):
     def run(self) -> None:
         """Run role."""
         self.composer.run()
+
+    @classmethod
+    def get_func_tags(cls) -> list[str]:
+        """Return a list of function tags defined in the trainer role."""
+        return [TAG_FETCH, TAG_UPLOAD]
