@@ -15,6 +15,7 @@
 """MNIST horizontal FL aggregator."""
 
 import logging
+from random import randrange
 
 import numpy as np
 from fledge.config import Config
@@ -74,6 +75,12 @@ class MnistAggregator(Aggregator):
         """Load a test dataset."""
         # the data, split between train and test sets
         (_, _), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+        split_n = 5
+        index = randrange(split_n)
+        # reduce test sample size to reduce the runtime
+        x_test = np.split(x_test, split_n)[index]
+        y_test = np.split(y_test, split_n)[index]
 
         # Scale images to the [0, 1] range
         x_test = x_test.astype("float32") / 255

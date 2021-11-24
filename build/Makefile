@@ -28,5 +28,9 @@ local: dep
 	@mkdir -p ./build/bin
 	@go build -o ./build/bin ./...
 
+install: local
+	mkdir -p $(HOME)/.fledge/bin
+	cp -r ./build/bin $(HOME)/.fledge
+
 test: dep
 	@go test -v ./...

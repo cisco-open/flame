@@ -12,10 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """MNIST horizontal FL trainer."""
 
 import logging
+from random import randrange
 
 import numpy as np
 from fledge.config import Config
@@ -78,6 +78,12 @@ class MnistTrainer(Trainer):
 
         # the data, split between train and test sets
         (x_train, y_train), (_, _) = keras.datasets.mnist.load_data()
+
+        split_n = 10
+        index = randrange(split_n)
+        # reduce train sample size to reduce the runtime
+        x_train = np.split(x_train, split_n)[index]
+        y_train = np.split(y_train, split_n)[index]
 
         # Scale images to the [0, 1] range
         x_train = x_train.astype("float32") / 255

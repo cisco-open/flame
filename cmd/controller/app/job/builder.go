@@ -210,11 +210,16 @@ func (b *jobBuilder) extractChannels(role string, channels []openapi.Channel) []
 func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
-	// 1. a role shouled be associated with a code.
-	// 2. template should be connected.
-	// 3. when graph traversal starts at a data role template, the depth of groupby tag
+	// 1. At least one data consumer role should be defined.
+	// 2. a role shouled be associated with a code.
+	// 3. template should be connected.
+	// 4. when graph traversal starts at a data role template, the depth of groupby tag
 	//    should strictly decrease from one channel to another.
-	// 4. two different data roles cannot be connected directly.
+	// 5. two different data roles cannot be connected directly.
+
+	if len(dataRoles) == 0 {
+		return fmt.Errorf("no data consumer role found")
+	}
 
 	for _, role := range b.schema.Roles {
 		if _, ok := b.roleCode[role.Name]; !ok {

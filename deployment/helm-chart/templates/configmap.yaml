@@ -14,4 +14,4 @@ data:
     platform: k8s
     registry:
       sort: mlflow
-      uri: http://mlflow:5000
+      uri: http://blue-a-fledge-mlflow-dev-argoapp.fledge-mlflow-dev-blue.svc:5000
