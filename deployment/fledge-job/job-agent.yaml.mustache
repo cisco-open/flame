@@ -33,5 +33,24 @@ spec:
         env:
         - name: FLEDGE_AGENT_ID
           value: <% agentId %>
+
+        - name: AWS_ACCESS_KEY_ID
+          valueFrom:
+            secretKeyRef:
+              name: fledge-s3-iam
+              key: AWS_ACCESS_KEY_ID
+
+        - name: AWS_DEFAULT_REGION
+          valueFrom:
+            secretKeyRef:
+              name: fledge-s3-iam
+              key: AWS_DEFAULT_REGION
+
+        - name: AWS_SECRET_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: fledge-s3-iam
+              key: AWS_SECRET_ACCESS_KEY
+
       restartPolicy: Never
 <%={{ }}=%>
