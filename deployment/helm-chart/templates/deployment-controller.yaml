@@ -30,7 +30,22 @@ spec:
           - name: config-volume
             mountPath: /etc/fledge/controller.yaml
             subPath: controller.yaml
-
+        env:
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: fledge-s3-iam
+                key: AWS_ACCESS_KEY_ID
+          - name: AWS_DEFAULT_REGION
+            valueFrom:
+              secretKeyRef:
+                name: fledge-s3-iam
+                key: AWS_DEFAULT_REGION
+          - name: AWS_SECRET_ACCESS_KEY
+            valueFrom:
+              secretKeyRef:
+                name: fledge-s3-iam
+                key: AWS_SECRET_ACCESS_KEY
       volumes:
         - name: config-volume
           configMap:
