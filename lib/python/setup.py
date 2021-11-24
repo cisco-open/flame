@@ -18,7 +18,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='fledge',
-    version='0.0.4',
+    version='0.0.5',
     author='Myungjin Lee',
     author_email='myungjle@cisco.com',
     include_package_data=True,
@@ -69,5 +69,5 @@ setup(
     description="This package is a python library"
     " to run ML workloads in the fledge system",
     long_description=open('README.md').read(),
-    install_requires=['cloudpickle', 'mlflow', 'paho-mqtt']
+    install_requires=['boto3', 'cloudpickle', 'mlflow', 'paho-mqtt']
 )
