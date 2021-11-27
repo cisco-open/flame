@@ -79,3 +79,32 @@ func (db *MongoService) GetDatasetById(datasetId string) (openapi.DatasetInfo, e
 
 	return datasetInfo, nil
 }
+
+func (db *MongoService) GetDatasets(userId string, limit int32) ([]openapi.DatasetInfo, error) {
+	zap.S().Infof("Get datasets info for user: %s", userId)
+
+	filter := bson.M{util.DBFieldUserId: userId}
+	cursor, err := db.datasetCollection.Find(context.TODO(), filter)
+	if err != nil {
+		zap.S().Warnf("Failed to fetch datasets info: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	defer cursor.Close(context.TODO())
+	var datasetInfoList []openapi.DatasetInfo
+
+	for cursor.Next(context.TODO()) {
+		var datasetInfo openapi.DatasetInfo
+		if err = cursor.Decode(&datasetInfo); err != nil {
+			err = ErrorCheck(err)
+			zap.S().Errorf("Failed to decode dataset info: %v", err)
+
+			return nil, err
+		}
+
+		datasetInfoList = append(datasetInfoList, datasetInfo)
+	}
+
+	return datasetInfoList, nil
+}

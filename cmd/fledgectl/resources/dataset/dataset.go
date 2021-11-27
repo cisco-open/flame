@@ -19,10 +19,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+	"strconv"
 
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/olekukonko/tablewriter"
 )
 
 type Params struct {
@@ -70,6 +73,46 @@ func Create(params Params) error {
 
 	fmt.Println("New dataset created successfully")
 	fmt.Printf("\tdataset ID: %s\n", datasetId)
+
+	return nil
+}
+
+func Get(params Params) error {
+	fmt.Println("Not yet implemented")
+	return nil
+}
+
+func GetMany(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"limit": params.Limit,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetDatasetsEndPoint, uriMap)
+
+	// send get request
+	code, responseBody, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to get datasets - code: %d, error: %v\n", code, err)
+		return nil
+	}
+
+	// convert the response into list of struct
+	infoList := []openapi.DatasetInfo{}
+	err = json.Unmarshal(responseBody, &infoList)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal dataset info: %v\n", err)
+		return nil
+	}
+
+	// displaying the output in a table form https://github.com/olekukonko/tablewriter
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Dataset ID", "Name", "Description", "public"})
+	for _, v := range infoList {
+		table.Append([]string{v.Id, v.Name, v.Description, strconv.FormatBool(v.IsPublic)})
+	}
+
+	table.Render() // Send output
 
 	return nil
 }
