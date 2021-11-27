@@ -32,8 +32,9 @@ type DBService interface {
 
 // DatasetService is an interface that defines a collection of APIs related to dataset
 type DatasetService interface {
-	CreateDataset(userId string, info openapi.DatasetInfo) (string, error)
-	GetDatasetById(datasetId string) (openapi.DatasetInfo, error)
+	CreateDataset(string, openapi.DatasetInfo) (string, error)
+	GetDatasets(string, int32) ([]openapi.DatasetInfo, error)
+	GetDatasetById(string) (openapi.DatasetInfo, error)
 }
 
 // DesignService is an interface that defines a collection of APIs related to design

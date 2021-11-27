@@ -29,11 +29,13 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"go.uber.org/zap"
 
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 // DatasetsApiService is a service that implents the logic for the DatasetsApiServicer
@@ -106,17 +108,31 @@ func (s *DatasetsApiService) GetDataset(ctx context.Context, user string, datase
 
 // GetDatasets - Get the meta info on all the datasets owned by user
 func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
-	// TODO - update GetDatasets with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("get list of datasets for user: %s | limit: %d", user, limit)
 
-	//TODO: Uncomment the next line to return response Response(200, []DatasetInfo{}) or use other options such as http.Ok ...
-	//return Response(200, []DatasetInfo{}), nil
+	//create controller request
+	//construct URL
+	uriMap := map[string]string{
+		"user":  user,
+		"limit": strconv.Itoa(int(limit)),
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDatasetsEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	//send get request
+	code, responseBody, err := restapi.HTTPGet(url)
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDatasets method not implemented")
+	//response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get datasets information request failed")
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
+
+	var resp []openapi.DatasetInfo
+	err = util.ByteToStruct(responseBody, &resp)
+	return openapi.Response(http.StatusOK, resp), err
 }
 
 // UpdateDataset - Update meta info for a given dataset
