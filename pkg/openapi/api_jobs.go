@@ -72,10 +72,10 @@ func (c *JobsApiController) Routes() Routes {
 			c.GetJobStatus,
 		},
 		{
-			"GetJobsStatus",
+			"GetJobs",
 			strings.ToUpper("Get"),
-			"/{user}/jobs/status",
-			c.GetJobsStatus,
+			"/{user}/jobs",
+			c.GetJobs,
 		},
 		{
 			"GetTask",
@@ -175,8 +175,8 @@ func (c *JobsApiController) GetJobStatus(w http.ResponseWriter, r *http.Request)
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// GetJobsStatus - Get status info on all the jobs owned by user
-func (c *JobsApiController) GetJobsStatus(w http.ResponseWriter, r *http.Request) {
+// GetJobs - Get status info on all the jobs owned by user
+func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
 	user := params["user"]
@@ -186,7 +186,7 @@ func (c *JobsApiController) GetJobsStatus(w http.ResponseWriter, r *http.Request
 		w.WriteHeader(http.StatusBadRequest)
 		return
 	}
-	result, err := c.service.GetJobsStatus(r.Context(), user, limit)
+	result, err := c.service.GetJobs(r.Context(), user, limit)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

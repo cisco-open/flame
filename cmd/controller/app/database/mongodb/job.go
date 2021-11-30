@@ -63,7 +63,7 @@ func (db *MongoService) DeleteJob(userId string, jobId string) error {
 func (db *MongoService) GetJob(userId string, jobId string) (openapi.JobSpec, error) {
 	zap.S().Infof("get job specification for userId: %s with jobId: %s", userId, jobId)
 
-	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), "userid": userId}
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), util.DBFieldUserId: userId}
 	var jobSpec openapi.JobSpec
 	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&jobSpec)
 	if err != nil {
@@ -93,7 +93,7 @@ func (db *MongoService) GetJobById(jobId string) (openapi.JobSpec, error) {
 func (db *MongoService) GetJobStatus(userId string, jobId string) (openapi.JobStatus, error) {
 	zap.S().Debugf("get job status for userId: %s with jobId: %s", userId, jobId)
 
-	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), "userid": userId}
+	filter := bson.M{util.DBFieldMongoID: ConvertToObjectID(jobId), util.DBFieldUserId: userId}
 	jobStatus := openapi.JobStatus{}
 	err := db.jobCollection.FindOne(context.TODO(), filter).Decode(&jobStatus)
 	if err != nil {
@@ -103,6 +103,35 @@ func (db *MongoService) GetJobStatus(userId string, jobId string) (openapi.JobSt
 	}
 
 	return jobStatus, nil
+}
+
+func (db *MongoService) GetJobs(userId string, limit int32) ([]openapi.JobStatus, error) {
+	zap.S().Infof("get status of all jobs owned by user: %s", userId)
+
+	filter := bson.M{util.DBFieldUserId: userId}
+
+	cursor, err := db.jobCollection.Find(context.TODO(), filter)
+	if err != nil {
+		zap.S().Warnf("failed to fetch jobs' status: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	defer cursor.Close(context.TODO())
+	var jobStatusList []openapi.JobStatus
+
+	for cursor.Next(context.TODO()) {
+		var jobStatus openapi.JobStatus
+		if err = cursor.Decode(&jobStatus); err != nil {
+			zap.S().Errorf("Failed to decode job status: %v", err)
+
+			return nil, ErrorCheck(err)
+		}
+
+		jobStatusList = append(jobStatusList, jobStatus)
+	}
+
+	return jobStatusList, nil
 }
 
 func (db *MongoService) UpdateJob(userId string, jobId string, jobSpec openapi.JobSpec) error {

@@ -10,7 +10,7 @@ while a python library facilitates composition of ML workloads.
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
 For now, this section describes how to set up a development environment in macOS.
 
-The tested version for golang is 1.16+ and the tested version for python is 3.8+.
+The tested version for golang is 1.16+ and the tested version for python is 3.9+.
 
 ```
 brew install go

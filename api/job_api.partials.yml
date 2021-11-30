@@ -31,12 +31,11 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/{user}/jobs/status:
   ########################################
   # Get status of jobs
   ########################################
   get:
-    operationId: getJobsStatus
+    operationId: getJobs
     summary: Get status info on all the jobs owned by user
     tags:
       - jobs

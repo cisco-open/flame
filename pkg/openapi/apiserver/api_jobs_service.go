@@ -29,6 +29,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"go.uber.org/zap"
 
@@ -134,19 +135,35 @@ func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId st
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobStatus method not implemented")
 }
 
-// GetJobsStatus - Get status info on all the jobs owned by user
-func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
-	// TODO - update GetJobsStatus with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+// GetJobs - Get status info on all the jobs owned by user
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Get status of all jobs for user: %s", user)
 
-	//TODO: Uncomment the next line to return response Response(200, []JobStatus{}) or use other options such as http.Ok ...
-	//return Response(200, []JobStatus{}), nil
+	//create controller request
+	uriMap := map[string]string{
+		"user":  user,
+		"limit": strconv.Itoa(int(limit)),
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	//send get request
+	code, responseBody, err := restapi.HTTPGet(url)
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobsStatus method not implemented")
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("get jobs status failed: %v", err)
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		var errMsg error
+		_ = util.ByteToStruct(responseBody, &errMsg)
+		return openapi.Response(code, errMsg), err
+	}
+
+	var resp []openapi.JobStatus
+	err = util.ByteToStruct(responseBody, &resp)
+
+	return openapi.Response(http.StatusOK, resp), err
 }
 
 // GetTask - Get a job task for a given job and agent
