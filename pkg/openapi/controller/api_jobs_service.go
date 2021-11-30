@@ -121,19 +121,16 @@ func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId st
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobStatus method not implemented")
 }
 
-// GetJobsStatus - Get status info on all the jobs owned by user
-func (s *JobsApiService) GetJobsStatus(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
-	// TODO - update GetJobsStatus with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+// GetJobs - Get status info on all the jobs owned by user
+func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
+	jobsStatus, err := s.dbService.GetJobs(user, limit)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get status of all jobs: %v", err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, []JobStatus{}) or use other options such as http.Ok ...
-	//return Response(200, []JobStatus{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobsStatus method not implemented")
+	return openapi.Response(http.StatusOK, jobsStatus), nil
 }
 
 // GetTask - Get a job task for a given job and agent

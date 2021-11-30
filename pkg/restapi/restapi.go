@@ -95,7 +95,7 @@ var URI = map[string]string{
 	// Job
 	CreateJobEndpoint:       "/{{.user}}/jobs",
 	GetJobEndPoint:          "/{{.user}}/jobs/{{.jobId}}",
-	GetJobsEndPoint:         "/{{.user}}/jobs/?getType={{.type}}&designId={{.designId}}&limit={{.limit}}",
+	GetJobsEndPoint:         "/{{.user}}/jobs/?limit={{.limit}}",
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	DeleteJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",

@@ -19,10 +19,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"os"
+
+	"github.com/olekukonko/tablewriter"
 
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/restapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 type Params struct {
@@ -30,6 +34,7 @@ type Params struct {
 
 	JobFile string
 	JobId   string
+	Limit   string
 }
 
 func Create(params Params) error {
@@ -81,14 +86,43 @@ func Get(params Params) error {
 	return nil
 }
 
-func GetStatus(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+func GetMany(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"limit": params.Limit,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetJobsEndPoint, uriMap)
+
+	code, responseBody, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		var errMsg error
+		_ = util.ByteToStruct(responseBody, &errMsg)
+		fmt.Printf("Failed to retrieve jobs' status - code: %d, error: %v, msg: %v\n", code, err, errMsg)
+		return nil
+	}
+
+	// convert the response into list of struct
+	infoList := []openapi.JobStatus{}
+	err = json.Unmarshal(responseBody, &infoList)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal design templates: %v\n", err)
+		return nil
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Job ID", "State", "created At", "started At", "ended At"})
+
+	for _, v := range infoList {
+		table.Append([]string{v.Id, string(v.State), v.CreatedAt.String(), v.StartedAt.String(), v.EndedAt.String()})
+	}
+
+	table.Render() // Send output
 
 	return nil
 }
 
-func GetStatusMany(params Params) error {
+func GetStatus(params Params) error {
 	// TODO: implement me!
 	fmt.Println("Not yet implemented")
 

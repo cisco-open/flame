@@ -16,24 +16,19 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
 
 	"github.com/cisco/fledge/cmd/fledgectl/resources/job"
 )
 
 const (
-	strJob  = "job"
-	strJobs = "jobs"
-
-	maxArgNum4JobStatusCmd = 2
+	flagStatus = "status"
 )
 
 var getJobCmd = &cobra.Command{
 	Use:   "job <jobId>",
-	Short: "Get a job specification",
-	Long:  "This command retrieves a job specification",
+	Short: "Get a job specification or status",
+	Long:  "This command retrieves a job specification or status",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		jobId := args[0]
@@ -43,38 +38,30 @@ var getJobCmd = &cobra.Command{
 		params.User = config.User
 		params.JobId = jobId
 
+		flagStatusValue, _ := cmd.Flags().GetBool(flagStatus)
+		if flagStatusValue {
+			return job.GetStatus(params)
+		}
 		return job.Get(params)
 	},
 }
 
-var getJobStatusCmd = &cobra.Command{
-	// TODO: maybe need to split status command into sub-commands later
-	Use:   "status [job <jobId> | jobs]",
-	Short: "Get the status of job(s)",
-	Long:  "This command retrieves the status of job(s)",
-	Args:  cobra.RangeArgs(1, maxArgNum4JobStatusCmd),
+var getJobsCmd = &cobra.Command{
+	Use:   "jobs",
+	Short: "Get status of all jobs",
+	Long:  "This command retrieves the status of all jobs",
+	Args:  cobra.RangeArgs(0, 0),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resource := args[0]
-		if (len(args) == 1 && resource != strJobs) || (len(args) == 2 && resource != strJob) {
-			return fmt.Errorf("wrong resource type")
-		}
-
 		params := job.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 
-		if resource == strJob {
-			jobId := args[1]
-			params.JobId = jobId
-
-			return job.GetStatus(params)
-		}
-
-		return job.GetStatusMany(params)
+		return job.GetMany(params)
 	},
 }
 
 func init() {
 	getCmd.AddCommand(getJobCmd)
-	getCmd.AddCommand(getJobStatusCmd)
+	getJobCmd.Flags().BoolP(flagStatus, "s", false, "Retrieve status of a job")
+	getCmd.AddCommand(getJobsCmd)
 }
