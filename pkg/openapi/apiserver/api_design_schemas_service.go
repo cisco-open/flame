@@ -73,7 +73,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 		return openapi.Response(code, nil), err
 	}
 
-	return openapi.Response(http.StatusOK, nil), err
+	return openapi.Response(http.StatusCreated, nil), err
 }
 
 // GetDesignSchema - Get a design schema owned by user
