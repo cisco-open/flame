@@ -73,6 +73,8 @@ func Get(params Params) error {
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
 		fmt.Printf("Failed to retrieve design %s - code: %d, error: %v\n", params.DesignId, code, err)
+		fmt.Printf("response: %s", string(responseBody))
+
 		return nil
 	}
 

@@ -60,15 +60,15 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignEndPoint, uriMap)
 
 	// send post request
-	code, _, err := restapi.HTTPPost(url, designInfo, "application/json")
+	code, resp, err := restapi.HTTPPost(url, designInfo, "application/json")
 
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("create new design request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -87,21 +87,21 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design template information request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
-	resp := openapi.Design{}
-	err = util.ByteToStruct(responseBody, &resp)
+	design := openapi.Design{}
+	err = util.ByteToStruct(resp, &design)
 
-	return openapi.Response(http.StatusOK, resp), err
+	return openapi.Response(http.StatusOK, design), err
 }
 
 // GetDesigns - Get list of all the designs created by the user.
@@ -118,18 +118,19 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignsEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design template information request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
-	var resp []openapi.DesignInfo
-	err = util.ByteToStruct(responseBody, &resp)
-	return openapi.Response(http.StatusOK, resp), err
+	designInfoList := []openapi.DesignInfo{}
+	err = util.ByteToStruct(resp, &designInfoList)
+
+	return openapi.Response(http.StatusOK, designInfoList), err
 }
