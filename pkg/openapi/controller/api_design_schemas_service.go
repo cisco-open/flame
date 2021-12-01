@@ -55,7 +55,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("insert design schema details request failed")
 	}
 
-	return openapi.Response(http.StatusOK, nil), nil
+	return openapi.Response(http.StatusCreated, nil), nil
 }
 
 // GetDesignSchema - Get a design schema owned by user
