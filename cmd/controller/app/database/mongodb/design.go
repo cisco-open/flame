@@ -40,6 +40,22 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 	return nil
 }
 
+// GetDesign returns the details about the given design id
+func (db *MongoService) GetDesign(userId string, designId string) (openapi.Design, error) {
+	zap.S().Debugf("Get design information for user: %s | desginId: %s", userId, designId)
+
+	var design openapi.Design
+
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
+	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&design)
+	if err != nil {
+		err = ErrorCheck(err)
+		zap.S().Errorf("Failed to fetch design template information: %v", err)
+	}
+
+	return design, err
+}
+
 // GetDesigns get a lists of all the designs created by the user
 // TODO: update the method to implement a limit next based cursor
 func (db *MongoService) GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error) {
@@ -69,20 +85,4 @@ func (db *MongoService) GetDesigns(userId string, limit int32) ([]openapi.Design
 	}
 
 	return designInfoList, nil
-}
-
-// GetDesign returns the details about the given design id
-func (db *MongoService) GetDesign(userId string, designId string) (openapi.Design, error) {
-	zap.S().Debugf("Get design information for user: %s | desginId: %s", userId, designId)
-
-	var design openapi.Design
-
-	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
-	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&design)
-	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("Failed to fetch design template information: %v", err)
-	}
-
-	return design, err
 }
