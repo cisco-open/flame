@@ -61,17 +61,12 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 
 // GetAllDatasets - Get the meta info on all the datasets
 func (s *DatasetsApiService) GetAllDatasets(ctx context.Context, limit int32) (openapi.ImplResponse, error) {
-	// TODO - update GetAllDatasets with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	datasetList, err := s.dbService.GetDatasets("", limit)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get list of datasets: %v", err)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, []DatasetInfo{}) or use other options such as http.Ok ...
-	//return Response(200, []DatasetInfo{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetAllDatasets method not implemented")
+	return openapi.Response(http.StatusOK, datasetList), nil
 }
 
 // GetDataset - Get dataset meta information

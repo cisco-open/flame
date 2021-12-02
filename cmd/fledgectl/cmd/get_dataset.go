@@ -21,21 +21,27 @@ import (
 	"github.com/cisco/fledge/cmd/fledgectl/resources/dataset"
 )
 
+const (
+	flagAll = "all"
+)
+
 var getDatasetsCmd = &cobra.Command{
 	Use:   "datasets",
 	Short: "Get datasets",
 	Long:  "This comand retrieves datasets",
 	Args:  cobra.RangeArgs(0, 0),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		flagAllValue, _ := cmd.Flags().GetBool(flagAll)
 
 		params := dataset.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 
-		return dataset.GetMany(params)
+		return dataset.GetMany(params, flagAllValue)
 	},
 }
 
 func init() {
 	getCmd.AddCommand(getDatasetsCmd)
+	getDatasetsCmd.Flags().BoolP(flagAll, "a", false, "Retrieve info on all open datasets")
 }

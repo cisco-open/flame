@@ -48,6 +48,7 @@ const (
 	DBFieldAgentId  = "agentid"
 	DBFieldState    = "state"
 	DBFieldRole     = "role"
+	DBFieldIsPublic = "ispublic"
 
 	// Port numbers
 	ApiServerRestApiPort  = 10100 // REST API port
