@@ -66,11 +66,11 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("create new dataset request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	return openapi.Response(http.StatusCreated, string(resp)), nil
@@ -78,17 +78,27 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 
 // GetAllDatasets - Get the meta info on all the datasets
 func (s *DatasetsApiService) GetAllDatasets(ctx context.Context, limit int32) (openapi.ImplResponse, error) {
-	// TODO - update GetAllDatasets with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("get list of open datasets for limit: %d", limit)
 
-	//TODO: Uncomment the next line to return response Response(200, []DatasetInfo{}) or use other options such as http.Ok ...
-	//return Response(200, []DatasetInfo{}), nil
+	uriMap := map[string]string{
+		"limit": strconv.Itoa(int(limit)),
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetAllDatasetsEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	code, resp, err := restapi.HTTPGet(url)
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetAllDatasets method not implemented")
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+
+	var datasetInfoList []openapi.DatasetInfo
+	err = util.ByteToStruct(resp, &datasetInfoList)
+
+	return openapi.Response(http.StatusOK, datasetInfoList), err
 }
 
 // GetDataset - Get dataset meta information
@@ -119,20 +129,21 @@ func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDatasetsEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 
 	//response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get datasets information request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
-	var resp []openapi.DatasetInfo
-	err = util.ByteToStruct(responseBody, &resp)
-	return openapi.Response(http.StatusOK, resp), err
+	var datasetInfoList []openapi.DatasetInfo
+	err = util.ByteToStruct(resp, &datasetInfoList)
+
+	return openapi.Response(http.StatusOK, datasetInfoList), err
 }
 
 // UpdateDataset - Update meta info for a given dataset

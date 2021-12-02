@@ -82,13 +82,19 @@ func Get(params Params) error {
 	return nil
 }
 
-func GetMany(params Params) error {
+func GetMany(params Params, flagAll bool) error {
 	// construct URL
 	uriMap := map[string]string{
 		"user":  params.User,
 		"limit": params.Limit,
 	}
-	url := restapi.CreateURL(params.Endpoint, restapi.GetDatasetsEndPoint, uriMap)
+
+	endpoint := restapi.GetDatasetsEndPoint
+	if flagAll {
+		endpoint = restapi.GetAllDatasetsEndPoint
+	}
+
+	url := restapi.CreateURL(params.Endpoint, endpoint, uriMap)
 
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
@@ -107,9 +113,9 @@ func GetMany(params Params) error {
 
 	// displaying the output in a table form https://github.com/olekukonko/tablewriter
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Dataset ID", "Name", "Description", "public"})
+	table.SetHeader([]string{"Dataset ID", "Name", "Description", "Owner", "Public"})
 	for _, v := range infoList {
-		table.Append([]string{v.Id, v.Name, v.Description, strconv.FormatBool(v.IsPublic)})
+		table.Append([]string{v.Id, v.Name, v.Description, v.UserId, strconv.FormatBool(v.IsPublic)})
 	}
 
 	table.Render() // Send output

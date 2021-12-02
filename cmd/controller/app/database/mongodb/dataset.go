@@ -83,7 +83,11 @@ func (db *MongoService) GetDatasetById(datasetId string) (openapi.DatasetInfo, e
 func (db *MongoService) GetDatasets(userId string, limit int32) ([]openapi.DatasetInfo, error) {
 	zap.S().Infof("Get datasets info for user: %s", userId)
 
-	filter := bson.M{util.DBFieldUserId: userId}
+	filter := bson.M{util.DBFieldIsPublic: true}
+	if userId != "" {
+		filter = bson.M{util.DBFieldUserId: userId}
+	}
+
 	cursor, err := db.datasetCollection.Find(context.TODO(), filter)
 	if err != nil {
 		zap.S().Warnf("Failed to fetch datasets info: %v", err)

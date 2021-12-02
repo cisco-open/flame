@@ -74,7 +74,7 @@ var URI = map[string]string{
 	CreateDatasetEndPoint:  "/{{.user}}/datasets",
 	GetDatasetEndPoint:     "/{{.user}}/datasets/{{.datasetId}}",
 	GetDatasetsEndPoint:    "/{{.user}}/datasets/?limit={{.limit}}",
-	GetAllDatasetsEndPoint: "/datasets",
+	GetAllDatasetsEndPoint: "/datasets/?limit={{.limit}}",
 
 	// Design
 	CreateDesignEndPoint: "/{{.user}}/designs",
