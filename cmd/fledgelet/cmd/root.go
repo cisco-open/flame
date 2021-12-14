@@ -40,7 +40,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if len(strings.Split(apiserver, ":")) != util.NumTokensEndpoint {
+		if len(strings.Split(apiserver, ":")) != util.NumTokensInRestEndpoint {
 			return fmt.Errorf("incorrect format for apiserver endpoint: %s", apiserver)
 		}
 
@@ -48,7 +48,7 @@ var rootCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		if len(strings.Split(notifier, ":")) != util.NumTokensEndpoint {
+		if len(strings.Split(notifier, ":")) != util.NumTokensInEndpoint {
 			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
 		}
 
@@ -66,7 +66,7 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	defaultApiServerEp := fmt.Sprintf("0.0.0.0:%d", util.ApiServerRestApiPort)
+	defaultApiServerEp := fmt.Sprintf("http://0.0.0.0:%d", util.ApiServerRestApiPort)
 	rootCmd.Flags().StringP(argApiserver, "a", defaultApiServerEp, "API server endpoint")
 	rootCmd.MarkFlagRequired(argApiserver)
 

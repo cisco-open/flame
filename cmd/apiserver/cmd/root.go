@@ -60,7 +60,7 @@ var rootCmd = &cobra.Command{
 func init() {
 	rootCmd.PersistentFlags().Uint16P("port", "p", util.ApiServerRestApiPort, "listening port for API server")
 
-	defaultControllerEp := fmt.Sprintf("0.0.0.0:%d", util.ControllerRestApiPort)
+	defaultControllerEp := fmt.Sprintf("http://0.0.0.0:%d", util.ControllerRestApiPort)
 	rootCmd.Flags().StringP("controller", "c", defaultControllerEp, "Controller endpoint")
 	rootCmd.MarkFlagRequired("controller")
 }

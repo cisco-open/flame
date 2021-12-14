@@ -23,7 +23,7 @@ spec:
         command: ["/usr/bin/apiserver"]
         args:
           - "--controller"
-          - "{{ .Values.servicename }}-controller:{{ .Values.componentPorts.controller }}"
+          - "http://{{ .Values.servicename }}-controller:{{ .Values.componentPorts.controller }}"
         ports:
         - containerPort: {{ .Values.componentPorts.apiserver }}
 
