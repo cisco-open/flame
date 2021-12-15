@@ -68,7 +68,8 @@ const (
 	FilePerm0700 = 0700
 	FilePerm0755 = 0755
 
-	NumTokensEndpoint = 2
+	NumTokensInRestEndpoint = 3
+	NumTokensInEndpoint     = 2
 
 	TaskConfigFile = "config"
 	TaskCodeFile   = "code.zip"

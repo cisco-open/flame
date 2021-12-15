@@ -124,9 +124,8 @@ func CreateURL(hostEndpoint string, endPoint string, inputMap map[string]string)
 		zap.S().Errorf("error creating a uri. End point: %s", endPoint)
 		return ""
 	}
-	// TODO: change it to https
-	url := "http://" + hostEndpoint + msg
-	return url
+
+	return hostEndpoint + msg
 }
 
 func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, error) {

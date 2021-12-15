@@ -17,7 +17,7 @@ spec:
         command: ["/usr/bin/fledgelet"]
         args:
           - "--apiserver"
-          - "{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
+          - "http://{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
           - "--notifier"
           - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
 

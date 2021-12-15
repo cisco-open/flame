@@ -61,7 +61,7 @@ services:
   apiserver:
     image: 'fledge'
     container_name: 'fledge-apiserver'
-    command: /usr/bin/apiserver --controller fledge-controller:10102
+    command: /usr/bin/apiserver --controller http://fledge-controller:10102
     ports:
       - '10100:10100'
     depends_on: ['controller']
@@ -81,7 +81,7 @@ services:
     environment:
       FLEDGE_AGENT_ID: bae7fc3f40b9855116865ae8eeaf372189f0afd4
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10103:10103'
     depends_on: ['apiserver', 'notifier']
@@ -96,7 +96,7 @@ services:
     environment:
       FLEDGE_AGENT_ID: e49319394d8a641453fcb7b07ba77a62c6f23635
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10104:10104'
     depends_on: ['apiserver', 'notifier']
@@ -111,7 +111,7 @@ services:
     environment:
       FLEDGE_AGENT_ID: 3aa26b0e014a4a66f51003add41d53be4a9d2b71
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
     ports:
       - '10105:10105'
     depends_on: ['apiserver', 'notifier']

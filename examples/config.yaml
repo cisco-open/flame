@@ -2,5 +2,5 @@
 # place it in $HOME/.fledge folder
 ---
 apiserver:
-  endpoint: 127.0.0.1:10100
+  endpoint: http://127.0.0.1:10100
 user: john
