@@ -40,6 +40,10 @@ fledgectl create job job.json
 ```
 If successful, this command returns the id of the created job.
 
+The ids of jobs can be obtained via the following command.
+```
+fledgectl get jobs
+```
 
 ### Step 7: start a job
 
@@ -50,22 +54,40 @@ fledgectl start job 6131576d6667387296a5ada3
 
 ### Step 8: check progress
 
-Currently, the fledge doesn't provide any UI or tool to check to the process of a job.
-To check it, log into a docker container and check logs in `/var/log/fledge` folder.
+Currently, the fledge doesn't provide any dedicated UI or tool to check to the process of a job.
+To check it, log into a pod and check logs in `/var/log/fledge` folder.
 
-### Caveats
-In case fledge is running in the fiab environment, the docker compose file (`docker-compose.yaml`)
-needs to be updated for `fledgelet{1,2,3}` containers. In particular, update `FLEDGE_AGENT_ID` environment
-varaible based on the task. When a job is first executed, it will fail. To obtain the agent id correctly, 
-log into controller container and check its logs to identify agent IDs with the following command.
+Run the following command to list pods running in the minikube.
 ```
-$ docker exec -it fledge-controller bash
-root@284be0a78b1d:/# cat /var/log/fledge/controller.log | grep "Creating task for agent"
-2021/10/08 19:09:51	[DEBUG]	mongodb/task.go:51	Creating task for agent a07f656a6cc4aa5618ff79f3a0af3a6ba46ce957
-2021/10/08 19:09:51	[DEBUG]	mongodb/task.go:51	Creating task for agent 792f51acfcba8b3e6a068e3f761b0a931abeabdb
-2021/10/08 19:09:51	[DEBUG]	mongodb/task.go:51	Creating task for agent a2f0520404d18030b34a81352b33f2d625e7e1bc
+kubectl get pods -n fledge
 ```
-Use the IDs (i.e., a07f656a6cc4aa5618ff79f3a0af3a6ba46ce957, 792f51acfcba8b3e6a068e3f761b0a931abeabdb, a2f0520404d18030b34a81352b33f2d625e7e1bc)
-returned from the above `grep` command and update `docker-compose.yaml` accordingly.
+For example, the output is similar to:
+```
+NAME                                                             READY   STATUS    RESTARTS   AGE
+fledge-agent-e276cf6311c723e7bf0693553a0d858d2b75a100--1-bjmb2   1/1     Running   0          69s
+fledge-agent-e2b3182eb9c2218d820fc9d2e9443e53c2213a72--1-8mqzn   1/1     Running   0          69s
+fledge-agent-f5a0b353dc3ca60d24174cbbbece3597c3287f3f--1-qlbkv   1/1     Running   0          69s
+fledge-apiserver-65d8c7fcf4-2jsm6                                1/1     Running   0          164m
+fledge-controller-f6c99d8d5-b6dt6                                1/1     Running   0          26m
+fledge-db-869cccd84c-kvnzn                                       1/1     Running   0          164m
+fledge-notifier-c59bbcf65-qp4lw                                  1/1     Running   0          164m
+mlflow-6dd895c889-npbwv                                          1/1     Running   0          164m
+postgres-748c47694c-dvzv8                                        1/1     Running   0          164m
+```
 
-Note: In a real environment (e.g., kubernetes), this manual step is not necessary.
+To log into an agent pod, run the following command.
+```
+kubectl exec -it -n fledge fledge-agent-e276cf6311c723e7bf0693553a0d858d2b75a100--1-bjmb2 -- bash
+```
+
+The log for the fledge agent (`fledgelet`) is `fledgelet.log` under `/var/log/fledge`.
+The log for an ML task is similar to `task-61bd2da4dcaed8024865247e.log` under `/var/log/fledge`.
+
+
+As an alternative, one can check the progress at MLflow UI in the fiab setup.
+Run the following command:
+```
+kubectl get svc -n fledge  | grep mlflow | awk '{print $4}'
+```
+The above command returns an IP address (say, 10.104.56.68).
+Use the IP address and paste "http://10.104.56.68:5000" on a web browser.

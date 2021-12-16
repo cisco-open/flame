@@ -15,7 +15,7 @@ fmt:
 	@go fmt ./...
 
 build:
-	@docker build -f build/Dockerfile.dev --target golang-build --tag ${uri} .
+	@docker build -f build/Dockerfile.dev --tag ${uri} .
 
 push: build
 	@docker image tag ${uri} ${registry}/${uri}

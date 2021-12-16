@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.servicename }}-notifier
+    tier: backend
+  name: {{ .Values.servicename }}-notifier
+  namespace: {{ .Values.servicename }}
+spec:
+  ports:
+    - name: notifier
+      protocol: TCP
+      port: {{ .Values.componentPorts.notifier }}
+      targetPort: {{ .Values.componentPorts.notifier }}
+  type: ClusterIP
+  selector:
+    app: {{ .Values.servicename }}-notifier

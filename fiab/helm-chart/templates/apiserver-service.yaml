@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.servicename }}-apiserver
+    tier: backend
+  name: {{ .Values.servicename }}-apiserver
+  namespace: {{ .Values.servicename }}
+spec:
+  ports:
+    - name: apiserver
+      protocol: TCP
+      port: {{ .Values.componentPorts.apiserver }}
+      targetPort: {{ .Values.componentPorts.apiserver }}
+  selector:
+    app: {{ .Values.servicename }}-apiserver
+  type: LoadBalancer

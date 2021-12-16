@@ -1,0 +1,25 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.servicename }}-notifier
+  namespace: {{ .Values.servicename }}
+
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: {{ .Values.servicename }}-notifier
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.servicename }}-notifier
+    spec:
+      containers:
+        - args: []
+          command: ["/usr/bin/notifier"]
+          image: {{ .Values.imageName }}:latest
+          imagePullPolicy: IfNotPresent
+          name: {{ .Values.servicename }}-notifier
+          ports:
+            - containerPort: {{ .Values.componentPorts.notifier }}

@@ -1,0 +1,18 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: {{ .Values.servicename }}-controller
+    tier: backend
+  name: {{ .Values.servicename }}-controller
+  namespace: {{ .Values.servicename }}
+spec:
+  ports:
+    - name: controller
+      protocol: TCP
+      port: {{ .Values.componentPorts.controller }}
+      targetPort: {{ .Values.componentPorts.controller }}
+  type: ClusterIP
+  selector:
+    app: {{ .Values.servicename }}-controller

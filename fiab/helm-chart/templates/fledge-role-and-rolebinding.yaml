@@ -1,0 +1,25 @@
+# source: https://docs.armory.io/docs/armory-admin/manual-service-account/
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: controller-role
+  namespace: fledge
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: controller-rolebinding
+  namespace: fledge
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: controller-role
+subjects:
+- namespace: fledge
+  kind: ServiceAccount
+  name: controller
