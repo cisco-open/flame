@@ -1,0 +1,9 @@
+---
+imageName: fledge
+servicename: fledge
+componentPorts:
+  apiserver: "10100"
+  notifier: "10101"
+  controller: "10102"
+  agent: "10103"
+replicas: 1
