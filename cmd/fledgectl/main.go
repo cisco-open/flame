@@ -18,17 +18,10 @@ package main
 import (
 	"os"
 
-	"go.uber.org/zap"
-
 	"github.com/cisco/fledge/cmd/fledgectl/cmd"
-	"github.com/cisco/fledge/pkg/util"
 )
 
 func main() {
-	loggerMgr := util.InitZapLog(util.CliTool)
-	zap.ReplaceGlobals(loggerMgr)
-	defer loggerMgr.Sync()
-
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}

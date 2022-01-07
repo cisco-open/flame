@@ -33,6 +33,8 @@ spec:
               memory: 500Mi
 
           env:
+            - name: LOG_LEVEL
+              value: INFO
             - name: FLEDGE_AGENT_ID
               value: <% agentId %>
 

@@ -16,11 +16,11 @@
 package cmd
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
-	"go.uber.org/zap"
 
 	"github.com/cisco/fledge/pkg/util"
 )
@@ -61,7 +61,7 @@ func initConfig() {
 	if cfgFile == "" {
 		home, err := os.UserHomeDir()
 		if err != nil {
-			zap.S().Fatalf("Failed to obtain home directory: %v", err)
+			log.Fatalf("Failed to obtain home directory: %v", err)
 		}
 		cfgFile = filepath.Join(home, ".fledge", "config.yaml")
 	}
@@ -70,7 +70,7 @@ func initConfig() {
 
 	config, err = loadConfig(cfgFile)
 	if err != nil {
-		zap.S().Fatalf("Failed to load config %s: %v", cfgFile, err)
+		log.Fatalf("Failed to load config %s: %v", cfgFile, err)
 	}
 }
 

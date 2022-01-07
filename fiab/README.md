@@ -53,7 +53,7 @@ In order to build fledge container image, run the following:
 (i.e., `minikube delete` is executed). Unless a fresh minikube instance is needed, simply stopping the minikube instance would be useful
 to save time for development and testing.
 
-To check the fledge image built, run `docker images`. The output is similar to:
+To check the fledge image built, run `docker images`. An output is similar to:
 ```
 REPOSITORY                                TAG       IMAGE ID       CREATED          SIZE
 fledge                                    latest    e3bf47cdfa66   22 seconds ago   3.96GB
@@ -118,7 +118,7 @@ To check deployment status, run the following command:
 kubectl get pods -n fledge
 ```
 
-The example output looks like the following:
+An example output looks like the following:
 ```
 NAME                                 READY   STATUS    RESTARTS      AGE
 fledge-apiserver-65d8c7fcf4-z8x5b    1/1     Running   0             63m
@@ -150,6 +150,9 @@ To terminate the fiab environment, run the following:
 ```
 minikube delete
 ```
+
+## Running a test ML job
+In order to run a sample mnist job, refer to instructions at [mnist example](../examples/mnist/README.md).
 
 **Note**: By executing the above command, any downloaded or locally-built images are also deleted togehter when the VM is deleted.
 Unless a fresh minikube instance is needed, simply stopping the minikube (i.e., `minikube stop`) instance would be useful

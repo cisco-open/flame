@@ -283,6 +283,66 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
+/{user}/jobs/{jobId}/tasks:
+  ########################################
+  # Get info of tasks in a job
+  ########################################
+  get:
+    operationId: getTasksInfo
+    summary: Get the info of tasks in a job
+    tags:
+      - jobs
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: limit
+        description: How many items to return at one time (max 100)
+        in: query
+        schema:
+          format: int32
+          type: integer
+        style: form
+        explode: true
+        required: false
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/TaskInfo'
+        description: A paged array of status on jobs
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
 /jobs/{jobId}/{agentId}/task:
   ########################################
   # Get job task

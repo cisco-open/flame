@@ -24,9 +24,10 @@ import (
 )
 
 type Task struct {
-	JobId   string `json:"jobid"`
-	AgentId string `json:"agentid"`
-	Role    string `json:"role"`
+	JobId   string           `json:"jobid"`
+	AgentId string           `json:"agentid"`
+	Role    string           `json:"role"`
+	Type    openapi.TaskType `json:"type"`
 
 	// the following are config and code
 	JobConfig  JobConfig

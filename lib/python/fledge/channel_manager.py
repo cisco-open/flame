@@ -21,9 +21,8 @@ from typing import Optional
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (
-    MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME, BackendEvent
-)
+from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
+                               BackendEvent)
 from .common.util import background_thread_loop, run_async
 from .config import BackendType, Config
 from .discovery_clients import discovery_client_provider
@@ -70,8 +69,7 @@ class ChannelManager(object):
         broker = self._config.brokers.sort_to_host[self._config.backend]
         self._backend.configure(broker, self._job_id, self._agent_id)
         self._discovery_client = discovery_client_provider.get(
-            self._config.agent
-        )
+            self._config.agent)
 
         async def inner():
             # create a coroutine task
@@ -119,9 +117,8 @@ class ChannelManager(object):
 
         groupby = channel_config.groupby.groupable_value(self._config.realm)
 
-        self._channels[name] = Channel(
-            self._backend, self._job_id, name, me, other, groupby
-        )
+        self._channels[name] = Channel(self._backend, self._job_id, name, me,
+                                       other, groupby)
         self._backend.add_channel(self._channels[name])
 
         self._backend.notify(name)
@@ -139,10 +136,9 @@ class ChannelManager(object):
         if not status:
             return False
 
-        coro = self._discovery_client.register(
-            self._job_id, name, self._role, self._backend.uid(),
-            self._backend.endpoint()
-        )
+        coro = self._discovery_client.register(self._job_id, name, self._role,
+                                               self._backend.uid(),
+                                               self._backend.endpoint())
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if status:
             self._channels[name] = Channel(self._backend, self._job_id, name)
@@ -166,10 +162,8 @@ class ChannelManager(object):
             other = channel_config.pair[1]
 
             # doesn't match channel config; skip connection
-            if (
-                (one != self._role or other != role) and
-                (one != role or other != self._role)
-            ):
+            if ((one != self._role or other != role)
+                    and (one != role or other != self._role)):
                 continue
 
             # connect to endpoint
@@ -194,9 +188,9 @@ class ChannelManager(object):
 
         # TODO: reset_channel isn't implemented; the whole discovery module
         #       needs to be revisited.
-        coro = self._discovery_client.reset_channel(
-            self._job_id, name, self._role, self._backend.uid()
-        )
+        coro = self._discovery_client.reset_channel(self._job_id, name,
+                                                    self._role,
+                                                    self._backend.uid())
 
         _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
         if status:

@@ -48,6 +48,7 @@ const (
 	DBFieldAgentId  = "agentid"
 	DBFieldState    = "state"
 	DBFieldRole     = "role"
+	DBFieldTaskType = "type"
 	DBFieldIsPublic = "ispublic"
 
 	// Port numbers

@@ -21,7 +21,7 @@ import (
 	"os"
 
 	"github.com/olekukonko/tablewriter"
-	"go.uber.org/zap"
+	"github.com/prometheus/common/log"
 
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/openapi"
@@ -81,7 +81,7 @@ func Get(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		zap.S().Warnf("error while formating json: %v", err)
+		log.Warnf("error while formating json: %v", err)
 
 		fmt.Println(string(responseBody))
 	} else {

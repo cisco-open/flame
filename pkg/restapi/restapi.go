@@ -59,6 +59,7 @@ const (
 	CreateJobEndpoint       = "CREATE_JOB"
 	GetJobEndPoint          = "GET_JOB"
 	GetJobsEndPoint         = "GET_JOBS"
+	GetTasksInfoEndpoint    = "GET_TASKS_INFO"
 	DeleteJobEndPoint       = "DELETE_JOB"
 	UpdateJobEndPoint       = "UPDATE_JOB"
 	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
@@ -96,6 +97,7 @@ var URI = map[string]string{
 	CreateJobEndpoint:       "/{{.user}}/jobs",
 	GetJobEndPoint:          "/{{.user}}/jobs/{{.jobId}}",
 	GetJobsEndPoint:         "/{{.user}}/jobs/?limit={{.limit}}",
+	GetTasksInfoEndpoint:    "/{{.user}}/jobs/{{.jobId}}/tasks/?limit={{.limit}}",
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	DeleteJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",

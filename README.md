@@ -5,7 +5,11 @@ The system is comprised of a service and a python library. The service manages m
 while a python library facilitates composition of ML workloads.
 
 
-## Development setup
+## Getting started
+This repo contains a dev/test environment in a single machine on top of minikube.
+The detailed instructions are found [here](fiab/README.md).
+
+### Development setup
 
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
 For now, this section describes how to set up a development environment in macOS.

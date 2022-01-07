@@ -143,6 +143,18 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 	return openapi.Response(http.StatusOK, taskMap), nil
 }
 
+// GetTasksInfo - Get the info of tasks in a job
+func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
+	tasksInfo, err := s.dbService.GetTasksInfo(user, jobId, limit)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get info of all tasks in a job %s: %v", jobId, err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusOK, tasksInfo), nil
+}
+
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {

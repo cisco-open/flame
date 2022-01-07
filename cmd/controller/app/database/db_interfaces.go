@@ -62,6 +62,7 @@ type JobService interface {
 	GetJobs(string, int32) ([]openapi.JobStatus, error)
 	UpdateJob(string, string, openapi.JobSpec) error
 	UpdateJobStatus(string, string, openapi.JobStatus) error
+	GetTasksInfo(string, string, int32) ([]openapi.TaskInfo, error)
 }
 
 // TaskService is an interface that defines a collection of APIs related to task

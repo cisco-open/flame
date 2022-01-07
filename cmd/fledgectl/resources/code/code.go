@@ -19,12 +19,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"go.uber.org/zap"
 
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/restapi"
@@ -108,7 +107,7 @@ func Get(params Params) error {
 func mustOpen(f string) *os.File {
 	r, err := os.Open(f)
 	if err != nil {
-		zap.S().Fatalf("Failed to open %s: %v", f, err)
+		log.Fatalf("Failed to open %s: %v", f, err)
 	}
 
 	return r

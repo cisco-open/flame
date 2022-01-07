@@ -69,7 +69,7 @@ class RegistryType(Enum):
     MLFLOW = 1
 
 
-REALM_SEPARATOR = '|'
+REALM_SEPARATOR = '/'
 
 
 class Config(object):
@@ -100,8 +100,7 @@ class Config(object):
                 return (
                     "\t\t--- groupby ---\n" +
                     f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_TYPE}: {self.gtype}\n" +
-                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}\n"
-                )
+                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}\n")
 
             def groupable_value(self, realm=''):
                 """Return groupby value."""
@@ -109,12 +108,11 @@ class Config(object):
                     return GROUPBY_DEFAULT_GROUP
 
                 for entry in self.value:
-                    # check if an entry is a prefix of realm in a dot-separated
+                    # check if an entry is a prefix of realm in a '/'-separated
                     # fashion; if so, then return the matching entry
-                    if realm.startswith(entry) and (
-                        len(realm) == len(entry) or
-                        realm[len(entry)] == REALM_SEPARATOR
-                    ):
+                    if realm.startswith(entry) and (len(realm) == len(entry)
+                                                    or realm[len(entry)]
+                                                    == REALM_SEPARATOR):
                         return entry
 
                 return GROUPBY_DEFAULT_GROUP
@@ -132,8 +130,7 @@ class Config(object):
 
             if CONF_KEY_CHANNEL_GROUPBY in json_data:
                 self.groupby = Config.Channel.GroupBy(
-                    json_data[CONF_KEY_CHANNEL_GROUPBY]
-                )
+                    json_data[CONF_KEY_CHANNEL_GROUPBY])
             else:
                 self.groupby = Config.Channel.GroupBy()
 
@@ -150,8 +147,7 @@ class Config(object):
                 f"\t\t{CONF_KEY_CHANNEL_NAME}: {self.name}\n" +
                 f"\t\t{CONF_KEY_CHANNEL_PAIR}: {self.pair}\n" +
                 f"\t\t{CONF_KEY_CHANNEL_IS_BIDIR}: {self.is_bidrectional}\n" +
-                str(self.groupby)
-            )
+                str(self.groupby))
 
     class BaseModel(object):
         """Base model class."""
@@ -164,11 +160,9 @@ class Config(object):
 
         def __str__(self):
             """Return base model's detail as string."""
-            return (
-                "\t--- base model ---\n" +
-                f"\t\t{CONF_KEY_BASE_MODEL_NAME}: {self.name}\n" +
-                f"\t\t{CONF_KEY_BASE_MODEL_VERSION}: {self.version}\n"
-            )
+            return ("\t--- base model ---\n" +
+                    f"\t\t{CONF_KEY_BASE_MODEL_NAME}: {self.name}\n" +
+                    f"\t\t{CONF_KEY_BASE_MODEL_VERSION}: {self.version}\n")
 
     class Brokers(object):
         """Brokers class."""
@@ -184,10 +178,8 @@ class Config(object):
                     sort = BackendType[key]
                 except KeyError:
                     valid_types = [backend.name for backend in BackendType]
-                    sys.exit(
-                        f"invalid sort type: {key}\n" +
-                        f"broker's sort must be one of {valid_types}."
-                    )
+                    sys.exit(f"invalid sort type: {key}\n" +
+                             f"broker's sort must be one of {valid_types}.")
 
                 host = broker[CONF_KEY_BROKERS_HOST]
                 self.sort_to_host[sort] = host
@@ -210,10 +202,9 @@ class Config(object):
 
         def __str__(self):
             """Return job's detail in string format."""
-            return (
-                "\t--- job ---\n" + f"\t\t{CONF_KEY_JOB_ID}: {self.job_id}\n" +
-                f"\t\t{CONF_KEY_JOB_NAME}: {self.name}\n"
-            )
+            return ("\t--- job ---\n" +
+                    f"\t\t{CONF_KEY_JOB_ID}: {self.job_id}\n" +
+                    f"\t\t{CONF_KEY_JOB_NAME}: {self.name}\n")
 
     class Registry(object):
         """Registry class."""
@@ -226,20 +217,16 @@ class Config(object):
                 self.sort = RegistryType[sort]
             except KeyError:
                 valid_types = [registry.name for registry in RegistryType]
-                sys.exit(
-                    f"invailid registry type: {sort}" +
-                    f"valid registry type(s) are {valid_types}"
-                )
+                sys.exit(f"invailid registry type: {sort}" +
+                         f"valid registry type(s) are {valid_types}")
 
             self.uri = json_data[CONF_KEY_REGISTRY_URI]
 
         def __str__(self):
             """Return model registry's detail in string format."""
-            return (
-                "\t--- registry ---\n" +
-                f"\t\t{CONF_KEY_REGISTRY_SORT}: {self.sort}\n" +
-                f"\t\t{CONF_KEY_REGISTRY_URI}: {self.uri}\n"
-            )
+            return ("\t--- registry ---\n" +
+                    f"\t\t{CONF_KEY_REGISTRY_SORT}: {self.sort}\n" +
+                    f"\t\t{CONF_KEY_REGISTRY_URI}: {self.uri}\n")
 
     def __init__(self, config_file: str):
         """Initialize Config instance."""
@@ -258,10 +245,8 @@ class Config(object):
             self.backend = BackendType[backend_key]
         except KeyError:
             valid_types = [backend.name for backend in BackendType]
-            sys.exit(
-                f"invailid backend type: {backend_key}\n" +
-                f"valid backend type(s) are {valid_types}"
-            )
+            sys.exit(f"invailid backend type: {backend_key}\n" +
+                     f"valid backend type(s) are {valid_types}")
 
         self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
 
@@ -300,13 +285,12 @@ class Config(object):
 
     def __str__(self):
         """Return config info as string."""
-        info = (
-            "--- config ---\n" + f"\t{CONF_KEY_BACKEND}: {self.backend}\n" +
-            f"\t{CONF_KEY_AGENT}: {self.agent}\n" +
-            f"\t{CONF_KEY_ROLE}: {self.role}\n" +
-            f"\t{CONF_KEY_REALM}: {self.realm}\n" + str(self.base_model) +
-            str(self.brokers) + str(self.job) + str(self.registry)
-        )
+        info = ("--- config ---\n" +
+                f"\t{CONF_KEY_BACKEND}: {self.backend}\n" +
+                f"\t{CONF_KEY_AGENT}: {self.agent}\n" +
+                f"\t{CONF_KEY_ROLE}: {self.role}\n" +
+                f"\t{CONF_KEY_REALM}: {self.realm}\n" + str(self.base_model) +
+                str(self.brokers) + str(self.job) + str(self.registry))
         for _, channel in self.channels.items():
             info += str(channel)
 

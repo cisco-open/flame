@@ -2,10 +2,14 @@
     "designId": "mnist",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "datasetIds" : [
-	"61609290fa724deafdb2a4fa",
-	"61609290fa724deafdb2a4fa"
-    ],
+    "dataSpec": {
+	"fromUser": {
+	    "default": 1
+	},
+	"fromSystem": [
+	    "61d8dd0a2f9da4fa03629670"
+	]
+    },
     "priority": "low",
 
     "backend": "mqtt",

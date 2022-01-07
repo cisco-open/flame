@@ -36,12 +36,32 @@ import (
 
 // A JobsApiController binds http requests to an api service and writes the service results to the http response
 type JobsApiController struct {
-	service JobsApiServicer
+	service      JobsApiServicer
+	errorHandler ErrorHandler
+}
+
+// JobsApiOption for how the controller is set up.
+type JobsApiOption func(*JobsApiController)
+
+// WithJobsApiErrorHandler inject ErrorHandler into controller
+func WithJobsApiErrorHandler(h ErrorHandler) JobsApiOption {
+	return func(c *JobsApiController) {
+		c.errorHandler = h
+	}
 }
 
 // NewJobsApiController creates a default api controller
-func NewJobsApiController(s JobsApiServicer) Router {
-	return &JobsApiController{service: s}
+func NewJobsApiController(s JobsApiServicer, opts ...JobsApiOption) Router {
+	controller := &JobsApiController{
+		service:      s,
+		errorHandler: DefaultErrorHandler,
+	}
+
+	for _, opt := range opts {
+		opt(controller)
+	}
+
+	return controller
 }
 
 // Routes returns all of the api route for the JobsApiController
@@ -82,6 +102,12 @@ func (c *JobsApiController) Routes() Routes {
 			strings.ToUpper("Get"),
 			"/jobs/{jobId}/{agentId}/task",
 			c.GetTask,
+		},
+		{
+			"GetTasksInfo",
+			strings.ToUpper("Get"),
+			"/{user}/jobs/{jobId}/tasks",
+			c.GetTasksInfo,
 		},
 		{
 			"UpdateJob",
@@ -254,6 +280,29 @@ func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(result.Code)
+}
+
+// GetTasksInfo - Get the info of tasks in a job
+func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	query := r.URL.Query()
+	userParam := params["user"]
+
+	jobIdParam := params["jobId"]
+
+	limitParam, err := parseInt32Parameter(query.Get("limit"), false)
+	if err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+	result, err := c.service.GetTasksInfo(r.Context(), userParam, jobIdParam, limitParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
 // UpdateJob - Update a job specification

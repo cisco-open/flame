@@ -131,11 +131,9 @@ class MqttBackend(AbstractBackend):
 
             self._mqtt_client.on_connect = self.on_connect
             self._mqtt_client.on_message = self.on_message
-            self._mqtt_client.will_set(
-                self._health_check_topic,
-                payload=f'{self._id}:{END_STATUS_OFF}',
-                qos=MqttQoS.EXACTLY_ONCE
-            )
+            self._mqtt_client.will_set(self._health_check_topic,
+                                       payload=f'{self._id}:{END_STATUS_OFF}',
+                                       qos=MqttQoS.EXACTLY_ONCE)
 
             _ = AsyncioHelper(self._loop, self._mqtt_client)
 
@@ -149,12 +147,14 @@ class MqttBackend(AbstractBackend):
         health_data = str(message.payload.decode("utf-8"))
         # the correct format of health data: <end_id>:<status>
         (end_id, status) = health_data.split(':')[0:2]
+        logger.debug(f'end: {end_id}, status: {status}')
         if end_id == self._id or status == END_STATUS_ON:
             # nothing to do
             return
 
         expiry = time.time() + MQTT_TIME_WAIT
         self._cleanup_waits[end_id] = expiry
+        logger.debug(f'end: {end_id}, expiry time: {expiry}')
 
     async def _handle_notification(self, any_msg):
         msg = msg_pb2.Notify()
@@ -230,11 +230,9 @@ class MqttBackend(AbstractBackend):
     def on_connect(self, client, userdata, flags, rc, properties=None):
         # publish health data; format: <end_id>:<status>
         # status is either END_STATUS_ON or END_STATUS_OFF
-        client.publish(
-            self._health_check_topic,
-            payload=f'{self._id}:{END_STATUS_ON}',
-            qos=MqttQoS.EXACTLY_ONCE
-        )
+        client.publish(self._health_check_topic,
+                       payload=f'{self._id}:{END_STATUS_ON}',
+                       qos=MqttQoS.EXACTLY_ONCE)
 
     def on_message(self, client, userdata, message):
         logger.debug(
@@ -297,10 +295,8 @@ class MqttBackend(AbstractBackend):
         self._channels[channel.name()] = channel
 
     def create_tx_task(self, channel_name, end_id):
-        if (
-            channel_name not in self._channels or
-            not self._channels[channel_name].has(end_id)
-        ):
+        if (channel_name not in self._channels
+                or not self._channels[channel_name].has(end_id)):
             return False
 
         channel = self._channels[channel_name]
@@ -334,11 +330,10 @@ class MqttBackend(AbstractBackend):
         #       and handle situations differently.
         name = channel.name()
         digest = hashlib.md5(data).hexdigest()
-        if (
-            name in self._last_payload_sig and
-            self._last_payload_sig[name][0] == digest and
-            self._last_payload_sig[name][1] + MSG_SIG_PERIOD >= time.time()
-        ):
+        if (name in self._last_payload_sig
+                and self._last_payload_sig[name][0] == digest
+                and self._last_payload_sig[name][1] + MSG_SIG_PERIOD >=
+                time.time()):
             logger.info('Last seen payload; skipping tx')
             return
 
@@ -355,9 +350,8 @@ class MqttBackend(AbstractBackend):
         # update payload signature
         self._last_payload_sig[name] = (digest, time.time())
 
-    def send_chunk(
-        self, channel: Channel, data: bytes, seqno: int, eom: bool
-    ) -> None:
+    def send_chunk(self, channel: Channel, data: bytes, seqno: int,
+                   eom: bool) -> None:
         msg = msg_pb2.Data()
         msg.end_id = self._id
         msg.channel_name = channel.name()
@@ -370,9 +364,9 @@ class MqttBackend(AbstractBackend):
         payload = any.SerializeToString()
 
         topic = self.topic_for_pub(channel)
-        info = self._mqtt_client.publish(
-            topic, payload, qos=MqttQoS.EXACTLY_ONCE
-        )
+        info = self._mqtt_client.publish(topic,
+                                         payload,
+                                         qos=MqttQoS.EXACTLY_ONCE)
 
         while not info.is_published():
             logger.debug('waiting for publish completion')
@@ -382,16 +376,14 @@ class MqttBackend(AbstractBackend):
 
     def topic_for_pub(self, ch: Channel):
         sep = '/'
-        topic = sep.join(
-            [
-                f'{MQTT_TOPIC_PREFIX}',
-                f'{ch.job_id()}',
-                f'{ch.name()}',
-                f'{ch.groupby()}',
-                f'{ch.my_role()}',
-                f'{self._id}',
-            ]
-        )
+        topic = sep.join([
+            f'{MQTT_TOPIC_PREFIX}',
+            f'{ch.job_id()}',
+            f'{ch.name()}',
+            f'{ch.groupby()}',
+            f'{ch.my_role()}',
+            f'{self._id}',
+        ])
 
         return topic
 
@@ -399,6 +391,7 @@ class MqttBackend(AbstractBackend):
 # Asyncio MQTT client example from
 # https://github.com/eclipse/paho.mqtt.python/blob/master/examples/loop_asyncio.py
 class AsyncioHelper:
+
     def __init__(self, loop, client):
         self.loop = loop
         self.client = client
