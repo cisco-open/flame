@@ -106,7 +106,7 @@ func GetMany(params Params) error {
 	infoList := []openapi.JobStatus{}
 	err = json.Unmarshal(responseBody, &infoList)
 	if err != nil {
-		fmt.Printf("Failed to unmarshal design templates: %v\n", err)
+		fmt.Printf("Failed to unmarshal job status: %v\n", err)
 		return nil
 	}
 

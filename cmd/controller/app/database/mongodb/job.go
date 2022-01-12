@@ -227,3 +227,42 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 
 	return nil
 }
+
+func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32) ([]openapi.TaskInfo, error) {
+	zap.S().Infof("Get info of all tasks in a job %s owned by user: %s", jobId, userId)
+
+	filter := bson.M{util.DBFieldId: jobId, util.DBFieldUserId: userId}
+
+	err := db.jobCollection.FindOne(context.TODO(), filter).Err()
+	if err != nil {
+		zap.S().Warnf("failed to find a matching job: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	// found a job; so we can proceed to fetch the info of tasks
+
+	filter = bson.M{util.DBFieldJobId: jobId}
+	cursor, err := db.taskCollection.Find(context.TODO(), filter)
+	if err != nil {
+		zap.S().Warnf("failed to fetch task info: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	defer cursor.Close(context.TODO())
+
+	tasksInfoList := []openapi.TaskInfo{}
+	for cursor.Next(context.TODO()) {
+		var taskInfo openapi.TaskInfo
+		if err = cursor.Decode(&taskInfo); err != nil {
+			zap.S().Errorf("Failed to decode task info: %v", err)
+
+			return nil, ErrorCheck(err)
+		}
+
+		tasksInfoList = append(tasksInfoList, taskInfo)
+	}
+
+	return tasksInfoList, nil
+}

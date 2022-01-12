@@ -375,6 +375,11 @@ func (h *handler) allocateComputes() error {
 	}
 
 	for _, task := range h.tasks {
+		if task.Type == openapi.USER {
+			// don't attempt to provision compute resource for user-driven task
+			continue
+		}
+
 		context := map[string]string{
 			"agentId": task.AgentId,
 		}

@@ -132,6 +132,7 @@ run:
 
   skip-files:
     - ".*\\_test\\.go$"
+    - pkg/openapi/helpers.go
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration

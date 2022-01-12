@@ -7,7 +7,7 @@
 
     "dataFormat": "npy",
 
-    "realm": "us|west",
+    "realm": "us/west",
 
     "isPublic": true
 }

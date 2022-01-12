@@ -214,16 +214,23 @@ func TestWalk(t *testing.T) {
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
 
-	dataRoles, templates := builder.getTaskTemplates()
-	assert.NotNil(t, dataRoles)
-	assert.Len(t, dataRoles, 1)
-	assert.Equal(t, "trainer", dataRoles[0])
-	assert.NotNil(t, templates)
-	assert.Len(t, templates, 3)
+	testCases := map[int]map[string]int32{
+		5: make(map[string]int32),
+		8: {defaultRealm: 2},
+	}
 
-	// trainer is data role
-	tmpl := templates["trainer"]
-	tasks, err := tmpl.walk("", templates, builder.datasets)
-	assert.Nil(t, err)
-	assert.Len(t, tasks, 5)
+	for numTasks, userDatasetKV := range testCases {
+		dataRoles, templates := builder.getTaskTemplates()
+		assert.NotNil(t, dataRoles)
+		assert.Len(t, dataRoles, 1)
+		assert.Equal(t, "trainer", dataRoles[0])
+		assert.NotNil(t, templates)
+		assert.Len(t, templates, 3)
+
+		// trainer is data role
+		tmpl := templates["trainer"]
+		tasks, err := tmpl.walk("", templates, builder.datasets, userDatasetKV)
+		assert.Nil(t, err)
+		assert.Len(t, tasks, numTasks)
+	}
 }

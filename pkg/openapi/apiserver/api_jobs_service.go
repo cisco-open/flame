@@ -186,6 +186,34 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 	return openapi.Response(http.StatusOK, taskMap), nil
 }
 
+// GetTasksInfo - Get the info of tasks in a job
+func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
+	uriMap := map[string]string{
+		"user":  user,
+		"jobId": jobId,
+		"limit": strconv.Itoa(int(limit)),
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
+
+	code, responseBody, err := restapi.HTTPGet(url)
+
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("get tasks info failed: %v", err)
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		var errMsg error
+		_ = util.ByteToStruct(responseBody, &errMsg)
+		return openapi.Response(code, errMsg), err
+	}
+
+	var resp []openapi.TaskInfo
+	err = util.ByteToStruct(responseBody, &resp)
+
+	return openapi.Response(http.StatusOK, resp), err
+}
+
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {

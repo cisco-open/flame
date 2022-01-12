@@ -54,9 +54,10 @@ func (db *MongoService) CreateTasks(tasks []objects.Task) error {
 		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldAgentId: task.AgentId}
 		update := bson.M{
 			"$set": bson.M{
-				util.DBFieldRole: task.Role,
-				"config":         cfgData,
-				"code":           task.ZippedCode,
+				util.DBFieldRole:     task.Role,
+				util.DBFieldTaskType: task.Type,
+				"config":             cfgData,
+				"code":               task.ZippedCode,
 			},
 		}
 

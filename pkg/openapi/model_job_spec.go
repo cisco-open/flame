@@ -36,7 +36,7 @@ type JobSpec struct {
 
 	CodeVersion string `json:"codeVersion"`
 
-	DatasetIds []string `json:"datasetIds,omitempty"`
+	DataSpec DataSpec `json:"dataSpec,omitempty"`
 
 	Priority JobPriority `json:"priority,omitempty"`
 
@@ -49,4 +49,35 @@ type JobSpec struct {
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 
 	Dependencies []string `json:"dependencies,omitempty"`
+}
+
+// AssertJobSpecRequired checks if the required fields are not zero-ed
+func AssertJobSpecRequired(obj JobSpec) error {
+	elements := map[string]interface{}{
+		"designId":      obj.DesignId,
+		"schemaVersion": obj.SchemaVersion,
+		"codeVersion":   obj.CodeVersion,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AssertRecurseJobSpecRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of JobSpec (e.g. [][]JobSpec), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseJobSpecRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aJobSpec, ok := obj.(JobSpec)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertJobSpecRequired(aJobSpec)
+	})
 }

@@ -30,7 +30,8 @@ import (
 )
 
 const (
-	realmSep = "|"
+	realmSep     = "/"
+	defaultRealm = "default"
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -109,7 +110,7 @@ func (b *jobBuilder) setup() error {
 	b.roleCode = zippedRoleCode
 
 	// update datasets
-	for _, datasetId := range b.jobSpec.DatasetIds {
+	for _, datasetId := range b.jobSpec.DataSpec.FromSystem {
 		datasetInfo, err := b.dbService.GetDatasetById(datasetId)
 		if err != nil {
 			return err
@@ -136,7 +137,7 @@ func (b *jobBuilder) build() ([]objects.Task, []string, error) {
 			return nil, nil, fmt.Errorf("failed to locate template for role %s", roleName)
 		}
 
-		populated, err := tmpl.walk("", templates, b.datasets)
+		populated, err := tmpl.walk("", templates, b.datasets, b.jobSpec.DataSpec.FromUser)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -419,10 +420,10 @@ func (tmpl *taskTemplate) getPeerTemplate(channel openapi.Channel, templates map
 }
 
 func (tmpl *taskTemplate) walk(prevPeer string, templates map[string]*taskTemplate,
-	datasets []openapi.DatasetInfo) ([]objects.Task, error) {
+	datasets []openapi.DatasetInfo, userDatasetKV map[string]int32) ([]objects.Task, error) {
 	tasks := make([]objects.Task, 0)
 
-	populated := tmpl.buildTasks(prevPeer, templates, datasets)
+	populated := tmpl.buildTasks(prevPeer, templates, datasets, userDatasetKV)
 	if len(populated) > 0 {
 		tasks = append(tasks, populated...)
 	}
@@ -435,7 +436,7 @@ func (tmpl *taskTemplate) walk(prevPeer string, templates map[string]*taskTempla
 			continue
 		}
 
-		populated, err := peerTmpl.walk(tmpl.JobConfig.Role, templates, datasets)
+		populated, err := peerTmpl.walk(tmpl.JobConfig.Role, templates, datasets, userDatasetKV)
 		if err != nil {
 			return nil, fmt.Errorf("failed to populdate template")
 		}
@@ -448,7 +449,7 @@ func (tmpl *taskTemplate) walk(prevPeer string, templates map[string]*taskTempla
 
 // buildTasks returns an array of Task generated from template; this function should be called via walk()
 func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*taskTemplate,
-	datasets []openapi.DatasetInfo) []objects.Task {
+	datasets []openapi.DatasetInfo, userDatasetKV map[string]int32) []objects.Task {
 	tasks := make([]objects.Task, 0)
 
 	defer func() {
@@ -461,16 +462,34 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		// TODO: currently, one data role is assumed; therefore, datasets are used for one data role.
 		//       to support more than one data role, datasets should be associated with each role.
 		//       this needs job spec modification.
-		for i, dataset := range datasets {
+		idx := 0
+		for realm, count := range userDatasetKV {
+			for i := 0; i < int(count); i++ {
+				task := tmpl.Task
+				task.JobConfig.Realm = realm
+				task.Type = openapi.USER
+				// no need to copy byte array; assignment suffices
+				task.ZippedCode = tmpl.Task.ZippedCode
+				task.JobId = task.JobConfig.Job.Id
+				task.GenerateAgentId(idx)
+
+				tasks = append(tasks, task)
+				idx++
+			}
+		}
+
+		for _, dataset := range datasets {
 			task := tmpl.Task
 			task.JobConfig.DatasetUrl = dataset.Url
 			task.JobConfig.Realm = dataset.Realm
+			task.Type = openapi.SYSTEM
 			// no need to copy byte array; assignment suffices
 			task.ZippedCode = tmpl.Task.ZippedCode
 			task.JobId = task.JobConfig.Job.Id
-			task.GenerateAgentId(i)
+			task.GenerateAgentId(idx)
 
 			tasks = append(tasks, task)
+			idx++
 		}
 
 		return tasks
@@ -482,23 +501,29 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			continue
 		}
 
-		i := 0
-		for i < len(channel.GroupBy.Value) {
+		for i := 0; i < len(channel.GroupBy.Value); i++ {
 			task := tmpl.Task
 			task.JobId = task.JobConfig.Job.Id
 			task.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			task.Type = openapi.SYSTEM
 			task.GenerateAgentId(i)
 
 			tasks = append(tasks, task)
-			i++
 		}
 
-		// no task is added to tasks (task array),
-		// which means that groupby is not specified; so,
-		// we have to create a default task
-		if len(tasks) == 0 {
+		// Two cases are checked:
+		// case 1) no task is added to tasks (task array),
+		// which means that groupby is not specified.
+		// case 2) user-fed dataset has default realm.
+		//
+		// In either of the two cases,
+		// a task under default realm should be created
+		_, ok := userDatasetKV[defaultRealm]
+		if len(tasks) == 0 || (prevTmpl.isDataConsumer && ok) {
 			task := tmpl.Task
 			task.JobId = task.JobConfig.Job.Id
+			task.JobConfig.Realm = defaultRealm
+			task.Type = openapi.SYSTEM
 			task.GenerateAgentId(0)
 
 			tasks = append(tasks, task)

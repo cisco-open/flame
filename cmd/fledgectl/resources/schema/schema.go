@@ -20,12 +20,11 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"go.uber.org/zap"
-
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/restapi"
 	"github.com/cisco/fledge/pkg/util"
+	"github.com/prometheus/common/log"
 )
 
 type Params struct {
@@ -89,7 +88,7 @@ func Get(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		zap.S().Warnf("error while formating json: %v", err)
+		log.Warnf("error while formating json: %v", err)
 
 		fmt.Println(string(responseBody))
 	} else {
@@ -117,7 +116,7 @@ func GetMany(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		zap.S().Warnf("error while formating json: %v", err)
+		log.Warnf("error while formating json: %v", err)
 
 		fmt.Println(string(responseBody))
 	} else {

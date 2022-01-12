@@ -15,10 +15,8 @@ JobSpec:
       type: string
     codeVersion:
       type: string
-    datasetIds:
-      type: array
-      items:
-        type: string
+    dataSpec:
+      $ref: '#/components/schemas/DataSpec'
     priority:
       $ref: '#/components/schemas/JobPriority'
     backend:
@@ -85,6 +83,29 @@ BaseModel:
     version: 2
 
 ########################################
+# Data Spec
+########################################
+DataSpec:
+  type: object
+  properties:
+    fromUser:
+      # an object is a key-value pair of realm and count
+      type: object
+      additionalProperties:
+        type: integer
+    fromSystem:
+      type: array
+      items:
+        type: string
+  example:
+    fromUser:
+      default: 1 # there is one user-fed dataset under default realm
+      uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
+      us/foo: 3 # there are three user-fed datasets under us/foo realm
+    fromSystem:
+      - 61609290fa724deafdb2a4fa # id of dataset registered in the fledge system
+
+########################################
 # Job status
 ########################################
 JobStatus:
@@ -142,6 +163,41 @@ Task:
   required:
     - config
     - code
+
+########################################
+# Task Info
+########################################
+TaskInfo:
+  description: Task information
+  type: object
+  properties:
+    jobId:
+      type: string
+    agentId:
+      type: string
+    role:
+      type: string
+    type:
+      $ref: '#/components/schemas/TaskType'
+    state:
+      $ref: '#/components/schemas/JobState' # reuse job state
+    timestamp:
+      type: string
+      format: date-time
+
+########################################
+# Task Type
+#
+# user: users bring compute resource and
+#       dataset
+# system: system allocates compute
+#         resource and configures
+#         dataset access
+########################################
+TaskType:
+  enum:
+    - user
+    - system
 
 ########################################
 # Task Status
