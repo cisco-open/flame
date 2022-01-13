@@ -21,6 +21,7 @@ import (
 
 	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco/fledge/pkg/util"
 )
 
 type Task struct {
@@ -28,6 +29,7 @@ type Task struct {
 	AgentId string           `json:"agentid"`
 	Role    string           `json:"role"`
 	Type    openapi.TaskType `json:"type"`
+	Key     string           `json:"key"`
 
 	// the following are config and code
 	JobConfig  JobConfig
@@ -55,12 +57,56 @@ type JobConfig struct {
 	DatasetUrl      string                 `json:"dataset,omitempty"`
 }
 
-func (p *Task) GenerateAgentId(idx int) {
+func (tsk *Task) generateAgentId(idx int) {
 	h := sha1.New()
-	data := fmt.Sprintf("%s-%d-%v", p.JobId, idx, p.JobConfig)
+	data := fmt.Sprintf("%s-%d-%v", tsk.JobId, idx, tsk.JobConfig)
 	h.Write([]byte(data))
 
-	p.AgentId = fmt.Sprintf("%x", h.Sum(nil))
+	tsk.AgentId = fmt.Sprintf("%x", h.Sum(nil))
+}
+
+func (tsk *Task) Configure(taskType openapi.TaskType, taskKey string, realm string, datasetUrl string, idx int) {
+	tsk.Type = taskType
+	tsk.Key = taskKey
+
+	tsk.JobConfig.Realm = realm
+	tsk.JobConfig.DatasetUrl = datasetUrl
+
+	// generateAgentId() should be called after JobConfig is completely populated
+	tsk.generateAgentId(idx)
+}
+
+func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broker, registry config.Registry,
+	role openapi.Role, channels []openapi.Channel) {
+	cfg.Job.Id = jobSpec.Id
+	// DesignId is a string suitable as job's name
+	cfg.Job.Name = jobSpec.DesignId
+	cfg.MaxRunTime = jobSpec.MaxRunTime
+	cfg.BaseModel = jobSpec.BaseModel
+	cfg.Hyperparameters = jobSpec.Hyperparameters
+	cfg.Dependencies = jobSpec.Dependencies
+	cfg.BackEnd = string(jobSpec.Backend)
+	cfg.Brokers = brokers
+	cfg.Registry = registry
+	// Dataset url will be populated when datasets are handled
+	cfg.DatasetUrl = ""
+
+	cfg.Role = role.Name
+	// Realm will be updated when datasets are handled
+	cfg.Realm = ""
+	cfg.Channels = cfg.extractChannels(role.Name, channels)
+}
+
+func (cfg *JobConfig) extractChannels(role string, channels []openapi.Channel) []openapi.Channel {
+	exChannels := make([]openapi.Channel, 0)
+
+	for _, channel := range channels {
+		if util.Contains(channel.Pair, role) {
+			exChannels = append(exChannels, channel)
+		}
+	}
+
+	return exChannels
 }
 
 /*

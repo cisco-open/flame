@@ -59,6 +59,7 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 				"config":              cfgData,
 				"code":                task.ZippedCode,
 				util.DBFieldTaskDirty: dirty,
+				util.DBFieldTaskKey:   task.Key,
 				util.DBFieldState:     openapi.READY,
 				util.DBFieldTimestamp: time.Now(),
 			},
@@ -85,25 +86,55 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 	return nil
 }
 
-func (db *MongoService) GetTask(jobId string, agentId string) (map[string][]byte, error) {
+func (db *MongoService) GetTask(jobId string, agentId string, key string) (map[string][]byte, error) {
 	zap.S().Infof("Fetching task - jobId: %s, agentId: %s", jobId, agentId)
-	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
 
 	type taskInMongo struct {
 		Config []byte `json:"config"`
 		Code   []byte `json:"code"`
+		Key    string `json:"key"`
 	}
-
 	var task taskInMongo
+
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
+
 	err := db.taskCollection.FindOne(context.TODO(), filter).Decode(&task)
 	if err != nil {
 		zap.S().Warnf("Failed to fetch task: %v", err)
 		return nil, err
 	}
 
+	// The key in the system is not empty and it doesn't match with one provided
+	if task.Key != "" && task.Key != key {
+		err = fmt.Errorf("keys don't match")
+		zap.S().Warnf("%v", err)
+		return nil, err
+	}
+
 	taskMap := map[string][]byte{
 		util.TaskConfigFile: task.Config,
 		util.TaskCodeFile:   task.Code,
+	}
+
+	// This is the first time that agent is registered; let's set the key in DB
+	if task.Key == "" {
+		setElements := bson.M{util.DBFieldTaskKey: key}
+
+		update := bson.M{"$set": setElements}
+
+		after := options.After
+		upsert := true
+		opts := options.FindOneAndUpdateOptions{
+			ReturnDocument: &after,
+			Upsert:         &upsert,
+		}
+
+		updatedDoc := openapi.TaskStatus{}
+		err = db.taskCollection.FindOneAndUpdate(context.TODO(), filter, update, &opts).Decode(&updatedDoc)
+		if err != nil {
+			zap.S().Warnf("Failed to set key: %v", err)
+			return nil, fmt.Errorf("failed to set key - %v", ErrorCheck(err))
+		}
 	}
 
 	return taskMap, nil

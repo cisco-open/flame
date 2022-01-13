@@ -179,6 +179,8 @@ TaskInfo:
       type: string
     type:
       $ref: '#/components/schemas/TaskType'
+    key:
+      type: string
     state:
       $ref: '#/components/schemas/JobState' # reuse job state
     timestamp:

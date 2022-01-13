@@ -225,11 +225,13 @@ func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 // GetTask - Get a job task for a given job and agent
 func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	jobId := params["jobId"]
+	query := r.URL.Query()
+	jobIdParam := params["jobId"]
 
-	agentId := params["agentId"]
+	agentIdParam := params["agentId"]
 
-	result, err := c.service.GetTask(r.Context(), jobId, agentId)
+	keyParam := query.Get("key")
+	result, err := c.service.GetTask(r.Context(), jobIdParam, agentIdParam, keyParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

@@ -57,6 +57,16 @@ func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (opena
 }
 
 func (db *MongoService) DeleteJob(userId string, jobId string) error {
+	zap.S().Infof("Deleting job: %s", jobId)
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: jobId}
+
+	_, err := db.jobCollection.DeleteOne(context.TODO(), filter)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to delete job: %v", err)
+		zap.S().Warn(errMsg)
+		return fmt.Errorf("%s", errMsg)
+	}
+
 	return nil
 }
 
@@ -228,7 +238,7 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 	return nil
 }
 
-func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32) ([]openapi.TaskInfo, error) {
+func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32, inclKey bool) ([]openapi.TaskInfo, error) {
 	zap.S().Infof("Get info of all tasks in a job %s owned by user: %s", jobId, userId)
 
 	filter := bson.M{util.DBFieldId: jobId, util.DBFieldUserId: userId}
@@ -259,6 +269,14 @@ func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32) (
 			zap.S().Errorf("Failed to decode task info: %v", err)
 
 			return nil, ErrorCheck(err)
+		}
+
+		if !inclKey {
+			// if inclKey is not enabled,
+			// strip off the key field in the data structure
+			//
+			// So, the bool parameter should be enabled only for internal calls
+			taskInfo.Key = ""
 		}
 
 		tasksInfoList = append(tasksInfoList, taskInfo)

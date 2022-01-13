@@ -37,6 +37,7 @@ spec:
               value: INFO
             - name: FLEDGE_AGENT_ID
               value: <% agentId %>
-
+            - name: FLEDGE_AGENT_KEY
+              value: <% agentKey %>
       restartPolicy: Never
 <%={{ }}=%>

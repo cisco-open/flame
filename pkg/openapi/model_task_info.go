@@ -38,6 +38,8 @@ type TaskInfo struct {
 
 	Type TaskType `json:"type,omitempty"`
 
+	Key string `json:"key,omitempty"`
+
 	State JobState `json:"state,omitempty"`
 
 	Timestamp time.Time `json:"timestamp,omitempty"`
