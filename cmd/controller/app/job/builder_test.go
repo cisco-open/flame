@@ -111,8 +111,9 @@ var (
 )
 
 func TestGetTaskTemplates(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
+	builder := NewJobBuilder(nil, nil, config.Registry{})
 	assert.NotNil(t, builder)
+	builder.jobSpec = &testJobSpec
 
 	builder.schema = testSchema
 	builder.datasets = testDatasets
@@ -127,8 +128,9 @@ func TestGetTaskTemplates(t *testing.T) {
 }
 
 func TestPreCheck(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
+	builder := NewJobBuilder(nil, nil, config.Registry{})
 	assert.NotNil(t, builder)
+	builder.jobSpec = &testJobSpec
 
 	builder.schema = testSchema
 	builder.datasets = testDatasets
@@ -145,8 +147,9 @@ func TestPreCheck(t *testing.T) {
 }
 
 func TestIsTemplatesConnected(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
+	builder := NewJobBuilder(nil, nil, config.Registry{})
 	assert.NotNil(t, builder)
+	builder.jobSpec = &testJobSpec
 
 	builder.schema = testSchema
 	builder.datasets = testDatasets
@@ -168,8 +171,9 @@ func TestIsTemplatesConnected(t *testing.T) {
 }
 
 func TestIsConverging(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
+	builder := NewJobBuilder(nil, nil, config.Registry{})
 	assert.NotNil(t, builder)
+	builder.jobSpec = &testJobSpec
 
 	// success case
 	builder.schema = testSchema
@@ -209,7 +213,9 @@ func TestIsConverging(t *testing.T) {
 }
 
 func TestWalk(t *testing.T) {
-	builder := newJobBuilder(nil, testJobSpec, nil, config.Registry{})
+	builder := NewJobBuilder(nil, nil, config.Registry{})
+	builder.jobSpec = &testJobSpec
+
 	builder.schema = testSchema
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode

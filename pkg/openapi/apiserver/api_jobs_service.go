@@ -61,11 +61,11 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
-	code, responseBody, err := restapi.HTTPPost(url, jobSpec, "application/json")
+	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
 
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("create new job request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
@@ -73,15 +73,15 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	}
 
 	// everything went well and response is a job id
-	resp := openapi.JobStatus{}
-	err = util.ByteToStruct(responseBody, &resp)
+	jobStatus := openapi.JobStatus{}
+	err = util.ByteToStruct(resp, &jobStatus)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to construct response message: %v", err)
 		zap.S().Errorf(errMsg)
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
 	}
 
-	return openapi.Response(http.StatusCreated, resp), nil
+	return openapi.Response(http.StatusCreated, jobStatus), nil
 }
 
 // DeleteJob - Delete job specification
@@ -147,23 +147,21 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("get jobs status failed: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		var errMsg error
-		_ = util.ByteToStruct(responseBody, &errMsg)
-		return openapi.Response(code, errMsg), err
+		return openapi.Response(code, nil), err
 	}
 
-	var resp []openapi.JobStatus
-	err = util.ByteToStruct(responseBody, &resp)
+	jobStatusList := []openapi.JobStatus{}
+	err = util.ByteToStruct(resp, &jobStatusList)
 
-	return openapi.Response(http.StatusOK, resp), err
+	return openapi.Response(http.StatusOK, jobStatusList), err
 }
 
 // GetTask - Get a job task for a given job and agent
@@ -195,29 +193,27 @@ func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId st
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("get tasks info failed: %v", err)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		var errMsg error
-		_ = util.ByteToStruct(responseBody, &errMsg)
-		return openapi.Response(code, errMsg), err
+		return openapi.Response(code, nil), err
 	}
 
-	var resp []openapi.TaskInfo
-	err = util.ByteToStruct(responseBody, &resp)
+	taskInfoList := []openapi.TaskInfo{}
+	err = util.ByteToStruct(resp, &taskInfoList)
 
-	return openapi.Response(http.StatusOK, resp), err
+	return openapi.Response(http.StatusOK, taskInfoList), err
 }
 
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Job update request received for user: %s | jobSpec: %v", user, jobSpec)
+	zap.S().Debugf("Job update request received for user: %s | jobId: %s", user, jobId)
 
 	// create controller request
 	uriMap := map[string]string{
@@ -227,15 +223,15 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobEndPoint, uriMap)
 
 	// send put request
-	code, _, err := restapi.HTTPPut(url, jobSpec, "application/json")
-
+	code, resp, err := restapi.HTTPPut(url, jobSpec, "application/json")
+	zap.S().Debugf("code: %d, response: %s, err: %v", code, string(resp), err)
 	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("update job request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	return openapi.Response(http.StatusOK, nil), err
@@ -254,9 +250,9 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
 	// send put request
-	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	code, resp, err := restapi.HTTPPut(url, jobStatus, "application/json")
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("job status update request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
@@ -279,9 +275,9 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, age
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateTaskStatusEndPoint, uriMap)
 
 	// send put request
-	code, _, err := restapi.HTTPPut(url, taskStatus, "application/json")
+	code, resp, err := restapi.HTTPPut(url, taskStatus, "application/json")
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("agent status update request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {

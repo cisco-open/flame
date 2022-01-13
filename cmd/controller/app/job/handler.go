@@ -28,7 +28,6 @@ import (
 
 	"github.com/cisco/fledge/cmd/controller/app/database"
 	"github.com/cisco/fledge/cmd/controller/app/deployer"
-	"github.com/cisco/fledge/cmd/controller/app/objects"
 	"github.com/cisco/fledge/cmd/controller/config"
 	"github.com/cisco/fledge/pkg/openapi"
 	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
@@ -64,8 +63,8 @@ type handler struct {
 
 	startTime time.Time
 
-	tasks []objects.Task
-	roles []string
+	tasksInfo []openapi.TaskInfo
+	roles     []openapi.Role
 
 	dplyr deployer.Deployer
 	// isDone is set in case where nothing can be done by a handler
@@ -85,8 +84,8 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		brokers:   brokers,
 		registry:  registry,
 		platform:  platform,
-		tasks:     make([]objects.Task, 0),
-		roles:     make([]string, 0),
+		tasksInfo: make([]openapi.TaskInfo, 0),
+		roles:     make([]openapi.Role, 0),
 		isDone:    make(chan bool, 1),
 	}
 }
@@ -155,7 +154,7 @@ func (h *handler) checkProgress() {
 
 		// check if at least one task in each role is completed
 		for _, role := range h.roles {
-			if !h.dbService.IsOneTaskInStateWithRole(h.jobId, openapi.COMPLETED, role) {
+			if !h.dbService.IsOneTaskInStateWithRole(h.jobId, openapi.COMPLETED, role.Name) {
 				// all tasks in some role were failed/terminated
 				// so the job can not be completed successfully
 				zap.S().Warnf("Job %s is failed", h.jobId)
@@ -211,8 +210,8 @@ func (h *handler) handleStart(event *JobEvent) {
 	//      return error with a message that a job is not in a scheduleable state
 	// 1-2. Otherwise, proceed to the next step
 
-	// 2. Generate task (configuration and ML code) based on the job spec
-	// 2-1. If task generation failed, return error
+	// 2. Get tasks info from DB
+	// 2-1. If failed, return error
 	// 2-2. Otherwise, proceed to the next step
 
 	// 3. update job state to STARTING in the db
@@ -241,26 +240,19 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 
-	// Obtain job specification
-	jobSpec, err := h.dbService.GetJob(event.Requester, event.JobStatus.Id)
+	tasksInfo, err := h.dbService.GetTasksInfo(event.Requester, event.JobStatus.Id, 0)
 	if err != nil {
-		event.ErrCh <- fmt.Errorf("failed to fetch job spec")
+		event.ErrCh <- fmt.Errorf("failed to fetch tasks' info: %v", err)
 		return
 	}
+	h.tasksInfo = tasksInfo
 
-	tasks, roles, err := newJobBuilder(h.dbService, jobSpec, h.brokers, h.registry).getTasks()
+	schema, err := h.dbService.GetDesignSchema(event.Requester, h.jobSpec.DesignId, h.jobSpec.SchemaVersion)
 	if err != nil {
-		event.ErrCh <- fmt.Errorf("failed to generate tasks: %v", err)
+		event.ErrCh <- fmt.Errorf("failed to fetch schema: %v", err)
 		return
 	}
-	h.tasks = tasks
-	h.roles = roles
-
-	err = h.dbService.CreateTasks(tasks)
-	if err != nil {
-		event.ErrCh <- err
-		return
-	}
+	h.roles = schema.Roles
 
 	// set the job state to STARTING
 	err = h.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
@@ -322,12 +314,6 @@ func (h *handler) cleanup() {
 	// 2.delete all the job resource specification files
 	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
 	_ = os.RemoveAll(deploymentChartPath)
-
-	// 3. wipe out tasks in task DB collection
-	err := h.dbService.DeleteTasks(h.jobId)
-	if err != nil {
-		zap.S().Warnf("failed to delete tasks for job %s: %v", h.jobId, err)
-	}
 }
 
 func (h *handler) notify(evtType pbNotify.EventType) error {
@@ -336,9 +322,9 @@ func (h *handler) notify(evtType pbNotify.EventType) error {
 		AgentIds: make([]string, 0),
 	}
 
-	for _, task := range h.tasks {
-		req.JobId = task.JobId
-		req.AgentIds = append(req.AgentIds, task.AgentId)
+	for _, taskInfo := range h.tasksInfo {
+		req.JobId = taskInfo.JobId
+		req.AgentIds = append(req.AgentIds, taskInfo.AgentId)
 	}
 
 	resp, err := newNotifyClient(h.notifier).sendNotification(req)
@@ -374,28 +360,28 @@ func (h *handler) allocateComputes() error {
 		}
 	}
 
-	for _, task := range h.tasks {
-		if task.Type == openapi.USER {
+	for _, taskInfo := range h.tasksInfo {
+		if taskInfo.Type == openapi.USER {
 			// don't attempt to provision compute resource for user-driven task
 			continue
 		}
 
 		context := map[string]string{
-			"agentId": task.AgentId,
+			"agentId": taskInfo.AgentId,
 		}
 		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
 		if err != nil {
-			errMsg := fmt.Sprintf("failed to render a template for agent %s: %v", task.AgentId, err)
+			errMsg := fmt.Sprintf("failed to render a template for agent %s: %v", taskInfo.AgentId, err)
 			zap.S().Debugf(errMsg)
 
 			return fmt.Errorf(errMsg)
 		}
 
-		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, task.AgentId)
+		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.AgentId)
 		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
 		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if err != nil {
-			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", task.AgentId, err)
+			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.AgentId, err)
 			zap.S().Debugf(errMsg)
 
 			return fmt.Errorf(errMsg)
