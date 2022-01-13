@@ -26,7 +26,6 @@ import (
 	"github.com/cisco/fledge/cmd/fledgectl/resources"
 	"github.com/cisco/fledge/pkg/openapi"
 	"github.com/cisco/fledge/pkg/restapi"
-	"github.com/cisco/fledge/pkg/util"
 )
 
 type Params struct {
@@ -94,17 +93,15 @@ func GetMany(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobsEndPoint, uriMap)
 
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, resp, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		var errMsg error
-		_ = util.ByteToStruct(responseBody, &errMsg)
-		fmt.Printf("Failed to retrieve jobs' status - code: %d, error: %v, msg: %v\n", code, err, errMsg)
+		fmt.Printf("Failed to retrieve jobs' status - code: %d, error: %v, msg: %s\n", code, err, string(resp))
 		return nil
 	}
 
 	// convert the response into list of struct
 	infoList := []openapi.JobStatus{}
-	err = json.Unmarshal(responseBody, &infoList)
+	err = json.Unmarshal(resp, &infoList)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal job status: %v\n", err)
 		return nil
@@ -152,9 +149,9 @@ func Update(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobEndPoint, uriMap)
 
 	// send put request
-	code, _, err := restapi.HTTPPut(url, jobSpec, "application/json")
+	code, resp, err := restapi.HTTPPut(url, jobSpec, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to update a job - code: %d, error: %v\n", code, err)
+		fmt.Printf("Failed to update a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
 		return nil
 	}
 

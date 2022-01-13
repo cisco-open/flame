@@ -31,7 +31,7 @@ import (
 )
 
 // CreateTasks creates task records in task db collection
-func (db *MongoService) CreateTasks(tasks []objects.Task) error {
+func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 	zap.S().Debugf("Calling CreateTasks")
 
 	success := false
@@ -54,10 +54,13 @@ func (db *MongoService) CreateTasks(tasks []objects.Task) error {
 		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldAgentId: task.AgentId}
 		update := bson.M{
 			"$set": bson.M{
-				util.DBFieldRole:     task.Role,
-				util.DBFieldTaskType: task.Type,
-				"config":             cfgData,
-				"code":               task.ZippedCode,
+				util.DBFieldRole:      task.Role,
+				util.DBFieldTaskType:  task.Type,
+				"config":              cfgData,
+				"code":                task.ZippedCode,
+				util.DBFieldTaskDirty: dirty,
+				util.DBFieldState:     openapi.READY,
+				util.DBFieldTimestamp: time.Now(),
 			},
 		}
 
@@ -106,9 +109,9 @@ func (db *MongoService) GetTask(jobId string, agentId string) (map[string][]byte
 	return taskMap, nil
 }
 
-func (db *MongoService) DeleteTasks(jobId string) error {
+func (db *MongoService) DeleteTasks(jobId string, dirty bool) error {
 	zap.S().Infof("Deleting tasks for job: %s", jobId)
-	filter := bson.M{util.DBFieldJobId: jobId}
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldTaskDirty: dirty}
 
 	_, err := db.taskCollection.DeleteMany(context.TODO(), filter)
 	if err != nil {
@@ -146,7 +149,7 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 
 	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
 
-	setElements := bson.M{util.DBFieldState: taskStatus.State, "timestamp": time.Now()}
+	setElements := bson.M{util.DBFieldState: taskStatus.State, util.DBFieldTimestamp: time.Now()}
 
 	update := bson.M{"$set": setElements}
 
@@ -190,4 +193,23 @@ func (db *MongoService) IsOneTaskInStateWithRole(jobId string, state openapi.Job
 	}
 
 	return true
+}
+
+func (db *MongoService) SetTaskDirtyFlag(jobId string, dirty bool) error {
+	zap.S().Infof("Setting dirty flag to %s tasks for job: %s", dirty, jobId)
+
+	filter := bson.M{util.DBFieldJobId: jobId}
+	update := bson.M{
+		"$set": bson.M{
+			util.DBFieldTaskDirty: dirty,
+		},
+	}
+
+	_, err := db.taskCollection.UpdateMany(context.TODO(), filter, update)
+	if err != nil {
+		zap.S().Warnf("Failed to set dirty flag to %s: %v", dirty, err)
+		return err
+	}
+
+	return nil
 }

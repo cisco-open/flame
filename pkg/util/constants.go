@@ -39,17 +39,19 @@ const (
 
 	// Database Fields
 	//TODO append Field to distinguish the fields
-	DBFieldMongoID  = "_id"
-	DBFieldUserId   = "userid"
-	DBFieldId       = "id"
-	DBFieldDesignId = "designid"
-	DBFieldSchemaId = "schemaid"
-	DBFieldJobId    = "jobid"
-	DBFieldAgentId  = "agentid"
-	DBFieldState    = "state"
-	DBFieldRole     = "role"
-	DBFieldTaskType = "type"
-	DBFieldIsPublic = "ispublic"
+	DBFieldMongoID   = "_id"
+	DBFieldUserId    = "userid"
+	DBFieldId        = "id"
+	DBFieldDesignId  = "designid"
+	DBFieldSchemaId  = "schemaid"
+	DBFieldJobId     = "jobid"
+	DBFieldAgentId   = "agentid"
+	DBFieldState     = "state"
+	DBFieldRole      = "role"
+	DBFieldTaskType  = "type"
+	DBFieldIsPublic  = "ispublic"
+	DBFieldTaskDirty = "dirty"
+	DBFieldTimestamp = "timestamp"
 
 	// Port numbers
 	ApiServerRestApiPort  = 10100 // REST API port

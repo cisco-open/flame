@@ -17,6 +17,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -74,7 +75,7 @@ func (db *MongoService) GetDatasetById(datasetId string) (openapi.DatasetInfo, e
 	if err != nil {
 		zap.S().Warnf("failed to fetch dataset info: %v", err)
 
-		return openapi.DatasetInfo{}, ErrorCheck(err)
+		return openapi.DatasetInfo{}, fmt.Errorf("dataset %s - %v", datasetId, ErrorCheck(err))
 	}
 
 	return datasetInfo, nil

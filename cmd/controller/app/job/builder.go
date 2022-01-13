@@ -38,9 +38,9 @@ const (
 // Job Builder related code
 ////////////////////////////////////////////////////////////////////////////////
 
-type jobBuilder struct {
+type JobBuilder struct {
 	dbService database.DBService
-	jobSpec   openapi.JobSpec
+	jobSpec   *openapi.JobSpec
 	brokers   []config.Broker
 	registry  config.Registry
 
@@ -49,17 +49,21 @@ type jobBuilder struct {
 	roleCode map[string][]byte
 }
 
-func newJobBuilder(dbService database.DBService, jobSpec openapi.JobSpec, brokers []config.Broker, registry config.Registry) *jobBuilder {
-	return &jobBuilder{
+func NewJobBuilder(dbService database.DBService, brokers []config.Broker, registry config.Registry) *JobBuilder {
+	return &JobBuilder{
 		dbService: dbService,
-		jobSpec:   jobSpec,
 		brokers:   brokers,
 		registry:  registry,
 		datasets:  make([]openapi.DatasetInfo, 0),
 	}
 }
 
-func (b *jobBuilder) getTasks() ([]objects.Task, []string, error) {
+func (b *JobBuilder) GetTasks(jobSpec *openapi.JobSpec) ([]objects.Task, []string, error) {
+	b.jobSpec = jobSpec
+	if b.jobSpec == nil {
+		return nil, nil, fmt.Errorf("job spec is nil")
+	}
+
 	err := b.setup()
 	if err != nil {
 		return nil, nil, err
@@ -73,8 +77,8 @@ func (b *jobBuilder) getTasks() ([]objects.Task, []string, error) {
 	return tasks, roles, nil
 }
 
-func (b *jobBuilder) setup() error {
-	spec := &b.jobSpec
+func (b *JobBuilder) setup() error {
+	spec := b.jobSpec
 	userId, designId, schemaVersion, codeVersion := spec.UserId, spec.DesignId, spec.SchemaVersion, spec.CodeVersion
 
 	schema, err := b.dbService.GetDesignSchema(userId, designId, schemaVersion)
@@ -109,6 +113,8 @@ func (b *jobBuilder) setup() error {
 	}
 	b.roleCode = zippedRoleCode
 
+	// reset datasets array
+	b.datasets = make([]openapi.DatasetInfo, 0)
 	// update datasets
 	for _, datasetId := range b.jobSpec.DataSpec.FromSystem {
 		datasetInfo, err := b.dbService.GetDatasetById(datasetId)
@@ -122,7 +128,7 @@ func (b *jobBuilder) setup() error {
 	return nil
 }
 
-func (b *jobBuilder) build() ([]objects.Task, []string, error) {
+func (b *JobBuilder) build() ([]objects.Task, []string, error) {
 	tasks := make([]objects.Task, 0)
 	roles := make([]string, 0)
 
@@ -156,7 +162,7 @@ func (b *jobBuilder) build() ([]objects.Task, []string, error) {
 	return tasks, roles, nil
 }
 
-func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
+func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 	dataRoles := make([]string, 0)
 	templates := make(map[string]*taskTemplate)
 
@@ -195,7 +201,7 @@ func (b *jobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 	return dataRoles, templates
 }
 
-func (b *jobBuilder) extractChannels(role string, channels []openapi.Channel) []openapi.Channel {
+func (b *JobBuilder) extractChannels(role string, channels []openapi.Channel) []openapi.Channel {
 	exChannels := make([]openapi.Channel, 0)
 
 	for _, channel := range channels {
@@ -208,7 +214,7 @@ func (b *jobBuilder) extractChannels(role string, channels []openapi.Channel) []
 }
 
 // preCheck checks sanity of templates
-func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemplate) error {
+func (b *JobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
 	// 1. At least one data consumer role should be defined.
@@ -244,7 +250,7 @@ func (b *jobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemp
 	return nil
 }
 
-func (b *jobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) bool {
+func (b *JobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) bool {
 	var start *taskTemplate
 	for _, tmpl := range templates {
 		start = tmpl
@@ -290,7 +296,7 @@ func (b *jobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) bo
 	return isConnected
 }
 
-func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*taskTemplate) bool {
+func (b *JobBuilder) isConverging(dataRoles []string, templates map[string]*taskTemplate) bool {
 	var start *taskTemplate
 	for _, tmpl := range templates {
 		start = tmpl
@@ -327,7 +333,7 @@ func (b *jobBuilder) isConverging(dataRoles []string, templates map[string]*task
 	return ruleSatisfied
 }
 
-func (b *jobBuilder) postCheck(dataRoles []string, templates map[string]*taskTemplate) error {
+func (b *JobBuilder) postCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// At the end of processing templates, the following invariants should be met:
 	//
@@ -462,7 +468,6 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		// TODO: currently, one data role is assumed; therefore, datasets are used for one data role.
 		//       to support more than one data role, datasets should be associated with each role.
 		//       this needs job spec modification.
-		idx := 0
 		for realm, count := range userDatasetKV {
 			for i := 0; i < int(count); i++ {
 				task := tmpl.Task
@@ -471,14 +476,13 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 				// no need to copy byte array; assignment suffices
 				task.ZippedCode = tmpl.Task.ZippedCode
 				task.JobId = task.JobConfig.Job.Id
-				task.GenerateAgentId(idx)
+				task.GenerateAgentId(i)
 
 				tasks = append(tasks, task)
-				idx++
 			}
 		}
 
-		for _, dataset := range datasets {
+		for i, dataset := range datasets {
 			task := tmpl.Task
 			task.JobConfig.DatasetUrl = dataset.Url
 			task.JobConfig.Realm = dataset.Realm
@@ -486,10 +490,9 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			// no need to copy byte array; assignment suffices
 			task.ZippedCode = tmpl.Task.ZippedCode
 			task.JobId = task.JobConfig.Job.Id
-			task.GenerateAgentId(idx)
+			task.GenerateAgentId(i)
 
 			tasks = append(tasks, task)
-			idx++
 		}
 
 		return tasks

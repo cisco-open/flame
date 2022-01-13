@@ -67,10 +67,11 @@ type JobService interface {
 
 // TaskService is an interface that defines a collection of APIs related to task
 type TaskService interface {
-	CreateTasks([]objects.Task) error
-	DeleteTasks(string) error
+	CreateTasks([]objects.Task, bool) error
+	DeleteTasks(string, bool) error
 	GetTask(string, string) (map[string][]byte, error)
 	UpdateTaskStatus(string, string, openapi.TaskStatus) error
 	IsOneTaskInState(string, openapi.JobState) bool
 	IsOneTaskInStateWithRole(string, openapi.JobState, string) bool
+	SetTaskDirtyFlag(string, bool) error
 }

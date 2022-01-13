@@ -47,14 +47,18 @@ const (
 // Include any external packages or services that will be required by this service.
 type JobsApiService struct {
 	dbService database.DBService
-	jobEventQ *job.EventQ
+
+	jobEventQ  *job.EventQ
+	jobBuilder *job.JobBuilder
 }
 
 // NewJobsApiService creates a default api service
-func NewJobsApiService(dbService database.DBService, jobEventQ *job.EventQ) openapi.JobsApiServicer {
+func NewJobsApiService(dbService database.DBService, jobEventQ *job.EventQ, jobBuilder *job.JobBuilder) openapi.JobsApiServicer {
 	return &JobsApiService{
 		dbService: dbService,
-		jobEventQ: jobEventQ,
+
+		jobEventQ:  jobEventQ,
+		jobBuilder: jobBuilder,
 	}
 }
 
@@ -62,9 +66,22 @@ func NewJobsApiService(dbService database.DBService, jobEventQ *job.EventQ) open
 func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
 	jobStatus, err := s.dbService.CreateJob(user, jobSpec)
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
-		zap.S().Debug(errMsg)
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+		errMsg := fmt.Errorf("failed to create a new job: %v", err)
+		return errMsgFunc(errMsg)
+	}
+
+	dirty := false
+	rollbackFunc := func() {
+		err1 := s.dbService.DeleteTasks(jobStatus.Id, dirty)
+		err2 := s.dbService.DeleteJob(user, jobStatus.Id)
+
+		zap.S().Infof("delete tasks's error: %v; delete job's error: %v", err1, err2)
+	}
+
+	err = s.createTasks(user, jobStatus.Id, dirty)
+	if err != nil {
+		rollbackFunc()
+		return errMsgFunc(err)
 	}
 
 	return openapi.Response(http.StatusCreated, jobStatus), nil
@@ -158,11 +175,32 @@ func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId st
 // UpdateJob - Update a job specification
 func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId string,
 	jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
+	// Note: UpdateJob is a best-effort function
+	//       No rollback mechanism is supported, which means that a user should
+	//       continuously (modify the job spec and) try UpdateJob call
 	err := s.dbService.UpdateJob(user, jobId, jobSpec)
 	if err != nil {
-		errMsg := fmt.Sprintf("failed to create a new job: %v", err)
-		zap.S().Debug(errMsg)
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+		errMsg := fmt.Errorf("failed to create a new job: %v", err)
+		return errMsgFunc(errMsg)
+	}
+
+	dirty := true
+	err = s.createTasks(user, jobId, dirty)
+	if err != nil {
+		return errMsgFunc(err)
+	}
+
+	// delete unmodified tasks
+	dirty = false
+	err = s.dbService.DeleteTasks(jobId, dirty)
+	if err != nil {
+		return errMsgFunc(err)
+	}
+
+	// set dirty flag to false
+	err = s.dbService.SetTaskDirtyFlag(jobId, dirty)
+	if err != nil {
+		return errMsgFunc(err)
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil
@@ -203,4 +241,29 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, age
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
+}
+
+func (s *JobsApiService) createTasks(user string, jobId string, dirty bool) error {
+	// Obtain job specification
+	jobSpec, err := s.dbService.GetJob(user, jobId)
+	if err != nil {
+		return fmt.Errorf("failed to get a job spec for job %s: %v", jobId, err)
+	}
+
+	tasks, _, err := s.jobBuilder.GetTasks(&jobSpec)
+	if err != nil {
+		return fmt.Errorf("failed to generate tasks for job %s: %v", jobId, err)
+	}
+
+	err = s.dbService.CreateTasks(tasks, dirty)
+	if err != nil {
+		return fmt.Errorf("failed to create tasks for job %s in database: %v", jobId, err)
+	}
+
+	return nil
+}
+
+func errMsgFunc(err error) (openapi.ImplResponse, error) {
+	zap.S().Debug(err)
+	return openapi.Response(http.StatusInternalServerError, nil), err
 }

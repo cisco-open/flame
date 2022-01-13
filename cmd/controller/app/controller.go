@@ -37,19 +37,25 @@ type Controller struct {
 	platform  string
 	dbService database.DBService
 
-	jobEventQ *job.EventQ
+	jobEventQ  *job.EventQ
+	jobBuilder *job.JobBuilder
 }
 
 func NewController(cfg *config.Config) (*Controller, error) {
+	zap.S().Infof("Connecting to database at %s", cfg.Db)
+	dbService, err := database.NewDBService(cfg.Db)
+	if err != nil {
+		return nil, err
+	}
+
 	jobEventQ := job.NewEventQ(0)
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("failed to create a job event queue")
 	}
 
-	zap.S().Infof("Connecting to database at %s", cfg.Db)
-	dbService, err := database.NewDBService(cfg.Db)
-	if err != nil {
-		return nil, err
+	jobBuilder := job.NewJobBuilder(dbService, cfg.Brokers, cfg.Registry)
+	if jobBuilder == nil {
+		return nil, fmt.Errorf("failed to create a job builder")
 	}
 
 	instance := &Controller{
@@ -61,7 +67,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		platform:  cfg.Platform,
 		dbService: dbService,
 
-		jobEventQ: jobEventQ,
+		jobEventQ:  jobEventQ,
+		jobBuilder: jobBuilder,
 	}
 
 	return instance, nil
@@ -89,7 +96,7 @@ func (c *Controller) serveRestApi() {
 		openapi.NewDesignsApiController(controller.NewDesignsApiService(c.dbService)),
 		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService(c.dbService)),
 		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService(c.dbService)),
-		openapi.NewJobsApiController(controller.NewJobsApiService(c.dbService, c.jobEventQ)),
+		openapi.NewJobsApiController(controller.NewJobsApiService(c.dbService, c.jobEventQ, c.jobBuilder)),
 	}
 
 	router := openapi.NewRouter(apiRouters...)
