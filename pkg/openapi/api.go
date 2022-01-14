@@ -138,7 +138,7 @@ type JobsApiServicer interface {
 	GetJob(context.Context, string, string) (ImplResponse, error)
 	GetJobStatus(context.Context, string, string) (ImplResponse, error)
 	GetJobs(context.Context, string, int32) (ImplResponse, error)
-	GetTask(context.Context, string, string) (ImplResponse, error)
+	GetTask(context.Context, string, string, string) (ImplResponse, error)
 	GetTasksInfo(context.Context, string, string, int32) (ImplResponse, error)
 	UpdateJob(context.Context, string, string, JobSpec) (ImplResponse, error)
 	UpdateJobStatus(context.Context, string, string, JobStatus) (ImplResponse, error)

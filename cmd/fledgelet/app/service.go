@@ -16,8 +16,6 @@
 package app
 
 import (
-	"crypto/md5"
-	"encoding/hex"
 	"fmt"
 	"net"
 	"os"
@@ -31,7 +29,8 @@ import (
 )
 
 const (
-	envAgentId = "FLEDGE_AGENT_ID"
+	envAgentId  = "FLEDGE_AGENT_ID"
+	envAgentKey = "FLEDGE_AGENT_KEY"
 )
 
 type AgentService struct {
@@ -51,21 +50,15 @@ func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 	agentId := os.Getenv(envAgentId)
 	// in case agent id env variable is not set
 	if agentId == "" {
-		// TODO: revisit name and id part;
-		// determining name and id can be done through api call
-		hash := md5.Sum([]byte(name))
-		id := hex.EncodeToString(hash[:])
-
-		if name == "" || id == "" {
-			err := fmt.Errorf("missing fledgelet name or id")
-			zap.S().Error(err)
-			return nil, err
-		}
-
-		agentId = id
+		return nil, fmt.Errorf("agent id not found from env variable %s", envAgentId)
 	}
 
-	tHandler := newTaskHandler(apiserverEp, notifierEp, name, agentId)
+	agentKey := os.Getenv(envAgentKey)
+	if agentKey == "" {
+		return nil, fmt.Errorf("agent key not found from env variable %s", envAgentKey)
+	}
+
+	tHandler := newTaskHandler(apiserverEp, notifierEp, name, agentId, agentKey)
 
 	agent := &AgentService{
 		apiserverEp: apiserverEp,

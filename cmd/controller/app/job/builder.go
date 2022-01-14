@@ -32,6 +32,10 @@ import (
 const (
 	realmSep     = "/"
 	defaultRealm = "default"
+	taskKeyLen   = 32
+
+	emptyTaskKey    = ""
+	emptyDatasetUrl = ""
 )
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -170,23 +174,7 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		template := &taskTemplate{}
 		JobConfig := &template.JobConfig
 
-		JobConfig.Job.Id = b.jobSpec.Id
-		// DesignId is a string suitable as job's name
-		JobConfig.Job.Name = b.jobSpec.DesignId
-		JobConfig.MaxRunTime = b.jobSpec.MaxRunTime
-		JobConfig.BaseModel = b.jobSpec.BaseModel
-		JobConfig.Hyperparameters = b.jobSpec.Hyperparameters
-		JobConfig.Dependencies = b.jobSpec.Dependencies
-		JobConfig.BackEnd = string(b.jobSpec.Backend)
-		JobConfig.Brokers = b.brokers
-		JobConfig.Registry = b.registry
-		// Dataset url will be populated when datasets are handled
-		JobConfig.DatasetUrl = ""
-
-		JobConfig.Role = role.Name
-		// Realm will be updated when datasets are handled
-		JobConfig.Realm = ""
-		JobConfig.Channels = b.extractChannels(role.Name, b.schema.Channels)
+		JobConfig.Configure(b.jobSpec, b.brokers, b.registry, role, b.schema.Channels)
 
 		template.isDataConsumer = role.IsDataConsumer
 		if role.IsDataConsumer {
@@ -194,23 +182,12 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		}
 		template.ZippedCode = b.roleCode[role.Name]
 		template.Role = role.Name
+		template.JobId = JobConfig.Job.Id
 
 		templates[role.Name] = template
 	}
 
 	return dataRoles, templates
-}
-
-func (b *JobBuilder) extractChannels(role string, channels []openapi.Channel) []openapi.Channel {
-	exChannels := make([]openapi.Channel, 0)
-
-	for _, channel := range channels {
-		if contains(channel.Pair, role) {
-			exChannels = append(exChannels, channel)
-		}
-	}
-
-	return exChannels
 }
 
 // preCheck checks sanity of templates
@@ -408,7 +385,7 @@ type taskTemplate struct {
 }
 
 func (tmpl *taskTemplate) getPeerTemplate(channel openapi.Channel, templates map[string]*taskTemplate) *taskTemplate {
-	if !contains(channel.Pair, tmpl.JobConfig.Role) {
+	if !util.Contains(channel.Pair, tmpl.JobConfig.Role) {
 		return nil
 	}
 
@@ -471,27 +448,14 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		for realm, count := range userDatasetKV {
 			for i := 0; i < int(count); i++ {
 				task := tmpl.Task
-				task.JobConfig.Realm = realm
-				task.Type = openapi.USER
-				// no need to copy byte array; assignment suffices
-				task.ZippedCode = tmpl.Task.ZippedCode
-				task.JobId = task.JobConfig.Job.Id
-				task.GenerateAgentId(i)
-
+				task.Configure(openapi.USER, emptyTaskKey, realm, emptyDatasetUrl, i)
 				tasks = append(tasks, task)
 			}
 		}
 
 		for i, dataset := range datasets {
 			task := tmpl.Task
-			task.JobConfig.DatasetUrl = dataset.Url
-			task.JobConfig.Realm = dataset.Realm
-			task.Type = openapi.SYSTEM
-			// no need to copy byte array; assignment suffices
-			task.ZippedCode = tmpl.Task.ZippedCode
-			task.JobId = task.JobConfig.Job.Id
-			task.GenerateAgentId(i)
-
+			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
 			tasks = append(tasks, task)
 		}
 
@@ -500,16 +464,14 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 
 	prevTmpl := templates[prevPeer]
 	for _, channel := range prevTmpl.JobConfig.Channels {
-		if !contains(channel.Pair, tmpl.JobConfig.Role) {
+		if !util.Contains(channel.Pair, tmpl.JobConfig.Role) {
 			continue
 		}
 
 		for i := 0; i < len(channel.GroupBy.Value); i++ {
 			task := tmpl.Task
-			task.JobId = task.JobConfig.Job.Id
-			task.JobConfig.Realm = channel.GroupBy.Value[i] + realmSep + util.ProjectName
-			task.Type = openapi.SYSTEM
-			task.GenerateAgentId(i)
+			realm := channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), realm, emptyDatasetUrl, i)
 
 			tasks = append(tasks, task)
 		}
@@ -524,28 +486,10 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		_, ok := userDatasetKV[defaultRealm]
 		if len(tasks) == 0 || (prevTmpl.isDataConsumer && ok) {
 			task := tmpl.Task
-			task.JobId = task.JobConfig.Job.Id
-			task.JobConfig.Realm = defaultRealm
-			task.Type = openapi.SYSTEM
-			task.GenerateAgentId(0)
-
+			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), defaultRealm, emptyDatasetUrl, 0)
 			tasks = append(tasks, task)
 		}
 	}
 
 	return tasks
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// Etc
-////////////////////////////////////////////////////////////////////////////////
-
-func contains(haystack []string, needle string) bool {
-	for i := range haystack {
-		if needle == haystack[i] {
-			return true
-		}
-	}
-
-	return false
 }

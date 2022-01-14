@@ -104,7 +104,7 @@ var URI = map[string]string{
 	UpdateJobStatusEndPoint: "/{{.user}}/jobs/{{.jobId}}/status",
 
 	// Task
-	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.agentId}}/task",
+	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.agentId}}/task/?key={{.key}}",
 	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.agentId}}/task/status",
 }
 

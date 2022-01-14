@@ -369,6 +369,12 @@
         schema:
           type: string
         style: simple
+      - name: key
+        description: A key for task authentication; once the key is recognized by the fledge system for the first time, it can't be changed.
+        in: query
+        required: true
+        schema:
+          type: string
     responses:
       "200":
         content:

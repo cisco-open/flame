@@ -62,14 +62,12 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 
 	// send post request
 	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
-
-	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	// everything went well and response is a job id
@@ -146,16 +144,14 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsEndPoint, uriMap)
 
-	//send get request
+	// send get request
 	code, resp, err := restapi.HTTPGet(url)
-
-	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	jobStatusList := []openapi.JobStatus{}
@@ -165,10 +161,15 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 }
 
 // GetTask - Get a job task for a given job and agent
-func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
+func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string, key string) (openapi.ImplResponse, error) {
+	if key == "" {
+		return openapi.Response(http.StatusBadRequest, nil), fmt.Errorf("key can't be empty")
+	}
+
 	uriMap := map[string]string{
 		"jobId":   jobId,
 		"agentId": agentId,
+		"key":     key,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskEndpoint, uriMap)
 
@@ -194,14 +195,12 @@ func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId st
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
 	code, resp, err := restapi.HTTPGet(url)
-
-	// response to the user
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf("%s", string(resp))
+		return openapi.Response(http.StatusInternalServerError, err), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	taskInfoList := []openapi.TaskInfo{}
@@ -224,8 +223,6 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 
 	// send put request
 	code, resp, err := restapi.HTTPPut(url, jobSpec, "application/json")
-	zap.S().Debugf("code: %d, response: %s, err: %v", code, string(resp), err)
-	// response to the user
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -252,11 +249,11 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 	// send put request
 	code, resp, err := restapi.HTTPPut(url, jobStatus, "application/json")
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil
@@ -277,11 +274,11 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, age
 	// send put request
 	code, resp, err := restapi.HTTPPut(url, taskStatus, "application/json")
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil

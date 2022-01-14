@@ -151,8 +151,12 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 }
 
 // GetTask - Get a job task for a given job and agent
-func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string) (openapi.ImplResponse, error) {
-	taskMap, err := s.dbService.GetTask(jobId, agentId)
+func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string, key string) (openapi.ImplResponse, error) {
+	if key == "" {
+		return openapi.Response(http.StatusBadRequest, nil), fmt.Errorf("key can't be empty")
+	}
+
+	taskMap, err := s.dbService.GetTask(jobId, agentId, key)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get task")
 	}
@@ -162,7 +166,7 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 
 // GetTasksInfo - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
-	tasksInfo, err := s.dbService.GetTasksInfo(user, jobId, limit)
+	tasksInfo, err := s.dbService.GetTasksInfo(user, jobId, limit, false)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get info of all tasks in a job %s: %v", jobId, err)
 		zap.S().Debug(errMsg)

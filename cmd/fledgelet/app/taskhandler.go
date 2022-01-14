@@ -53,6 +53,7 @@ type taskHandler struct {
 	name        string
 	jobId       string
 	agentId     string
+	agentKey    string
 
 	stream pbNotify.EventRoute_GetEventClient
 
@@ -63,12 +64,13 @@ type taskHandler struct {
 	cancel context.CancelFunc
 }
 
-func newTaskHandler(apiserverEp string, notifierEp string, name string, agentId string) *taskHandler {
+func newTaskHandler(apiserverEp string, notifierEp string, name string, agentId string, agentKey string) *taskHandler {
 	return &taskHandler{
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
 		name:        name,
 		agentId:     agentId,
+		agentKey:    agentKey,
 		state:       openapi.READY,
 	}
 }
@@ -191,6 +193,7 @@ func (t *taskHandler) getTask() ([]string, error) {
 	uriMap := map[string]string{
 		"jobId":   t.jobId,
 		"agentId": t.agentId,
+		"key":     t.agentKey,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.GetTaskEndpoint, uriMap)
 
@@ -212,7 +215,7 @@ func (t *taskHandler) getTask() ([]string, error) {
 
 		filePaths = append(filePaths, filePath)
 
-		zap.S().Infof("Downloaded %s successfully\n", fileName)
+		zap.S().Infof("Downloaded %s successfully", fileName)
 	}
 
 	return filePaths, nil

@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"time"
@@ -28,6 +29,14 @@ import (
 	"go.uber.org/zap/zapcore"
 	"google.golang.org/protobuf/types/known/structpb"
 )
+
+const (
+	runes = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+)
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 /*InitZapLog Zap Logger initialization
 
@@ -169,4 +178,23 @@ func CopyFile(src string, dst string) error {
 	}
 
 	return out.Close()
+}
+
+func RandString(n int) string {
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = runes[rand.Intn(len(runes))]
+	}
+
+	return string(b)
+}
+
+func Contains(haystack []string, needle string) bool {
+	for i := range haystack {
+		if needle == haystack[i] {
+			return true
+		}
+	}
+
+	return false
 }

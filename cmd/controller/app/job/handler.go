@@ -240,7 +240,7 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 
-	tasksInfo, err := h.dbService.GetTasksInfo(event.Requester, event.JobStatus.Id, 0)
+	tasksInfo, err := h.dbService.GetTasksInfo(event.Requester, event.JobStatus.Id, 0, true)
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to fetch tasks' info: %v", err)
 		return
@@ -367,7 +367,8 @@ func (h *handler) allocateComputes() error {
 		}
 
 		context := map[string]string{
-			"agentId": taskInfo.AgentId,
+			"agentId":  taskInfo.AgentId,
+			"agentKey": taskInfo.Key,
 		}
 		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
 		if err != nil {

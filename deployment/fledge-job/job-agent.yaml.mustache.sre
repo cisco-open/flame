@@ -34,6 +34,9 @@ spec:
         - name: FLEDGE_AGENT_ID
           value: <% agentId %>
 
+        - name: FLEDGE_AGENT_KEY
+          value: <% agentKey %>
+
         - name: AWS_ACCESS_KEY_ID
           valueFrom:
             secretKeyRef:

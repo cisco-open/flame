@@ -60,7 +60,7 @@ func Create(params Params) error {
 	// send post request
 	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to create a job - code: %d, error: %v\n", code, err)
+		fmt.Printf("Failed to create a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
 		return nil
 	}
 

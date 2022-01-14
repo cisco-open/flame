@@ -51,6 +51,7 @@ const (
 	DBFieldTaskType  = "type"
 	DBFieldIsPublic  = "ispublic"
 	DBFieldTaskDirty = "dirty"
+	DBFieldTaskKey   = "key"
 	DBFieldTimestamp = "timestamp"
 
 	// Port numbers
