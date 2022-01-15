@@ -21,7 +21,7 @@ from typing import Optional
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (MQTT_TOPIC_PREFIX, SOCK_OP_WAIT_TIME,
+from .common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
                                BackendEvent)
 from .common.util import background_thread_loop, run_async
 from .config import BackendType, Config
@@ -132,14 +132,14 @@ class ChannelManager(object):
     def _join_non_mqtt(self, name):
         """Join a channel when backend is not mqtt."""
         coro = self._discovery_client.connect()
-        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if not status:
             return False
 
         coro = self._discovery_client.register(self._job_id, name, self._role,
                                                self._backend.uid(),
                                                self._backend.endpoint())
-        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if status:
             self._channels[name] = Channel(self._backend, self._job_id, name)
             self._backend.add_channel(self._channels[name])
@@ -147,7 +147,8 @@ class ChannelManager(object):
             return False
 
         coro = self._discovery_client.get(self._job_id, name)
-        channel_info, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        channel_info, status = run_async(coro, self._loop,
+                                         DEFAULT_RUN_ASYNC_WAIT_TIME)
         if not status:
             return False
 
@@ -177,7 +178,7 @@ class ChannelManager(object):
             _ = run_async(coro, self._backend.loop())
 
         coro = self._discovery_client.close()
-        _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        _ = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
 
         return True
 
@@ -192,7 +193,7 @@ class ChannelManager(object):
                                                     self._role,
                                                     self._backend.uid())
 
-        _, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if status:
             del self._channels[name]
 
