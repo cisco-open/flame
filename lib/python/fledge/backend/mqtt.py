@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""MQTT backend."""
 
 import asyncio
 import hashlib
@@ -26,7 +27,8 @@ from google.protobuf.any_pb2 import Any
 from paho.mqtt.client import MQTTv5
 
 from ..channel import RXQ, TXQ, Channel
-from ..common.constants import MQTT_TOPIC_PREFIX, BackendEvent
+from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
+                                BackendEvent)
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -51,15 +53,16 @@ logger = logging.getLogger(__name__)
 # info for mqtt qos is found at
 # https://www.hivemq.com/blog/mqtt-essentials-part-6-mqtt-quality-of-service-levels/
 class MqttQoS(IntEnum):
+    """Enum for MQTT QoS value."""
+
     AT_MOST_ONCE = 0
     AT_LEAST_ONCE = 1
     EXACTLY_ONCE = 2
 
 
 class MqttBackend(AbstractBackend):
-    '''
-    MqttBackend only allows a singleton instance
-    '''
+    """MqttBackend class. It only allows a singleton instance."""
+
     # variables for class initialization
     _instance = None
     _initialized = False
@@ -82,6 +85,7 @@ class MqttBackend(AbstractBackend):
         return cls._instance
 
     def __init__(self):
+        """Initialize an instance."""
         if self._initialized:
             return
 
@@ -98,7 +102,9 @@ class MqttBackend(AbstractBackend):
             _ = asyncio.create_task(coro)
 
         coro = _init_loop_stuff()
-        _ = run_async(coro, self._loop, 1)
+        _, success = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
+        if not success:
+            raise SystemError('initialization failure')
 
         self._initialized = True
 
@@ -115,6 +121,7 @@ class MqttBackend(AbstractBackend):
             await asyncio.sleep(period)
 
     def configure(self, broker: str, job_id: str, agent_id: str):
+        """Configure the backend."""
         self._last_payload_sig: dict[str, Tuple[str, float]] = {}
         self._msg_chunks: dict[str, ChunkStore] = {}
 
@@ -141,7 +148,10 @@ class MqttBackend(AbstractBackend):
             self._mqtt_client.subscribe(self._health_check_topic)
 
         coro = _setup_mqtt_client()
-        _ = run_async(coro, self._loop, 1)
+        _, success = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
+        if not success:
+            logger.error('failed to set up mqtt client')
+            raise ConnectionError
 
     def _handle_health_message(self, message):
         health_data = str(message.payload.decode("utf-8"))
@@ -216,18 +226,20 @@ class MqttBackend(AbstractBackend):
             elif any_msg.Is(msg_pb2.Data.DESCRIPTOR):
                 await self._handle_data(any_msg)
             else:
-                logger.debug('unknown message type')
+                logger.warning('unknown message type')
 
     def uid(self):
-        '''
-        return backend id
-        '''
+        """Return backend id."""
         return self._id
 
     def eventq(self):
+        """Return a event queue object."""
         return self._eventq
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
+        """on_connect publishes a health check message to a mqtt broker."""
+        logger.debug('calling on_connect')
+
         # publish health data; format: <end_id>:<status>
         # status is either END_STATUS_ON or END_STATUS_OFF
         client.publish(self._health_check_topic,
@@ -235,6 +247,7 @@ class MqttBackend(AbstractBackend):
                        qos=MqttQoS.EXACTLY_ONCE)
 
     def on_message(self, client, userdata, message):
+        """on_message receives message."""
         logger.debug(
             f'on_message - topic: {message.topic}; len: {len(message.payload)}'
         )

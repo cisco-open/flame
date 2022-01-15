@@ -19,7 +19,7 @@ from enum import Enum
 
 from ..channel import RXQ, TXQ
 from ..common.comm import _recv_msg, _send_msg
-from ..common.constants import SOCK_OP_WAIT_TIME, BackendEvent
+from ..common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -138,9 +138,8 @@ class LocalBackend(AbstractBackend):
 
     async def _setup_server(self):
         self._backend = UNIX_SOCKET_PATH_TEMPLATE.format(self._id)
-        self._server = await asyncio.start_unix_server(
-            self._handle, path=self._backend
-        )
+        self._server = await asyncio.start_unix_server(self._handle,
+                                                       path=self._backend)
 
         name = self._server.sockets[0].getsockname()
         print(f'serving on {name}')
@@ -211,7 +210,8 @@ class LocalBackend(AbstractBackend):
             return True
 
         coro = self._connect(endpoint)
-        result, status = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+        result, status = run_async(coro, self._loop,
+                                   DEFAULT_RUN_ASYNC_WAIT_TIME)
         (reader, writer) = result
         if status:
             self._endpoints[end_id] = (reader, writer)
@@ -231,14 +231,15 @@ class LocalBackend(AbstractBackend):
 
             await _send_msg(writer, msg)
 
-        _, status = run_async(_notify(), self._loop, SOCK_OP_WAIT_TIME)
+        _, status = run_async(_notify(), self._loop,
+                              DEFAULT_RUN_ASYNC_WAIT_TIME)
 
         return status
 
     def close(self):
         for end_id in list(self._endpoints):
             coro = self._close(end_id)
-            _ = run_async(coro, self._loop, SOCK_OP_WAIT_TIME)
+            _ = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
 
     def loop(self):
         return self._loop
@@ -247,10 +248,8 @@ class LocalBackend(AbstractBackend):
         self._channels[channel.name()] = channel
 
     def create_tx_task(self, channel_name, end_id):
-        if (
-            channel_name not in self._channels or
-            not self._channels[channel_name].has(end_id)
-        ):
+        if (channel_name not in self._channels
+                or not self._channels[channel_name].has(end_id)):
             return False
 
         channel = self._channels[channel_name]
