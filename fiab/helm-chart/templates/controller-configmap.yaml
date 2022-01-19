@@ -10,7 +10,7 @@ data:
     brokers:
       - sort: mqtt
         host: mqtt.eclipseprojects.io
-    db: mongodb://fledge-db:27017
+    db: mongodb://fledge-mongodb-headless:27017/?replicaSet=rs0
     notifier: fledge-notifier:10101
     platform: k8s
     registry:
