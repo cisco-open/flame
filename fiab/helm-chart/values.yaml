@@ -7,3 +7,28 @@ componentPorts:
   controller: "10102"
   agent: "10103"
 replicas: 1
+
+mongodb:
+  global:
+    namespaceOverride: fledge
+  architecture: replicaset
+  auth:
+    enabled: false
+
+  # Uncomment the following block after the 1st installation of fledge helm chart.
+  # The block allows access to database outside the k8s cluster.
+  # Enable externalAccess config only for debugging purposes by using tools like Robo 3T.
+  #######
+  # externalAccess:
+  #   enabled: true
+  #   service:
+  #     type: LoadBalancer
+  #   autoDiscovery:
+  #     enabled: true
+  # rbac:
+  #   create: true
+  #######
+
+  # replicaCount: 2
+  # arbiter:
+  #   enabled: false

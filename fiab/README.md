@@ -107,10 +107,11 @@ minikube tunnel
 The tunnel creates a routable IP for deployment.
 
 
-To bring up fledge and its dependent applications, helm will be used.
-Rune the following command:
+To bring up fledge and its dependent applications, helm is used.
+A shell script to use helm is provided
+Run the following command:
 ```
-helm install fledge helm-chart/
+./fledge.sh start
 ```
 
 To check deployment status, run the following command:
@@ -120,14 +121,23 @@ kubectl get pods -n fledge
 
 An example output looks like the following:
 ```
-NAME                                 READY   STATUS    RESTARTS      AGE
-fledge-apiserver-65d8c7fcf4-z8x5b    1/1     Running   0             63m
-fledge-controller-57bc777cb9-tlkjs   1/1     Running   0             63m
-fledge-db-869cccd84c-przm6           1/1     Running   0             63m
-fledge-notifier-c59bbcf65-svk2l      1/1     Running   0             63m
-mlflow-6dd895c889-9rhsj              1/1     Running   0             63m
-postgres-748c47694c-stt46            1/1     Running   0             63m
+NAME                                READY   STATUS    RESTARTS       AGE
+fledge-apiserver-65d8c7fcf4-kn6ck   1/1     Running   0              2m16s
+fledge-controller-f6c99d8d5-5jfd9   1/1     Running   3 (112s ago)   2m16s
+fledge-mongodb-0                    1/1     Running   0              49s
+fledge-mongodb-1                    1/1     Running   0              71s
+fledge-mongodb-arbiter-0            1/1     Running   0              2m16s
+fledge-notifier-c59bbcf65-qqvrc     1/1     Running   0              2m16s
+mlflow-6dd895c889-42nfl             1/1     Running   0              2m16s
+postgres-748c47694c-94lhh           1/1     Running   0              2m16s
 ```
+
+## Stopping fledge
+```
+./fledge.sh stop
+```
+Before starting fledge again, make sure that all the pods in the fledge namespace are deleted.
+To check that, use `kubectl get pods -n fledge` command.
 
 ## Logging into a pod
 In kubernetes, a pod is the smallest, most basic deployable object. A pod consists of at least one container instance.
