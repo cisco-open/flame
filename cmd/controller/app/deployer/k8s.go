@@ -64,11 +64,7 @@ func (deployer *K8sDeployer) Initialize(clusterName string, namespace string) er
 
 	actionConfig := new(action.Configuration)
 
-	logger := func(format string, v ...interface{}) {
-		zap.S().Debugf(format, v)
-	}
-
-	err = actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), logger)
+	err = actionConfig.Init(settings.RESTClientGetter(), settings.Namespace(), os.Getenv("HELM_DRIVER"), zap.S().Debugf)
 	if err != nil {
 		return err
 	}

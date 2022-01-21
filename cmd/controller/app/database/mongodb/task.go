@@ -22,6 +22,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
@@ -243,4 +244,65 @@ func (db *MongoService) SetTaskDirtyFlag(jobId string, dirty bool) error {
 	}
 
 	return nil
+}
+
+func (db *MongoService) MonitorTasks(jobId string) (chan openapi.TaskInfo, chan error, context.CancelFunc, error) {
+	jobIdField := fmt.Sprintf("fullDocument.%s", util.DBFieldJobId)
+	pipeline := mongo.Pipeline{
+		bson.D{{
+			Key: "$match",
+			Value: bson.D{{
+				Key: "$and",
+				Value: bson.A{
+					bson.D{{Key: jobIdField, Value: jobId}},
+					bson.D{{Key: "operationType", Value: "update"}},
+				},
+			}},
+		}},
+	}
+
+	chanLen := 100
+	opts := options.ChangeStream().SetFullDocument(options.UpdateLookup)
+	watcher := db.newstreamWatcher(db.taskCollection, pipeline, opts, chanLen)
+	if err := watcher.watch(); err != nil {
+		return nil, nil, nil, err
+	}
+
+	eventCh := make(chan openapi.TaskInfo, chanLen)
+
+	go func() {
+		isDone := false
+
+		for !isDone {
+			select {
+			case event := <-watcher.streamCh:
+				fullDoc := event["fullDocument"].(bson.M)
+				data, err := json.Marshal(fullDoc)
+				if err != nil {
+					zap.S().Debugf("Failed to marshal event: %v", err)
+					watcher.errCh <- fmt.Errorf("marshaling failed")
+					isDone = true
+					continue
+				}
+
+				var tskEvent openapi.TaskInfo
+				err = json.Unmarshal(data, &tskEvent)
+				if err != nil {
+					zap.S().Debugf("Failed to unmarshal to task event: %v", err)
+					watcher.errCh <- fmt.Errorf("unmarshaling failed")
+					isDone = true
+					continue
+				}
+
+				eventCh <- tskEvent
+
+			case <-watcher.ctx.Done():
+				isDone = true
+			}
+		}
+
+		zap.S().Infof("Finished monitoring tasks for job %s", jobId)
+	}()
+
+	return eventCh, watcher.errCh, watcher.cancel, nil
 }
