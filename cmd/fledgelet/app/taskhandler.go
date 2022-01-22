@@ -368,15 +368,19 @@ func (t *taskHandler) runTask() {
 	cmd.Stdout = file
 	cmd.Stderr = file
 
+	zap.S().Infof("Starting task for job %s", t.jobId)
+	// set running state in advance
+	// this is for keeping state transition simple, meaning that fledgelet always
+	// set running state first before making transition to one of three states
+	// -- failed, terminated, completed
+	t.updateTaskStatus(openapi.RUNNING)
+
 	err = cmd.Start()
 	if err != nil {
 		zap.S().Errorf("Failed to start task: %v", err)
 		t.updateTaskStatus(openapi.FAILED)
 		return
 	}
-
-	zap.S().Infof("Started task for job %s successfully", t.jobId)
-	t.updateTaskStatus(openapi.RUNNING)
 
 	err = cmd.Wait()
 	if err != nil {

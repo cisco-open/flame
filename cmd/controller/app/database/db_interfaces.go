@@ -16,6 +16,7 @@
 package database
 
 import (
+	"context"
 	"os"
 
 	"github.com/cisco/fledge/cmd/controller/app/objects"
@@ -74,4 +75,5 @@ type TaskService interface {
 	IsOneTaskInState(string, openapi.JobState) bool
 	IsOneTaskInStateWithRole(string, openapi.JobState, string) bool
 	SetTaskDirtyFlag(string, bool) error
+	MonitorTasks(string) (chan openapi.TaskInfo, chan error, context.CancelFunc, error)
 }

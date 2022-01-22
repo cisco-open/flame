@@ -21,6 +21,7 @@ import (
 
 	"github.com/cisco/fledge/cmd/controller/app/database"
 	"github.com/cisco/fledge/cmd/controller/config"
+	"go.uber.org/zap"
 )
 
 type Manager struct {
@@ -66,8 +67,13 @@ func (mgr *Manager) Do() {
 		if !ok {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
-			jobHandler := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
+			jobHandler, err := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
 				mgr.notifier, mgr.brokers, mgr.registry, mgr.platform)
+			if err != nil {
+				mgr.mutexQ.Unlock()
+				zap.S().Warnf("Failed to create a job handler: %v", err)
+				continue
+			}
 			go jobHandler.Do()
 		}
 		eventQ.Enqueue(event)

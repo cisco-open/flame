@@ -16,6 +16,7 @@
 package job
 
 import (
+	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -35,8 +36,6 @@ import (
 )
 
 const (
-	jobStatusCheckDuration = 1 * time.Minute
-
 	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
 	deploymentTemplateDir = "templates"
 
@@ -63,8 +62,13 @@ type handler struct {
 
 	startTime time.Time
 
-	tasksInfo []openapi.TaskInfo
-	roles     []openapi.Role
+	tasksInfo      []openapi.TaskInfo
+	roles          []openapi.Role
+	roleStateCount map[string]map[openapi.JobState]int
+
+	tskEventCh       chan openapi.TaskInfo
+	errCh            chan error
+	tskWatchCancelFn context.CancelFunc
 
 	dplyr deployer.Deployer
 	// isDone is set in case where nothing can be done by a handler
@@ -73,8 +77,14 @@ type handler struct {
 }
 
 func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, brokers []config.Broker, registry config.Registry, platform string) *handler {
-	return &handler{
+	notifier string, brokers []config.Broker, registry config.Registry, platform string) (*handler, error) {
+	// start task monitoring
+	tskEventCh, errCh, tskWatchCancelFn, err := dbService.MonitorTasks(jobId)
+	if err != nil {
+		return nil, err
+	}
+
+	hdlr := &handler{
 		dbService: dbService,
 		jobId:     jobId,
 		eventQ:    eventQ,
@@ -86,8 +96,17 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		platform:  platform,
 		tasksInfo: make([]openapi.TaskInfo, 0),
 		roles:     make([]openapi.Role, 0),
-		isDone:    make(chan bool, 1),
+
+		roleStateCount: make(map[string]map[openapi.JobState]int),
+
+		tskEventCh:       tskEventCh,
+		errCh:            errCh,
+		tskWatchCancelFn: tskWatchCancelFn,
+
+		isDone: make(chan bool, 1),
 	}
+
+	return hdlr, nil
 }
 
 func (h *handler) Do() {
@@ -106,11 +125,15 @@ func (h *handler) Do() {
 	h.jobSpec = jobSpec
 
 	h.startTime = time.Now()
-	ticker := time.NewTicker(jobStatusCheckDuration)
 	for {
 		select {
-		case <-ticker.C:
-			h.checkProgress()
+		case tskEvent := <-h.tskEventCh:
+			h.checkProgress(&tskEvent)
+
+		case <-h.errCh:
+			// non-fixable error occurred; halt job
+			_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.FAILED})
+			h.isDone <- true
 
 		case event := <-h.eventQ.GetEventBuffer():
 			h.doHandle(event)
@@ -122,10 +145,10 @@ func (h *handler) Do() {
 	}
 }
 
-// checkProgress checks the progress of a job and returns a boolean flag to tell if the job handling thread can be finished.
-// If the job is in completed/failed/terminated state, this method returns true (meaning that the thread can be finished).
-// It also returns true if the maximum wait time exceeds. Otherwise, it returns false.
-func (h *handler) checkProgress() {
+// checkProgress checks the progress of a job and sets a boolean flag (isDone) to tell if the job handling thread can be finished.
+// If the job is in completed/failed/terminated state, this method sets true (meaning that the thread can be removed).
+// It also set the flag true if the maximum wait time exceeds. Otherwise, it leaves the flag as is.
+func (h *handler) checkProgress(tskEvent *openapi.TaskInfo) {
 	// if the job didn't finish after max wait time, we finish the job handling/monitoring work
 	if h.startTime.Add(time.Duration(h.jobSpec.MaxRunTime) * time.Second).Before(time.Now()) {
 		zap.S().Infof("Job timed out")
@@ -136,6 +159,13 @@ func (h *handler) checkProgress() {
 		return
 	}
 
+	if tskEvent != nil {
+		_, ok := h.roleStateCount[tskEvent.Role]
+		if ok {
+			h.roleStateCount[tskEvent.Role][tskEvent.State]++
+		}
+	}
+
 	jobStatus, err := h.dbService.GetJobStatus(h.jobSpec.UserId, h.jobId)
 	if err != nil {
 		zap.S().Warnf("failed to get job status: %v", err)
@@ -143,25 +173,28 @@ func (h *handler) checkProgress() {
 	}
 
 	if jobStatus.State == openapi.DEPLOYING {
-		if h.dbService.IsOneTaskInState(h.jobId, openapi.RUNNING) {
+		if tskEvent.State == openapi.RUNNING {
 			_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.RUNNING})
+		} else if h.isOneRoleAllFailed() {
+			zap.S().Warnf("Job %s is failed at %s state", h.jobId, jobStatus.State)
+			_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.FAILED})
+			h.isDone <- true
 		}
 	} else if jobStatus.State == openapi.RUNNING {
-		if h.dbService.IsOneTaskInState(h.jobId, openapi.RUNNING) {
-			// one task is at least in running state, there is nothing to do
+		if h.isOneTaskRunning() {
+			// at least one task is in running state, there is nothing to do
 			return
 		}
+		// at this point, none of tasks is in running state
 
 		// check if at least one task in each role is completed
-		for _, role := range h.roles {
-			if !h.dbService.IsOneTaskInStateWithRole(h.jobId, openapi.COMPLETED, role.Name) {
-				// all tasks in some role were failed/terminated
-				// so the job can not be completed successfully
-				zap.S().Warnf("Job %s is failed", h.jobId)
-				_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.FAILED})
-				h.isDone <- true
-				return
-			}
+		if !h.isOneTaskCompletedPerRole() {
+			// all tasks in some role were failed/terminated or never executed
+			// so the job cannot be completed successfully
+			zap.S().Warnf("Job %s is failed at %s state", h.jobId, jobStatus.State)
+			_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.FAILED})
+			h.isDone <- true
+			return
 		}
 
 		zap.S().Infof("Job %s is completed", h.jobId)
@@ -170,6 +203,42 @@ func (h *handler) checkProgress() {
 
 		h.isDone <- true
 	}
+}
+
+func (h *handler) isOneRoleAllFailed() bool {
+	for _, stateCount := range h.roleStateCount {
+		if stateCount[openapi.READY] != stateCount[openapi.FAILED] {
+			continue
+		}
+
+		// all tasks in some role were failed
+		return true
+	}
+
+	return false
+}
+
+func (h *handler) isOneTaskRunning() bool {
+	for _, stateCount := range h.roleStateCount {
+		if (stateCount[openapi.COMPLETED] + stateCount[openapi.TERMINATED] +
+			stateCount[openapi.FAILED]) < stateCount[openapi.RUNNING] {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (h *handler) isOneTaskCompletedPerRole() bool {
+	roleCount := len(h.roleStateCount)
+	completedCount := 0
+	for _, stateCount := range h.roleStateCount {
+		if stateCount[openapi.COMPLETED] > 0 {
+			completedCount++
+		}
+	}
+
+	return roleCount == completedCount
 }
 
 func (h *handler) doHandle(event *JobEvent) {
@@ -246,6 +315,13 @@ func (h *handler) handleStart(event *JobEvent) {
 		return
 	}
 	h.tasksInfo = tasksInfo
+	for _, taskInfo := range tasksInfo {
+		_, ok := h.roleStateCount[taskInfo.Role]
+		if !ok {
+			h.roleStateCount[taskInfo.Role] = make(map[openapi.JobState]int)
+		}
+		h.roleStateCount[taskInfo.Role][taskInfo.State] = 0
+	}
 
 	schema, err := h.dbService.GetDesignSchema(event.Requester, h.jobSpec.DesignId, h.jobSpec.SchemaVersion)
 	if err != nil {
@@ -314,6 +390,8 @@ func (h *handler) cleanup() {
 	// 2.delete all the job resource specification files
 	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
 	_ = os.RemoveAll(deploymentChartPath)
+
+	h.tskWatchCancelFn()
 }
 
 func (h *handler) notify(evtType pbNotify.EventType) error {
