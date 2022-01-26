@@ -54,6 +54,11 @@ CONF_KEY_REGISTRY_URI = 'uri'
 
 GROUPBY_DEFAULT_GROUP = 'default'
 
+DEFAULT_HYPERARAMETERS_DICT = {
+    'rounds': 1,
+    'epochs': 1,
+}
+
 
 class BackendType(Enum):
     """Define backend types."""
@@ -257,6 +262,10 @@ class Config(object):
         self.hyperparameters = None
         if CONF_KEY_HYPERPARAMS in json_data:
             self.hyperparameters = json_data[CONF_KEY_HYPERPARAMS]
+        for k, v in DEFAULT_HYPERARAMETERS_DICT.items():
+            if k in self.hyperparameters:
+                continue
+            self.hyperparameters[k] = v
 
         self.max_run_time = 300
         if CONF_KEY_MAX_RUN_TIME in json_data:

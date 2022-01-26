@@ -43,7 +43,7 @@
 	"name": "mnist"
     },
     "registry": {
-	"name": "mlflow",
+	"sort": "mlflow",
 	"uri": "http://mlflow:5000"
     },
     "maxRunTime": 300,
