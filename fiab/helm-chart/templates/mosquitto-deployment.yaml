@@ -1,0 +1,30 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mosquitto
+  namespace: {{ .Values.servicename }}
+
+spec:
+  replicas: {{ .Values.replicas }}
+  selector:
+    matchLabels:
+      app: mosquitto
+  template:
+    metadata:
+      labels:
+        app: mosquitto
+    spec:
+      containers:
+        - image: eclipse-mosquitto:2.0.14
+          name: mosquitto
+          ports:
+            - containerPort: 1883
+          volumeMounts:
+            - mountPath: /mosquitto/config
+              name: config-volume
+      restartPolicy: Always
+      volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-mosquitto-configmap

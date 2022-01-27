@@ -1,0 +1,15 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: mosquitto
+    tier: backend
+  name: mosquitto
+  namespace: {{ .Values.servicename }}
+spec:
+  ports:
+  - port: 1883
+    targetPort: 1883
+  selector:
+    app: mosquitto
