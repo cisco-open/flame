@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 class MnistTrainer(Trainer):
     """Mnist Trainer."""
 
-    #
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
@@ -43,31 +42,27 @@ class MnistTrainer(Trainer):
         self._x_train = None
         self._y_train = None
 
-        self.epochs = 1
+        self.epochs = self.config.hyperparameters['epochs']
         self.batch_size = 128
         if 'batchSize' in self.config.hyperparameters:
             self.batch_size = self.config.hyperparameters['batchSize']
 
     def initialize(self) -> None:
         """Initialize role."""
-        model = keras.Sequential(
-            [
-                keras.Input(shape=self.input_shape),
-                layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-                layers.MaxPooling2D(pool_size=(2, 2)),
-                layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-                layers.MaxPooling2D(pool_size=(2, 2)),
-                layers.Flatten(),
-                layers.Dropout(0.5),
-                layers.Dense(self.num_classes, activation="softmax"),
-            ]
-        )
+        model = keras.Sequential([
+            keras.Input(shape=self.input_shape),
+            layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Flatten(),
+            layers.Dropout(0.5),
+            layers.Dense(self.num_classes, activation="softmax"),
+        ])
 
-        model.compile(
-            loss="categorical_crossentropy",
-            optimizer="adam",
-            metrics=["accuracy"]
-        )
+        model.compile(loss="categorical_crossentropy",
+                      optimizer="adam",
+                      metrics=["accuracy"])
 
         self._model = model
 
@@ -101,13 +96,11 @@ class MnistTrainer(Trainer):
         # set model weights given from aggregator
         self._model.set_weights(self.weights)
 
-        self._model.fit(
-            self._x_train,
-            self._y_train,
-            batch_size=self.batch_size,
-            epochs=self.epochs,
-            validation_split=0.1
-        )
+        self._model.fit(self._x_train,
+                        self._y_train,
+                        batch_size=self.batch_size,
+                        epochs=self.epochs,
+                        validation_split=0.1)
 
         # save weights and dataset size so that
         # these two pieces of info can be shared with aggregator

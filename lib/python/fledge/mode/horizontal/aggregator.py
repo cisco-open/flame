@@ -67,16 +67,15 @@ class Aggregator(Role, metaclass=ABCMeta):
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
-                base_model.name, base_model.version
-            )
+                base_model.name, base_model.version)
 
         self.registry_client.setup_run()
 
-        self._epoch = 1
-        self._epochs = 1
+        self._round = 1
+        self._rounds = 1
 
         if 'rounds' in self.config.hyperparameters:
-            self._epochs = self.config.hyperparameters['rounds']
+            self._rounds = self.config.hyperparameters['rounds']
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -143,20 +142,20 @@ class Aggregator(Role, metaclass=ABCMeta):
             logger.debug("no end found in the channel")
             time.sleep(1)
 
-        self._work_done = (self._epoch >= self._epochs)
+        self._work_done = (self._round >= self._rounds)
 
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
             channel.send(end, (self._work_done, self.weights))
 
-        self._epoch += 1
+        self._round += 1
 
     def save_metrics(self):
         """Save metrics in a model registry."""
         logger.debug(f"saving metrics: {self.metrics}")
         if self.metrics:
-            self.registry_client.save_metrics(self._epoch - 1, self.metrics)
+            self.registry_client.save_metrics(self._round - 1, self.metrics)
             logger.debug("saving metrics done")
 
     def save_params(self):
@@ -190,17 +189,15 @@ class Aggregator(Role, metaclass=ABCMeta):
             task_eval = Tasklet(self.evaluate)
 
             task_save_metrics = Tasklet(
-                self.save_metrics, loop_check_func=lambda: self._work_done
-            )
+                self.save_metrics, loop_check_func=lambda: self._work_done)
 
             task_save_params = Tasklet(self.save_params)
 
             task_save_model = Tasklet(self.save_model)
 
         task_internal_init >> task_init >> loop(
-            task_load_data >> task_put >> task_get >> task_train >> task_eval >>
-            task_save_metrics
-        ) >> task_save_params >> task_save_model
+            task_load_data >> task_put >> task_get >> task_train >> task_eval
+            >> task_save_metrics) >> task_save_params >> task_save_model
 
     def run(self) -> None:
         """Run role."""
