@@ -52,6 +52,8 @@ CONF_KEY_REGISTRY = 'registry'
 CONF_KEY_REGISTRY_SORT = 'sort'
 CONF_KEY_REGISTRY_URI = 'uri'
 
+CONF_KEY_OPTIMIZER = 'optimizer'
+
 GROUPBY_DEFAULT_GROUP = 'default'
 
 DEFAULT_HYPERARAMETERS_DICT = {
@@ -74,21 +76,24 @@ class RegistryType(Enum):
     MLFLOW = 1
 
 
+class OptimizerType(Enum):
+    """Define optimizer types."""
+
+    FEDAVG = 1  # default
+
+
 REALM_SEPARATOR = '/'
 
 
 class Config(object):
     """Config class."""
 
-    #
     class Channel(object):
         """Channel class."""
 
-        #
         class GroupBy(object):
             """GroupBy class."""
 
-            #
             def __init__(self, json_data=None):
                 """Initialize GroupBy instance."""
                 self.gtype = ''
@@ -157,7 +162,6 @@ class Config(object):
     class BaseModel(object):
         """Base model class."""
 
-        #
         def __init__(self, json_data=None):
             """Initialize BaseModel instance."""
             self.name = json_data[CONF_KEY_BASE_MODEL_NAME]
@@ -172,7 +176,6 @@ class Config(object):
     class Brokers(object):
         """Brokers class."""
 
-        #
         def __init__(self, json_data=None):
             """Initialize BaseModel instance."""
             self.sort_to_host = dict()
@@ -199,7 +202,6 @@ class Config(object):
     class Job(object):
         """Job class."""
 
-        #
         def __init__(self, json_data=None):
             """Initialize Job instance."""
             self.job_id = json_data[CONF_KEY_JOB_ID]
@@ -214,7 +216,6 @@ class Config(object):
     class Registry(object):
         """Registry class."""
 
-        #
         def __init__(self, json_data=None):
             """Initialize Registry instance."""
             sort = json_data[CONF_KEY_REGISTRY_SORT].upper()
@@ -239,12 +240,41 @@ class Config(object):
             json_data = json.load(f)
             f.close()
 
+        self.role = json_data[CONF_KEY_ROLE]
+        self.realm = json_data[CONF_KEY_REALM]
+
         self.agent = 'local'
         if CONF_KEY_AGENT in json_data:
             self.agent = json_data[CONF_KEY_AGENT]
 
         self.agent_id = json_data[CONF_KEY_AGENT_ID]
 
+        self._init_backend(json_data)
+
+        self._init_channels(json_data)
+
+        self._init_hyperparameters(json_data)
+
+        self._init_optimizer(json_data)
+
+        self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
+
+        self.dataset = ''
+        if CONF_KEY_DATASET in json_data:
+            self.dataset = json_data[CONF_KEY_DATASET]
+
+        self.max_run_time = 300
+        if CONF_KEY_MAX_RUN_TIME in json_data:
+            self.max_run_time = json_data[CONF_KEY_MAX_RUN_TIME]
+
+        self.base_model = None
+        if CONF_KEY_BASE_MODEL in json_data:
+            self.base_model = Config.BaseModel(json_data[CONF_KEY_BASE_MODEL])
+
+        self.job = Config.Job(json_data[CONF_KEY_JOB])
+        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
+
+    def _init_backend(self, json_data):
         backend_key = json_data[CONF_KEY_BACKEND].upper()
         try:
             self.backend = BackendType[backend_key]
@@ -253,27 +283,7 @@ class Config(object):
             sys.exit(f"invailid backend type: {backend_key}\n" +
                      f"valid backend type(s) are {valid_types}")
 
-        self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
-
-        self.dataset = ''
-        if CONF_KEY_DATASET in json_data:
-            self.dataset = json_data[CONF_KEY_DATASET]
-
-        self.hyperparameters = None
-        if CONF_KEY_HYPERPARAMS in json_data:
-            self.hyperparameters = json_data[CONF_KEY_HYPERPARAMS]
-        for k, v in DEFAULT_HYPERARAMETERS_DICT.items():
-            if k in self.hyperparameters:
-                continue
-            self.hyperparameters[k] = v
-
-        self.max_run_time = 300
-        if CONF_KEY_MAX_RUN_TIME in json_data:
-            self.max_run_time = json_data[CONF_KEY_MAX_RUN_TIME]
-
-        self.role = json_data[CONF_KEY_ROLE]
-        self.realm = json_data[CONF_KEY_REALM]
-
+    def _init_channels(self, json_data):
         self.func_tag_map = dict()
         self.channels = dict()
 
@@ -285,12 +295,26 @@ class Config(object):
             for tag in channel_config.func_tags[self.role]:
                 self.func_tag_map[tag] = channel_config.name
 
-        self.base_model = None
-        if CONF_KEY_BASE_MODEL in json_data:
-            self.base_model = Config.BaseModel(json_data[CONF_KEY_BASE_MODEL])
+    def _init_hyperparameters(self, json_data):
+        self.hyperparameters = None
+        if CONF_KEY_HYPERPARAMS in json_data:
+            self.hyperparameters = json_data[CONF_KEY_HYPERPARAMS]
+        for k, v in DEFAULT_HYPERARAMETERS_DICT.items():
+            if k in self.hyperparameters:
+                continue
+            self.hyperparameters[k] = v
 
-        self.job = Config.Job(json_data[CONF_KEY_JOB])
-        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
+    def _init_optimizer(self, json_data):
+        # default optimizer is FEDAVG
+        optimizer_key = OptimizerType.FEDAVG.name
+        if CONF_KEY_OPTIMIZER in json_data:
+            optimizer_key = json_data[CONF_KEY_OPTIMIZER].upper()
+        try:
+            self.optimizer = OptimizerType[optimizer_key]
+        except KeyError:
+            valid_types = [optimizer.name for optimizer in OptimizerType]
+            sys.exit(f"invailid optimizer type: {optimizer_key}\n" +
+                     f"valid optimizer type(s) are {valid_types}")
 
     def __str__(self):
         """Return config info as string."""

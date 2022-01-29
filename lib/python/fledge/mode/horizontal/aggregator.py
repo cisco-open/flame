@@ -17,8 +17,12 @@
 import logging
 import time
 
+from diskcache import Cache
+
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
+from ...optimizer.train_result import TrainResult
+from ...optimizers import optimizer_provider
 from ...registries import registry_provider
 from ..composer import Composer
 from ..role import Role
@@ -33,7 +37,6 @@ TAG_AGGREGATE = 'aggregate'
 class Aggregator(Role, metaclass=ABCMeta):
     """Aggregator implements an ML aggregation role."""
 
-    #
     @abstract_attribute
     def weights(self):
         """Abstract attribute for model weights."""
@@ -71,6 +74,10 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         self.registry_client.setup_run()
 
+        # disk cache is used for saving memory in case model is large
+        self.cache = Cache()
+        self.optimizer = optimizer_provider.get(self.config.optimizer)
+
         self._round = 1
         self._rounds = 1
 
@@ -87,14 +94,7 @@ class Aggregator(Role, metaclass=ABCMeta):
         if not channel:
             return
 
-        ##############################################################
-        # TODO: this aggregation part should be modularized
-        #       by making an algorithm pluggable.
-        #
-        #       The following is the implementation of FedSGD algo.
-        ##############################################################
         total = 0
-        weights_array = []
         # receive local model parameters from trainers
         for end in channel.ends():
             msg = channel.recv(end)
@@ -104,25 +104,20 @@ class Aggregator(Role, metaclass=ABCMeta):
 
             weights = msg[0]
             count = msg[1]
+
             total += count
-            weights_array.append((weights, count))
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
-        if len(weights_array) == 0 or total == 0:
-            logger.debug("no local model parameters are obtained")
+            tres = TrainResult(weights, count)
+            # save training result from trainer in a disk cache
+            self.cache[end] = tres
+
+        # optimizer conducts optimization (in this case, aggregation)
+        global_weights = self.optimizer.do(self.cache, total)
+        if global_weights is None:
+            logger.debug("failed model aggregation")
             time.sleep(1)
             return
-
-        count = weights_array[0][1]
-        rate = count / total
-        global_weights = [weight * rate for weight in weights_array[0][0]]
-
-        for weights, count in weights_array[1:]:
-            rate = count / total
-
-            for idx in range(len(weights)):
-                global_weights[idx] += weights[idx] * rate
-        ##############################################################
 
         # set global weights
         self.weights = global_weights
