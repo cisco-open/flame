@@ -12,18 +12,66 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+"""Utility functions."""
 
 import asyncio
 import concurrent.futures
+import sys
 from contextlib import contextmanager
+from enum import Enum
 from threading import Thread
 from typing import List
 
 from pip._internal.cli.main import main as pipmain
 
+PYTORCH = 'torch'
+TENSORFLOW = 'tensorflow'
+
+
+class MLFramework(Enum):
+    """Supported ml framework."""
+
+    UNKNOWN = 1
+    PYTORCH = 2
+    TENSORFLOW = 3
+
+
+ml_framework_in_use = MLFramework.UNKNOWN
+valid_frameworks = [
+    framework.name.lower() for framework in MLFramework
+    if framework != MLFramework.UNKNOWN
+]
+
+
+def determine_ml_framework_in_use():
+    """Determine which ml framework in use."""
+    global ml_framework_in_use
+
+    if PYTORCH in sys.modules:
+        ml_framework_in_use = MLFramework.PYTORCH
+    elif TENSORFLOW in sys.modules:
+        ml_framework_in_use = MLFramework.TENSORFLOW
+
+
+def get_ml_framework_in_use():
+    """Return ml framework in use.
+
+    Caveat: This function should be called after ml framework package or module
+            is imported. Otherwise, this function will always return unknown
+            framework type. Also, once the ml framework is identified, the type
+            won't change for the rest of run time.
+    """
+    global ml_framework_in_use
+
+    if ml_framework_in_use == MLFramework.UNKNOWN:
+        determine_ml_framework_in_use()
+
+    return ml_framework_in_use
+
 
 @contextmanager
 def background_thread_loop():
+
     def run_forever(loop):
         asyncio.set_event_loop(loop)
         loop.run_forever()
