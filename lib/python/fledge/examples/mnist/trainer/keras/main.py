@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""MNIST horizontal FL trainer."""
+"""MNIST horizontal FL trainer for Keras."""
 
 import logging
 from random import randrange
@@ -26,8 +26,8 @@ from tensorflow.keras import layers
 logger = logging.getLogger(__name__)
 
 
-class MnistTrainer(Trainer):
-    """Mnist Trainer."""
+class KerasMnistTrainer(Trainer):
+    """Keras Mnist Trainer."""
 
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
@@ -38,7 +38,7 @@ class MnistTrainer(Trainer):
         self.num_classes = 10
         self.input_shape = (28, 28, 1)
 
-        self._model = None
+        self.model = None
         self._x_train = None
         self._y_train = None
 
@@ -64,7 +64,7 @@ class MnistTrainer(Trainer):
                       optimizer="adam",
                       metrics=["accuracy"])
 
-        self._model = model
+        self.model = model
 
     def load_data(self) -> None:
         """Load data."""
@@ -94,17 +94,17 @@ class MnistTrainer(Trainer):
     def train(self) -> None:
         """Train a model."""
         # set model weights given from aggregator
-        self._model.set_weights(self.weights)
+        self.model.set_weights(self.weights)
 
-        self._model.fit(self._x_train,
-                        self._y_train,
-                        batch_size=self.batch_size,
-                        epochs=self.epochs,
-                        validation_split=0.1)
+        self.model.fit(self._x_train,
+                       self._y_train,
+                       batch_size=self.batch_size,
+                       epochs=self.epochs,
+                       validation_split=0.1)
 
         # save weights and dataset size so that
         # these two pieces of info can be shared with aggregator
-        self.weights = self._model.get_weights()
+        self.weights = self.model.get_weights()
         self.dataset_size = len(self._x_train)
 
     def evaluate(self) -> None:
@@ -123,6 +123,6 @@ if __name__ == "__main__":
 
     config = Config(args.config)
 
-    t = MnistTrainer(config)
+    t = KerasMnistTrainer(config)
     t.compose()
     t.run()

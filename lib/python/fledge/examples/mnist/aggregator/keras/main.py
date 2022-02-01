@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""MNIST horizontal FL aggregator."""
+"""MNIST horizontal FL aggregator for Keras."""
 
 import logging
 from random import randrange
@@ -26,10 +26,9 @@ from tensorflow.keras import layers
 logger = logging.getLogger(__name__)
 
 
-class MnistAggregator(Aggregator):
-    """Mnist Aggregator."""
+class KerasMnistAggregator(Aggregator):
+    """Keras Mnist Aggregator."""
 
-    #
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
@@ -40,31 +39,26 @@ class MnistAggregator(Aggregator):
         self.num_classes = 10
         self.input_shape = (28, 28, 1)
 
-        self._model = None
         self._x_test = None
         self._y_test = None
 
     def initialize(self):
         """Initialize role."""
         if not self.model:
-            model = keras.Sequential(
-                [
-                    keras.Input(shape=self.input_shape),
-                    layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-                    layers.MaxPooling2D(pool_size=(2, 2)),
-                    layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-                    layers.MaxPooling2D(pool_size=(2, 2)),
-                    layers.Flatten(),
-                    layers.Dropout(0.5),
-                    layers.Dense(self.num_classes, activation="softmax"),
-                ]
-            )
+            model = keras.Sequential([
+                keras.Input(shape=self.input_shape),
+                layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
+                layers.MaxPooling2D(pool_size=(2, 2)),
+                layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+                layers.MaxPooling2D(pool_size=(2, 2)),
+                layers.Flatten(),
+                layers.Dropout(0.5),
+                layers.Dense(self.num_classes, activation="softmax"),
+            ])
 
-            model.compile(
-                loss="categorical_crossentropy",
-                optimizer="adam",
-                metrics=["accuracy"]
-            )
+            model.compile(loss="categorical_crossentropy",
+                          optimizer="adam",
+                          metrics=["accuracy"])
 
             self.model = model
 
@@ -124,6 +118,6 @@ if __name__ == "__main__":
 
     config = Config(args.config)
 
-    a = MnistAggregator(config)
+    a = KerasMnistAggregator(config)
     a.compose()
     a.run()
