@@ -7,11 +7,11 @@ data:
   controller.yaml: |
     ---
     brokers:
-      - sort: mqtt
-        host: mqtt.eclipseprojects.io
+      - sort: {{ .Values.broker.sort }}
+        host: {{ .Values.broker.host }}
     db: {{ .Values.database.uri }}
     notifier: {{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}
     platform: k8s
     registry:
-      sort: mlflow
-      uri: http://blue-a-fledge-mlflow-dev-argoapp.fledge-mlflow-dev-blue.svc:5000
+      sort: {{ .Values.registry.sort }}
+      uri: {{ .Values.registry.uri }}
