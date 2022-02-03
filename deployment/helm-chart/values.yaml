@@ -37,12 +37,23 @@ cluster:
   apiDomainName: some.cluster.domain
 global:
   apiDomainName: some.global.domain
+
 docker:
   GeneralFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
   HelmRegistryPreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/helm/
+
 database:
   name: fledge
-  uri: mongodb://eks-development-1-mongodb.mongodb.svc:27017
+  uri: mongodb://fledge-mongodb-dev-headless.fledge-dev-blue:27017
+
+broker:
+  sort: mqtt
+  host: broker.hivemq.com
+
+registry:
+  sort: mlflow
+  uri: http://fledge-mlflow-dev.fledge-dev-blue:5000
+
 resources:
   cpu: 200m
   memory: 1Gi
