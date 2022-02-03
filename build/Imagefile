@@ -9,7 +9,7 @@ COPY --from=base-build /fledge/ /usr/bin/
 RUN mkdir -p /fledge/deployment
 COPY --from=base-build /tmp/fledge-job/ /fledge/deployment/
 RUN rm -f /fledge/deployment/job-agent.yaml.mustache.*
-COPY --from=base-build /tmp/fledge-job/job-agent.yaml.mustache.sre /tmp/fledge-job/job-agent.yaml.mustache
+COPY --from=base-build /tmp/fledge-job/job-agent.yaml.mustache.sre /fledge/deployment/job-agent.yaml.mustache
 
 # Install fledge python library
 COPY --from=base-build /tmp/*.whl /tmp/
