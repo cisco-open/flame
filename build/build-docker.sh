@@ -131,7 +131,7 @@ for framework in ${FRAMEWORKS[@]}; do
     for resource in ${RESOURCES[@]}; do
         target=${framework}-${resource}
         docker build \
-               -t ${WORKER_IMAGE_NAME}:{target} \
+               -t ${WORKER_IMAGE_NAME}:${target} \
                -f build/WorkerImagefile \
                --build-arg TARGETIMAGE=${target} .
     done
