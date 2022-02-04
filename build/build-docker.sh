@@ -128,10 +128,11 @@ FRAMEWORKS=(allinone)
 RESOURCES=(cpu)
 for framework in ${FRAMEWORKS[@]}; do
     for resource in ${RESOURCES[@]}; do
-	target=${framework}-${resource}
-	docker build -f build/WorkerImagefile \
-	       -t fledge-worker:${target} \
-	       --build-arg TARGETIMAGE=${target} .
+        target=${framework}-${resource}
+        docker build \
+               -t fledge-worker:${target} \
+               -f build/WorkerImagefile \
+               --build-arg TARGETIMAGE=${target} .
     done
 done
 
