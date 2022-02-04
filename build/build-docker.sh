@@ -121,5 +121,19 @@ docker build --no-cache \
 echo BUILDING DOCKER ${DOCKER_IMAGE}
 docker build --no-cache -t ${DOCKER_IMAGE} -f build/Imagefile .
 
+# Create fledge worker images
+# FRAMEWORKS=(allinone pytorch tensorflow)
+# RESOURCES=(cpu gpu)
+FRAMEWORKS=(allinone)
+RESOURCES=(cpu)
+for framework in ${FRAMEWORKS[@]}; do
+    for resource in ${RESOURCES[@]}; do
+	target=${framework}-${resource}
+	docker build -f build/WorkerImagefile \
+	       -t fledge-worker:${target} \
+	       --build-arg TARGETIMAGE=${target} .
+    done
+done
+
 # remove base image and its subordinate images
 # docker image rmi ${BASE_DOCKER_IMAGE} || true
