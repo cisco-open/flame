@@ -46,6 +46,11 @@ database:
   name: fledge
   uri: mongodb://fledge-mongodb-dev-headless.fledge-dev-blue:27017
 
+workerImage:
+  preamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
+  name: fledge-worker
+  tag: allinone-cpu
+
 broker:
   sort: mqtt
   host: broker.hivemq.com

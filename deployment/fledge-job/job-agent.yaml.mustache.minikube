@@ -19,7 +19,7 @@ spec:
             - "--notifier"
             - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
           command: ["/usr/bin/fledgelet"]
-          image: "{{ .Values.dimage }}:{{ .Values.tagversion }}"
+          image: <% imageLoc %>
           imagePullPolicy: IfNotPresent
           name: {{ .Values.servicename }}-agent-<% agentId %>
 

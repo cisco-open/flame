@@ -54,8 +54,7 @@ type handler struct {
 	jobQueues map[string]*EventQ
 	mu        *sync.Mutex
 	notifier  string
-	brokers   []config.Broker
-	registry  config.Registry
+	jobParams config.JobParams
 	platform  string
 
 	jobSpec openapi.JobSpec
@@ -77,7 +76,7 @@ type handler struct {
 }
 
 func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, brokers []config.Broker, registry config.Registry, platform string) (*handler, error) {
+	notifier string, jobParams config.JobParams, platform string) (*handler, error) {
 	// start task monitoring
 	tskEventCh, errCh, tskWatchCancelFn, err := dbService.MonitorTasks(jobId)
 	if err != nil {
@@ -91,8 +90,7 @@ func NewHandler(dbService database.DBService, jobId string, eventQ *EventQ, jobQ
 		jobQueues: jobQueues,
 		mu:        mu,
 		notifier:  notifier,
-		brokers:   brokers,
-		registry:  registry,
+		jobParams: jobParams,
 		platform:  platform,
 		tasksInfo: make([]openapi.TaskInfo, 0),
 		roles:     make([]openapi.Role, 0),
@@ -445,6 +443,7 @@ func (h *handler) allocateComputes() error {
 		}
 
 		context := map[string]string{
+			"imageLoc": h.jobParams.Image,
 			"agentId":  taskInfo.AgentId,
 			"agentKey": taskInfo.Key,
 		}

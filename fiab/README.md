@@ -78,13 +78,30 @@ Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io on
 The error might be because of [this issue](https://github.com/kubernetes/minikube/issues/3036).
 If minikube is running on a machine with dnscrypt-proxy or dnsmasq, 
 refer to [here](https://gist.github.com/rscottwatson/e0e3c890b3d4aa81e46bf2993e3e216f) for more details.
-Especially, in case of dnscrypt-proxy, the workaround below is useful.
-Please run the following commands:
+Especially, in case of dnscrypt-proxy, the following workaround is applied.
+
+First, log into the minikube vm with the following command.
 ```
-minikube ssh sudo resolvectl dns eth0 8.8.8.8 8.8.4.4
-minikube ssh sudo resolvectl dns docker0 8.8.8.8 8.8.4.4
-minikube ssh sudo resolvectl dns sit0 8.8.8.8 8.8.4.4
+minikube ssh
 ```
+After logging into the vm, become a super user with the following command.
+```
+sudo su -
+```
+Now run the following:
+```
+cat << EOF >  /var/lib/boot2docker/bootlocal.sh
+echo "DNS=8.8.8.8" >> /etc/systemd/resolved.conf 
+systemctl restart systemd-resolved
+EOF
+chmod 755  /var/lib/boot2docker/bootlocal.sh
+```
+
+To apply the change, run the following after getting out of the minikube vm:
+```
+minikube stop && minikube start
+```
+**Note**: restarting the minikube vm may take a while. If the command hangs, press `Ctrl-C` and rerun the command.
 
 ## Starting fledge
 Open a new terminal window and start the minikube tunnel with the following command:

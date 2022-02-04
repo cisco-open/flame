@@ -28,16 +28,15 @@ type Manager struct {
 	dbService database.DBService
 	jobEventQ *EventQ
 
-	notifier string
-	brokers  []config.Broker
-	registry config.Registry
-	platform string
+	notifier  string
+	jobParams config.JobParams
+	platform  string
 
 	jobQueues map[string]*EventQ
 	mutexQ    *sync.Mutex
 }
 
-func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string, brokers []config.Broker, registry config.Registry,
+func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string, jobParams config.JobParams,
 	platform string) (*Manager, error) {
 	if jobEventQ == nil {
 		return nil, fmt.Errorf("job event queue is nil")
@@ -47,9 +46,8 @@ func NewManager(dbService database.DBService, jobEventQ *EventQ, notifier string
 		dbService: dbService,
 		jobEventQ: jobEventQ,
 
+		jobParams: jobParams,
 		notifier:  notifier,
-		brokers:   brokers,
-		registry:  registry,
 		platform:  platform,
 		jobQueues: make(map[string]*EventQ),
 		mutexQ:    new(sync.Mutex),
@@ -68,7 +66,7 @@ func (mgr *Manager) Do() {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
 			jobHandler, err := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
-				mgr.notifier, mgr.brokers, mgr.registry, mgr.platform)
+				mgr.notifier, mgr.jobParams, mgr.platform)
 			if err != nil {
 				mgr.mutexQ.Unlock()
 				zap.S().Warnf("Failed to create a job handler: %v", err)

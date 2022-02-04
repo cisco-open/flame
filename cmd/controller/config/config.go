@@ -26,12 +26,18 @@ import (
 )
 
 type Config struct {
-	Db       string   `yaml:"db"`
+	Db       string `yaml:"db"`
+	Notifier string `yaml:"notifier"`
+	Platform string `yaml:"platform,omitempty"`
+	Port     string `yaml:"port,omitempty"`
+
+	JobParams JobParams `yaml:"jobParams"`
+}
+
+type JobParams struct {
 	Brokers  []Broker `yaml:"brokers"`
-	Notifier string   `yaml:"notifier"`
-	Platform string   `yaml:"platform,omitempty"`
-	Port     string   `yaml:"port,omitempty"`
 	Registry Registry `yaml:"registry,omitempty"`
+	Image    string   `yaml:"image"`
 }
 
 type Broker struct {

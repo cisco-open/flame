@@ -31,11 +31,10 @@ import (
 type Controller struct {
 	dbUri     string
 	notifier  string
-	brokers   []config.Broker
-	registry  config.Registry
 	restPort  string
 	platform  string
 	dbService database.DBService
+	jobParams config.JobParams
 
 	jobEventQ  *job.EventQ
 	jobBuilder *job.JobBuilder
@@ -53,7 +52,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		return nil, fmt.Errorf("failed to create a job event queue")
 	}
 
-	jobBuilder := job.NewJobBuilder(dbService, cfg.Brokers, cfg.Registry)
+	jobBuilder := job.NewJobBuilder(dbService, cfg.JobParams)
 	if jobBuilder == nil {
 		return nil, fmt.Errorf("failed to create a job builder")
 	}
@@ -61,11 +60,10 @@ func NewController(cfg *config.Config) (*Controller, error) {
 	instance := &Controller{
 		dbUri:     cfg.Db,
 		notifier:  cfg.Notifier,
-		registry:  cfg.Registry,
-		brokers:   cfg.Brokers,
 		restPort:  cfg.Port,
 		platform:  cfg.Platform,
 		dbService: dbService,
+		jobParams: cfg.JobParams,
 
 		jobEventQ:  jobEventQ,
 		jobBuilder: jobBuilder,
@@ -75,7 +73,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.brokers, c.registry, c.platform)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

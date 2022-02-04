@@ -45,19 +45,17 @@ const (
 type JobBuilder struct {
 	dbService database.DBService
 	jobSpec   *openapi.JobSpec
-	brokers   []config.Broker
-	registry  config.Registry
+	jobParams config.JobParams
 
 	schema   openapi.DesignSchema
 	datasets []openapi.DatasetInfo
 	roleCode map[string][]byte
 }
 
-func NewJobBuilder(dbService database.DBService, brokers []config.Broker, registry config.Registry) *JobBuilder {
+func NewJobBuilder(dbService database.DBService, jobParams config.JobParams) *JobBuilder {
 	return &JobBuilder{
 		dbService: dbService,
-		brokers:   brokers,
-		registry:  registry,
+		jobParams: jobParams,
 		datasets:  make([]openapi.DatasetInfo, 0),
 	}
 }
@@ -174,7 +172,7 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		template := &taskTemplate{}
 		JobConfig := &template.JobConfig
 
-		JobConfig.Configure(b.jobSpec, b.brokers, b.registry, role, b.schema.Channels)
+		JobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
 
 		template.isDataConsumer = role.IsDataConsumer
 		if role.IsDataConsumer {

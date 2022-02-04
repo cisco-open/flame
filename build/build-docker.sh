@@ -122,6 +122,7 @@ echo BUILDING DOCKER ${DOCKER_IMAGE}
 docker build --no-cache -t ${DOCKER_IMAGE} -f build/Imagefile .
 
 # Create fledge worker images
+WORKER_IMAGE_NAME=flegde-worker
 # FRAMEWORKS=(allinone pytorch tensorflow)
 # RESOURCES=(cpu gpu)
 FRAMEWORKS=(allinone)
@@ -130,7 +131,7 @@ for framework in ${FRAMEWORKS[@]}; do
     for resource in ${RESOURCES[@]}; do
         target=${framework}-${resource}
         docker build \
-               -t fledge-worker:${target} \
+               -t ${WORKER_IMAGE_NAME}:{target} \
                -f build/WorkerImagefile \
                --build-arg TARGETIMAGE=${target} .
     done

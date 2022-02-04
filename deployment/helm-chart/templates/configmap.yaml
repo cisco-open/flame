@@ -6,12 +6,14 @@ metadata:
 data:
   controller.yaml: |
     ---
-    brokers:
-      - sort: {{ .Values.broker.sort }}
-        host: {{ .Values.broker.host }}
     db: {{ .Values.database.uri }}
     notifier: {{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}
     platform: k8s
-    registry:
-      sort: {{ .Values.registry.sort }}
-      uri: {{ .Values.registry.uri }}
+    jobParams:
+      image: {{ .Values.workerImage.preamble }}{{ .Values.workerImage.name }}:{{ .Values.workerImage.tag }}
+      brokers:
+        - sort: {{ .Values.broker.sort }}
+          host: {{ .Values.broker.host }}
+      registry:
+        sort: {{ .Values.registry.sort }}
+        uri: {{ .Values.registry.uri }}
