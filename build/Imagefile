@@ -1,6 +1,6 @@
 FROM fledge:base as base-build
 
-FROM containers.cisco.com/research/dl-docker:latest-cpu
+FROM containers.cisco.com/eti-sre/sre-python-docker:latest
 
 # Copy fledge binaries
 COPY --from=base-build /fledge/ /usr/bin/

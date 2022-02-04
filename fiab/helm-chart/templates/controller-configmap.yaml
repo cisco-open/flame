@@ -7,12 +7,14 @@ metadata:
 data:
   controller.yaml: |
     ---
-    brokers:
-      - sort: mqtt
-        host: mosquitto
     db: mongodb://fledge-mongodb-headless:27017/?replicaSet=rs0
     notifier: fledge-notifier:10101
     platform: k8s
-    registry:
-      sort: mlflow
-      uri: http://mlflow:5000
+    jobParams:
+      image: fledge:latest
+      brokers:
+        - sort: mqtt
+          host: mosquitto
+      registry:
+        sort: mlflow
+        uri: http://mlflow:5000

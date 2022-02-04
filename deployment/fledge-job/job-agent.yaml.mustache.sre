@@ -13,7 +13,7 @@ spec:
       - name: ecr-pull-secret
       containers:
       - name: {{ .Values.servicename }}-agent-<% agentId %>
-        image: "{{ .Values.generalFullImagePreamble }}{{ .Values.dimage }}:{{ .Values.tagversion }}"
+        image: <% imageLoc %>
         command: ["/usr/bin/fledgelet"]
         args:
           - "--apiserver"

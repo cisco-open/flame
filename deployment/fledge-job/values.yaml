@@ -1,7 +1,3 @@
-generalFullImagePreamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
-dimage: fledge
-tagversion: latest
-
 servicename: fledge
 componentPorts:
   apiserver: "10100"
