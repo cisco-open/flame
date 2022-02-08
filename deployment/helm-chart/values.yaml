@@ -48,8 +48,8 @@ database:
 
 workerImage:
   preamble: 626007623524.dkr.ecr.us-east-2.amazonaws.com/
-  name: fledge-worker
-  tag: allinone-cpu
+  name: fledge-worker-allinone-cpu
+  tag: latest
 
 broker:
   sort: mqtt
