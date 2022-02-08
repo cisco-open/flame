@@ -7,18 +7,20 @@
 
 def pipelinesettings = [
   deploy: [
-    [name: "fledge" ]                // Containers to publish
+    [name: "fledge" ],                          // Containers to publish
+    [name: "fledge-worker-allinone-cpu" ]       // Containers to publish
   ],
 
-  tagversion: "${env.BUILD_ID}",                // Docker tag version
-  chart: "deployment/helm-chart",               // Location of helm chart
+  tagversion: "${env.BUILD_ID}",     // Docker tag version
+  chart: "deployment/helm-chart",    // Location of helm chart
   kubeverify: "fledge",              // Deploy verification name
-  namespace: 'fledge',                      // k8s namespace
+  namespace: 'fledge',               // k8s namespace
   appname: 'fledge',                 // Deployment appname
 
   prepare: 1,                                   // GIT Clone
   unittest: 1,                                  // Unit-test
   build: 1,                                     // Build container
+  buildMultipleContainerImages: 1,              // Build Multiple Container Images
   executeCC: 1,                                 // Generate Code Coverage report
   lint: 1,                                      // GO Lint
   // TODO: sonarQube fails at the moment. Enable it after a fix is found
@@ -26,22 +28,7 @@ def pipelinesettings = [
   publishContainer: 1,                          // Publish container
   ecr: 1,                                       // Publish container to Private ECR
   ciscoContainer: 1,                            // Publish container to containers.cisco.com
-  // dockerHub: 1,                                 // Publish container to dockerhub.cisco.com
   pushPublicRegistryOnTag: 1,                   // Publish container to Public ECR on tag
-  // forceCorona: 1,                            // Force Corona Scan on any branch
-  // corona: [                                     // Corona paramters
-  //   imageName: "sre-go-helloworld",             // Corona Image Name
-  //   releaseID: "73243",                         // Corona Release ID
-  //   productID: "6726",                          // Corona Project ID
-  //   csdlID: "84720",                            // Corona CSDL ID
-  //   securityContact: "sraradhy@cisco.com",      // Corona Security Contact
-  //   engineeringContact: "sraradhy@cisco.com",   // Corona Engineering Contact
-  //   imageAdmins: "sraradhy,jegarnie",           // Corona Image Admins
-  // ],
-  // forceBlackduck: 1,                         // Force Blackduck Scan on any branch
-  // blackduck: [
-  //   email: "eti-sre-admins@cisco.com",
-  // ],                                            // Blackduck Open Source Scan
   publishHelm: 1,                               // Stage HELM CREATE
   deployHelm: 1,                                // Stage DEPLOY k8s
   // artifactory: 1,                               // Use Artifactory creds
