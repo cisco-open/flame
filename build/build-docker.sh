@@ -83,7 +83,7 @@ if [[ "${DOCKER_IMAGE}" == "fledge-worker"* ]]; then
     target=${DOCKER_IMAGE}
     target=${target#"fledge-worker-"}
     target=${target%:*}
-    docker --no-cache build -t ${DOCKER_IMAGE} \
+    docker build --no-cache -t ${DOCKER_IMAGE} \
            -f build/WorkerImagefile \
            --build-arg TARGETIMAGE=${target} .
 
