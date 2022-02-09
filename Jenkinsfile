@@ -24,10 +24,10 @@ def pipelinesettings = [
   executeCC: 1,                                 // Generate Code Coverage report
   lint: 1,                                      // GO Lint
   // TODO: sonarQube fails at the moment. Enable it after a fix is found
-  // sonarQube: 1,                                 // SonarQube scan
+  sonarQube: 0,                                 // SonarQube scan
   publishContainer: 1,                          // Publish container
   ecr: 1,                                       // Publish container to Private ECR
-  ciscoContainer: 1,                            // Publish container to containers.cisco.com
+  ciscoContainer: 0,                            // Publish container to containers.cisco.com
   pushPublicRegistryOnTag: 1,                   // Publish container to Public ECR on tag
   publishHelm: 1,                               // Stage HELM CREATE
   deployHelm: 1,                                // Stage DEPLOY k8s
@@ -38,4 +38,3 @@ def pipelinesettings = [
 ]
 
 srePipeline( pipelinesettings )
-
