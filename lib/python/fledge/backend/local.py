@@ -244,7 +244,7 @@ class LocalBackend(AbstractBackend):
     def loop(self):
         return self._loop
 
-    def add_channel(self, channel):
+    def attach_channel(self, channel):
         self._channels[channel.name()] = channel
 
     def create_tx_task(self, channel_name, end_id):

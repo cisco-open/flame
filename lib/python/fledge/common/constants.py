@@ -27,3 +27,10 @@ class BackendEvent(Enum):
     """Enum class for BackendEvent."""
 
     DISCONNECT = 1
+
+
+class CommType(Enum):
+    """Enum class for communication type."""
+
+    BROADCAST = 1
+    UNICAST = 2
