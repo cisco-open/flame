@@ -15,7 +15,6 @@
 """MQTT backend."""
 
 import asyncio
-import hashlib
 import logging
 import time
 from collections import deque
@@ -28,7 +27,7 @@ from paho.mqtt.client import MQTTv5
 
 from ..channel import RXQ, TXQ, Channel
 from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
-                                BackendEvent)
+                                BackendEvent, CommType)
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -43,9 +42,6 @@ END_STATUS_OFF = 'offline'
 MQTT_TIME_WAIT = 10  # 10 sec
 MIN_CHECK_PERIOD = 1  # 1 sec
 MQTT_LOOP_CHECK_PERIOD = 0.1  # 100ms
-
-# message's signature is valid for 1 sec
-MSG_SIG_PERIOD = 1  # 1 sec
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +75,7 @@ class MqttBackend(AbstractBackend):
     _cleanup_waits = None
 
     def __new__(cls):
+        """Create an instance if not exist."""
         if cls._instance is None:
             logger.info('creating an MqttBackend instance')
             cls._instance = super(MqttBackend, cls).__new__(cls)
@@ -122,7 +119,6 @@ class MqttBackend(AbstractBackend):
 
     def configure(self, broker: str, job_id: str, agent_id: str):
         """Configure the backend."""
-        self._last_payload_sig: dict[str, Tuple[str, float]] = {}
         self._msg_chunks: dict[str, ChunkStore] = {}
 
         self._broker = broker
@@ -152,6 +148,31 @@ class MqttBackend(AbstractBackend):
         if not success:
             logger.error('failed to set up mqtt client')
             raise ConnectionError
+
+    def join(self, channel: Channel):
+        """Join a channel by subscribing to topics."""
+        self.notify(channel.name())
+
+        # format for broadcast topic to subscribe:
+        #   /fledge/<job_id>/<channel_name>/<groupby>/broadcast/<other_role>/+
+        # format for unicast topic to subscribe:
+        #  /fledge/<job_id>/<channel_name>/<groupby>/unicast/<other_role>/+/<my_role>/<my_end_id>
+        sep = '/'
+        for comm_type in CommType:
+            topic = sep.join([
+                MQTT_TOPIC_PREFIX,
+                self._job_id,
+                channel.name(),
+                channel.groupby(),
+                comm_type.name,
+                channel.other_role(),
+                '+',
+            ])
+
+            if comm_type == CommType.UNICAST:
+                topic = sep.join([topic, channel.my_role(), self._id])
+
+            self.subscribe(topic)
 
     def _handle_health_message(self, message):
         health_data = str(message.payload.decode("utf-8"))
@@ -276,6 +297,7 @@ class MqttBackend(AbstractBackend):
             return b'', False
 
     def subscribe(self, topic):
+        """Subscribe to a topic."""
         logger.debug(f'subscribe topic: {topic}')
         self._mqtt_client.subscribe(topic, qos=MqttQoS.EXACTLY_ONCE)
 
@@ -302,54 +324,86 @@ class MqttBackend(AbstractBackend):
         return True
 
     def loop(self):
+        """Return loop instance of asyncio."""
         return self._loop
 
-    def add_channel(self, channel):
+    def attach_channel(self, channel):
+        """Attach a channel to backend."""
         self._channels[channel.name()] = channel
 
-    def create_tx_task(self, channel_name, end_id):
+    def create_tx_task(self,
+                       channel_name: str,
+                       end_id: str,
+                       comm_type=CommType.UNICAST) -> bool:
+        """Create asyncio task for transmission."""
         if (channel_name not in self._channels
-                or not self._channels[channel_name].has(end_id)):
+                or (not self._channels[channel_name].has(end_id)
+                    and comm_type != CommType.BROADCAST)):
             return False
 
         channel = self._channels[channel_name]
 
-        coro = self._tx_task(channel, end_id)
+        coro = self._tx_task(channel, end_id, comm_type)
         _ = asyncio.create_task(coro)
 
         return True
 
-    async def _tx_task(self, channel, end_id):
-        '''
+    def topic_for_pub(self,
+                      ch: Channel,
+                      other_id: str = "",
+                      comm_type=CommType.BROADCAST):
+        """Return a proper topic for a given channel."""
+        sep = '/'
+
+        if comm_type == CommType.BROADCAST:
+            topic = sep.join([
+                MQTT_TOPIC_PREFIX,
+                ch.job_id(),
+                ch.name(),
+                ch.groupby(),
+                CommType.BROADCAST.name,
+                ch.my_role(),
+                self._id,
+            ])
+        elif comm_type == CommType.UNICAST:
+            topic = sep.join([
+                MQTT_TOPIC_PREFIX,
+                ch.job_id(),
+                ch.name(),
+                ch.groupby(),
+                CommType.UNICAST.name,
+                ch.my_role(),
+                self._id,
+                ch.other_role(),
+                other_id,
+            ])
+        else:
+            raise ValueError(f'unknown CommType {comm_type}')
+
+        return topic
+
+    async def _tx_task(self, channel, end_id, comm_type: CommType):
+        """Conducts data transmission in a loop.
+
         _tx_task() must be created per tx queue right after end_id is added to
-        channel (e.g., channel.add(end_id))
-        '''
-        txq = channel.get_q(end_id, TXQ)
+        channel (e.g., channel.add(end_id)).
+        In case of a tx task for broadcast queue, a broadcaset queue must be
+        created first.
+        """
+        if comm_type == CommType.BROADCAST:
+            txq = channel.broadcast_q()
+        else:
+            txq = channel.get_q(end_id, TXQ)
+
+        topic = self.topic_for_pub(channel, end_id, comm_type)
 
         while True:
             data = await txq.get()
-            self.send_chunks(channel, data)
+            self.send_chunks(topic, channel.name(), data)
             txq.task_done()
 
-    def send_chunks(self, channel: Channel, data: bytes) -> None:
-        # TODO: This is hack. Need to revisit it later.
-        #       The issue is that a topic is a broadcast medium by nature
-        #       in mqtt. But a channel manintains a list of ends and
-        #       can try to send a same message to each end.
-        #       This behavior is essentailly multiple, repeated transmissions
-        #       of the same message to all ends.
-        #       This check can be in channel, but the code/interface becomes
-        #       ugly as channel needs to know what is the underlying backend
-        #       and handle situations differently.
-        name = channel.name()
-        digest = hashlib.md5(data).hexdigest()
-        if (name in self._last_payload_sig
-                and self._last_payload_sig[name][0] == digest
-                and self._last_payload_sig[name][1] + MSG_SIG_PERIOD >=
-                time.time()):
-            logger.info('Last seen payload; skipping tx')
-            return
-
+    def send_chunks(self, topic, ch_name: str, data: bytes) -> None:
+        """Send data chunks."""
         chunk_store = ChunkStore()
         chunk_store.set_data(data)
 
@@ -358,25 +412,22 @@ class MqttBackend(AbstractBackend):
             if chunk is None:
                 break
 
-            self.send_chunk(channel, chunk, seqno, eom)
+            self.send_chunk(topic, ch_name, chunk, seqno, eom)
 
-        # update payload signature
-        self._last_payload_sig[name] = (digest, time.time())
-
-    def send_chunk(self, channel: Channel, data: bytes, seqno: int,
-                   eom: bool) -> None:
+    def send_chunk(self, topic: str, channel_name: str, data: bytes,
+                   seqno: int, eom: bool) -> None:
+        """Send a chunk."""
         msg = msg_pb2.Data()
         msg.end_id = self._id
-        msg.channel_name = channel.name()
+        msg.channel_name = channel_name
+        msg.payload = data
         msg.seqno = seqno
         msg.eom = eom
-        msg.payload = data
 
         any = Any()
         any.Pack(msg)
         payload = any.SerializeToString()
 
-        topic = self.topic_for_pub(channel)
         info = self._mqtt_client.publish(topic,
                                          payload,
                                          qos=MqttQoS.EXACTLY_ONCE)
@@ -387,23 +438,13 @@ class MqttBackend(AbstractBackend):
 
         logger.debug(f'sending chunk {seqno} to {topic} is done')
 
-    def topic_for_pub(self, ch: Channel):
-        sep = '/'
-        topic = sep.join([
-            f'{MQTT_TOPIC_PREFIX}',
-            f'{ch.job_id()}',
-            f'{ch.name()}',
-            f'{ch.groupby()}',
-            f'{ch.my_role()}',
-            f'{self._id}',
-        ])
 
-        return topic
-
-
-# Asyncio MQTT client example from
-# https://github.com/eclipse/paho.mqtt.python/blob/master/examples/loop_asyncio.py
 class AsyncioHelper:
+    """Asyncio helper class.
+
+    Asyncio MQTT client example from
+    https://github.com/eclipse/paho.mqtt.python/blob/master/examples/loop_asyncio.py
+    """
 
     def __init__(self, loop, client):
         self.loop = loop

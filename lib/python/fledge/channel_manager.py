@@ -21,10 +21,9 @@ from typing import Optional
 
 from .backends import backend_provider
 from .channel import Channel
-from .common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
-                               BackendEvent)
+from .common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
 from .common.util import background_thread_loop, run_async
-from .config import BackendType, Config
+from .config import Config
 from .discovery_clients import discovery_client_provider
 
 logger = logging.getLogger(__name__)
@@ -98,14 +97,6 @@ class ChannelManager(object):
         if self.is_joined(name):
             return True
 
-        # TODO: Consider if all of these can be moved into Channel class
-        if self._config.backend == BackendType.MQTT:
-            return self._join_mqtt(name)
-
-        return self._join_non_mqtt(name)
-
-    def _join_mqtt(self, name):
-        """Join a channel in case of mqtt backend."""
         channel_config = self._config.channels[name]
 
         if self._role == channel_config.pair[0]:
@@ -119,16 +110,11 @@ class ChannelManager(object):
 
         self._channels[name] = Channel(self._backend, self._job_id, name, me,
                                        other, groupby)
-        self._backend.add_channel(self._channels[name])
-
-        self._backend.notify(name)
-        # format: /fledge/<job_id>/<channel_name>/<groupby>/<role>/+
-        topic = f'{MQTT_TOPIC_PREFIX}/{self._job_id}/{name}/{groupby}/{other}/+'
-        self._backend.subscribe(topic)
-
-        return True
+        self._channels[name].join()
 
     # TODO: groupby feature with non-mqtt backend should be implemented
+    # TODO: _join_non_mqtt() is non-functioning deprecated code;
+    #       now it's not called; remove or refactor it
     def _join_non_mqtt(self, name):
         """Join a channel when backend is not mqtt."""
         coro = self._discovery_client.connect()
@@ -142,7 +128,7 @@ class ChannelManager(object):
         _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if status:
             self._channels[name] = Channel(self._backend, self._job_id, name)
-            self._backend.add_channel(self._channels[name])
+            self._backend.attach_channel(self._channels[name])
         else:
             return False
 
