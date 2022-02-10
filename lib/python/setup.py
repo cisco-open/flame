@@ -18,7 +18,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='fledge',
-    version='0.0.6',
+    version='0.0.7',
     author='Myungjin Lee',
     author_email='myungjle@cisco.com',
     include_package_data=True,
@@ -42,7 +42,7 @@ setup(
                  ['fledge/examples/simple/bar/config.json']),
                 ('fledge/examples/simple/foo',
                  ['fledge/examples/simple/foo/config.json'])],
-    scripts=[],
+    scripts=['scripts/fledge-config'],
     url='https://github.com/cisco/fledge/',
     license='LICENSE.txt',
     description="This package is a python library"

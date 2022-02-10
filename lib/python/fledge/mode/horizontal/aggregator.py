@@ -23,6 +23,7 @@ from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
+from ...plugin import PluginManager, PluginType
 from ...registries import registry_provider
 from ..composer import Composer
 from ..role import Role
@@ -57,8 +58,19 @@ class Aggregator(Role, metaclass=ABCMeta):
     def model(self):
         """Abstract attribute for model object."""
 
+    @abstract_attribute
+    def dataset(self):
+        """
+        Abstract attribute for datset.
+
+        dataset's type should be Dataset (in fledge.common.typing.py).
+        """
+
     def internal_init(self) -> None:
         """Initialize internal state for role."""
+        # global variable for plugin manager
+        self.plugin_manager = PluginManager()
+
         self.cm = ChannelManager()
         self.cm(self.config)
         self.cm.join_all()
@@ -146,6 +158,21 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         self._round += 1
 
+    def run_analysis(self):
+        """Run analysis plugins and update results to metrics."""
+        logger.debug("running analyzer plugins")
+
+        plugins = self.plugin_manager.get_plugins(PluginType.ANALYZER)
+        for plugin in plugins:
+            # get callback function and call it
+            func = plugin.callback()
+            metrics = func(self.model, self.dataset)
+            if not metrics:
+                continue
+
+            # merge metrics with the existing metrics
+            self.metrics = self.metrics | metrics
+
     def save_metrics(self):
         """Save metrics in a model registry."""
         logger.debug(f"saving metrics: {self.metrics}")
@@ -183,6 +210,8 @@ class Aggregator(Role, metaclass=ABCMeta):
 
             task_eval = Tasklet(self.evaluate)
 
+            task_analysis = Tasklet(self.run_analysis)
+
             task_save_metrics = Tasklet(
                 self.save_metrics, loop_check_func=lambda: self._work_done)
 
@@ -192,7 +221,8 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         task_internal_init >> task_init >> loop(
             task_load_data >> task_put >> task_get >> task_train >> task_eval
-            >> task_save_metrics) >> task_save_params >> task_save_model
+            >> task_analysis >> task_save_metrics
+        ) >> task_save_params >> task_save_model
 
     def run(self) -> None:
         """Run role."""

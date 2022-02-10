@@ -28,3 +28,5 @@ COPY --from=golang-build /tmp/fledge-job/job-agent.yaml.mustache.minikube /fledg
 # Install fledge python library
 COPY --from=python-build /tmp/*.whl /tmp/
 RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl
+# this python script configures python packages
+RUN fledge-config
