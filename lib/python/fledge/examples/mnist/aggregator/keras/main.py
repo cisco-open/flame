@@ -18,6 +18,7 @@ import logging
 from random import randrange
 
 import numpy as np
+from fledge.common.typing import Dataset
 from fledge.config import Config
 from fledge.mode.horizontal.aggregator import Aggregator
 from tensorflow import keras
@@ -35,6 +36,8 @@ class KerasMnistAggregator(Aggregator):
         self.weights = None
         self.metrics = None
         self.model = None
+        # Dataset type is list[Any]
+        self.dataset: Dataset = list()
 
         self.num_classes = 10
         self.input_shape = (28, 28, 1)
@@ -87,6 +90,9 @@ class KerasMnistAggregator(Aggregator):
 
         self._x_test = x_test
         self._y_test = y_test
+
+        # store data into dataset for analysis (e.g., bias)
+        self.dataset = [x_test, y_test]
 
     def train(self) -> None:
         """Train a model."""

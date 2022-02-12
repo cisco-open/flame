@@ -10,3 +10,5 @@ COPY --from=base-build /fledge/fledgelet /usr/bin/
 # Install fledge python library
 COPY --from=base-build /tmp/*.whl /tmp/
 RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl
+# this python script configures python packages
+RUN fledge-config

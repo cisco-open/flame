@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """MNIST horizontal FL aggregator for PyTorch.
 
 The example below is implemented based on the following example from pytorch:
@@ -24,6 +23,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from fledge.common.typing import Dataset
 from fledge.config import Config
 from fledge.mode.horizontal.aggregator import Aggregator
 from torchvision import datasets, transforms
@@ -70,6 +70,8 @@ class PyTorchMnistAggregator(Aggregator):
         self.weights = None
         self.metrics = None
         self.model = None
+        # Dataset type is list[Any]
+        self.dataset: Dataset = list()
 
         self.device = None
         self.test_loader = None
@@ -98,6 +100,9 @@ class PyTorchMnistAggregator(Aggregator):
                                  transform=transform)
 
         self.test_loader = torch.utils.data.DataLoader(dataset)
+
+        # store data into dataset for analysis (e.g., bias)
+        self.dataset = [self.test_loader.dataset]
 
     def train(self) -> None:
         """Train a model."""
