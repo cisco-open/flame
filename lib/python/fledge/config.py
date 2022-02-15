@@ -54,6 +54,10 @@ CONF_KEY_REGISTRY_URI = 'uri'
 
 CONF_KEY_OPTIMIZER = 'optimizer'
 
+CONF_KEY_SELECTOR = 'selector'
+CONF_KEY_SELECTOR_SORT = 'sort'
+CONF_KEY_SELECTOR_KWARGS = 'kwargs'
+
 GROUPBY_DEFAULT_GROUP = 'default'
 
 DEFAULT_HYPERARAMETERS_DICT = {
@@ -80,6 +84,12 @@ class OptimizerType(Enum):
     """Define optimizer types."""
 
     FEDAVG = 1  # default
+
+
+class SelectorType(Enum):
+    """Define selector types."""
+
+    SIMPLE = 1  # default
 
 
 REALM_SEPARATOR = '/'
@@ -234,6 +244,43 @@ class Config(object):
                     f"\t\t{CONF_KEY_REGISTRY_SORT}: {self.sort}\n" +
                     f"\t\t{CONF_KEY_REGISTRY_URI}: {self.uri}\n")
 
+    class Selector(object):
+        """Selector class."""
+
+        def __init__(self, json_data=None) -> None:
+            """Initialize Selector instance."""
+            # default selector is simple
+            self.sort = SelectorType.SIMPLE
+            self.kwargs = dict()
+
+            if CONF_KEY_SELECTOR not in json_data:
+                return
+
+            json_data = json_data[CONF_KEY_SELECTOR]
+
+            if CONF_KEY_SELECTOR_SORT not in json_data:
+                return
+
+            sort = json_data[CONF_KEY_SELECTOR_SORT].upper()
+            try:
+                self.sort = SelectorType[sort]
+            except KeyError:
+                valid_types = [selector.name for selector in SelectorType]
+                sys.exit(f"invailid selector type: {sort}" +
+                         f"valid selector type(s) are {valid_types}")
+
+            if CONF_KEY_SELECTOR_KWARGS in json_data:
+                self.kwargs = json_data[CONF_KEY_SELECTOR_KWARGS]
+
+            if not self.kwargs:
+                self.kwargs = dict()
+
+        def __str__(self) -> str:
+            """Return model selector's detail in string format."""
+            return ("\t--- selector ---\n" +
+                    f"\t\t{CONF_KEY_SELECTOR_SORT}: {self.sort}\n" +
+                    f"\t\t{CONF_KEY_SELECTOR_KWARGS}: {self.kwargs}\n")
+
     def __init__(self, config_file: str):
         """Initialize Config instance."""
         with open(config_file) as f:
@@ -259,6 +306,12 @@ class Config(object):
 
         self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
 
+        self.job = Config.Job(json_data[CONF_KEY_JOB])
+
+        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
+
+        self.selector = Config.Selector(json_data)
+
         self.dataset = ''
         if CONF_KEY_DATASET in json_data:
             self.dataset = json_data[CONF_KEY_DATASET]
@@ -270,9 +323,6 @@ class Config(object):
         self.base_model = None
         if CONF_KEY_BASE_MODEL in json_data:
             self.base_model = Config.BaseModel(json_data[CONF_KEY_BASE_MODEL])
-
-        self.job = Config.Job(json_data[CONF_KEY_JOB])
-        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
 
     def _init_backend(self, json_data):
         backend_key = json_data[CONF_KEY_BACKEND].upper()

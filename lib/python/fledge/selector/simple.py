@@ -12,12 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Definitions on Types."""
+"""SimpleSelector class."""
 
-from typing import Any, Union
+import logging
 
-Scalar = Union[bool, bytes, float, int, str]
+from ..end import End
+from . import AbstractSelector, SelectorReturnType
 
-Metrics = dict[str, Scalar]
+logger = logging.getLogger(__name__)
 
-Dataset = list[Any]
+
+class SimpleSelector(AbstractSelector):
+    """A simple selector class."""
+
+    def select(self, ends: dict[str, End]) -> SelectorReturnType:
+        """Return all ends from the given ends."""
+        logger.debug("calling select")
+
+        return {key: None for key in ends.keys()}

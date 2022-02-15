@@ -46,6 +46,10 @@
 	"sort": "mlflow",
 	"uri": "http://mlflow:5000"
     },
+    "selector": {
+	"sort": "simple",
+	"kwargs": {}
+    },
     "maxRunTime": 300,
     "realm": "",
     "role": "aggregator"

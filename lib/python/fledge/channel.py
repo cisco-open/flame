@@ -21,9 +21,7 @@ import cloudpickle
 from .common.constants import CommType
 from .common.util import run_async
 from .config import GROUPBY_DEFAULT_GROUP
-
-RXQ = 'rxq'
-TXQ = 'txq'
+from .end import End
 
 
 class Channel(object):
@@ -31,6 +29,7 @@ class Channel(object):
 
     def __init__(self,
                  backend,
+                 selector,
                  job_id: str,
                  name: str,
                  me='',
@@ -38,6 +37,7 @@ class Channel(object):
                  groupby=GROUPBY_DEFAULT_GROUP):
         """Initialize instance."""
         self._backend = backend
+        self._selector = selector
         self._job_id = job_id
         self._name = name
         self._my_role = me
@@ -45,7 +45,7 @@ class Channel(object):
         self._groupby = groupby
 
         # _ends must be accessed within backend's loop
-        self._ends = {}
+        self._ends: dict[str, End] = dict()
 
         async def _setup_bcast_tx():
             self._bcast_queue = asyncio.Queue()
@@ -85,11 +85,22 @@ class Channel(object):
     ### and the coroutine is executed via run_async()
     """
 
-    def ends(self):
-        """Return a list of ends."""
+    def ends(self) -> list[str]:
+        """Return a list of end ids."""
 
         async def inner():
-            return list(self._ends.keys())
+            selected = self._selector.select(self._ends)
+
+            id_list = list()
+            for end_id, kv in selected.items():
+                id_list.append(end_id)
+                if not kv:
+                    continue
+
+                (key, value) = kv
+                self._ends[end_id].set_property(key, value)
+
+            return id_list
 
         result, _ = run_async(inner(), self._backend.loop())
         return result
@@ -112,7 +123,7 @@ class Channel(object):
                 return
 
             payload = cloudpickle.dumps(message)
-            await self._ends[end_id][TXQ].put(payload)
+            await self._ends[end_id].put(payload)
 
         _, status = run_async(_put(), self._backend.loop())
 
@@ -126,9 +137,7 @@ class Channel(object):
                 # can't receive message from end_id
                 return None
 
-            rxq = self._ends[end_id][RXQ]
-            payload = await rxq.get()
-            rxq.task_done()
+            payload = await self._ends[end_id].get()
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
@@ -149,7 +158,7 @@ class Channel(object):
         if self.has(end_id):
             return
 
-        self._ends[end_id] = {RXQ: asyncio.Queue(), TXQ: asyncio.Queue()}
+        self._ends[end_id] = End(end_id)
 
         # create tx task in the backend for the channel
         self._backend.create_tx_task(self._name, end_id)
@@ -159,19 +168,23 @@ class Channel(object):
         if not self.has(end_id):
             return
 
-        rxq = self._ends[end_id][RXQ]
+        rxq = self._ends[end_id].get_rxq()
         del self._ends[end_id]
 
         # put bogus data to unblock a get() call
         await rxq.put(b'')
 
-    def has(self, end_id):
+    def has(self, end_id: str) -> bool:
         """Check if an end is in the channel."""
         return end_id in self._ends
 
-    def get_q(self, end_id, qtype):
-        """Return a queue of qtype associated wtih an end."""
-        return self._ends[end_id][qtype]
+    def get_rxq(self, end_id: str) -> asyncio.Queue:
+        """Return a rx queue associated wtih an end."""
+        return self._ends[end_id].get_rxq()
+
+    def get_txq(self, end_id: str) -> asyncio.Queue:
+        """Return a tx queue associated wtih an end."""
+        return self._ends[end_id].get_txq()
 
     def broadcast_q(self):
         """Return a broadcast queue object."""

@@ -22,9 +22,9 @@ from .optimizer.fedavg import FedAvg
 class OptimizerProvider(ObjectFactory):
     """Optimizer Provider."""
 
-    def get(self, optimizer_name, **kargs):
+    def get(self, optimizer_name, **kwargs):
         """Return an optimizer for a given optimizer name."""
-        return self.create(optimizer_name, **kargs)
+        return self.create(optimizer_name, **kwargs)
 
 
 optimizer_provider = OptimizerProvider()

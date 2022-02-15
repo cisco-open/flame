@@ -23,10 +23,9 @@ from .object_factory import ObjectFactory
 class BackendProvider(ObjectFactory):
     """Backend Provider."""
 
-    #
-    def get(self, backend_name, **kargs):
+    def get(self, backend_name, **kwargs):
         """Return a backend for a given backend name."""
-        return self.create(backend_name, **kargs)
+        return self.create(backend_name, **kwargs)
 
 
 backend_provider = BackendProvider()

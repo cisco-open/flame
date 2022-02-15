@@ -1,4 +1,4 @@
-# Copyright (c) 2021 Cisco Systems, Inc. and its affiliates
+# Copyright (c) 2022 Cisco Systems, Inc. and its affiliates
 # All rights reserved
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,22 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Model registry provider."""
 
-from typing import Union
+"""selector provider class."""
 
-from .config import RegistryType
+from .config import SelectorType
 from .object_factory import ObjectFactory
-from .registry.mlflow import MLflowRegistryClient
+from .selector.simple import SimpleSelector
 
 
-class RegistryProvider(ObjectFactory):
-    """Model registry provider."""
+class SelectorProvider(ObjectFactory):
+    """Selector Provider."""
 
-    def get(self, registry_name, **kwargs) -> Union[MLflowRegistryClient]:
-        """Return a registry client for a given registry name."""
-        return self.create(registry_name, **kwargs)
+    def get(self, selector_name, **kwargs):
+        """Return a end selector for a given selector name."""
+        return self.create(selector_name, **kwargs)
 
 
-registry_provider = RegistryProvider()
-registry_provider.register(RegistryType.MLFLOW, MLflowRegistryClient)
+selector_provider = SelectorProvider()
+selector_provider.register(SelectorType.SIMPLE, SimpleSelector)

@@ -25,7 +25,7 @@ import paho.mqtt.client as mqtt
 from google.protobuf.any_pb2 import Any
 from paho.mqtt.client import MQTTv5
 
-from ..channel import RXQ, TXQ, Channel
+from ..channel import Channel
 from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
                                 BackendEvent, CommType)
 from ..common.util import background_thread_loop, run_async
@@ -221,7 +221,7 @@ class MqttBackend(AbstractBackend):
 
         if fully_assembled:
             logger.debug(f'fully assembled data size = {len(payload)}')
-            rxq = channel.get_q(msg.end_id, RXQ)
+            rxq = channel.get_rxq(msg.end_id)
             await rxq.put(payload)
 
     async def _rx_task(self):
@@ -393,7 +393,7 @@ class MqttBackend(AbstractBackend):
         if comm_type == CommType.BROADCAST:
             txq = channel.broadcast_q()
         else:
-            txq = channel.get_q(end_id, TXQ)
+            txq = channel.get_txq(end_id)
 
         topic = self.topic_for_pub(channel, end_id, comm_type)
 

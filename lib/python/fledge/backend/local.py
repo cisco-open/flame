@@ -15,9 +15,7 @@
 
 import asyncio
 import uuid
-from enum import Enum
 
-from ..channel import RXQ, TXQ
 from ..common.comm import _recv_msg, _send_msg
 from ..common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
 from ..common.util import background_thread_loop, run_async
@@ -123,7 +121,7 @@ class LocalBackend(AbstractBackend):
             any_msg.Unpack(msg)
 
             channel = self._channels[msg.channel_name]
-            rxq = channel.get_q(msg.end_id, RXQ)
+            rxq = channel.get_rxq(msg.end_id)
             await rxq.put(msg.payload)
 
         else:
@@ -275,7 +273,7 @@ class LocalBackend(AbstractBackend):
         channel (e.g., channel.add(end_id))
         '''
         name = channel.name()
-        txq = channel.get_q(end_id, TXQ)
+        txq = channel.get_txq(end_id)
 
         reader, writer = self._endpoints[end_id]
 

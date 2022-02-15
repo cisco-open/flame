@@ -25,6 +25,7 @@ from .common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
 from .common.util import background_thread_loop, run_async
 from .config import Config
 from .discovery_clients import discovery_client_provider
+from .selectors import selector_provider
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,7 @@ class ChannelManager(object):
 
     _backend = None
     _discovery_client = None
+    _selector = None
 
     def __new__(cls):
         """Create a singleton instance."""
@@ -63,6 +65,9 @@ class ChannelManager(object):
 
         with background_thread_loop() as loop:
             self._loop = loop
+
+        self._selector = selector_provider.get(self._config.selector.sort,
+                                               **self._config.selector.kwargs)
 
         self._backend = backend_provider.get(self._config.backend)
         broker = self._config.brokers.sort_to_host[self._config.backend]
@@ -108,8 +113,8 @@ class ChannelManager(object):
 
         groupby = channel_config.groupby.groupable_value(self._config.realm)
 
-        self._channels[name] = Channel(self._backend, self._job_id, name, me,
-                                       other, groupby)
+        self._channels[name] = Channel(self._backend, self._selector,
+                                       self._job_id, name, me, other, groupby)
         self._channels[name].join()
 
     # TODO: groupby feature with non-mqtt backend should be implemented
@@ -127,7 +132,8 @@ class ChannelManager(object):
                                                self._backend.endpoint())
         _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if status:
-            self._channels[name] = Channel(self._backend, self._job_id, name)
+            self._channels[name] = Channel(self._backend, self._selector,
+                                           self._job_id, name)
             self._backend.attach_channel(self._channels[name])
         else:
             return False
