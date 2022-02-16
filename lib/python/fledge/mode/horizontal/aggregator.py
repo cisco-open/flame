@@ -63,7 +63,7 @@ class Aggregator(Role, metaclass=ABCMeta):
         """
         Abstract attribute for datset.
 
-        dataset's type should be Dataset (in fledge.common.typing.py).
+        dataset's type should be Dataset (in fledge/common/typing.py).
         """
 
     def internal_init(self) -> None:
