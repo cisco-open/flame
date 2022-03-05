@@ -19,5 +19,3 @@ from typing import Any, Union
 Scalar = Union[bool, bytes, float, int, str]
 
 Metrics = dict[str, Scalar]
-
-Dataset = list[Any]
