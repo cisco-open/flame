@@ -12,13 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Analyzer abstract class."""
 
 from abc import abstractmethod
-from typing import Any, List, Union
+from typing import Any, Union
 
 from ..common.typing import Metrics
+from ..dataset import Dataset
 from ..plugin import Plugin
 
 
@@ -32,5 +32,5 @@ class AbstractAnalyzer(Plugin):
     @abstractmethod
     def run(self,
             model: Any = None,
-            dataset: Union[None, List[Any]] = None) -> Union[None, Metrics]:
+            dataset: Union[None, Dataset] = None) -> Union[None, Metrics]:
         """Run analysis and return results."""

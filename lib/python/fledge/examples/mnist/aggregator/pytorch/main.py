@@ -23,8 +23,8 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from fledge.common.typing import Dataset
 from fledge.config import Config
+from fledge.dataset import Dataset
 from fledge.mode.horizontal.aggregator import Aggregator
 from torchvision import datasets, transforms
 
@@ -70,8 +70,7 @@ class PyTorchMnistAggregator(Aggregator):
         self.weights = None
         self.metrics = None
         self.model = None
-        # Dataset type is list[Any]
-        self.dataset: Dataset = list()
+        self.dataset: Dataset = None
 
         self.device = None
         self.test_loader = None
@@ -89,6 +88,9 @@ class PyTorchMnistAggregator(Aggregator):
 
     def load_data(self) -> None:
         """Load a test dataset."""
+        if self.dataset:
+            return
+
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307, ), (0.3081, ))
@@ -102,7 +104,7 @@ class PyTorchMnistAggregator(Aggregator):
         self.test_loader = torch.utils.data.DataLoader(dataset)
 
         # store data into dataset for analysis (e.g., bias)
-        self.dataset = [self.test_loader.dataset]
+        self.dataset = Dataset(dataloader=self.test_loader)
 
     def train(self) -> None:
         """Train a model."""
