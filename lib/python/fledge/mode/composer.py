@@ -37,15 +37,27 @@ class Composer(object):
         ComposerContext.set_composer(self)
         return self
 
-    def __exit__(
-        self, exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        exc_traceback: Optional[TracebackType]
-    ) -> bool:
+    def __exit__(self, exc_type: Optional[Type[BaseException]],
+                 exc_value: Optional[BaseException],
+                 exc_traceback: Optional[TracebackType]) -> bool:
         """Exit custom context."""
         ComposerContext.reset_composer()
 
-    def _get_tasklets_in_loop(self, start, end):
+    def get_tasklets_in_loop(self, start, end) -> set:
+        """Return tasklets in a loop.
+
+        This method returns all the tasklets in a loop including
+        start and end tasklets.
+
+        Parameters
+        ----------
+        start: a tasklet to start search; typically the first tasklet of a loop
+        end: a tasklet to stop search; typcially the last tasklet of a loop
+
+        Returns
+        -------
+        tasklets_in_loop: a set that contains tasklet objects
+        """
         tasklets_in_loop = set()
 
         # traverse tasklets and execute them
@@ -68,10 +80,11 @@ class Composer(object):
 
         return tasklets_in_loop
 
-    def run(self):
+    def run(self) -> None:
         """Execute tasklets in the chain."""
         # choose one tasklet
         tasklet = next(iter(self.chain))
+        # get the first tasklet in the chain
         root = tasklet.get_root()
 
         # traverse tasklets and execute them
@@ -86,11 +99,20 @@ class Composer(object):
             tasklet.do()
 
             if tasklet.is_last_in_loop() and not tasklet.is_loop_done():
+                # we reached the last tasklet of a loop
+                # but the loop exit condition is not met
                 start, end = tasklet.loop_starter, tasklet
-                tasklets_in_loop = self._get_tasklets_in_loop(start, end)
+                tasklets_in_loop = self.get_tasklets_in_loop(start, end)
 
+                # so, we reset the visited history
                 visited = visited - tasklets_in_loop
+                # and, we go back to the first tasklet
                 tasklet = tasklet.loop_starter
+
+            elif tasklet.is_loop_done():
+                # loop exit condition is met in the middle of loop
+                # get the last tasklet and get out of the loop
+                tasklet = tasklet.get_ender()
 
             for child in self.chain[tasklet]:
                 if child not in visited:

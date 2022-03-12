@@ -21,7 +21,7 @@ from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ..composer import Composer
 from ..role import Role
-from ..tasklet import Tasklet, loop
+from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,8 @@ class Trainer(Role, metaclass=ABCMeta):
         self.cm = ChannelManager()
         self.cm(self.config)
         self.cm.join_all()
+
+        self._work_done = False
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -101,10 +103,6 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.send(end, data)
         logger.debug("sending weights done")
 
-    def check_done(self) -> None:
-        """Check if the work is over and raise an exception if so."""
-        return self._work_done
-
     def compose(self) -> None:
         """Compose role with tasklets."""
         with Composer() as composer:
@@ -122,14 +120,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_eval = Tasklet(self.evaluate)
 
-            task_put = Tasklet(
-                self.put, TAG_UPLOAD, loop_check_func=lambda: self._work_done
-            )
+            task_put = Tasklet(self.put, TAG_UPLOAD)
 
+            # create a loop object with loop exit condition function
+            loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_init >> loop(
                 task_load_data >> task_get >> task_train >> task_eval >>
-                task_put
-            )
+                task_put)
 
     def run(self) -> None:
         """Run role."""
