@@ -27,7 +27,7 @@ from ...plugin import PluginManager, PluginType
 from ...registries import registry_provider
 from ..composer import Composer
 from ..role import Role
-from ..tasklet import Tasklet, loop
+from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +92,9 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         self._round = 1
         self._rounds = 1
-
         if 'rounds' in self.config.hyperparameters:
             self._rounds = self.config.hyperparameters['rounds']
+        self._work_done = False
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -212,13 +212,14 @@ class Aggregator(Role, metaclass=ABCMeta):
 
             task_analysis = Tasklet(self.run_analysis)
 
-            task_save_metrics = Tasklet(
-                self.save_metrics, loop_check_func=lambda: self._work_done)
+            task_save_metrics = Tasklet(self.save_metrics)
 
             task_save_params = Tasklet(self.save_params)
 
             task_save_model = Tasklet(self.save_model)
 
+        # create a loop object with loop exit condition function
+        loop = Loop(loop_check_fn=lambda: self._work_done)
         task_internal_init >> task_init >> loop(
             task_load_data >> task_put >> task_get >> task_train >> task_eval
             >> task_analysis >> task_save_metrics
