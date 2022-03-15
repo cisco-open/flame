@@ -19,6 +19,7 @@ import time
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
+from ..message import MessageType
 from ..composer import Composer
 from ..role import Role
 from ..tasklet import Loop, Tasklet
@@ -65,17 +66,18 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
             return
 
-        ends = []
-        while len(ends) == 0:
-            ends = channel.ends()
+        while len(channel._ends) == 0:
             time.sleep(1)
             logger.debug("[_fetch_weights] waiting for channel ends")
-            continue
 
         # one aggregator is sufficient
-        end = ends[0]
-        (self._work_done, self.weights) = channel.recv(end)
-        logger.debug("fetching weights done")
+        end = list(channel._ends.keys())[0]
+        dict = channel.recv(end)
+        for k, v in dict.items():
+            if k == MessageType.WEIGHTS:
+                self.weights = v
+            elif k == MessageType.EOT:
+                self._work_done = v
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
@@ -89,15 +91,12 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_send_weights] channel not found with {tag}")
             return
 
-        ends = []
-        while len(ends) == 0:
-            ends = channel.ends()
+        while len(channel._ends) == 0:
             time.sleep(1)
             logger.debug("[_send_weights] waiting for channel ends")
-            continue
 
         # one aggregator is sufficient
-        end = ends[0]
+        end = list(channel._ends.keys())[0]
 
         data = (self.weights, self.dataset_size)
         channel.send(end, data)
