@@ -89,7 +89,7 @@ class OptimizerType(Enum):
 class SelectorType(Enum):
     """Define selector types."""
 
-    SIMPLE = 1  # default
+    DEFAULT = 1  # default
     RANDOM = 2  # random
 
 
@@ -250,8 +250,7 @@ class Config(object):
 
         def __init__(self, json_data=None) -> None:
             """Initialize Selector instance."""
-            # default selector is simple
-            self.sort = SelectorType.SIMPLE
+            self.sort = SelectorType.DEFAULT
             self.kwargs = dict()
 
             if CONF_KEY_SELECTOR not in json_data:

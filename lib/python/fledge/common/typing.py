@@ -14,7 +14,7 @@
 # limitations under the License.
 """Definitions on Types."""
 
-from typing import Any, Union
+from typing import Union
 
 Scalar = Union[bool, bytes, float, int, str]
 

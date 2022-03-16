@@ -12,12 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """selector provider class."""
 
 from .config import SelectorType
 from .object_factory import ObjectFactory
-from .selector.simple import SimpleSelector
+from .selector.default import DefaultSelector
 from .selector.random import RandomSelector
 
 
@@ -30,5 +29,5 @@ class SelectorProvider(ObjectFactory):
 
 
 selector_provider = SelectorProvider()
-selector_provider.register(SelectorType.SIMPLE, SimpleSelector)
+selector_provider.register(SelectorType.DEFAULT, DefaultSelector)
 selector_provider.register(SelectorType.RANDOM, RandomSelector)

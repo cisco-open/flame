@@ -30,15 +30,17 @@ class AbstractSelector(ABC):
         """Initialize an instance with keyword-based arguments."""
         for key, value in kwargs.items():
             setattr(self, key, value)
-        self.selected_ends = list() 
+        self.selected_ends = list()
 
     @abstractmethod
-    def select(self, ends: dict[str, End]) -> SelectorReturnType:
+    def select(self, ends: dict[str, End],
+               channel_props: dict[str, Scalar]) -> SelectorReturnType:
         """Abstract method to select ends.
 
         Parameters
         ----------
         ends: a dictionary whose key is end id and value is End object
+        channel_props: properties set in channel
 
         Returns
         -------
