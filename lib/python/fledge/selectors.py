@@ -18,6 +18,7 @@
 from .config import SelectorType
 from .object_factory import ObjectFactory
 from .selector.simple import SimpleSelector
+from .selector.random import RandomSelector
 
 
 class SelectorProvider(ObjectFactory):
@@ -30,3 +31,4 @@ class SelectorProvider(ObjectFactory):
 
 selector_provider = SelectorProvider()
 selector_provider.register(SelectorType.SIMPLE, SimpleSelector)
+selector_provider.register(SelectorType.RANDOM, RandomSelector)

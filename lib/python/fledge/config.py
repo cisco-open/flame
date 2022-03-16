@@ -90,6 +90,7 @@ class SelectorType(Enum):
     """Define selector types."""
 
     SIMPLE = 1  # default
+    RANDOM = 2  # random
 
 
 REALM_SEPARATOR = '/'

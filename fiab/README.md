@@ -10,6 +10,9 @@ fiab relies on `hyperkit`, `minikube`, `kubectl`, `helm` and `docker`.
 The installation instructions are based on `brew` on MacOS.
 ```
 brew install hyperkit
+```
+or install docker desktop
+```
 brew install minikube kubectl helm docker
 
 # optional
@@ -21,8 +24,13 @@ Note: `robo-3t` is a GUI tool for MongoDB. This tool comes in handy when debuggi
 ## Starting minikube
 Run the following command to start minikube.
 ```
-minikube start
+minikube start --driver=hyperkit
 ```
+or
+```
+minikube start --driver=docker
+```
+
 The default resource allocation is 2 CPU, 4GB memory and 20GB disk.
 In order to change these parameters, use `--cpus`, `--memory` and `--disk-size` respectively.
 For example, 
@@ -158,6 +166,16 @@ The following command creates `config.yaml` under `$HOME/.fledge`.
 ./build-config.sh
 ```
 The CLI tool, `fledgectl` uses the configuration file to interact with the fledge system.
+
+## Building FLEDGE CLI
+Go to `./fledge` (the top level)
+
+```
+brew install go
+brew install golangci-lint
+make install
+export PATH="$HOME/.fledge/bin:$PATH"
+```
 
 ## Cleanup
 To terminate the fiab environment, run the following:

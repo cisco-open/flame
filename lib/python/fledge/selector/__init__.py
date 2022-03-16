@@ -30,6 +30,7 @@ class AbstractSelector(ABC):
         """Initialize an instance with keyword-based arguments."""
         for key, value in kwargs.items():
             setattr(self, key, value)
+        self.selected_ends = list() 
 
     @abstractmethod
     def select(self, ends: dict[str, End]) -> SelectorReturnType:

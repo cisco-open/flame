@@ -25,6 +25,7 @@ from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
 from ...registries import registry_provider
+from ..message import MessageType
 from ..composer import Composer
 from ..role import Role
 from ..tasklet import Loop, Tasklet
@@ -108,7 +109,7 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         total = 0
         # receive local model parameters from trainers
-        for end in channel.ends():
+        for end in channel._selector.selected_trainers:
             msg = channel.recv(end)
             if not msg:
                 logger.debug(f"No data received from {end}")
@@ -137,6 +138,7 @@ class Aggregator(Role, metaclass=ABCMeta):
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
         if tag == TAG_DISTRIBUTE:
+            self.dist_tag = tag
             self._distribute_weights(tag)
 
     def _distribute_weights(self, tag: str) -> None:
@@ -145,7 +147,7 @@ class Aggregator(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        while len(channel.ends()) == 0:
+        while len(channel._ends) == 0:
             logger.debug("no end found in the channel")
             time.sleep(1)
 
@@ -154,9 +156,18 @@ class Aggregator(Role, metaclass=ABCMeta):
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, (self._work_done, self.weights))
+            channel.send(end, {MessageType.WEIGHTS: self.weights})
 
-        self._round += 1
+    
+    def inform_end_of_training(self) -> None:
+        """Inform all the trainers that the training is finished."""
+        channel = self.cm.get_by_tag(self.dist_tag)
+        if not channel:
+            logger.debug(f"channel not found for tag {self.dist_tag}")
+            return
+        
+        channel.broadcast({MessageType.EOT: self._work_done})
+            
 
     def run_analysis(self):
         """Run analysis plugins and update results to metrics."""
@@ -179,6 +190,11 @@ class Aggregator(Role, metaclass=ABCMeta):
         if self.metrics:
             self.registry_client.save_metrics(self._round - 1, self.metrics)
             logger.debug("saving metrics done")
+
+    def increment_round(self):
+        """Increment the round counter."""
+        logger.debug(f"Incrementing current round: {self._round}")
+        self._round += 1
 
     def save_params(self):
         """Save hyperparamets in a model registry."""
@@ -214,6 +230,10 @@ class Aggregator(Role, metaclass=ABCMeta):
 
             task_save_metrics = Tasklet(self.save_metrics)
 
+            task_increment_round = Tasklet(self.increment_round)
+
+            task_end_of_training = Tasklet(self.inform_end_of_training)
+
             task_save_params = Tasklet(self.save_params)
 
             task_save_model = Tasklet(self.save_model)
@@ -222,8 +242,8 @@ class Aggregator(Role, metaclass=ABCMeta):
         loop = Loop(loop_check_fn=lambda: self._work_done)
         task_internal_init >> task_init >> loop(
             task_load_data >> task_put >> task_get >> task_train >> task_eval
-            >> task_analysis >> task_save_metrics
-        ) >> task_save_params >> task_save_model
+            >> task_analysis >> task_save_metrics >> task_increment_round
+        ) >> task_end_of_training >> task_save_params >> task_save_model
 
     def run(self) -> None:
         """Run role."""

@@ -3,7 +3,7 @@
     "backend": "mqtt",
     "brokers": [
         {
-            "host": "mqtt.eclipseprojects.io",
+            "host": "mosquitto",
             "sort": "mqtt"
         }
     ],
@@ -32,14 +32,14 @@
     "hyperparameters": {
         "batchSize": 32,
         "learningRate": 0.01,
-        "rounds": 1
+        "rounds": 5
     },
     "baseModel": {
-	"name": "mnist-624d9fc43395791",
+	"name": "",
 	"version": 2
     },
     "job" : {
-	"id": "624d9fc43395791",
+	"id": "622a358619ab59012eabeefb",
 	"name": "mnist"
     },
     "registry": {
@@ -47,8 +47,8 @@
 	"uri": "http://mlflow:5000"
     },
     "selector": {
-	"sort": "simple",
-	"kwargs": {}
+	"sort": "random",
+	"kwargs": {"k": 1}
     },
     "maxRunTime": 300,
     "realm": "",
