@@ -25,8 +25,8 @@ from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
 from ...registries import registry_provider
-from ..message import MessageType
 from ..composer import Composer
+from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
 
@@ -109,7 +109,7 @@ class Aggregator(Role, metaclass=ABCMeta):
 
         total = 0
         # receive local model parameters from trainers
-        for end in channel._selector.selected_trainers:
+        for end in channel.ends():
             msg = channel.recv(end)
             if not msg:
                 logger.debug(f"No data received from {end}")
@@ -147,27 +147,23 @@ class Aggregator(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        while len(channel._ends) == 0:
+        while channel.empty():
             logger.debug("no end found in the channel")
             time.sleep(1)
-
-        self._work_done = (self._round >= self._rounds)
 
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
             channel.send(end, {MessageType.WEIGHTS: self.weights})
 
-    
     def inform_end_of_training(self) -> None:
         """Inform all the trainers that the training is finished."""
         channel = self.cm.get_by_tag(self.dist_tag)
         if not channel:
             logger.debug(f"channel not found for tag {self.dist_tag}")
             return
-        
+
         channel.broadcast({MessageType.EOT: self._work_done})
-            
 
     def run_analysis(self):
         """Run analysis plugins and update results to metrics."""
@@ -195,6 +191,15 @@ class Aggregator(Role, metaclass=ABCMeta):
         """Increment the round counter."""
         logger.debug(f"Incrementing current round: {self._round}")
         self._round += 1
+        self._work_done = (self._round > self._rounds)
+
+        channel = self.cm.get_by_tag(self.dist_tag)
+        if not channel:
+            logger.debug(f"channel not found for tag {self.dist_tag}")
+            return
+
+        # set necessary properties to help channel decide how to select ends
+        channel.set_property("round", self._round)
 
     def save_params(self):
         """Save hyperparamets in a model registry."""

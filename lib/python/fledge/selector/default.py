@@ -12,22 +12,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""SimpleSelector class."""
+"""DefaultSelector class."""
 
 import logging
 
+from ..common.typing import Scalar
 from ..end import End
 from . import AbstractSelector, SelectorReturnType
 
 logger = logging.getLogger(__name__)
 
 
-class SimpleSelector(AbstractSelector):
-    """A simple selector class."""
+class DefaultSelector(AbstractSelector):
+    """A default selector class."""
 
-    def select(self, ends: dict[str, End]) -> SelectorReturnType:
+    def select(self, ends: dict[str, End],
+               channel_props: dict[str, Scalar]) -> SelectorReturnType:
         """Return all ends from the given ends."""
-        logger.debug("calling simple select")
+        logger.debug("calling default select")
 
         self.selected_ends = ends.keys()
         return {key: None for key in self.selected_ends}

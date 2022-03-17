@@ -19,8 +19,8 @@ import time
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ..message import MessageType
 from ..composer import Composer
+from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
 
@@ -66,12 +66,12 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
             return
 
-        while len(channel._ends) == 0:
+        while channel.empty():
             time.sleep(1)
             logger.debug("[_fetch_weights] waiting for channel ends")
 
         # one aggregator is sufficient
-        end = list(channel._ends.keys())[0]
+        end = channel.one_end()
         dict = channel.recv(end)
         for k, v in dict.items():
             if k == MessageType.WEIGHTS:
@@ -91,12 +91,12 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_send_weights] channel not found with {tag}")
             return
 
-        while len(channel._ends) == 0:
+        while channel.empty():
             time.sleep(1)
             logger.debug("[_send_weights] waiting for channel ends")
 
         # one aggregator is sufficient
-        end = list(channel._ends.keys())[0]
+        end = channel.one_end()
 
         data = (self.weights, self.dataset_size)
         channel.send(end, data)

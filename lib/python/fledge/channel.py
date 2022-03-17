@@ -19,6 +19,7 @@ import asyncio
 import cloudpickle
 
 from .common.constants import CommType
+from .common.typing import Scalar
 from .common.util import run_async
 from .config import GROUPBY_DEFAULT_GROUP
 from .end import End
@@ -43,6 +44,7 @@ class Channel(object):
         self._my_role = me
         self._other_role = other
         self._groupby = groupby
+        self.properties = dict()
 
         # _ends must be accessed within backend's loop
         self._ends: dict[str, End] = dict()
@@ -78,6 +80,16 @@ class Channel(object):
         """Return groupby tag."""
         return self._groupby
 
+    def set_property(self, key: str, value: Scalar) -> None:
+        """Set property of channel.
+
+        Parameters
+        ----------
+        key: string
+        value: any of boolean, bytes, float, int, or string
+        """
+        self.properties[key] = value
+
     """
     ### The following are not asyncio methods
     ### But access to _ends variable should take place in the backend loop
@@ -85,11 +97,25 @@ class Channel(object):
     ### and the coroutine is executed via run_async()
     """
 
+    def empty(self) -> bool:
+        """Return True/False on whether channels has ends or not."""
+
+        async def inner() -> bool:
+            return len(self._ends) == 0
+
+        result, _ = run_async(inner(), self._backend.loop())
+
+        return result
+
+    def one_end(self) -> str:
+        """Return one end out of all ends."""
+        return self.ends()[0]
+
     def ends(self) -> list[str]:
         """Return a list of end ids."""
 
         async def inner():
-            selected = self._selector.select(self._ends)
+            selected = self._selector.select(self._ends, self.properties)
 
             id_list = list()
             for end_id, kv in selected.items():
