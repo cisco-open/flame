@@ -1,20 +1,56 @@
 {
-    "broker": "mqtt.eclipseprojects.io",
+    "agentid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
     "backend": "mqtt",
-    "agent": "local",
-    "job": {
-	"id": "67890",
-	"name": "keras-mnist-job"
-    },
-    "role": "global-aggregator",
-    "realm": "",
-    "channel": [
-	{
-	    "name": "global-channel",
-	    "pair": ["global-aggregator", "aggregator"],
-	    "groupBy": null
-	}
+    "brokers": [
+        {
+            "host": "mosquitto",
+            "sort": "mqtt"
+        }
     ],
-    "hyperparams": null,
-    "datasets": null
+    "channels": [
+        {
+            "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
+            "groupBy": {
+                "type": "",
+                "value": null
+            },
+            "name": "global-channel",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+	        "funcTags": {
+                "top-aggregator": ["distribute", "aggregate"],
+                "middle-aggregator": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5
+    },
+    "baseModel": {
+	"name": "",
+	"version": 1
+    },
+    "job" : {
+	"id": "622a358619ab59012eabeefb",
+	"name": "mnist"
+    },
+    "registry": {
+	"sort": "mlflow",
+	"uri": "http://mlflow:5000"
+    },
+    "selector": {
+	"sort": "default",
+	"kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "",
+    "role": "top-aggregator"
 }

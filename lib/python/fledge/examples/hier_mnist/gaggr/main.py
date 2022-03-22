@@ -13,141 +13,116 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+"""HIRE_MNIST horizontal hierarchical FL top level aggregator for Keras."""
+
 import logging
-import time
+from random import randrange
 
 import numpy as np
+from fledge.config import Config
+from fledge.dataset import Dataset
+from fledge.mode.horizontal.aggregator import TopAggregator
 from tensorflow import keras
 from tensorflow.keras import layers
 
-from ....channel_manager import ChannelManager
-
 logger = logging.getLogger(__name__)
 
-# keras mnist example from https://keras.io/examples/vision/mnist_convnet/
+class KerasMnistTopAggregator(TopAggregator):
+    """Keras Mnist Top Level Aggregator."""
 
+    def __init__(self, config: Config) -> None:
+        """Initialize a class instance."""
+        self.config = config
+        self.weights = None
+        self.metrics = None
+        self.model = None
 
-class GlobalAggregator(object):
-    def __init__(self, config_file: str, rounds=1):
-        self.cm = ChannelManager()
-        self.cm(config_file)
-        self.cm.join('global-channel')
+        self.dataset: Dataset = None
 
-        self._rounds = rounds
+        self.num_classes = 10
+        self.input_shape = (28, 28, 1)
 
-    def prepare(self):
-        # Model / data parameters
-        num_classes = 10
-        input_shape = (28, 28, 1)
+        self._x_test = None
+        self._y_test = None
 
-        # the data, split between train and test sets
-        (_, _), (x_test, y_test) = keras.datasets.mnist.load_data()
-
-        # Scale images to the [0, 1] range
-        x_test = x_test.astype("float32") / 255
-        # Make sure images have shape (28, 28, 1)
-        x_test = np.expand_dims(x_test, -1)
-        (x_test.shape[0], "test samples")
-
-        # convert class vectors to binary class matrices
-        y_test = keras.utils.to_categorical(y_test, num_classes)
-
-        model = keras.Sequential(
-            [
-                keras.Input(shape=input_shape),
+    def initialize(self):
+        """Initialize role."""
+        if not self.model:
+            model = keras.Sequential([
+                keras.Input(shape=self.input_shape),
                 layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
                 layers.MaxPooling2D(pool_size=(2, 2)),
                 layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
                 layers.MaxPooling2D(pool_size=(2, 2)),
                 layers.Flatten(),
                 layers.Dropout(0.5),
-                layers.Dense(num_classes, activation="softmax"),
-            ]
-        )
+                layers.Dense(self.num_classes, activation="softmax"),
+            ])
 
-        model.compile(
-            loss="categorical_crossentropy",
-            optimizer="adam",
-            metrics=["accuracy"]
-        )
+            model.compile(loss="categorical_crossentropy",
+                          optimizer="adam",
+                          metrics=["accuracy"])
 
-        self._model = model
+            self.model = model
+
+        # initialize the global model weights
+        self.weights = self.model.get_weights()
+
+    def load_data(self) -> None:
+        """Load a test dataset."""
+        if self.dataset:
+            return
+
+        # the data, split between train and test sets
+        (_, _), (x_test, y_test) = keras.datasets.mnist.load_data()
+
+        split_n = 5
+        index = randrange(split_n)
+        # reduce test sample size to reduce the runtime
+        x_test = np.split(x_test, split_n)[index]
+        y_test = np.split(y_test, split_n)[index]
+
+        # Scale images to the [0, 1] range
+        x_test = x_test.astype("float32") / 255
+        # Make sure images have shape (28, 28, 1)
+        x_test = np.expand_dims(x_test, -1)
+
+        # convert class vectors to binary class matrices
+        y_test = keras.utils.to_categorical(y_test, self.num_classes)
+
         self._x_test = x_test
         self._y_test = y_test
 
-    def test(self):
-        score = self._model.evaluate(self._x_test, self._y_test, verbose=0)
-        logger.info(f'Test loss: {score[0]}')
-        logger.info(f'Test accuracy: {score[1]}')
+        # store data into dataset for analysis (e.g., bias)
+        self.dataset = Dataset(x=x_test, y=y_test)
 
-    def run(self):
-        self.prepare()
-        channel = self.cm.get('global-channel')
+    def train(self) -> None:
+        """Train a model."""
+        # Implement this if testing is needed in aggregator
+        pass
 
-        i = 0
-        while i < self._rounds:
-            logger.info(f'>>> round {i+1}')
-            # send out global model parameters to trainers
-            for end in channel.ends():
-                logger.info(f'sending global model weights to {end}')
-                channel.send(end, self._model.get_weights())
+    def evaluate(self) -> None:
+        """Evaluate (test) a model."""
+        # set updated model weights
+        self.model.set_weights(self.weights)
 
-            # TODO: lines below need to be abstracted for different
-            # frontends (e.g., keras, pytorch, etc)
-            total = 0
-            weights_array = []
-            # receive local model parameters from trainers
-            for end in channel.ends():
-                logger.info(f'waiting to receive a message from {end}')
-                msg = channel.recv(end)
-                if not msg:
-                    logger.info('no data received')
-                    continue
+        score = self.model.evaluate(self._x_test, self._y_test, verbose=0)
 
-                weights = msg[0]
-                count = msg[1]
-                if count == 0:
-                    continue
+        logger.info(f"Test loss: {score[0]}")
+        logger.info(f"Test accuracy: {score[1]}")
 
-                total += count
-                weights_array.append((weights, count))
-                logger.info(
-                    f'got {end}\'s parameters trained with {count} samples'
-                )
+        # set metrics after each evaluation so that the metrics can be logged
+        # in a model registry.
+        self.metrics = {'loss': score[0], 'accuracy': score[1]}
 
-            if len(weights_array) == 0 or total == 0:
-                logger.info('no local model parameters are obtained')
-                time.sleep(1)
-                continue
-
-            count = weights_array[0][1]
-            rate = count / total
-            global_weights = [weight * rate for weight in weights_array[0][0]]
-
-            for weights, count in weights_array[1:]:
-                rate = count / total
-
-                for idx in range(len(weights)):
-                    global_weights[idx] += weights[idx] * rate
-
-            self._model.set_weights(global_weights)
-            self.test()
-            i += 1
-
-
-# example cmd in the following:
-# python3 -m fledge.examples.hier_mnist.gaggr.main --config fledge/examples/hier_mnist/gaggr/config.json --rounds 3
-# run the above command in fledge/lib/python folder
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
     parser.add_argument('--config', type=str, help='config file', required=True)
-    parser.add_argument(
-        '--rounds', type=int, default=1, help='number of training rounds'
-    )
-
     args = parser.parse_args()
+    config = Config(args.config)
 
-    gaggr = GlobalAggregator(args.config, args.rounds)
-    gaggr.run()
+    a = KerasMnistTopAggregator(config)
+    a.compose()
+    a.run()
