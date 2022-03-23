@@ -197,6 +197,7 @@ class ChannelManager(object):
             return None
 
         channel_name = self._config.func_tag_map[tag]
+        logger.debug(f"{tag} through {channel_name}")
         return self.get(channel_name)
 
     def get(self, name: str) -> Optional[Channel]:
