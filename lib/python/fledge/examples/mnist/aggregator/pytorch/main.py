@@ -25,7 +25,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from fledge.config import Config
 from fledge.dataset import Dataset
-from fledge.mode.horizontal.aggregator import Aggregator
+from fledge.mode.horizontal.top_aggregator import TopAggregator
 from torchvision import datasets, transforms
 
 logger = logging.getLogger(__name__)
@@ -61,7 +61,7 @@ class Net(nn.Module):
         return output
 
 
-class PyTorchMnistAggregator(Aggregator):
+class PyTorchMnistAggregator(TopAggregator):
     """PyTorch Mnist Aggregator."""
 
     def __init__(self, config: Config) -> None:
