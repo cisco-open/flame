@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""HIRE_MNIST horizontal hierarchical FL middle level aggregator for Keras."""
+"""HIRE_MNIST horizontal hierarchical FL top level aggregator for Keras."""
 
 import logging
 from random import randrange
@@ -21,14 +21,14 @@ from random import randrange
 import numpy as np
 from fledge.config import Config
 from fledge.dataset import Dataset
-from fledge.mode.horizontal.mid_aggregator import MiddleAggregator
+from fledge.mode.horizontal.top_aggregator import TopAggregator
 from tensorflow import keras
 from tensorflow.keras import layers
 
 logger = logging.getLogger(__name__)
 
-class KerasMnistMiddleAggregator(MiddleAggregator):
-    """Keras Mnist Middle Level Aggregator."""
+class KerasMnistTopAggregator(TopAggregator):
+    """Keras Mnist Top Level Aggregator."""
 
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
@@ -36,7 +36,6 @@ class KerasMnistMiddleAggregator(MiddleAggregator):
         self.weights = None
         self.metrics = None
         self.model = None
-        self.dataset_size = 0
 
         self.dataset: Dataset = None
 
@@ -124,6 +123,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config = Config(args.config)
 
-    a = KerasMnistMiddleAggregator(config)
+    a = KerasMnistTopAggregator(config)
     a.compose()
     a.run()

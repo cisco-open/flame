@@ -24,11 +24,11 @@ setup(
     include_package_data=True,
     packages=find_packages(),
     # TODO: remove data_files later as it is not essential
-    data_files=[('fledge/examples/hier_mnist/gaggr',
-                 ['fledge/examples/hier_mnist/gaggr/config.json']),
-                ('fledge/examples/hier_mnist/aggregator', [
-                    'fledge/examples/hier_mnist/aggregator/config_uk.json',
-                    'fledge/examples/hier_mnist/aggregator/config_us.json'
+    data_files=[('fledge/examples/hier_mnist/top_aggregator',
+                 ['fledge/examples/hier_mnist/top_aggregator/config.json']),
+                ('fledge/examples/hier_mnist/middle_aggregator', [
+                    'fledge/examples/hier_mnist/middle_aggregator/config_uk.json',
+                    'fledge/examples/hier_mnist/middle_aggregator/config_us.json'
                 ]),
                 ('fledge/examples/hier_mnist/trainer', [
                     'fledge/examples/hier_mnist/trainer/config_uk.json',

@@ -20,14 +20,14 @@ from random import randrange
 import numpy as np
 from fledge.config import Config
 from fledge.dataset import Dataset
-from fledge.mode.horizontal.aggregator import Aggregator
+from fledge.mode.horizontal.top_aggregator import TopAggregator
 from tensorflow import keras
 from tensorflow.keras import layers
 
 logger = logging.getLogger(__name__)
 
 
-class KerasMnistAggregator(Aggregator):
+class KerasMnistAggregator(TopAggregator):
     """Keras Mnist Aggregator."""
 
     def __init__(self, config: Config) -> None:
