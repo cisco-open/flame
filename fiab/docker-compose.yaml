@@ -28,15 +28,15 @@ services:
 
   database:
     image: 'mongo'
-    container_name: 'fledge-db'
+    container_name: 'flame-db'
     volumes:
       - ./mongodata:/data/db
     ports:
       - '27017-27019:27017-27019'
 
   notifier:
-    image: 'fledge'
-    container_name: 'fledge-notifier'
+    image: 'flame'
+    container_name: 'flame-notifier'
     command: /usr/bin/notifier
     ports:
       - '10101:10101'
@@ -45,8 +45,8 @@ services:
       dockerfile: ./build/Dockerfile.dev
 
   controller:
-    image: 'fledge'
-    container_name: 'fledge-controller'
+    image: 'flame'
+    container_name: 'flame-controller'
     # The ""sleep 5"" is to mitigate failure to connect mongodb
     # if controler comes up before mongodb
     # TODO: refactor controller code to retry connection in case of disconnection
@@ -55,63 +55,63 @@ services:
     ports:
       - '10102:10102'
     volumes:
-      - ${PWD}/controller.yaml:/etc/fledge/controller.yaml
+      - ${PWD}/controller.yaml:/etc/flame/controller.yaml
     depends_on: ['database', 'notifier']
 
   apiserver:
-    image: 'fledge'
-    container_name: 'fledge-apiserver'
-    command: /usr/bin/apiserver --controller http://fledge-controller:10102
+    image: 'flame'
+    container_name: 'flame-apiserver'
+    command: /usr/bin/apiserver --controller http://flame-controller:10102
     ports:
       - '10100:10100'
     depends_on: ['controller']
 
-  fledgelet1:
-    image: 'fledge'
-    container_name: 'fledgelet1'
+  flamelet1:
+    image: 'flame'
+    container_name: 'flamelet1'
     volumes:
       - ./mlruns:/mlruns
-      - ../:/src/fledge
-    # NOTE: update FLEDGE_AGENT_ID based on the task
+      - ../:/src/flame
+    # NOTE: update FLAME_AGENT_ID based on the task
     #       when a job is first executed, it will fail.
     #       log into controller container and check its logs to identify agent IDs
-    #       docker exec -it fledge-controller bash
-    #       cat /var/log/fledge/controller.log | grep "Creating task for agent"
+    #       docker exec -it flame-controller bash
+    #       cat /var/log/flame/controller.log | grep "Creating task for agent"
     #       use the IDs returned from the above grep search
     environment:
-      FLEDGE_AGENT_ID: bae7fc3f40b9855116865ae8eeaf372189f0afd4
+      FLAME_AGENT_ID: bae7fc3f40b9855116865ae8eeaf372189f0afd4
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/flamelet --apiserver http://flame-apiserver:10100 --notifier flame-notifier:10101
     ports:
       - '10103:10103'
     depends_on: ['apiserver', 'notifier']
 
-  fledgelet2:
-    image: 'fledge'
-    container_name: 'fledgelet2'
+  flamelet2:
+    image: 'flame'
+    container_name: 'flamelet2'
     volumes:
       - ./mlruns:/mlruns
-      - ../:/src/fledge
-    # NOTE: update FLEDGE_AGENT_ID based on the task
+      - ../:/src/flame
+    # NOTE: update FLAME_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: e49319394d8a641453fcb7b07ba77a62c6f23635
+      FLAME_AGENT_ID: e49319394d8a641453fcb7b07ba77a62c6f23635
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/flamelet --apiserver http://flame-apiserver:10100 --notifier flame-notifier:10101
     ports:
       - '10104:10104'
     depends_on: ['apiserver', 'notifier']
 
-  fledgelet3:
-    image: 'fledge'
-    container_name: 'fledgelet3'
+  flamelet3:
+    image: 'flame'
+    container_name: 'flamelet3'
     volumes:
       - ./mlruns:/mlruns
-      - ../:/src/fledge
-    # NOTE: update FLEDGE_AGENT_ID based on the task
+      - ../:/src/flame
+    # NOTE: update FLAME_AGENT_ID based on the task
     environment:
-      FLEDGE_AGENT_ID: 3aa26b0e014a4a66f51003add41d53be4a9d2b71
+      FLAME_AGENT_ID: 3aa26b0e014a4a66f51003add41d53be4a9d2b71
       LOG_LEVEL: DEBUG
-    command: /usr/bin/fledgelet --apiserver http://fledge-apiserver:10100 --notifier fledge-notifier:10101
+    command: /usr/bin/flamelet --apiserver http://flame-apiserver:10100 --notifier flame-notifier:10101
     ports:
       - '10105:10105'
     depends_on: ['apiserver', 'notifier']

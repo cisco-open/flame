@@ -4,17 +4,17 @@
 
 ## [Getting Started](02-getting-started.md)
 
-## [Fledge in a box (fiab)](03-fiab.md)
+## [Flame in a box (fiab)](03-fiab.md)
 
 ## [Examples](04-examples.md)
 
-## [Fledge Basics](05-fledge-basics.md)
+## [Flame Basics](05-flame-basics.md)
 
-## [Fledge CLI Tool](06-fledgectl.md)
+## [Flame CLI Tool](06-flamectl.md)
 
 ## [User Workflow](07-user-workflow.md)
 
-## [Fledge SDK](08-fledge-sdk.md)
+## [Flame SDK](08-flame-sdk.md)
 
 ## [Changelog](09-changelog.md)
 

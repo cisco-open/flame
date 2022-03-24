@@ -4,7 +4,7 @@ all: build
 user := $(shell whoami)
 registry := containers.cisco.com/research
 
-project := fledge
+project := flame
 now := $(shell date +"%Y%m%d%H%M%S")
 uri := ${project}:${user}-${now}
 
@@ -29,8 +29,8 @@ local: dep
 	@go build -o ./build/bin ./...
 
 install: local
-	mkdir -p $(HOME)/.fledge/bin
-	cp -r ./build/bin $(HOME)/.fledge
+	mkdir -p $(HOME)/.flame/bin
+	cp -r ./build/bin $(HOME)/.flame
 
 test: dep
 	@go test -v ./...

@@ -27,12 +27,12 @@ import (
 	"github.com/cbroglie/mustache"
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/cmd/controller/app/database"
-	"github.com/cisco/fledge/cmd/controller/app/deployer"
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/openapi"
-	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/app/database"
+	"github.com/cisco-open/flame/cmd/controller/app/deployer"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
+	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
@@ -291,7 +291,7 @@ func (h *handler) handleStart(event *JobEvent) {
 	// 4-2. If the condition in 5-1 is not met for a certain duration, cancel the provisioning of
 	//      the compute resources and destroy the provisioned compute resources; set the state to FAILED
 
-	// 5. send start-job event to the agent (i.e., fledgelet) in all the provisioned compute nodes
+	// 5. send start-job event to the agent (i.e., flamelet) in all the provisioned compute nodes
 
 	zap.S().Infof("requester: %s, jobId: %s", event.Requester, event.JobStatus.Id)
 

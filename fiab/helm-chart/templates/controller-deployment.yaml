@@ -24,7 +24,7 @@ spec:
           ports:
             - containerPort: {{ .Values.componentPorts.controller }}
           volumeMounts:
-            - mountPath: /etc/fledge/controller.yaml
+            - mountPath: /etc/flame/controller.yaml
               name: config-volume
               subPath: controller.yaml
       serviceAccountName: controller

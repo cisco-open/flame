@@ -7,7 +7,7 @@ RUN --mount=target=. \
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /fledge/ ./...
+    go build -o /flame/ ./...
 
 RUN mkdir -p /tmp/job-template
 COPY templates/job/ /tmp/job-template/
@@ -15,16 +15,16 @@ COPY templates/job/ /tmp/job-template/
 FROM python:3.9.7-buster AS python-build
 WORKDIR /src
 COPY ./lib/python /src
-RUN python3 setup.py bdist_wheel && cp dist/fledge-*.whl /tmp/
+RUN python3 setup.py bdist_wheel && cp dist/flame-*.whl /tmp/
 
 FROM myungjinlee/mlpack:cpu
-COPY --from=golang-build /fledge/* /usr/bin/
+COPY --from=golang-build /flame/* /usr/bin/
 
-RUN mkdir -p /fledge/deployment
-COPY --from=golang-build /tmp/job-template/ /fledge/deployment/
+RUN mkdir -p /flame/deployment
+COPY --from=golang-build /tmp/job-template/ /flame/deployment/
 
-# Install fledge python library
+# Install flame python library
 COPY --from=python-build /tmp/*.whl /tmp/
 RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl
 # this python script configures python packages
-RUN fledge-config
+RUN flame-config

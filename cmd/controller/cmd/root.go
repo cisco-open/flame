@@ -22,9 +22,9 @@ import (
 	"github.com/spf13/cobra"
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/cmd/controller/app"
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/app"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 var (
@@ -50,14 +50,14 @@ var (
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	usage := "config file (default: /etc/fledge/controller.yaml)"
+	usage := "config file (default: /etc/flame/controller.yaml)"
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
 func initConfig() {
 	if cfgFile == "" {
-		cfgFile = filepath.Join("/etc/fledge/controller.yaml")
+		cfgFile = filepath.Join("/etc/flame/controller.yaml")
 	}
 
 	var err error

@@ -18,7 +18,7 @@ spec:
             - "http://{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
             - "--notifier"
             - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
-          command: ["/usr/bin/fledgelet"]
+          command: ["/usr/bin/flamelet"]
           image: <% imageLoc %>
           imagePullPolicy: IfNotPresent
           name: {{ .Values.servicename }}-agent-<% agentId %>
@@ -35,9 +35,9 @@ spec:
           env:
             - name: LOG_LEVEL
               value: INFO
-            - name: FLEDGE_AGENT_ID
+            - name: FLAME_AGENT_ID
               value: <% agentId %>
-            - name: FLEDGE_AGENT_KEY
+            - name: FLAME_AGENT_KEY
               value: <% agentKey %>
       restartPolicy: Never
 <%={{ }}=%>

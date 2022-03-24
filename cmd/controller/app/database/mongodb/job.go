@@ -23,8 +23,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 // CreateJob creates a new job specification and returns JobStatus

@@ -125,5 +125,5 @@ var StreamingStore_ServiceDesc = grpc.ServiceDesc{
 			ServerStreams: true,
 		},
 	},
-	Metadata: "fledgelet.proto",
+	Metadata: "flamelet.proto",
 }

@@ -18,8 +18,8 @@ package cmd
 import (
 	"github.com/spf13/cobra"
 
-	"github.com/cisco/fledge/cmd/notifier/app"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/notifier/app"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 var rootCmd = &cobra.Command{

@@ -362,7 +362,7 @@
           type: string
         style: simple
       - name: agentId
-        description: fledgelet agent Id
+        description: flamelet agent Id
         explode: false
         in: path
         required: true
@@ -370,7 +370,7 @@
           type: string
         style: simple
       - name: key
-        description: A key for task authentication; once the key is recognized by the fledge system for the first time, it can't be changed.
+        description: A key for task authentication; once the key is recognized by the flame system for the first time, it can't be changed.
         in: query
         required: true
         schema:
@@ -391,7 +391,7 @@
 
 /jobs/{jobId}/{agentId}/task/status:
   ########################################
-  # Update task status from fledgelet agent
+  # Update task status from flamelet agent
   ########################################
   put:
     operationId: updateTaskStatus

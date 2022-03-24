@@ -5,10 +5,10 @@ build:
 	@python3 setup.py bdist_wheel
 
 install: build
-	@pip3 install dist/fledge*.whl
+	@pip3 install dist/flame*.whl
 
 uninstall:
-	@pip3 uninstall -y fledge
+	@pip3 uninstall -y flame
 
 clean:
-	@rm -rf build dist fledge.egg-info
+	@rm -rf build dist flame.egg-info

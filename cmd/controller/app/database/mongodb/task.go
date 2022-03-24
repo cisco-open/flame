@@ -26,9 +26,9 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/cmd/controller/app/objects"
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/app/objects"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 // CreateTasks creates task records in task db collection

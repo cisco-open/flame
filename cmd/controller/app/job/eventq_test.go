@@ -20,7 +20,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi"
 )
 
 func TestNewJobEvent(t *testing.T) {

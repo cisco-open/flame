@@ -1,0 +1,6 @@
+#!/usr/bin/python3
+
+import os
+
+if __name__ == '__main__':
+    os.makedirs('/etc/flame/plugin', 0o755)

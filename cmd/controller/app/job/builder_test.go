@@ -18,8 +18,8 @@ package job
 import (
 	"testing"
 
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -1,17 +1,17 @@
-# Fledge In A Box (fiab)
+# Flame In A Box (fiab)
 
 ## Overview
 
-fiab is a development environment for fledge.
-The fledge system consists of four components: apiserver, controller, notifier and fledgelet.
+fiab is a development environment for flame.
+The flame system consists of four components: apiserver, controller, notifier and flamelet.
 It also includes mongodb as backend state store.
 This development environment is mainly tested under MacOS.
 This guideline is primarily based on MacOS.
 However, this dev environment doesn't work under latest Apple machines with M1 chip set.
 The fiab is also tested under Archlinux. Hence, it may work on other Linux distributions such as Ubuntu.
 
-The `fledge/fiab` folder contains several scripts to configure and set up the fiab environment.
-Thus, the working directory for this guideline is `fledge/fiab`.
+The `flame/fiab` folder contains several scripts to configure and set up the fiab environment.
+Thus, the working directory for this guideline is `flame/fiab`.
 
 ## Prerequisites
 
@@ -41,7 +41,7 @@ brew install minikube kubectl helm
 # optional
 brew install --cask robo-3t
 ```
-Note: `robo-3t` is a GUI tool for MongoDB. This tool comes in handy when debugging mongodb-related issues in the fledge system.
+Note: `robo-3t` is a GUI tool for MongoDB. This tool comes in handy when debugging mongodb-related issues in the flame system.
 
 ### Linux
 For linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, and `docker`.
@@ -61,8 +61,8 @@ minikube start --cpus 4 --memory 4096m --disk-size 10000mb
 We recommend a disk space of 100GB.
 
 
-## Building fledge
-A Docker daemon comes within the minikube VM. To build fledge container image, set the environment variables with the following command.
+## Building flame
+A Docker daemon comes within the minikube VM. To build flame container image, set the environment variables with the following command.
 
 ```
 eval $(minikube docker-env)
@@ -75,7 +75,7 @@ docker ps
 ```
 This command will show containers within the minikube.
 
-In order to build fledge container image, run the following:
+In order to build flame container image, run the following:
 ```
 ./build-image.sh
 ```
@@ -84,10 +84,10 @@ In order to build fledge container image, run the following:
 (i.e., `minikube delete` is executed). Unless a fresh minikube instance is needed, simply stopping the minikube instance would be useful
 to save time for development and testing.
 
-To check the fledge image built, run `docker images`. An output is similar to:
+To check the flame image built, run `docker images`. An output is similar to:
 ```
 REPOSITORY                                TAG       IMAGE ID       CREATED          SIZE
-fledge                                    latest    e3bf47cdfa66   22 seconds ago   3.96GB
+flame                                    latest    e3bf47cdfa66   22 seconds ago   3.96GB
 k8s.gcr.io/kube-apiserver                 v1.22.3   53224b502ea4   7 weeks ago      128MB
 k8s.gcr.io/kube-scheduler                 v1.22.3   0aa9c7e31d30   7 weeks ago      52.7MB
 k8s.gcr.io/kube-controller-manager        v1.22.3   05c905cef780   7 weeks ago      122MB
@@ -134,7 +134,7 @@ minikube stop && minikube start
 ```
 **Note**: restarting the minikube vm may take a while. If the command hangs, press `Ctrl-C` and rerun the command.
 
-## Starting fledge
+## Starting flame
 Open a new terminal window and start the minikube tunnel with the following command:
 ```
 minikube tunnel
@@ -142,55 +142,55 @@ minikube tunnel
 The tunnel creates a routable IP for deployment.
 
 
-To bring up fledge and its dependent applications, `helm` is used.
+To bring up flame and its dependent applications, `helm` is used.
 A shell script to use helm is provided
 Run the following command:
 ```
-./fledge.sh start
+./flame.sh start
 ```
 
 To check deployment status, run the following command:
 ```
-kubectl get pods -n fledge
+kubectl get pods -n flame
 ```
 
 An example output looks like the following:
 ```
 NAME                                READY   STATUS    RESTARTS       AGE
-fledge-apiserver-65d8c7fcf4-kn6ck   1/1     Running   0              2m16s
-fledge-controller-f6c99d8d5-5jfd9   1/1     Running   3 (112s ago)   2m16s
-fledge-mongodb-0                    1/1     Running   0              49s
-fledge-mongodb-1                    1/1     Running   0              71s
-fledge-mongodb-arbiter-0            1/1     Running   0              2m16s
-fledge-notifier-c59bbcf65-qqvrc     1/1     Running   0              2m16s
+flame-apiserver-65d8c7fcf4-kn6ck   1/1     Running   0              2m16s
+flame-controller-f6c99d8d5-5jfd9   1/1     Running   3 (112s ago)   2m16s
+flame-mongodb-0                    1/1     Running   0              49s
+flame-mongodb-1                    1/1     Running   0              71s
+flame-mongodb-arbiter-0            1/1     Running   0              2m16s
+flame-notifier-c59bbcf65-qqvrc     1/1     Running   0              2m16s
 mlflow-6dd895c889-42nfl             1/1     Running   0              2m16s
 postgres-748c47694c-94lhh           1/1     Running   0              2m16s
 ```
 
-## Stopping fledge
+## Stopping flame
 ```
-./fledge.sh stop
+./flame.sh stop
 ```
-Before starting fledge again, make sure that all the pods in the fledge namespace are deleted.
-To check that, use `kubectl get pods -n fledge` command.
+Before starting flame again, make sure that all the pods in the flame namespace are deleted.
+To check that, use `kubectl get pods -n flame` command.
 
 ## Logging into a pod
 In kubernetes, a pod is the smallest, most basic deployable object. A pod consists of at least one container instance.
-Using the pod's name (e.g., `fledge-apiserver-65d8c7fcf4-z8x5b`), one can log into the running pod as follows:
+Using the pod's name (e.g., `flame-apiserver-65d8c7fcf4-z8x5b`), one can log into the running pod as follows:
 ```
-kubectl exec -it -n fledge fledge-apiserver-65d8c7fcf4-z8x5b -- bash
+kubectl exec -it -n flame flame-apiserver-65d8c7fcf4-z8x5b -- bash
 ```
 
-Logs of fledge components are found at `/var/log/fledge` in the instance.
+Logs of flame components are found at `/var/log/flame` in the instance.
 
-## Creating fledge config
-The following command creates `config.yaml` under `$HOME/.fledge`.
+## Creating flame config
+The following command creates `config.yaml` under `$HOME/.flame`.
 ```
 ./build-config.sh
 ```
-The fledge CLI tool, `fledgectl` uses the configuration file to interact with the fledge system.
-In order to build, `fledgectl`, run `make install` from the level folder (i.e., `fledge`).
-This command compiles source code and installs `fledgectl` binary as well as other binaries into `$HOME/.fledge/bin`.
+The flame CLI tool, `flamectl` uses the configuration file to interact with the flame system.
+In order to build, `flamectl`, run `make install` from the level folder (i.e., `flame`).
+This command compiles source code and installs `flamectl` binary as well as other binaries into `$HOME/.flame/bin`.
 
 ## Cleanup
 To terminate the fiab environment, run the following:

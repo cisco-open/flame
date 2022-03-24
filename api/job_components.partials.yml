@@ -109,7 +109,7 @@ DataSpec:
       uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
       us/foo: 3 # there are three user-fed datasets under us/foo realm
     fromSystem:
-      - 61609290fa724deafdb2a4fa # id of dataset registered in the fledge system
+      - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
 
 ########################################
 # Selector
