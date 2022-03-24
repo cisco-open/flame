@@ -55,6 +55,7 @@ type JobConfig struct {
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 	Dependencies    []string               `json:"dependencies,omitempty"`
 	DatasetUrl      string                 `json:"dataset,omitempty"`
+	Selector        openapi.Selector       `json:"selector,omitempty"`
 }
 
 func (tsk *Task) generateAgentId(idx int) {
@@ -84,6 +85,7 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	cfg.MaxRunTime = jobSpec.MaxRunTime
 	cfg.BaseModel = jobSpec.BaseModel
 	cfg.Hyperparameters = jobSpec.Hyperparameters
+	cfg.Selector = jobSpec.Selector
 	cfg.Dependencies = jobSpec.Dependencies
 	cfg.BackEnd = string(jobSpec.Backend)
 	cfg.Brokers = brokers

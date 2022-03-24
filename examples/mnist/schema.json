@@ -21,7 +21,12 @@
 		"trainer",
 		"aggregator"
 	    ],
-	    "groupBy": null,
+	    "groupBy": {
+		"type": "tag",
+		"value": [
+		    "us/west"
+		]
+	    },
 	    "funcTags": {
 		"trainer": ["fetch", "upload"],
 		"aggregator": ["distribute", "aggregate"]

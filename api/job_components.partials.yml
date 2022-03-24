@@ -17,6 +17,8 @@ JobSpec:
       type: string
     dataSpec:
       $ref: '#/components/schemas/DataSpec'
+    selector:
+      $ref: '#/components/schemas/Selector'
     priority:
       $ref: '#/components/schemas/JobPriority'
     backend:
@@ -42,6 +44,10 @@ JobSpec:
     designId: "60d0d66716af12b787d9ef0a"
     schemaVersion: "1"
     codeVersion: "1"
+    selector:
+      sort: random
+      kwargs:
+        k: 10
     prority: "low"
     backend: "mqtt"
     maxRunTime: 600
@@ -104,6 +110,21 @@ DataSpec:
       us/foo: 3 # there are three user-fed datasets under us/foo realm
     fromSystem:
       - 61609290fa724deafdb2a4fa # id of dataset registered in the fledge system
+
+########################################
+# Selector
+########################################
+Selector:
+  type: object
+  properties:
+    sort:
+      type: string
+    kwargs:
+      type: object
+  example:
+    sort: random
+    kwargs:
+      k: 10
 
 ########################################
 # Job status
