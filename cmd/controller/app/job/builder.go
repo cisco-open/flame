@@ -481,8 +481,8 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		//
 		// In either of the two cases,
 		// a task under default realm should be created
-		_, ok := userDatasetKV[defaultRealm]
-		if len(tasks) == 0 || (prevTmpl.isDataConsumer && ok) {
+		count, ok := userDatasetKV[defaultRealm]
+		if len(tasks) == 0 || (prevTmpl.isDataConsumer && ok && count > 0) {
 			task := tmpl.Task
 			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), defaultRealm, emptyDatasetUrl, 0)
 			tasks = append(tasks, task)

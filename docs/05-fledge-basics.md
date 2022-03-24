@@ -158,7 +158,7 @@ The hierarchical topology is very similar to the simple two-tier topology except
 			"groupBy": null,
 			"funcTags": {
 				"global-agg": ["distribute", "aggregate"],
-				"int-agg": ["distribute", "aggregate", "fetch", "upload"]
+				"int-agg": ["fetch", "upload"]
 			}
 		},
 		{

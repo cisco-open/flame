@@ -38,6 +38,8 @@ type JobSpec struct {
 
 	DataSpec DataSpec `json:"dataSpec,omitempty"`
 
+	Selector Selector `json:"selector,omitempty"`
+
 	Priority JobPriority `json:"priority,omitempty"`
 
 	Backend CommBackend `json:"backend,omitempty"`
@@ -65,6 +67,9 @@ func AssertJobSpecRequired(obj JobSpec) error {
 	}
 
 	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
+		return err
+	}
+	if err := AssertSelectorRequired(obj.Selector); err != nil {
 		return err
 	}
 	return nil

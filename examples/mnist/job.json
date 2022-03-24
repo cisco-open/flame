@@ -4,7 +4,7 @@
     "codeVersion": "1",
     "dataSpec": {
 	"fromUser": {
-	    "default": 1
+	    "default": 0
 	},
 	"fromSystem": [
 	    "61e0c1e86bdf29b562de7c22"
@@ -20,11 +20,17 @@
 	"version": 0
     },
     "hyperparameters": {
-	"rounds": 2,
+	"rounds": 5,
 	"batchSize": 32,
 	"learningRate": 0.01
     },
     "dependencies" : [
 	"numpy >= 1.2.0"
-    ]
+    ],
+    "selector": {
+	"sort": "random",
+	"kwargs": {
+	    "k": 1
+	}
+    }
 }
