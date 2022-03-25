@@ -7,11 +7,11 @@ metadata:
 data:
   controller.yaml: |
     ---
-    db: mongodb://fledge-mongodb-headless:27017/?replicaSet=rs0
-    notifier: fledge-notifier:10101
+    db: mongodb://flame-mongodb-headless:27017/?replicaSet=rs0
+    notifier: flame-notifier:10101
     platform: k8s
     jobParams:
-      image: fledge:latest
+      image: flame:latest
       brokers:
         - sort: mqtt
           host: mosquitto

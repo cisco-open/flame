@@ -23,7 +23,7 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
+	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
 
 // notificationServer implement the notification service and include - proto unimplemented method and

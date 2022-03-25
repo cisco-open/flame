@@ -1,4 +1,4 @@
-servicename: fledge
+servicename: flame
 componentPorts:
   apiserver: "10100"
   notifier: "10101"

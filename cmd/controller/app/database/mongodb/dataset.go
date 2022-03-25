@@ -23,8 +23,8 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 // CreateDataset creates a new dataset entry in the database

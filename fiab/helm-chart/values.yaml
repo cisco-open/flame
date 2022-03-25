@@ -1,6 +1,6 @@
 ---
-imageName: fledge
-servicename: fledge
+imageName: flame
+servicename: flame
 componentPorts:
   apiserver: "10100"
   notifier: "10101"
@@ -10,12 +10,12 @@ replicas: 1
 
 mongodb:
   global:
-    namespaceOverride: fledge
+    namespaceOverride: flame
   architecture: replicaset
   auth:
     enabled: false
 
-  # Uncomment the following block after the 1st installation of fledge helm chart.
+  # Uncomment the following block after the 1st installation of flame helm chart.
   # The block allows access to database outside the k8s cluster.
   # Enable externalAccess config only for debugging purposes by using tools like Robo 3T.
   #######

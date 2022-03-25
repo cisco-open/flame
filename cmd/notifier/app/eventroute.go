@@ -18,7 +18,7 @@ package app
 import (
 	"go.uber.org/zap"
 
-	pbNotify "github.com/cisco/fledge/pkg/proto/notification"
+	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
 
 const (

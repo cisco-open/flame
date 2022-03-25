@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 
-apiserver_ip=$(kubectl get svc -n fledge  | grep fledge-apiserver | awk '{print $4}')
+apiserver_ip=$(kubectl get svc -n flame  | grep flame-apiserver | awk '{print $4}')
 
-FLEDGE_DIR=$HOME/.fledge
+FLAME_DIR=$HOME/.flame
 
-mkdir -p $FLEDGE_DIR
+mkdir -p $FLAME_DIR
 
-cat > $FLEDGE_DIR/config.yaml <<EOF
+cat > $FLAME_DIR/config.yaml <<EOF
 # local fiab env
 ---
 apiserver:

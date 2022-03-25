@@ -16,7 +16,7 @@
 package util
 
 const (
-	ProjectName = "fledge"
+	ProjectName = "flame"
 
 	// General
 	ALL          = "all"
@@ -58,14 +58,14 @@ const (
 	ApiServerRestApiPort  = 10100 // REST API port
 	NotifierGrpcPort      = 10101 // for notification and push
 	ControllerRestApiPort = 10102 // Controller REST API port
-	AgentGrpcPort         = 10103 // for fledgelet - application
+	AgentGrpcPort         = 10103 // for flamelet - application
 
 	// Service names
-	Agent      = "fledgelet"
+	Agent      = "flamelet"
 	ApiServer  = "apiserver"
 	Controller = "controller"
 	Notifier   = "notifier"
-	CliTool    = "fledgectl"
+	CliTool    = "flamectl"
 
 	// file permission
 	FilePerm0644 = 0644

@@ -1,37 +1,22 @@
-# Fledge
+# Flame
 
-Fledge is a platform that allows developers to compose and deploy machine learning (ML) training workloads easily.
-The system is comprised of a service and a python library. The service manages machine learning workloads,
-while a python library facilitates composition of ML workloads.
+<img src="docs/images/logo.png" alt="flame logo" width="200"/>
 
+Flame is a platform that enables developers to compose and deploy federated learning (FL) training workloads easily.
+The system is comprised of a service (control plane ) and a python library (data plane).
+The service manages machine learning workloads, while the python library facilitates composition of ML workloads.
+And the library is also responsible for executing FL workloads.
+With extensibility of its library, Flame can support various experimentations and use cases.
 
 ## Getting started
 This repo contains a dev/test environment in a single machine on top of minikube.
-The detailed instructions are found [here](fiab/README.md).
+The detailed instructions are found [here](docs/03-fiab.md).
 
-### Development setup
+## Development setup
 
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
-For now, this section describes how to set up a development environment in macOS.
+For more details, refer to [here](docs/02-getting-started.md).
 
-The tested version for golang is 1.16+ and the tested version for python is 3.9+.
+## Documentation
 
-```
-brew install go
-brew install golangci-lint
-git clone git@github.com:cisco/fledge.git
-```
-
-### To compile locally
-
-```
-cd fledge
-make local
-```
-
-### To run a linter
-```
-cd fledge
-go get ./...
-golangci-lint run -v
-```
+A full document can be bound [here](docs/README.md). The document will be updated on a regular basis.

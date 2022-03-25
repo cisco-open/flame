@@ -20,8 +20,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/cisco/fledge/cmd/apiserver/app"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/apiserver/app"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 /*

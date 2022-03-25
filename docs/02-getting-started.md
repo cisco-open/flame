@@ -10,7 +10,7 @@ The following tools and packages are needed as minimum:
 - python 3.9+
 
 The following shows how to install the above packages in macOS environments.
-`brew` is a package management tool in macOS. To install `brew`, refer to [here](https://docs.brew.sh/Installation)
+`brew` is a package management tool in macOS. To install `brew`, refer to [here](https://docs.brew.sh/Installation).
 Depending on Linux distributions, several package managers such as `apt`, `yum`, etc. can be used.
 
 ```
@@ -26,4 +26,4 @@ echo -e '\nif command -v pyenv 1>/dev/null 2>&1; then\n    eval "$(pyenv init -)
 
 ## Development Setup
 
-This project provides a development setup called fiab, an acronym for fledge-in-a-box, which is found [here](03-fiab.md).
+This project provides a development setup called fiab, an acronym for flame-in-a-box, which is found [here](03-fiab.md).

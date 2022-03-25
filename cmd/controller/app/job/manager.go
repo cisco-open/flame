@@ -19,8 +19,8 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/cisco/fledge/cmd/controller/app/database"
-	"github.com/cisco/fledge/cmd/controller/config"
+	"github.com/cisco-open/flame/cmd/controller/app/database"
+	"github.com/cisco-open/flame/cmd/controller/config"
 	"go.uber.org/zap"
 )
 

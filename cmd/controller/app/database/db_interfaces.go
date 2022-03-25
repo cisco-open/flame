@@ -19,8 +19,8 @@ import (
 	"context"
 	"os"
 
-	"github.com/cisco/fledge/cmd/controller/app/objects"
-	"github.com/cisco/fledge/pkg/openapi"
+	"github.com/cisco-open/flame/cmd/controller/app/objects"
+	"github.com/cisco-open/flame/pkg/openapi"
 )
 
 // DBService defines a total set of collections for the application

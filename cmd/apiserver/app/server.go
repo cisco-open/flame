@@ -21,8 +21,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/openapi/apiserver"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/apiserver"
 )
 
 //crate channel to listen for shutdown and other commands?

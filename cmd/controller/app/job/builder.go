@@ -22,11 +22,11 @@ import (
 	"math"
 	"strings"
 
-	"github.com/cisco/fledge/cmd/controller/app/database"
-	"github.com/cisco/fledge/cmd/controller/app/objects"
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/app/database"
+	"github.com/cisco-open/flame/cmd/controller/app/objects"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (

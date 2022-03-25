@@ -1,4 +1,4 @@
-module github.com/cisco/fledge
+module github.com/cisco-open/flame
 
 go 1.16
 

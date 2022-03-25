@@ -20,8 +20,8 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/cmd/apiserver/cmd"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/apiserver/cmd"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 func main() {

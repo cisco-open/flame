@@ -2,6 +2,6 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: fledge
+  name: flame
   labels:
-    name: fledge
+    name: flame

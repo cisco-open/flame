@@ -21,11 +21,11 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/cisco/fledge/cmd/controller/app/database"
-	"github.com/cisco/fledge/cmd/controller/app/job"
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/openapi/controller"
+	"github.com/cisco-open/flame/cmd/controller/app/database"
+	"github.com/cisco-open/flame/cmd/controller/app/job"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/controller"
 )
 
 type Controller struct {

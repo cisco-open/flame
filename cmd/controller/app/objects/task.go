@@ -19,9 +19,9 @@ import (
 	"crypto/sha1"
 	"fmt"
 
-	"github.com/cisco/fledge/cmd/controller/config"
-	"github.com/cisco/fledge/pkg/openapi"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 type Task struct {

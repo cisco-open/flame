@@ -1,8 +1,8 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "myungjin-lee/fledge"
+  config.vm.box = "myungjin-lee/flame"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
-  config.vm.synced_folder "../", "/fledge"
+  config.vm.synced_folder "../", "/flame"
   config.vm.provision :shell, :path => "bootstrap.sh"
 
   config.vm.provider "virtualbox" do |vb|

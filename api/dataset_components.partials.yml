@@ -27,7 +27,7 @@ DatasetInfo:
     # The public boundaries represent geographical locations whereas the private boundaries
     # represent logical boundaries.
     #
-    # The fledge system maintain the mapping between the realm and a launcher (a program that
+    # The flame system maintain the mapping between the realm and a launcher (a program that
     # helps launching an ML workload in a cluster or machine associated with the launcher).
     realm:
       type: string

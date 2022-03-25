@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	DatabaseName      = "fledge"
+	DatabaseName      = "flame"
 	DatasetCollection = "t_dataset"
 	DesignCollection  = "t_design"
 	JobCollection     = "t_job"

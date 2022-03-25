@@ -21,8 +21,8 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 
-	"github.com/cisco/fledge/cmd/controller/app/deployer"
-	"github.com/cisco/fledge/pkg/util"
+	"github.com/cisco-open/flame/cmd/controller/app/deployer"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 type Config struct {
