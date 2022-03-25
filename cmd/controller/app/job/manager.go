@@ -65,8 +65,8 @@ func (mgr *Manager) Do() {
 		if !ok {
 			eventQ = NewEventQ(0)
 			mgr.jobQueues[event.JobStatus.Id] = eventQ
-			jobHandler, err := NewHandler(mgr.dbService, event.JobStatus.Id, eventQ, mgr.jobQueues, mgr.mutexQ,
-				mgr.notifier, mgr.jobParams, mgr.platform)
+			jobHandler, err := NewHandler(defaultHandler, mgr.dbService, event.JobStatus.Id,
+				eventQ, mgr.jobQueues, mgr.mutexQ, mgr.notifier, mgr.jobParams, mgr.platform)
 			if err != nil {
 				mgr.mutexQ.Unlock()
 				zap.S().Warnf("Failed to create a job handler: %v", err)

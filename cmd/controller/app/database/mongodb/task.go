@@ -201,6 +201,27 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 	return nil
 }
 
+// UpdateTaskStatusIfState updates the status of tasks on a particular state in a job.
+// The function should be only called by a system; hence, this function shouldn't become open to user API
+func (db *MongoService) UpdateTaskStateByFilter(jobId string, newState openapi.JobState, userFilter map[string]interface{}) error {
+	filter := bson.M{util.DBFieldJobId: jobId}
+	for k, v := range userFilter {
+		filter[k] = v
+	}
+
+	setElements := bson.M{util.DBFieldState: newState, util.DBFieldTimestamp: time.Now()}
+
+	update := bson.M{"$set": setElements}
+
+	_, err := db.taskCollection.UpdateMany(context.TODO(), filter, update)
+	if err != nil {
+		zap.S().Warnf("Failed to update task state with filter %v: %v", userFilter, err)
+		return err
+	}
+
+	return nil
+}
+
 // IsOneTaskInState returns true if the state of at least one task is set to the given state.
 // Otherwise, it returns false.
 func (db *MongoService) IsOneTaskInState(jobId string, state openapi.JobState) bool {
@@ -228,7 +249,7 @@ func (db *MongoService) IsOneTaskInStateWithRole(jobId string, state openapi.Job
 }
 
 func (db *MongoService) SetTaskDirtyFlag(jobId string, dirty bool) error {
-	zap.S().Infof("Setting dirty flag to %s tasks for job: %s", dirty, jobId)
+	zap.S().Infof("Setting dirty flag %t for tasks of job: %s", dirty, jobId)
 
 	filter := bson.M{util.DBFieldJobId: jobId}
 	update := bson.M{
