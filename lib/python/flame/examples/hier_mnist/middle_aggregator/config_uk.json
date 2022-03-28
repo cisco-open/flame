@@ -66,8 +66,8 @@
 	"uri": "http://mlflow:5000"
     },
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+	"sort": "random",
+	"kwargs": {"k": 1}
     },
     "maxRunTime": 300,
     "realm": "uk/london/org2/flame",

@@ -45,7 +45,6 @@ class ChannelManager(object):
 
     _backend = None
     _discovery_client = None
-    _selector = None
 
     def __new__(cls):
         """Create a singleton instance."""
@@ -65,9 +64,6 @@ class ChannelManager(object):
 
         with background_thread_loop() as loop:
             self._loop = loop
-
-        self._selector = selector_provider.get(self._config.selector.sort,
-                                               **self._config.selector.kwargs)
 
         self._backend = backend_provider.get(self._config.backend)
         broker = self._config.brokers.sort_to_host[self._config.backend]
@@ -113,66 +109,12 @@ class ChannelManager(object):
 
         groupby = channel_config.groupby.groupable_value(self._config.realm)
 
-        self._channels[name] = Channel(self._backend, self._selector,
+        selector = selector_provider.get(self._config.selector.sort,
+                                         **self._config.selector.kwargs)
+
+        self._channels[name] = Channel(self._backend, selector,
                                        self._job_id, name, me, other, groupby)
         self._channels[name].join()
-
-    # TODO: groupby feature with non-mqtt backend should be implemented
-    # TODO: _join_non_mqtt() is non-functioning deprecated code;
-    #       now it's not called; remove or refactor it
-    def _join_non_mqtt(self, name):
-        """Join a channel when backend is not mqtt."""
-        coro = self._discovery_client.connect()
-        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
-        if not status:
-            return False
-
-        coro = self._discovery_client.register(self._job_id, name, self._role,
-                                               self._backend.uid(),
-                                               self._backend.endpoint())
-        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
-        if status:
-            self._channels[name] = Channel(self._backend, self._selector,
-                                           self._job_id, name)
-            self._backend.attach_channel(self._channels[name])
-        else:
-            return False
-
-        coro = self._discovery_client.get(self._job_id, name)
-        channel_info, status = run_async(coro, self._loop,
-                                         DEFAULT_RUN_ASYNC_WAIT_TIME)
-        if not status:
-            return False
-
-        # connect to other ends to complete join to channels
-        for role, end_id, endpoint in channel_info:
-            # the same backend id; skip
-            if end_id is self._backend.uid():
-                continue
-
-            channel_config = self._config.channels[name]
-            one = channel_config.pair[0]
-            other = channel_config.pair[1]
-
-            # doesn't match channel config; skip connection
-            if ((one != self._role or other != role)
-                    and (one != role or other != self._role)):
-                continue
-
-            # connect to endpoint
-            self._backend.connect(end_id, endpoint)
-
-            # notify end_id of the channel handled by the backend
-            self._backend.notify(end_id, name)
-
-            # update channel
-            coro = self._channels[name].add(end_id)
-            _ = run_async(coro, self._backend.loop())
-
-        coro = self._discovery_client.close()
-        _ = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
-
-        return True
 
     def leave(self, name):
         """Leave a channel."""
