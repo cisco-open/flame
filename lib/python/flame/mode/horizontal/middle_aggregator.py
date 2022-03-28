@@ -82,6 +82,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         self.optimizer = optimizer_provider.get(self.config.optimizer)
 
+        self._round = 1
         self._work_done = False
 
         self.cache = Cache()
@@ -188,6 +189,19 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         channel.send(end, data)
         logger.debug("sending weights done")
 
+    def increment_round(self):
+        """Increment the round counter."""
+        logger.debug(f"Incrementing current round: {self._round}")
+        self._round += 1
+        
+        channel = self.cm.get_by_tag(self.dist_tag)
+        if not channel:
+            logger.debug(f"channel not found for tag {self.dist_tag}")
+            return
+
+        # set necessary properties to help channel decide how to select ends
+        channel.set_property("round", self._round)
+
     def inform_end_of_training(self) -> None:
         """Inform all the trainers that the training is finished."""
         channel = self.cm.get_by_tag(self.dist_tag)
@@ -235,13 +249,15 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
             task_analysis = Tasklet(self.run_analysis)
 
+            task_increment_round = Tasklet(self.increment_round)
+
             task_end_of_training = Tasklet(self.inform_end_of_training)
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
         task_internal_init >> task_init >> loop(
             task_load_data >> task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload 
-            >> task_eval >> task_analysis 
+            >> task_eval >> task_analysis >> task_increment_round 
         ) >> task_end_of_training 
 
     def run(self) -> None:
