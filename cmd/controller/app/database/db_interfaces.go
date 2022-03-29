@@ -71,9 +71,10 @@ type TaskService interface {
 	CreateTasks([]objects.Task, bool) error
 	DeleteTasks(string, bool) error
 	GetTask(string, string, string) (map[string][]byte, error)
-	UpdateTaskStatus(string, string, openapi.TaskStatus) error
 	IsOneTaskInState(string, openapi.JobState) bool
 	IsOneTaskInStateWithRole(string, openapi.JobState, string) bool
-	SetTaskDirtyFlag(string, bool) error
 	MonitorTasks(string) (chan openapi.TaskInfo, chan error, context.CancelFunc, error)
+	SetTaskDirtyFlag(string, bool) error
+	UpdateTaskStateByFilter(string, openapi.JobState, map[string]interface{}) error
+	UpdateTaskStatus(string, string, openapi.TaskStatus) error
 }
