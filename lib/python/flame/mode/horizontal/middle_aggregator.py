@@ -24,7 +24,7 @@ from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
-from ...plugin import PluginManager, PluginType
+from ...plugin import PluginManager
 from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
@@ -47,25 +47,6 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
     @abstract_attribute
     def config(self):
         """Abstract attribute for config object."""
-
-    def metrics(self):
-        """
-        Abstract attribute for metrics object.
-
-        metrics must be the form of dict(str, float).
-        """
-
-    @abstract_attribute
-    def model(self):
-        """Abstract attribute for model object."""
-
-    @abstract_attribute
-    def dataset(self):
-        """
-        Abstract attribute for datset.
-
-        dataset's type is Dataset (in flame/dataset.py).
-        """
 
     @abstract_attribute
     def dataset_size(self):
@@ -211,21 +192,6 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         channel.broadcast({MessageType.EOT: self._work_done})
 
-    def run_analysis(self):
-        """Run analysis plugins and update results to metrics."""
-        logger.debug("running analyzer plugins")
-
-        plugins = self.plugin_manager.get_plugins(PluginType.ANALYZER)
-        for plugin in plugins:
-            # get callback function and call it
-            func = plugin.callback()
-            metrics = func(self.model, self.dataset)
-            if not metrics:
-                continue
-
-            # merge metrics with the existing metrics
-            self.metrics = self.metrics | metrics
-
     def compose(self) -> None:
         """Compose role with tasklets."""
         with Composer() as composer:
@@ -247,8 +213,6 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
             task_eval = Tasklet(self.evaluate)
 
-            task_analysis = Tasklet(self.run_analysis)
-
             task_increment_round = Tasklet(self.increment_round)
 
             task_end_of_training = Tasklet(self.inform_end_of_training)
@@ -257,7 +221,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         loop = Loop(loop_check_fn=lambda: self._work_done)
         task_internal_init >> task_init >> loop(
             task_load_data >> task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload 
-            >> task_eval >> task_analysis >> task_increment_round 
+            >> task_eval >> task_increment_round 
         ) >> task_end_of_training 
 
     def run(self) -> None:
