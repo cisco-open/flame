@@ -1,3 +1,16 @@
+---
+run:
+  concurrency: 6
+  deadline: 5m
+  skip-dirs:
+    - test/testdata_etc
+    - internal/cache
+    - internal/renameio
+    - internal/robustio
+  skip-files:
+    - ".*\\_test\\.go$"
+    - pkg/openapi/helpers.go
+
 linters-settings:
   depguard:
     list-type: blacklist
@@ -122,17 +135,6 @@ issues:
     - linters:
         - gocritic
       text: "unnecessaryDefer:"
-
-run:
-  skip-dirs:
-    - test/testdata_etc
-    - internal/cache
-    - internal/renameio
-    - internal/robustio
-
-  skip-files:
-    - ".*\\_test\\.go$"
-    - pkg/openapi/helpers.go
 
 # golangci.com configuration
 # https://github.com/golangci/golangci/wiki/Configuration
