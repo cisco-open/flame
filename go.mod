@@ -9,7 +9,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/common v0.10.0
 	github.com/spf13/afero v1.6.0
-	github.com/spf13/cobra v1.2.1
+	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.0
 	go.mongodb.org/mongo-driver v1.5.3
 	go.uber.org/zap v1.17.0
