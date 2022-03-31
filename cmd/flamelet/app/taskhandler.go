@@ -29,6 +29,7 @@ import (
 	backoff "github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cisco-open/flame/pkg/openapi"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
@@ -102,7 +103,7 @@ func (t *taskHandler) doStart() {
 
 func (t *taskHandler) connect() error {
 	// dial server
-	conn, err := grpc.Dial(t.notifierEp, grpc.WithInsecure())
+	conn, err := grpc.Dial(t.notifierEp, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		zap.S().Debugf("Cannot connect with notifier: %v", err)
 		return err
