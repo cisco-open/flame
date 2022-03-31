@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM golang:1.16.4-buster AS golang-build
+FROM golang:1.17.8-buster AS golang-build
 WORKDIR /src
 ENV CGO_ENABLED=0
 RUN --mount=target=. \
