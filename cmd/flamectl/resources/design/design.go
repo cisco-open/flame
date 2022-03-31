@@ -21,7 +21,6 @@ import (
 	"os"
 
 	"github.com/olekukonko/tablewriter"
-	"github.com/prometheus/common/log"
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -81,7 +80,7 @@ func Get(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		log.Warnf("error while formating json: %v", err)
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
 
 		fmt.Println(string(responseBody))
 	} else {
