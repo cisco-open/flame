@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	github.com/cbroglie/mustache v1.3.0
-	github.com/cenkalti/backoff/v4 v4.1.1
+	github.com/cenkalti/backoff/v4 v4.1.2
 	github.com/gorilla/mux v1.8.0
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/prometheus/common v0.10.0
