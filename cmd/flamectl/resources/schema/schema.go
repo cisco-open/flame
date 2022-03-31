@@ -24,7 +24,6 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
-	"github.com/prometheus/common/log"
 )
 
 type Params struct {
@@ -88,7 +87,7 @@ func Get(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		log.Warnf("error while formating json: %v", err)
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
 
 		fmt.Println(string(responseBody))
 	} else {
@@ -116,7 +115,7 @@ func GetMany(params Params) error {
 	// format the output into prettyJson format
 	prettyJSON, err := util.FormatJSON(responseBody)
 	if err != nil {
-		log.Warnf("error while formating json: %v", err)
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
 
 		fmt.Println(string(responseBody))
 	} else {
