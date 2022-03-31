@@ -18,16 +18,27 @@
 
 go install github.com/google/addlicense@v1.0.0
 
-LICENSE_FILE=license.tmp
+BASE_FILE=license_header.txt
+TMP_FILE=header.tmp
 
 # update year
 year=$(date +'%Y')
-cat ../LICENSE | sed -e "s/2021/${year}/" > ${LICENSE_FILE}
+cat ${BASE_FILE} | sed -e "s/2022/${year}/" > ${TMP_FILE}
 
-# add license for go files
-find .. -type f -name *.go -exec ${HOME}/go/bin/addlicense -f ${LICENSE_FILE} '{}' +
+pushd ..
 
-# add license for python files
-find .. -type f -name *.py -exec ${HOME}/go/bin/addlicense -f ${LICENSE_FILE} '{}' +
+FILE_EXTS=(go html proto py yaml yml)
+for ext in ${FILE_EXTS[*]}; do
+    find . -not -path '*/.*' -type f -name *.${ext} \
+	 -exec ${HOME}/go/bin/addlicense -f ./scripts/${TMP_FILE} '{}' +
+done
 
-rm -f ${LICENSE_FILE}
+FILES=(Dockerfile)
+for file in ${FILES[*]}; do
+    find . -not -path '*/.*' -type f -name ${file} \
+	 -exec ${HOME}/go/bin/addlicense -f ./scripts/${TMP_FILE} '{}' +
+done
+
+popd
+
+rm -f ${TMP_FILE}
