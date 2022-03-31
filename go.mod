@@ -11,7 +11,7 @@ require (
 	github.com/spf13/afero v1.8.2
 	github.com/spf13/cobra v1.4.0
 	github.com/stretchr/testify v1.7.1
-	go.mongodb.org/mongo-driver v1.5.3
+	go.mongodb.org/mongo-driver v1.8.4
 	go.uber.org/zap v1.21.0
 	google.golang.org/grpc v1.38.0
 	google.golang.org/protobuf v1.27.0
