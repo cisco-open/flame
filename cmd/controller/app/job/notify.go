@@ -21,6 +21,7 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
@@ -37,7 +38,7 @@ func newNotifyClient(endpoint string) *notifyClient {
 
 // sendNotification sends a notification request to the notifier
 func (nc *notifyClient) sendNotification(req *pbNotify.EventRequest) (*pbNotify.Response, error) {
-	conn, err := grpc.Dial(nc.endpoint, grpc.WithInsecure())
+	conn, err := grpc.Dial(nc.endpoint, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to notifier: %v", err)
 	}
