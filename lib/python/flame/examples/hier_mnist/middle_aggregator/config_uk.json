@@ -11,8 +11,10 @@
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
             "groupBy": {
-                "type": "",
-                "value": null
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
             },
             "name": "global-channel",
             "pair": [
@@ -29,8 +31,8 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-					"us/west/org1",
-					"uk/london/org2"
+					"default/us/west/org1",
+					"default/uk/london/org2"
 				]
             },
             "name": "param-channel",

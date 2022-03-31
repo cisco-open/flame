@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-The target runtime environment is Linux. Development has been mainly conducted under macOS environment. For now, this section describes how to set up a development environment in macOS.
+The target runtime environment is Linux. Development has been mainly conducted under macOS environment. For now, this section describes how to set up a development environment in macOS (Intel chip).
 
 The following tools and packages are needed as minimum:
 - go 1.16+
@@ -13,7 +13,7 @@ The following shows how to install the above packages in macOS environments.
 `brew` is a package management tool in macOS. To install `brew`, refer to [here](https://docs.brew.sh/Installation).
 Depending on Linux distributions, several package managers such as `apt`, `yum`, etc. can be used.
 
-```
+```bash
 brew install go
 brew install golangci-lint
 pyenv install 3.9.6

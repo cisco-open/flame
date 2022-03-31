@@ -9,7 +9,7 @@ The vision of Flame is to democratize federated learning (FL). In that regard, i
 As FL is a fast evolving technology, Flame tries to decouple the development of a machine learning workload from its deployment and management.
 With Flame, a diverse of set of topologies (e.g., central, hierarchical, vertical, hybrid, etc.) can be easily composed
 and different backend communication protocols (e.g., mqtt) can be supported.
-We cover these core functionalities of Flame [[here|Flame Basics]].
+We cover these core functionalities of Flame [here](05-flame-basics.md).
 
 ## Overview
 

@@ -52,12 +52,12 @@ As mentioned earlier, a role is associated with executable code.
 When a role attached to a channel, the role expresses what actions (i.e., functions) it takes on the channel, which is achieved via funcTags attribute.
 We will discuss how to use funcTags correctly in the later part.
 
-### TAG Example: Two-Tier Topology
+### TAG Example 1: Two-Tier Topology
 In flame, a topology is expressed within a concept called *schema*. 
 A schema is a resuable component as a template.
 The following presents a simple two-tier cross-device topology.
 
-```
+```json
 {
     "name": "A sample schema",
     "description": "a sample schema to demostrate a TAG layout",
@@ -80,7 +80,12 @@ The following presents a simple two-tier cross-device topology.
 				"trainer",
 				"aggregator"
 			],
-			"groupBy": null,
+			"groupBy": {
+			"type": "tag",
+			"value": [
+				"default"
+			]
+		    },
 			"funcTags": {
 				"trainer": ["fetch", "upload"],
 				"aggregator": ["distribute", "aggregate"]
@@ -94,7 +99,7 @@ In the above schema, there are two roles: *aggregator* and *trainer*.
 For *trainer*, *isDataconsumer* attribute is set.
 This implies that the role *trainer* conducts data processing (e.g., training).
 When datasets are selected (more details [here (not yet updated)]()), each dataset is associated with one worker of the role with the attribute set.
-Therefore, in the flame system, the number of datasets will drive the number of data-consuming workers (e.g., trainer in this case).
+Therefore, in the flame system, **the number of datasets will drive the number of data-consuming workers** (e.g., trainer in this case).
 Subsequently, the number of non data-consuming workers is derived from the entries in the *groupBy* feature (more on [later]()).
 
 Now let's look at channels. Channels are expressed as a list. A channel consits of four key attributes: *name*, *pair*, *groupBy* and *funcTags*.
@@ -112,7 +117,7 @@ so that the users can specify it in the schema. Therefore, it allows more comple
 
 To ease the specification of function tags, an implementation of a role defines a class method called `get_func_tags(cls)`.
 For example, in `lib/python/flame/mode/horizontal/aggregator.py`, the following class function is implemented in the class Aggregator:
-```
+```python
 @classmethod
 def get_func_tags(cls) -> list[str]:
 	"""Return a list of function tags defined in the aggregator role."""
@@ -127,68 +132,76 @@ With the above configuration, the deployed topology looks like as follows.
 
 <p align="center"><img src="images/two_tier_topo.png" alt="Two-tier topology" height="150px" /></p>
 
-### TAG Example: Hierarchical Topology
+### TAG Example 2: Hierarchical Topology
 
 The hierarchical topology is very similar to the simple two-tier topology except that the hierarchical topology requires *groupBy* attribute.
 
-```
+```json
 {
-    "name": "hierarchical topology schema",
-    "description": "a sample schema for expressing hierarchical topology",
+    "name": "A simple example schema v1.0.1",
+    "description": "a sample schema to demostrate the hierarchical FL setting",
     "roles": [
 		{
-			"name": "trainer",
-			"isDataConsumer": true
+	    	"name": "trainer",
+		    "description": "It consumes the data and trains local model",
+		    "isDataConsumer": true
 		},
 		{
-			"name": "int-agg",
+		    "name": "middle-aggregator",
+		    "description": "It aggregates the updates from trainers"
 		},
 		{
-			"name": "global-agg",
+		    "name": "top-aggregator",
+	    	"description": "It aggregates the updates from middle-aggregator"
 		}
     ],
     "channels": [
 		{
-			"name": "global-channel",
-			"description": "For information exchange between intermediate aggregator and global aggregator",
-			"pair": [
-				"global-agg",
-				"int-agg"
-			],
-			"groupBy": null,
-			"funcTags": {
-				"global-agg": ["distribute", "aggregate"],
-				"int-agg": ["fetch", "upload"]
+		    "name": "param-channel",
+		    "description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+		    "pair": [
+				"trainer",
+				"middle-aggregator"
+	    	],
+	    	"groupBy": {
+			"type": "tag",
+			"value": [
+				"default/us",
+				"default/europe",
+				"default/asia"
+			]
+	    	},
+	    	"funcTags": {
+			"trainer": ["fetch", "upload"],
+			"middle-aggregator": ["distribute", "aggregate"]
 			}
 		},
 		{
-			"name": "param-channel",
-			"description": "Model update is sent from trainer to aggregator and vice-versa",
-			"pair": [
-				"trainer",
-				"int-agg"
-			],
-			"groupBy": {
-				"type": "tag",
-				"value": [
-					"us",
-					"europe",
-					"asia"
-				]
-			},
-			"funcTags": {
-				"trainer": ["fetch", "upload"],
-				"aggregator": ["distribute", "aggregate"]
-			}
+		    "name": "global-channel",
+		    "description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+		    "pair": [
+				"top-aggregator",
+				"middle-aggregator"
+	    	],
+		    "groupBy": {
+			"type": "tag",
+			"value": [
+				"default"
+			]
+		    },
+		    "funcTags": {
+			"top-aggregator": ["distribute", "aggregate"],
+			"middle-aggregator": ["fetch", "upload"]
+		    }
 		}
     ]
 }
 ```
 
-In *roles*, three roles are defined: *global-agg*, *int-agg* and *trainer*.
+In *roles*, three roles are defined: *top-aggregator*, *middle-aggregator* and *trainer*.
 To express a three-tier hierarchical topology, we define two channels; one is global-channel and the other is param-channel.
-In contrast to the two-tier topology, the role trainer now connects to the role int-agg (intermediate aggregator)
-via param-channel and the role int-agg connects to the role global-agg (global aggregator) via global-channel.
+In contrast to the two-tier topology, the role trainer now connects to the role middle-aggregator (intermediate aggregator)
+via param-channel and the role middle-aggregator connects to the role top-aggregator (global aggregator) via global-channel.
 
 In the param-channel, *groupBy* attribute is specified. *groupBy* has two elements: *type* and *value*.
 *type* is used to determine a grouping method. Currently, only tag-based (i.e., label-based) grouping method is supported.
@@ -197,6 +210,9 @@ The above example uses "us", "europe" and "asia" as labels and is visualized as 
 
 <p align="center"><img src="images/hierarchical_topo.png" alt="Hierarchical topology" width="600px" /></p>
 
+### How to move from 2-tier to Hierarchical Topology
+From 2-tier to hierarchical (e.g., 3-tier), you need to have one more role in between top aggreagator and trainer, so you add middle aggreagator into the topology (i.e., schema), which also require you to define new channels connecting between each two roles. In order for the hierarchical concept to work, the `groupBy` of upstream channel shouldn't be more specific than the downstream channel.
+Likewise, when you want to expand to 4-tier topology, you will need a new channel definition connecting between two middle aggregators.
 
 However, it is still unclear how workers are grouped together at run time.
 A brief answer is as follows: in the flame system, before workers are created, they are configured with an attribute called *realm*.

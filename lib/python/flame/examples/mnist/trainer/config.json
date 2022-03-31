@@ -11,8 +11,10 @@
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",
             "groupBy": {
-                "type": "",
-                "value": null
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
             },
             "name": "param-channel",
             "pair": [
