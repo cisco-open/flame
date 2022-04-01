@@ -193,8 +193,25 @@ func Start(params Params) error {
 }
 
 func Stop(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobStatusEndPoint, uriMap)
+
+	jobStatus := openapi.JobStatus{
+		Id:    params.JobId,
+		State: openapi.STOPPING,
+	}
+
+	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to stop a job - code: %d, error: %v\n", code, err)
+		return nil
+	}
+
+	fmt.Printf("Request to stop a job successful\n")
 
 	return nil
 }
