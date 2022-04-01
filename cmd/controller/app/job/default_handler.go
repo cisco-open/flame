@@ -153,8 +153,6 @@ func (h *DefaultHandler) doHandle(event *JobEvent) {
 	// the following six states are managed/updated by controller internally
 	// user cannot directly set these states
 	case openapi.READY:
-		fallthrough
-	case openapi.TERMINATED:
 		event.ErrCh <- fmt.Errorf("state update operation not allowed")
 
 	case openapi.STARTING:
@@ -174,6 +172,9 @@ func (h *DefaultHandler) doHandle(event *JobEvent) {
 
 	case openapi.STOPPING:
 		h.state.Stop(event)
+
+	case openapi.TERMINATED:
+		h.state.CleanUp()
 
 	case openapi.APPLYING:
 		h.state.Update(event)

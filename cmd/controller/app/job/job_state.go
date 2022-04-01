@@ -206,18 +206,20 @@ func (s *StateReady) Start(event *JobEvent) {
 	// the job will be scheduled.
 	event.ErrCh <- nil
 
+	s.hdlr.ChangeState(NewStateStarting(s.hdlr))
+
 	event.JobStatus.State = openapi.DEPLOYING
 	s.hdlr.sysEventQ.Enqueue(event)
-	s.hdlr.ChangeState(NewStateStarting(s.hdlr))
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
 func (s *StateStarting) Deploy(event *JobEvent) {
 	setJobFailure := func() {
+		s.hdlr.ChangeState(s)
+
 		event.JobStatus.State = openapi.FAILED
 		s.hdlr.sysEventQ.Enqueue(event)
-		s.hdlr.ChangeState(s)
 	}
 
 	// spin up compute resources
@@ -238,7 +240,6 @@ func (s *StateStarting) Deploy(event *JobEvent) {
 		return
 	}
 
-	event.JobStatus.State = openapi.DEPLOYING
 	_ = s.hdlr.dbService.UpdateJobStatus(event.Requester, event.JobStatus.Id, event.JobStatus)
 
 	s.hdlr.ChangeState(NewStateDeploying(s.hdlr))
@@ -253,7 +254,7 @@ func (s *StateStarting) Fail() {
 func (s *StateStarting) Timeout() {
 	zap.S().Infof("Timeout triggered for job %s at %s state", s.hdlr.jobId, openapi.STARTING)
 
-	setTimeout(s.hdlr)
+	setTerminated(s.hdlr)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -267,19 +268,21 @@ func (s *StateDeploying) Fail() {
 func (s *StateDeploying) Run(event *JobEvent) {
 	zap.S().Infof("Run() for Job %s at %s state", s.hdlr.jobId, openapi.DEPLOYING)
 
-	_ = s.hdlr.dbService.UpdateJobStatus(s.hdlr.jobSpec.UserId, s.hdlr.jobId, openapi.JobStatus{State: openapi.RUNNING})
+	_ = s.hdlr.dbService.UpdateJobStatus(s.hdlr.jobSpec.UserId, s.hdlr.jobId, event.JobStatus)
 
 	s.hdlr.ChangeState(NewStateRunning(s.hdlr))
 }
 
 func (s *StateDeploying) Stop(event *JobEvent) {
-	zap.S().Warnf("%s state: Stop not yet implemented", openapi.DEPLOYING)
+	zap.S().Infof("Stop() for Job %s at %s state", s.hdlr.jobId, openapi.DEPLOYING)
+
+	transitionToStopping(s.hdlr, event)
 }
 
 func (s *StateDeploying) Timeout() {
 	zap.S().Infof("Timeout triggered for job %s at %s state", s.hdlr.jobId, openapi.DEPLOYING)
 
-	setTimeout(s.hdlr)
+	setTerminated(s.hdlr)
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -302,53 +305,65 @@ func (s *StateRunning) Fail() {
 }
 
 func (s *StateRunning) Stop(event *JobEvent) {
-	zap.S().Warnf("%s state: Stop not yet implemented", openapi.RUNNING)
+	zap.S().Infof("Stop() for Job %s at %s state", s.hdlr.jobId, openapi.RUNNING)
+
+	transitionToStopping(s.hdlr, event)
 }
 
 func (s *StateRunning) Timeout() {
 	zap.S().Infof("Timeout triggered for job %s at %s state", s.hdlr.jobId, openapi.RUNNING)
 
-	setTimeout(s.hdlr)
+	setTerminated(s.hdlr)
 }
 
 func (s *StateRunning) Update(event *JobEvent) {
 	zap.S().Warnf("%s state: Update not yet implemented", openapi.RUNNING)
+
+	event.ErrCh <- nil
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (s *StateStopping) ApplyChange()           {}
-func (s *StateStopping) ApplyNone()             {}
-func (s *StateStopping) CleanUp()               {}
-func (s *StateStopping) Complete()              {}
-func (s *StateStopping) Deploy(event *JobEvent) {}
-func (s *StateStopping) Fail()                  {}
-func (s *StateStopping) Run(event *JobEvent)    {}
-func (s *StateStopping) Start(event *JobEvent)  {}
-func (s *StateStopping) Stop(event *JobEvent)   {}
-func (s *StateStopping) Timeout()               {}
-func (s *StateStopping) Update(event *JobEvent) {}
+func (s *StateStopping) CleanUp() {
+	zap.S().Infof("Cleanup() for job %s at %s state", s.hdlr.jobId, openapi.STOPPING)
+
+	setTerminated(s.hdlr)
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 
-func (s *StateApplying) ApplyChange()           {}
-func (s *StateApplying) ApplyNone()             {}
-func (s *StateApplying) CleanUp()               {}
-func (s *StateApplying) Complete()              {}
-func (s *StateApplying) Deploy(event *JobEvent) {}
-func (s *StateApplying) Fail()                  {}
-func (s *StateApplying) Run(event *JobEvent)    {}
-func (s *StateApplying) Start(event *JobEvent)  {}
-func (s *StateApplying) Stop(event *JobEvent)   {}
+func (s *StateApplying) ApplyChange() {
+	zap.S().Warnf("%s state: ApplyChange not yet implemented", openapi.APPLYING)
+}
+
+func (s *StateApplying) ApplyNone() {
+	zap.S().Warnf("%s state: ApplyNone not yet implemented", openapi.APPLYING)
+}
+
+func (s *StateApplying) Stop(event *JobEvent) {
+	zap.S().Infof("Stop() for Job %s at %s state", s.hdlr.jobId, openapi.APPLYING)
+
+	transitionToStopping(s.hdlr, event)
+}
+
 func (s *StateApplying) Timeout() {
 	zap.S().Infof("Timeout triggered for job %s at %s state", s.hdlr.jobId, openapi.APPLYING)
 
-	setTimeout(s.hdlr)
+	setTerminated(s.hdlr)
 }
 
-func (s *StateApplying) Update(event *JobEvent) {}
-
 ///////////////////////////////////////////////////////////////////////////////
+
+func transitionToStopping(h *DefaultHandler, event *JobEvent) {
+	event.ErrCh <- nil
+
+	_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, event.JobStatus)
+
+	h.ChangeState(NewStateStopping(h))
+
+	event.JobStatus.State = openapi.TERMINATED
+	h.sysEventQ.Enqueue(event)
+}
 
 func setFail(h *DefaultHandler) {
 	setTaskStateToTerminated(h)
@@ -360,7 +375,7 @@ func setFail(h *DefaultHandler) {
 	h.isDone <- true
 }
 
-func setTimeout(h *DefaultHandler) {
+func setTerminated(h *DefaultHandler) {
 	setTaskStateToTerminated(h)
 
 	_ = h.dbService.UpdateJobStatus(h.jobSpec.UserId, h.jobId, openapi.JobStatus{State: openapi.TERMINATED})
