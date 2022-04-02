@@ -202,7 +202,7 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 	return nil
 }
 
-// UpdateTaskStatusIfState updates the status of tasks on a particular state in a job.
+// UpdateTaskStateByFilter updates the status of tasks on a particular state in a job.
 // The function should be only called by a system; hence, this function shouldn't become open to user API
 func (db *MongoService) UpdateTaskStateByFilter(jobId string, newState openapi.JobState, userFilter map[string]interface{}) error {
 	filter := bson.M{util.DBFieldJobId: jobId}
@@ -268,8 +268,11 @@ func (db *MongoService) SetTaskDirtyFlag(jobId string, dirty bool) error {
 	return nil
 }
 
+// MonitorTasks creates and returns a watcher to monitor state changes of tasks in a job
 func (db *MongoService) MonitorTasks(jobId string) (chan openapi.TaskInfo, chan error, context.CancelFunc, error) {
 	jobIdField := fmt.Sprintf("fullDocument.%s", util.DBFieldJobId)
+	stateField := fmt.Sprintf("updateDescription.updatedFields.%s", util.DBFieldState)
+
 	pipeline := mongo.Pipeline{
 		bson.D{{
 			Key: "$match",
@@ -277,6 +280,7 @@ func (db *MongoService) MonitorTasks(jobId string) (chan openapi.TaskInfo, chan 
 				Key: "$and",
 				Value: bson.A{
 					bson.D{{Key: jobIdField, Value: jobId}},
+					bson.D{{Key: stateField, Value: bson.M{"$exists": true}}},
 					bson.D{{Key: "operationType", Value: "update"}},
 				},
 			}},
