@@ -24,7 +24,7 @@
 	    "groupBy": {
 		"type": "tag",
 		"value": [
-		    "default/us/west"
+		    "default"
 		]
 	    },
 	    "funcTags": {

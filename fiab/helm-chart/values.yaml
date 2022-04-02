@@ -45,6 +45,10 @@ mongodb:
   #   create: true
   #######
 
-  # replicaCount: 2
-  # arbiter:
-  #   enabled: false
+broker:
+  sort: mqtt
+  host: mosquitto
+
+registry:
+  sort: mlflow
+  uri: http://mlflow:5000

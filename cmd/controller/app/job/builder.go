@@ -31,9 +31,10 @@ import (
 )
 
 const (
-	realmSep     = "/"
-	defaultRealm = "default"
-	taskKeyLen   = 32
+	realmSep       = "/"
+	defaultGroup   = "default"
+	groupByTypeTag = "tag"
+	taskKeyLen     = 32
 
 	emptyTaskKey    = ""
 	emptyDatasetUrl = ""
@@ -174,6 +175,17 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		JobConfig := &template.JobConfig
 
 		JobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
+
+		// check channels and set default group if channels don't have groupby attributes set
+		for i := range JobConfig.Channels {
+			if len(JobConfig.Channels[i].GroupBy.Value) > 0 {
+				continue
+			}
+
+			// since there is no groupby attribute, set default
+			JobConfig.Channels[i].GroupBy.Type = groupByTypeTag
+			JobConfig.Channels[i].GroupBy.Value = append(JobConfig.Channels[i].GroupBy.Value, defaultGroup)
+		}
 
 		template.isDataConsumer = role.IsDataConsumer
 		if role.IsDataConsumer {
@@ -444,10 +456,10 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 		// TODO: currently, one data role is assumed; therefore, datasets are used for one data role.
 		//       to support more than one data role, datasets should be associated with each role.
 		//       this needs job spec modification.
-		for realm, count := range userDatasetKV {
+		for group, count := range userDatasetKV {
 			for i := 0; i < int(count); i++ {
 				task := tmpl.Task
-				task.Configure(openapi.USER, emptyTaskKey, realm, emptyDatasetUrl, i)
+				task.Configure(openapi.USER, emptyTaskKey, group, emptyDatasetUrl, i)
 				tasks = append(tasks, task)
 			}
 		}
@@ -472,20 +484,6 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			realm := channel.GroupBy.Value[i] + realmSep + util.ProjectName
 			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), realm, emptyDatasetUrl, i)
 
-			tasks = append(tasks, task)
-		}
-
-		// Two cases are checked:
-		// case 1) no task is added to tasks (task array),
-		// which means that groupby is not specified.
-		// case 2) user-fed dataset has default realm.
-		//
-		// In either of the two cases,
-		// a task under default realm should be created
-		count, ok := userDatasetKV[defaultRealm]
-		if len(tasks) == 0 || (prevTmpl.isDataConsumer && ok && count > 0) {
-			task := tmpl.Task
-			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), defaultRealm, emptyDatasetUrl, 0)
 			tasks = append(tasks, task)
 		}
 	}

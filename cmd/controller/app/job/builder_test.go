@@ -17,11 +17,13 @@
 package job
 
 import (
+	"strings"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 
 	"github.com/cisco-open/flame/cmd/controller/config"
 	"github.com/cisco-open/flame/pkg/openapi"
-	"github.com/stretchr/testify/assert"
 )
 
 var (
@@ -49,8 +51,11 @@ var (
 				Name: "param-channel",
 				Pair: []string{"aggregator", "trainer"},
 				GroupBy: openapi.ChannelGroupBy{
-					Type:  "tag",
-					Value: []string{"uk", "us"},
+					Type: "tag",
+					Value: []string{
+						composeGroup(defaultGroup, "uk"),
+						composeGroup(defaultGroup, "us"),
+					},
 				},
 			},
 			{
@@ -67,8 +72,8 @@ var (
 	}
 
 	testDatasets = []openapi.DatasetInfo{
-		{Url: "https://someurl1.com", Realm: "us|west"},
-		{Url: "https://someurl2.com", Realm: "uk"},
+		{Url: "https://someurl1.com", Realm: composeGroup(defaultGroup, "us", "west")},
+		{Url: "https://someurl2.com", Realm: composeGroup(defaultGroup, "uk")},
 	}
 
 	testSchemaWithTwoDataConsumers = openapi.DesignSchema{
@@ -84,16 +89,22 @@ var (
 				Name: "channel1",
 				Pair: []string{"aggregator1", "trainer1"},
 				GroupBy: openapi.ChannelGroupBy{
-					Type:  "tag",
-					Value: []string{"uk", "us"},
+					Type: "tag",
+					Value: []string{
+						composeGroup(defaultGroup, "uk"),
+						composeGroup(defaultGroup, "us"),
+					},
 				},
 			},
 			{
 				Name: "channel2",
 				Pair: []string{"aggregator2", "trainer2"},
 				GroupBy: openapi.ChannelGroupBy{
-					Type:  "tag",
-					Value: []string{"uk", "us"},
+					Type: "tag",
+					Value: []string{
+						composeGroup(defaultGroup, "uk"),
+						composeGroup(defaultGroup, "us"),
+					},
 				},
 			},
 			{
@@ -110,6 +121,10 @@ var (
 		"aggregator2": []byte("some code4"),
 	}
 )
+
+func composeGroup(tokens ...string) string {
+	return strings.Join(tokens, realmSep)
+}
 
 func TestGetTaskTemplates(t *testing.T) {
 	builder := NewJobBuilder(nil, config.JobParams{})
@@ -186,7 +201,10 @@ func TestIsConverging(t *testing.T) {
 
 	// failure case
 	testSchema.Channels[1].GroupBy.Type = "tag"
-	testSchema.Channels[1].GroupBy.Value = []string{"uk", "us"}
+	testSchema.Channels[1].GroupBy.Value = []string{
+		composeGroup(defaultGroup, "uk"),
+		composeGroup(defaultGroup, "us"),
+	}
 	dataRoles, templates = builder.getTaskTemplates()
 	res = builder.isConverging(dataRoles, templates)
 	assert.False(t, res)
@@ -204,7 +222,10 @@ func TestIsConverging(t *testing.T) {
 
 	// failure case
 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = "tag"
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{"uk", "us"}
+	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{
+		composeGroup(defaultGroup, "uk"),
+		composeGroup(defaultGroup, "us"),
+	}
 	dataRoles, templates = builder.getTaskTemplates()
 	res = builder.isConverging(dataRoles, templates)
 	assert.False(t, res)
@@ -221,9 +242,11 @@ func TestWalk(t *testing.T) {
 	builder.datasets = testDatasets
 	builder.roleCode = testRoleCode
 
+	backupVal := make([]string, len(builder.schema.Channels[0].GroupBy.Value))
+	builder.schema.Channels[0].GroupBy.Value = append(builder.schema.Channels[0].GroupBy.Value, defaultGroup)
 	testCases := map[int]map[string]int32{
-		5: make(map[string]int32),
-		8: {defaultRealm: 2},
+		6: make(map[string]int32),
+		8: {defaultGroup: 2},
 	}
 
 	for numTasks, userDatasetKV := range testCases {
@@ -240,4 +263,7 @@ func TestWalk(t *testing.T) {
 		assert.Nil(t, err)
 		assert.Len(t, tasks, numTasks)
 	}
+
+	// reset the change
+	builder.schema.Channels[0].GroupBy.Value = backupVal
 }

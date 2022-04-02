@@ -29,8 +29,8 @@ data:
     jobParams:
       image: flame:latest
       brokers:
-        - sort: mqtt
-          host: mosquitto
+        - sort: {{ .Values.broker.sort }}
+          host: {{ .Values.broker.host }}
       registry:
-        sort: mlflow
-        uri: http://mlflow:5000
+        sort: {{ .Values.registry.sort }}
+        uri: {{ .Values.registry.uri }}
