@@ -22,20 +22,20 @@ Hence, `docker desktop` may not be free. Please checkout the [agreement](https:/
 
 
 #### Step 1
-```
+```bash
 brew install --cask docker
 ```
 
 Instead of `docker desktop`, `hyperkit` can be used as VM driver in case the `docker desktop` is not free under the new agreement.
 To use `hyperkit`,
-```
+```bash
 brew install hyperkit docker
 ```
 Here we need to install `docker` to make the docker cli tool available.
 
 #### Step 2
 Now we install `minikube`, `kubectl` and `helm` as follows.
-```
+```bash
 brew install minikube kubectl helm
 
 # optional
@@ -49,13 +49,13 @@ The fiab env was tested under Archlinux in a x86 machine.
 
 ## Starting minikube
 Run the following command to start minikube.
-```
+```bash
 minikube start
 ```
 The default resource allocation is 2 CPU, 4GB memory and 20GB disk.
 In order to change these parameters, use `--cpus`, `--memory` and `--disk-size` respectively.
 For example, 
-```
+```bash
 minikube start --cpus 4 --memory 4096m --disk-size 10000mb
 ```
 We recommend a disk space of 100GB.
@@ -64,19 +64,19 @@ We recommend a disk space of 100GB.
 ## Building flame
 A Docker daemon comes within the minikube VM. To build flame container image, set the environment variables with the following command.
 
-```
+```bash
 eval $(minikube docker-env)
 ```
 See [here](https://minikube.sigs.k8s.io/docs/handbook/pushing/#1-pushing-directly-to-the-in-cluster-docker-daemon-docker-env) for more details.
 
 To test the config, run the following:
-```
+```bash
 docker ps
 ```
 This command will show containers within the minikube.
 
 In order to build flame container image, run the following:
-```
+```bash
 ./build-image.sh
 ```
 
@@ -85,7 +85,7 @@ In order to build flame container image, run the following:
 to save time for development and testing.
 
 To check the flame image built, run `docker images`. An output is similar to:
-```
+```bash
 REPOSITORY                                TAG       IMAGE ID       CREATED          SIZE
 flame                                    latest    e3bf47cdfa66   22 seconds ago   3.96GB
 k8s.gcr.io/kube-apiserver                 v1.22.3   53224b502ea4   7 weeks ago      128MB
@@ -103,7 +103,7 @@ k8s.gcr.io/pause                          3.5       ed210e3e4a5b   9 months ago 
 
 ### Fixing docker build error
 The `build-image.sh` command may fail with an error similar to the following:
-```
+```bash
 Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io on 192.168.64.1:53: read udp 192.168.64.6:48076->192.168.64.1:53: read: connection refused
 ```
 The error might be because of [this issue](https://github.com/kubernetes/minikube/issues/3036).
@@ -112,15 +112,15 @@ refer to [here](https://gist.github.com/rscottwatson/e0e3c890b3d4aa81e46bf2993e3
 Especially, in case of dnscrypt-proxy, the following workaround is applied.
 
 First, log into the minikube vm with the following command.
-```
+```bash
 minikube ssh
 ```
 After logging into the vm, become a super user with the following command.
-```
+```bash
 sudo su -
 ```
 Now run the following:
-```
+```bash
 cat << EOF >  /var/lib/boot2docker/bootlocal.sh
 echo "DNS=8.8.8.8" >> /etc/systemd/resolved.conf 
 systemctl restart systemd-resolved
@@ -129,14 +129,14 @@ chmod 755  /var/lib/boot2docker/bootlocal.sh
 ```
 
 To apply the change, run the following after getting out of the minikube vm:
-```
+```bash
 minikube stop && minikube start
 ```
 **Note**: restarting the minikube vm may take a while. If the command hangs, press `Ctrl-C` and rerun the command.
 
 ## Starting flame
 Open a new terminal window and start the minikube tunnel with the following command:
-```
+```bash
 minikube tunnel
 ```
 The tunnel creates a routable IP for deployment.
@@ -145,17 +145,17 @@ The tunnel creates a routable IP for deployment.
 To bring up flame and its dependent applications, `helm` is used.
 A shell script to use helm is provided
 Run the following command:
-```
+```bash
 ./flame.sh start
 ```
 
 To check deployment status, run the following command:
-```
+```bash
 kubectl get pods -n flame
 ```
 
 An example output looks like the following:
-```
+```bash
 NAME                                READY   STATUS    RESTARTS       AGE
 flame-apiserver-65d8c7fcf4-kn6ck   1/1     Running   0              2m16s
 flame-controller-f6c99d8d5-5jfd9   1/1     Running   3 (112s ago)   2m16s
@@ -168,7 +168,7 @@ postgres-748c47694c-94lhh           1/1     Running   0              2m16s
 ```
 
 ## Stopping flame
-```
+```bash
 ./flame.sh stop
 ```
 Before starting flame again, make sure that all the pods in the flame namespace are deleted.
@@ -177,7 +177,7 @@ To check that, use `kubectl get pods -n flame` command.
 ## Logging into a pod
 In kubernetes, a pod is the smallest, most basic deployable object. A pod consists of at least one container instance.
 Using the pod's name (e.g., `flame-apiserver-65d8c7fcf4-z8x5b`), one can log into the running pod as follows:
-```
+```bash
 kubectl exec -it -n flame flame-apiserver-65d8c7fcf4-z8x5b -- bash
 ```
 
@@ -185,16 +185,17 @@ Logs of flame components are found at `/var/log/flame` in the instance.
 
 ## Creating flame config
 The following command creates `config.yaml` under `$HOME/.flame`.
-```
+```bash
 ./build-config.sh
 ```
 The flame CLI tool, `flamectl` uses the configuration file to interact with the flame system.
 In order to build, `flamectl`, run `make install` from the level folder (i.e., `flame`).
 This command compiles source code and installs `flamectl` binary as well as other binaries into `$HOME/.flame/bin`.
+You may want to add `export PATH="$HOME/.flame/bin:$PATH"` to your shell config (e.g., `~/.zshrc`, `~/.bashrc`) and then restart your terminal.
 
 ## Cleanup
 To terminate the fiab environment, run the following:
-```
+```bash
 minikube delete
 ```
 
