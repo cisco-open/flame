@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Federated Averaging optimizer."""
 import logging
 
@@ -49,6 +48,9 @@ class FedAvg(AbstractOptimizer):
         Return: aggregated model
         """
         logger.debug("calling fedavg")
+
+        # reset global weights before aggregation
+        self.agg_weights = None
 
         if len(cache) == 0 or total == 0:
             return None
