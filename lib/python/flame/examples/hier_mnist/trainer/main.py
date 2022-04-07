@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """HIRE_MNIST horizontal hierarchical FL trainer for Keras."""
 
 import logging
@@ -27,6 +25,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 logger = logging.getLogger(__name__)
+
 
 class KerasMnistTrainer(Trainer):
     """Keras Mnist Trainer."""
@@ -70,9 +69,6 @@ class KerasMnistTrainer(Trainer):
 
     def load_data(self) -> None:
         """Load data."""
-        if self._x_train and self._y_train:
-            return
-
         # the data, split between train and test sets
         (x_train, y_train), (_, _) = keras.datasets.mnist.load_data()
 
@@ -114,12 +110,15 @@ class KerasMnistTrainer(Trainer):
         # Implement this if testing is needed in trainer
         pass
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--config', type=str, help='config file', required=True)
+    parser.add_argument('config', nargs='?', default="./config.json")
+
     args = parser.parse_args()
+
     config = Config(args.config)
 
     t = KerasMnistTrainer(config)

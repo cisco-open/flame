@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """horizontal FL trainer."""
 
 import logging
@@ -112,9 +110,9 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_internal_init = Tasklet(self.internal_init)
 
-            task_init = Tasklet(self.initialize)
-
             task_load_data = Tasklet(self.load_data)
+
+            task_init = Tasklet(self.initialize)
 
             task_get = Tasklet(self.get, TAG_FETCH)
 
@@ -126,9 +124,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_internal_init >> task_init >> loop(
-                task_load_data >> task_get >> task_train >> task_eval >>
-                task_put)
+            task_internal_init >> task_load_data >> task_init >> loop(
+                task_get >> task_train >> task_eval >> task_put)
 
     def run(self) -> None:
         """Run role."""

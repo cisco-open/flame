@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """horizontal FL top level aggregator"""
 
 import logging
@@ -248,9 +246,9 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
-        task_internal_init >> task_init >> loop(
-            task_load_data >> task_put >> task_get >> task_train >> task_eval
-            >> task_analysis >> task_save_metrics >> task_increment_round
+        task_internal_init >> task_load_data >> task_init >> loop(
+            task_put >> task_get >> task_train >> task_eval >> task_analysis >>
+            task_save_metrics >> task_increment_round
         ) >> task_end_of_training >> task_save_params >> task_save_model
 
     def run(self) -> None:

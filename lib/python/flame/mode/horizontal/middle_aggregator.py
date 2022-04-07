@@ -13,9 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
-"""honrizontal FL middle level aggregator"""
+"""honrizontal FL middle level aggregator."""
 
 import logging
 import time
@@ -39,8 +37,12 @@ TAG_AGGREGATE = 'aggregate'
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
 
+
 class MiddleAggregator(Role, metaclass=ABCMeta):
-    """ Middle level aggregator acts as both top level aggregator and trainer."""
+    """Middle level aggregator.
+
+    It acts as a proxy between top level aggregator and trainer.
+    """
 
     @abstract_attribute
     def weights(self):
@@ -176,7 +178,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         """Increment the round counter."""
         logger.debug(f"Incrementing current round: {self._round}")
         self._round += 1
-        
+
         channel = self.cm.get_by_tag(self.dist_tag)
         if not channel:
             logger.debug(f"channel not found for tag {self.dist_tag}")
@@ -221,15 +223,15 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
-        task_internal_init >> task_init >> loop(
-            task_load_data >> task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload 
-            >> task_eval >> task_increment_round 
-        ) >> task_end_of_training 
+        task_internal_init >> task_load_data >> task_init >> loop(
+            task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload
+            >> task_eval >> task_increment_round) >> task_end_of_training
 
     def run(self) -> None:
         """Run role."""
         self.composer.run()
 
+    @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the middle level aggregator role."""
         return [TAG_DISTRIBUTE, TAG_AGGREGATE, TAG_FETCH, TAG_UPLOAD]
