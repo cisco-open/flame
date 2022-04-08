@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MNIST horizontal FL aggregator for Keras."""
 
 import logging
@@ -72,9 +71,6 @@ class KerasMnistAggregator(TopAggregator):
 
     def load_data(self) -> None:
         """Load a test dataset."""
-        if self.dataset:
-            return
-
         # the data, split between train and test sets
         (_, _), (x_test, y_test) = keras.datasets.mnist.load_data()
 

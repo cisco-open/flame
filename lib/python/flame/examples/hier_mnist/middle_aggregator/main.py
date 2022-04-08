@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """HIRE_MNIST horizontal hierarchical FL middle level aggregator for Keras."""
 
 import logging
@@ -24,6 +22,7 @@ from flame.mode.horizontal.middle_aggregator import MiddleAggregator
 from tensorflow import keras
 
 logger = logging.getLogger(__name__)
+
 
 class KerasMnistMiddleAggregator(MiddleAggregator):
     """Keras Mnist Middle Level Aggregator."""
@@ -51,12 +50,15 @@ class KerasMnistMiddleAggregator(MiddleAggregator):
         """Evaluate (test) a model."""
         pass
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--config', type=str, help='config file', required=True)
+    parser.add_argument('config', nargs='?', default="./config.json")
+
     args = parser.parse_args()
+
     config = Config(args.config)
 
     a = KerasMnistMiddleAggregator(config)

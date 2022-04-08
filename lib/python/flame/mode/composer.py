@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """flame role composer."""
 
 import logging
@@ -111,11 +110,15 @@ class Composer(object):
                 # and, we go back to the first tasklet
                 tasklet = tasklet.loop_starter
 
+                # put the tasklet that is at the start of loop
+                q.put(tasklet)
+
             elif tasklet.is_loop_done():
                 # loop exit condition is met in the middle of loop
                 # get the last tasklet and get out of the loop
                 tasklet = tasklet.get_ender()
 
+            # put unvisited children of a selected tasklet
             for child in self.chain[tasklet]:
                 if child not in visited:
                     visited.add(child)

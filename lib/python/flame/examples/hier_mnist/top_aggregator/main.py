@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """HIRE_MNIST horizontal hierarchical FL top level aggregator for Keras."""
 
 import logging
@@ -28,6 +26,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 logger = logging.getLogger(__name__)
+
 
 class KerasMnistTopAggregator(TopAggregator):
     """Keras Mnist Top Level Aggregator."""
@@ -72,9 +71,6 @@ class KerasMnistTopAggregator(TopAggregator):
 
     def load_data(self) -> None:
         """Load a test dataset."""
-        if self.dataset:
-            return
-
         # the data, split between train and test sets
         (_, _), (x_test, y_test) = keras.datasets.mnist.load_data()
 
@@ -117,12 +113,15 @@ class KerasMnistTopAggregator(TopAggregator):
         # in a model registry.
         self.metrics = {'loss': score[0], 'accuracy': score[1]}
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--config', type=str, help='config file', required=True)
+    parser.add_argument('config', nargs='?', default="./config.json")
+
     args = parser.parse_args()
+
     config = Config(args.config)
 
     a = KerasMnistTopAggregator(config)

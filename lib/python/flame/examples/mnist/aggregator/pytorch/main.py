@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MNIST horizontal FL aggregator for PyTorch.
 
 The example below is implemented based on the following example from pytorch:
@@ -90,9 +89,6 @@ class PyTorchMnistAggregator(TopAggregator):
 
     def load_data(self) -> None:
         """Load a test dataset."""
-        if self.dataset:
-            return
-
         transform = transforms.Compose([
             transforms.ToTensor(),
             transforms.Normalize((0.1307, ), (0.3081, ))

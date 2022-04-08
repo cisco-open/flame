@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MNIST horizontal FL trainer for Keras."""
 
 import logging
@@ -70,9 +69,6 @@ class KerasMnistTrainer(Trainer):
 
     def load_data(self) -> None:
         """Load data."""
-        if self._x_train and self._y_train:
-            return
-
         # the data, split between train and test sets
         (x_train, y_train), (_, _) = keras.datasets.mnist.load_data()
 
