@@ -1,31 +1,31 @@
-## MNIST in non-orchestration mode
+## Census income dataset example
 
-Here we go over how to run MNIST example in non-orchestration mode within [fiab](../../docs/03-fiab.md) environment.
+In this example, we will use a census income dataset (see [here](https://archive-beta.ics.uci.edu/ml/datasets/adult) for more details)
+and build a simple model to predict whether the income is >50K or not.
+
+We will run this example in non-orchestration mode within [fiab](../../docs/03-fiab.md) environment.
 In non-orchestration mode, participants drive participation. Hence, participants should bring their dataset along with compute.
-
-This example is almost identical to the mnist example shown [here](../mnist/README.md) with a few configuration changes.
-To see differences, use `diff`. For example, do `diff schema.json ../mnist/schema.json`.
 
 ### Step 1: create a design
 ```
-flamectl create design mnist_non_orchestration -d "mnist example for non-orchestration mode"
+flamectl create design adult -d "census income dataset example in non-orchestration mode"
 ```
 
 ### Step 2: create a schema for design mnist
 ```
-flamectl create schema schema.json --design mnist_non_orchestration
+flamectl create schema schema.json --design adult
 ```
 
 ### Step 3: create (i.e., add) mnist code to the design
 
 ```
-flamectl create code mnist.zip --design mnist_non_orchestration
+flamectl create code adult.zip --design adult
 ```
-Note: to understand relationship between schema and code, unzip mnist.zip and check the folder structure in it.
+Note: to understand relationship between schema and code, unzip adult.zip and check the folder structure in it.
 
 ### Step 4: create a job
 ```
-flamectl create job job.json
+
 ```
 If successful, this command returns the id of the created job.
 For example,
@@ -71,9 +71,19 @@ $
 ```
 
 In the above example, there is a task whose type is `user`. This task is one that can be executed by a participant, not by the Flame system.
-In contrast, another task whose type is system is managed by the Flame system.
+In contrast, the other task whose type is system is managed by the Flame system.
 
-### Step 6: start user-type task
+
+### Step 6: copy data to minikube VM
+
+Since we are running the user-type task in minikube VM, the adult dataset needs to be copied into the VM.
+```
+$ minikube ssh
+$ mkdir data && cd data
+$ curl -O https://raw.githubusercontent.com/myungjin/datasets/main/adult/train.csv
+```
+
+### Step 7: start user-type task
 
 Let's first start the user-type task. In this example, we use docker image built in minikube VM and manually run a user docker container in the VM.
 Therefore, the container is outside of the minikube cluster.
@@ -86,6 +96,7 @@ $ minikube ssh
 $ docker run \
     -e FLAME_AGENT_ID=18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 \
     -e FLAME_AGENT_KEY=any_key_chosen_by_user \
+    -v /home/docker/data:/flame/data:ro \
     --dns 10.96.0.10 \
     flame:latest \
     /usr/bin/flamelet \
@@ -101,14 +112,27 @@ $ kubectl get services -A | grep kube-dns
 kube-system   kube-dns                         ClusterIP      10.96.0.10       <none>           53/UDP,53/TCP,9153/TCP   10d
 ```
 
-### Step 7: start a job
+Note that the dataset (train.csv) in /home/docker/data is mounted into /flame/data folder.
+The argument `-v /home/docker/data:/flame/data:ro` ensures the correct mount of the data volume.
+In the example, trainer code (trainer/main.py in adult.zip) has the following line:
+```python
+data_path = os.path.join(DATA_FOLDER_PATH, "train.csv")
+```
+where `DATA_FOLDER_PATH` is `/flame/data`. Hence, the code is looking for a training dataset whose full path is /flame/data/train.csv.
+Hence, when trainer code is developed, one should carefully decide the dataset file path and mount a volume correctly.
+
+Note that these extra steps are needed in case of non-orchestration mode.
+In orchestration mode, the system and SDK will support various dataset fetchers, which automate the loading of dataset into a container.
+Dataset fetchers are not yet supported.
+
+### Step 8: start a job
 
 Assuming the id is `6131576d6667387296a5ada3`, run the following command to schedule a job.
 ```
 flamectl start job 6131576d6667387296a5ada3
 ```
 
-### Step 8: check progress
+### Step 9: check progress
 
 By running `flamectl get tasks <job_id>`, one can check the status of each task.
 

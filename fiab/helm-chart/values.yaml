@@ -47,8 +47,8 @@ mongodb:
 
 broker:
   sort: mqtt
-  host: mosquitto
+  host: mosquitto.flame.svc.cluster.local
 
 registry:
   sort: mlflow
-  uri: http://mlflow:5000
+  uri: http://mlflow.flame.svc.cluster.local:5000

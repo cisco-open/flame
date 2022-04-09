@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
+"""Constant definitions."""
 
 from enum import Enum
 
@@ -23,6 +23,9 @@ DEFAULT_RUN_ASYNC_WAIT_TIME = 10  # 10 seconds
 # backend related constants
 MQTT_TOPIC_PREFIX = '/flame'
 UNIX_SOCKET_PATH = '/tmp/local_registry.socket'
+
+# default data folder
+DATA_FOLDER_PATH = '/flame/data'
 
 
 class BackendEvent(Enum):

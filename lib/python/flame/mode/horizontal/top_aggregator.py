@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""horizontal FL top level aggregator"""
+"""horizontal FL top level aggregator."""
 
 import logging
 import time
