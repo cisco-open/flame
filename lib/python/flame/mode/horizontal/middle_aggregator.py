@@ -45,16 +45,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
     """
 
     @abstract_attribute
-    def weights(self):
-        """Abstract attribute for model weights."""
-
-    @abstract_attribute
     def config(self):
         """Abstract attribute for config object."""
-
-    @abstract_attribute
-    def dataset_size(self):
-        """Abstract attribute for size of dataset used to train."""
 
     def internal_init(self) -> None:
         """Initialize internal state for role."""
@@ -71,6 +63,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         self._work_done = False
 
         self.cache = Cache()
+        self.dataset_size = 0
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -154,7 +147,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # set global weights
         self.weights = global_weights
-        self.dataset_size += total
+        self.dataset_size = total
 
     def _send_weights(self, tag: str) -> None:
         logger.debug("calling _send_weights")

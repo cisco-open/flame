@@ -68,8 +68,6 @@ class PyTorchMnistAggregator(TopAggregator):
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
-        self.weights = None
-        self.metrics = None
         self.model = None
         self.dataset: Dataset = None
 
@@ -78,14 +76,10 @@ class PyTorchMnistAggregator(TopAggregator):
 
     def initialize(self):
         """Initialize role."""
-        if not self.model:
-            self.device = torch.device(
-                "cuda" if torch.cuda.is_available() else "cpu")
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu")
 
-            self.model = Net().to(self.device)
-
-        # initialize the global model weights
-        self.weights = self.model.state_dict()
+        self.model = Net().to(self.device)
 
     def load_data(self) -> None:
         """Load a test dataset."""
@@ -111,9 +105,6 @@ class PyTorchMnistAggregator(TopAggregator):
 
     def evaluate(self) -> None:
         """Evaluate (test) a model."""
-        # set updated model weights
-        self.model.load_state_dict(self.weights)
-
         self.model.eval()
         test_loss = 0
         correct = 0
@@ -136,9 +127,12 @@ class PyTorchMnistAggregator(TopAggregator):
         logger.info(f"Test loss: {test_loss}")
         logger.info(f"Test accuracy: {correct}/{total} ({test_accuray})")
 
-        # set metrics after each evaluation so that the metrics can be logged
-        # in a model registry.
-        self.metrics = {'loss': test_loss, 'accuracy': test_accuray}
+        # update metrics after each evaluation so that the metrics can be
+        # logged in a model registry.
+        self.update_metrics({
+            'test-loss': test_loss,
+            'test-accuracy': test_accuray
+        })
 
 
 if __name__ == "__main__":

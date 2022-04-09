@@ -148,7 +148,7 @@ The zip file should contain code of every code specified in the schema.
 
 ### Step 4:
 ```bash
-flamectl create dataset dataset_eu_german.json
+flamectl create dataset dataset_eu_germany.json
 flamectl create dataset dataset_eu_uk.json
 flamectl create dataset dataset_na_canada.json
 flamectl create dataset dataset_na_us.json
@@ -159,11 +159,11 @@ Flame will assign a trainer to each dataset. As each dataset has a `realm` speci
 Put all four dataset IDs into `job.json`, and change training hyperparameters as you like.
 ```json
 "fromSystem": [
-	      "62439c3725fe244585396ad7",
-              "6243a10c25fe244585396af0",
-              "6243a13625fe244585396af2",
-              "6243a14525fe244585396af3"
-	      ]
+    "62439c3725fe244585396ad7",
+    "6243a10c25fe244585396af0",
+    "6243a13625fe244585396af2",
+    "6243a14525fe244585396af3"
+]
 ```
 
 ### Step 6:

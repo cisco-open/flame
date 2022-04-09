@@ -22,6 +22,8 @@ from diskcache import Cache
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
+from ...common.util import (MLFramework, get_ml_framework_in_use,
+                            valid_frameworks)
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
@@ -41,20 +43,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
     """Top level Aggregator implements an ML aggregation role."""
 
     @abstract_attribute
-    def weights(self):
-        """Abstract attribute for model weights."""
-
-    @abstract_attribute
     def config(self):
         """Abstract attribute for config object."""
-
-    @abstract_attribute
-    def metrics(self):
-        """
-        Abstract attribute for metrics object.
-
-        metrics must be the form of dict(str, float).
-        """
 
     @abstract_attribute
     def model(self):
@@ -86,7 +76,9 @@ class TopAggregator(Role, metaclass=ABCMeta):
             self.model = self.registry_client.load_model(
                 base_model.name, base_model.version)
 
-        self.registry_client.setup_run()
+        run_name = self.config.role + '-' + self.config.agent_id[:8]
+        self.registry_client.setup_run(run_name)
+        self.metrics = dict()
 
         # disk cache is used for saving memory in case model is large
         self.cache = Cache()
@@ -97,6 +89,12 @@ class TopAggregator(Role, metaclass=ABCMeta):
         if 'rounds' in self.config.hyperparameters:
             self._rounds = self.config.hyperparameters['rounds']
         self._work_done = False
+
+        self.framework = get_ml_framework_in_use()
+        if self.framework == MLFramework.UNKNOWN:
+            raise NotImplementedError(
+                "supported ml framework not found; "
+                f"supported frameworks are: {valid_frameworks}")
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -136,6 +134,9 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # set global weights
         self.weights = global_weights
 
+        # update model with global weights
+        self._update_model()
+
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
         if tag == TAG_DISTRIBUTE:
@@ -151,6 +152,9 @@ class TopAggregator(Role, metaclass=ABCMeta):
         while channel.empty():
             logger.debug("no end found in the channel")
             time.sleep(1)
+
+        # before distributing weights, update it from global model
+        self._update_weights()
 
         # send out global model parameters to trainers
         for end in channel.ends():
@@ -178,8 +182,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             if not metrics:
                 continue
 
-            # merge metrics with the existing metrics
-            self.metrics = self.metrics | metrics
+            self.update_metrics(metrics)
 
     def save_metrics(self):
         """Save metrics in a model registry."""
@@ -212,6 +215,22 @@ class TopAggregator(Role, metaclass=ABCMeta):
         if self.model:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
+
+    def update_metrics(self, metrics: dict[str, float]):
+        """Update metrics."""
+        self.metrics = self.metrics | metrics
+
+    def _update_model(self):
+        if self.framework == MLFramework.PYTORCH:
+            self.model.load_state_dict(self.weights)
+        elif self.framework == MLFramework.TENSORFLOW:
+            self.model.set_weights(self.weights)
+
+    def _update_weights(self):
+        if self.framework == MLFramework.PYTORCH:
+            self.weights = self.model.state_dict()
+        elif self.framework == MLFramework.TENSORFLOW:
+            self.weights = self.model.get_weights()
 
     def compose(self) -> None:
         """Compose role with tasklets."""

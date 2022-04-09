@@ -112,6 +112,9 @@ class Composer(object):
 
                 # put the tasklet that is at the start of loop
                 q.put(tasklet)
+                # now the tasklet is in the queue, we should go back
+                # start from the tasklet at the beginning of loop
+                continue
 
             elif tasklet.is_loop_done():
                 # loop exit condition is met in the middle of loop

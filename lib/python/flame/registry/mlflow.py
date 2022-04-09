@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MLflow registry client."""
 
 import logging
@@ -53,18 +52,21 @@ class MLflowRegistryClient(AbstractRegistryClient):
 
         self.experiment = experiment
 
-    def setup_run(self):
+    def setup_run(self, name: str):
         """
         Set up a run for logging parameters, metrics and model.
 
         As start_run() is called without ``with'' block, the self.cleanup()
         method (containing mlflow.end_run()) must be called at the end.
-        """
-        mlflow.start_run(run_name=self.experiment)
 
-    def save_metrics(
-        self, epoch: int, metrics: Optional[dict[str, float]]
-    ) -> None:
+        Parameters
+        ----------
+        name: a string for run's name
+        """
+        mlflow.start_run(run_name=name)
+
+    def save_metrics(self, epoch: int, metrics: Optional[dict[str,
+                                                              float]]) -> None:
         """Save metrics in a model registry."""
         if not metrics:
             return
@@ -90,9 +92,9 @@ class MLflowRegistryClient(AbstractRegistryClient):
         """Save a model in a model registry."""
         flavor = self._get_ml_framework_flavor()
 
-        flavor.log_model(
-            model, artifact_path="models", registered_model_name=name
-        )
+        flavor.log_model(model,
+                         artifact_path="models",
+                         registered_model_name=name)
 
     def load_model(self, name: str, version: int) -> object:
         """

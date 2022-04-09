@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """MNIST horizontal FL trainer for PyTorch.
 
 The example below is implemented based on the following example from pytorch:
@@ -71,9 +69,7 @@ class PyTorchMnistTrainer(Trainer):
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
-        self.weights = None
         self.dataset_size = 0
-
         self.model = None
 
         self.device = None
@@ -112,16 +108,12 @@ class PyTorchMnistTrainer(Trainer):
 
     def train(self) -> None:
         """Train a model."""
-        # set model weights given from aggregator
-        self.model.load_state_dict(self.weights)
         self.optimizer = optim.Adadelta(self.model.parameters())
 
         for epoch in range(1, self.epochs + 1):
             self._train_epoch(epoch)
 
-        # save weights and dataset size so that
-        # these two pieces of info can be shared with aggregator
-        self.weights = self.model.state_dict()
+        # save dataset size so that the info can be shared with aggregator
         self.dataset_size = len(self.train_loader.dataset)
 
     def _train_epoch(self, epoch):
