@@ -20,6 +20,9 @@ import time
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
+from ...common.util import (MLFramework, get_ml_framework_in_use,
+                            valid_frameworks)
+from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
@@ -34,18 +37,13 @@ TAG_UPLOAD = 'upload'
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
 
-    #
     @abstract_attribute
-    def weights(self):
-        """Abstract attribute for model weights."""
+    def config(self):
+        """Abstract attribute for config object."""
 
     @abstract_attribute
     def dataset_size(self):
         """Abstract attribute for size of dataset used to train."""
-
-    @abstract_attribute
-    def config(self):
-        """Abstract attribute for config object."""
 
     def internal_init(self) -> None:
         """Initialize internal state for role."""
@@ -53,7 +51,21 @@ class Trainer(Role, metaclass=ABCMeta):
         self.cm(self.config)
         self.cm.join_all()
 
+        self.registry_client = registry_provider.get(self.config.registry.sort)
+        # initialize registry client
+        self.registry_client(self.config.registry.uri, self.config.job.job_id)
+
+        name = self.config.role + '-' + self.config.agent_id[:8]
+        self.registry_client.setup_run(name)
+        self.metrics = dict()
+
         self._work_done = False
+
+        self.framework = get_ml_framework_in_use()
+        if self.framework == MLFramework.UNKNOWN:
+            raise NotImplementedError(
+                "supported ml framework not found; "
+                f"supported frameworks are: {valid_frameworks}")
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -77,6 +89,7 @@ class Trainer(Role, metaclass=ABCMeta):
         for k, v in dict.items():
             if k == MessageType.WEIGHTS:
                 self.weights = v
+                self._update_model()
             elif k == MessageType.EOT:
                 self._work_done = v
 
@@ -99,9 +112,35 @@ class Trainer(Role, metaclass=ABCMeta):
         # one aggregator is sufficient
         end = channel.one_end()
 
+        self._update_weights()
         data = (self.weights, self.dataset_size)
         channel.send(end, data)
         logger.debug("sending weights done")
+
+    def save_metrics(self):
+        """Save metrics in a model registry."""
+        logger.debug(f"saving metrics: {self.metrics}")
+        if self.metrics:
+            # TODO: introduce round info; for now, set it to 0
+            #       for this, aggregator needs to share round info
+            self.registry_client.save_metrics(0, self.metrics)
+            logger.debug("saving metrics done")
+
+    def update_metrics(self, metrics: dict[str, float]):
+        """Update metrics."""
+        self.metrics = self.metrics | metrics
+
+    def _update_model(self):
+        if self.framework == MLFramework.PYTORCH:
+            self.model.load_state_dict(self.weights)
+        elif self.framework == MLFramework.TENSORFLOW:
+            self.model.set_weights(self.weights)
+
+    def _update_weights(self):
+        if self.framework == MLFramework.PYTORCH:
+            self.weights = self.model.state_dict()
+        elif self.framework == MLFramework.TENSORFLOW:
+            self.weights = self.model.get_weights()
 
     def compose(self) -> None:
         """Compose role with tasklets."""
@@ -122,10 +161,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_put = Tasklet(self.put, TAG_UPLOAD)
 
+            task_save_metrics = Tasklet(self.save_metrics)
+
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_load_data >> task_init >> loop(
-                task_get >> task_train >> task_eval >> task_put)
+                task_get >> task_train >> task_eval >> task_put >>
+                task_save_metrics)
 
     def run(self) -> None:
         """Run role."""

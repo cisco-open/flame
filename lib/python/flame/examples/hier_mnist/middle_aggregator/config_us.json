@@ -31,9 +31,9 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-					"default/us/west/org1",
-					"default/uk/london/org2"
-				]
+		    "default/us/west/org1",
+		    "default/uk/london/org2"
+		]
             },
             "name": "param-channel",
             "pair": [
@@ -72,6 +72,6 @@
 	"kwargs": {"k": 1}
     },
     "maxRunTime": 300,
-    "realm": "us/west/org1/flame",
+    "realm": "default/us/west/org1/flame",
     "role": "middle-aggregator"
 }

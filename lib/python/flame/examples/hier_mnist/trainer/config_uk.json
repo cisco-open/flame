@@ -13,8 +13,8 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-					"default/us/west/org1",
-					"default/uk/london/org2"
+		    "default/us/west/org1",
+		    "default/uk/london/org2"
 				]
             },
             "name": "param-channel",
@@ -54,6 +54,6 @@
 	"kwargs": {"k": 1}
     },
     "maxRunTime": 300,
-    "realm": "uk/london/org2/machine1",
+    "realm": "default/uk/london/org2/machine1",
     "role": "trainer"
 }

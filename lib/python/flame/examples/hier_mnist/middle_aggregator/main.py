@@ -19,6 +19,8 @@ import logging
 
 from flame.config import Config
 from flame.mode.horizontal.middle_aggregator import MiddleAggregator
+# the following needs to be imported to let the flame know
+# this aggregator works on tensorflow model
 from tensorflow import keras
 
 logger = logging.getLogger(__name__)
@@ -30,8 +32,6 @@ class KerasMnistMiddleAggregator(MiddleAggregator):
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
-        self.weights = None
-        self.dataset_size = 0
 
     def initialize(self):
         """Initialize role."""
@@ -43,7 +43,6 @@ class KerasMnistMiddleAggregator(MiddleAggregator):
 
     def train(self) -> None:
         """Train a model."""
-        # Implement this if testing is needed in aggregator
         pass
 
     def evaluate(self) -> None:
