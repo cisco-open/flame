@@ -1,24 +1,59 @@
 {
-    "broker": "mqtt.eclipseprojects.io",
+    "agentid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
     "backend": "mqtt",
-    "agent": "local",
-    "job": {
-	"id": "77777",
-	"name": "monai-mednist"
-    },
-    "role": "trainer",
-    "channel": [
-	{
-	    "name": "param-channel",
-	    "pair": ["aggregator", "trainer"],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "us"
-		]
-	    }
-	}
+    "brokers": [
+        {
+            "host": "mosquitto",
+            "sort": "mqtt"
+        }
     ],
-    "hyperparams": null,
-    "datasets": null
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+	    "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5,
+		"epochs": 2
+    },
+    "baseModel": {
+	"name": "",
+	"version": 1
+    },
+    "job" : {
+	"id": "622a358619ab59012eabeefb",
+	"name": "mednist"
+    },
+    "registry": {
+	"sort": "mlflow",
+	"uri": "http://mlflow:5000"
+    },
+    "selector": {
+	"sort": "random",
+	"kwargs": {"k": 1}
+    },
+    "maxRunTime": 300,
+    "realm": "default",
+    "role": "trainer"
 }
