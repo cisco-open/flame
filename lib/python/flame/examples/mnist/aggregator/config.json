@@ -52,6 +52,15 @@
 	"sort": "random",
 	"kwargs": {"k": 1}
     },
+    "optimizer": {
+    "sort": "fedyogi",
+    "kwargs": {
+        "beta_1": 0.9,
+        "beta_2": 0.99,
+        "eta": 1,
+        "tau": 1
+    }
+    },
     "maxRunTime": 300,
     "realm": "",
     "role": "aggregator"
