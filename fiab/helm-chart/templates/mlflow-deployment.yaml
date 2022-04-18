@@ -33,10 +33,17 @@ spec:
     spec:
       containers:
         - args:
-            - "mlflow server --backend-store-uri postgresql://mlflow:mlflow@postgres/mlflow --default-artifact-root file:./mlruns --host 0.0.0.0"
+            - "mlflow server --backend-store-uri postgresql://mlflow:mlflow@postgres/mlflow --default-artifact-root s3://mlruns --host 0.0.0.0"
           command: ["bash", "-c"]
           image: adacotechjp/mlflow:1.21.0
           name: {{ .Release.Name }}-mlflow
           ports:
-            - containerPort: {{ .Values.servicePort.mlflow }}
+            - containerPort: {{ .Values.mlflow.servicePort }}
+          env:
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: {{ .Values.mlflow.s3EndpointUrl }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ (index .Values.minio.users 0).accessKey }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ (index .Values.minio.users 0).secretKey }}
       restartPolicy: Always

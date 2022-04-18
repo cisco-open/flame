@@ -34,6 +34,31 @@ mongodb:
   #   create: true
   #######
 
+minio:
+  mode: standalone # other option: distributed
+  persistence:
+    enabled: false
+    size: 1Gi
+  buckets:
+    - name: mlruns
+      policy: none
+      purge: false
+  resources:
+    requests:
+      memory: 256Mi
+  rootUser: minio
+  rootPassword: minio123
+  users:
+    - accessKey: flame
+      secretKey: flame123
+      policy: readwrite
+  ingress:
+    enabled: true
+    ingressClassName: nginx
+    annotations: {}
+    hosts:
+      - minio.flame.test
+
 imageName: flame
 imageTag: latest
 workerImageName: flame
@@ -67,12 +92,15 @@ frontDoorUrl:
   notifier: notifier.flame.test
   mlflow: mlflow.flame.test
 
+mlflow:
+  s3EndpointUrl: http://minio.flame.test
+  servicePort: "5000"
+
 servicePort:
   apiserver: "10100"
   notifier: "10101"
   controller: "10102"
   agent: "10103"
-  mlflow: "5000"
   mqtt: "1883"
 
 replicas: 1

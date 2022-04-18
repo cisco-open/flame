@@ -25,9 +25,9 @@ metadata:
   namespace: {{ .Release.Namespace }}
 spec:
   ports:
-    - name: "{{ .Values.servicePort.mlflow }}"
-      port: {{ .Values.servicePort.mlflow }}
-      targetPort: {{ .Values.servicePort.mlflow }}
+    - name: "{{ .Values.mlflow.servicePort }}"
+      port: {{ .Values.mlflow.servicePort }}
+      targetPort: {{ .Values.mlflow.servicePort }}
   selector:
     app: {{ .Release.Name }}-mlflow
   type: ClusterIP

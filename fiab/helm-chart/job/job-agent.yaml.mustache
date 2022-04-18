@@ -42,5 +42,13 @@ spec:
               value: <% taskId %>
             - name: FLAME_TASK_KEY
               value: <% taskKey %>
+            {{ if ne .Values.s3Endpointurl "" }}
+            - name: MLFLOW_S3_ENDPOINT_URL
+              value: {{ .Values.s3EndpointUrl }}
+            {{ end }}
+            - name: AWS_ACCESS_KEY_ID
+              value: {{ .Values.accessKeyId }}
+            - name: AWS_SECRET_ACCESS_KEY
+              value: {{ .Values.secretAccessKey }}
       restartPolicy: Never
 <%={{ }}=%>

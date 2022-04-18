@@ -27,12 +27,12 @@ spec:
             service:
               name: {{ .Release.Name }}-mlflow
               port:
-                number: {{ .Values.servicePort.mlflow }}
+                number: {{ .Values.mlflow.servicePort }}
           pathType: Prefix
           path: /
         {{ else }}
         - backend:
             serviceName: {{ .Release.Name }}-mlflow
-            servicePort: {{ .Values.servicePort.mlflow }}
+            servicePort: {{ .Values.mlflow.servicePort }}
           path: /
         {{ end }}
