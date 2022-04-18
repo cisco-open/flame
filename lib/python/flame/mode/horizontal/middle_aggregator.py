@@ -57,7 +57,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         self.cm(self.config)
         self.cm.join_all()
 
-        self.optimizer = optimizer_provider.get(self.config.optimizer)
+        self.optimizer = optimizer_provider.get(self.config.optimizer.sort,
+                                                **self.config.optimizer.kwargs)
 
         self._round = 1
         self._work_done = False

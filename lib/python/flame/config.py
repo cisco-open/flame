@@ -55,6 +55,8 @@ CONF_KEY_REGISTRY_SORT = 'sort'
 CONF_KEY_REGISTRY_URI = 'uri'
 
 CONF_KEY_OPTIMIZER = 'optimizer'
+CONF_KEY_OPTIMIZER_SORT = 'sort'
+CONF_KEY_OPTIMIZER_KWARGS = 'kwargs'
 
 CONF_KEY_SELECTOR = 'selector'
 CONF_KEY_SELECTOR_SORT = 'sort'
@@ -87,6 +89,9 @@ class OptimizerType(Enum):
     """Define optimizer types."""
 
     FEDAVG = 1  # default
+    FEDADAGRAD = 2 # FedAdaGrad
+    FEDADAM = 3 # FedAdam
+    FEDYOGI = 4 # FedYogi
 
 
 class SelectorType(Enum):
@@ -284,6 +289,39 @@ class Config(object):
                     f"\t\t{CONF_KEY_SELECTOR_SORT}: {self.sort}\n" +
                     f"\t\t{CONF_KEY_SELECTOR_KWARGS}: {self.kwargs}\n")
 
+    class Optimizer(object):
+        """Optimizer Class."""
+
+        def __init__(self, json_data=None) -> None:
+            """Initialize Optimizer instance."""
+            self.sort = OptimizerType.FEDAVG
+            self.kwargs = dict()
+
+            if CONF_KEY_OPTIMIZER not in json_data:
+                return
+            
+            json_data = json_data[CONF_KEY_OPTIMIZER]
+
+            if CONF_KEY_OPTIMIZER_SORT not in json_data:
+                return
+            
+            sort = json_data[CONF_KEY_OPTIMIZER_SORT].upper()
+            try:
+                self.sort = OptimizerType[sort]
+            except KeyError:
+                valid_types = [optimizer.name for optimizer in OptimizerType]
+                sys.exit(f"invailid optimizer type: {sort}" +
+                         f"valid optimizer type(s) are {valid_types}")
+            
+            if CONF_KEY_OPTIMIZER_KWARGS in json_data:
+                self.kwargs = json_data[CONF_KEY_OPTIMIZER_KWARGS]
+            
+        def __str__(self) -> str:
+            """Return FL aggregation optimizer's detail in string format."""
+            return ("\t--- optimizer ---\n" +
+                    f"\t\t{CONF_KEY_OPTIMIZER_SORT}: {self.sort}\n" +
+                    f"\t\t{CONF_KEY_OPTIMIZER_KWARGS}: {self.kwargs}\n")
+
     def __init__(self, config_file: str):
         """Initialize Config instance."""
         with open(config_file) as f:
@@ -305,8 +343,6 @@ class Config(object):
 
         self._init_hyperparameters(json_data)
 
-        self._init_optimizer(json_data)
-
         self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
 
         self.job = Config.Job(json_data[CONF_KEY_JOB])
@@ -314,6 +350,8 @@ class Config(object):
         self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
 
         self.selector = Config.Selector(json_data)
+
+        self.optimizer = Config.Optimizer(json_data)
 
         self.dataset = ''
         if CONF_KEY_DATASET in json_data:
@@ -356,18 +394,6 @@ class Config(object):
             if k in self.hyperparameters:
                 continue
             self.hyperparameters[k] = v
-
-    def _init_optimizer(self, json_data):
-        # default optimizer is FEDAVG
-        optimizer_key = OptimizerType.FEDAVG.name
-        if CONF_KEY_OPTIMIZER in json_data:
-            optimizer_key = json_data[CONF_KEY_OPTIMIZER].upper()
-        try:
-            self.optimizer = OptimizerType[optimizer_key]
-        except KeyError:
-            valid_types = [optimizer.name for optimizer in OptimizerType]
-            sys.exit(f"invailid optimizer type: {optimizer_key}\n" +
-                     f"valid optimizer type(s) are {valid_types}")
 
     def __str__(self):
         """Return config info as string."""
