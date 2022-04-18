@@ -1,0 +1,13 @@
+{
+    "name": "MedMNIST dataset",
+
+    "description": "This dataset contains handwritten digits",
+
+    "url": "https://zenodo.org/record/5208230/files/pathmnist.npz",
+
+    "dataFormat": "npz",
+
+    "realm": "default/us/west",
+
+    "isPublic": true
+}
