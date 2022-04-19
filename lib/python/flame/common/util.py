@@ -23,6 +23,7 @@ from contextlib import contextmanager
 from enum import Enum
 from threading import Thread
 from typing import List
+from ..config import Config
 
 from pip._internal.cli.main import main as pipmain
 
@@ -104,3 +105,12 @@ def install_package(package: str) -> bool:
         return True
 
     return False
+
+def mlflow_runname(config: Config) -> str:
+    groupby_value = ""
+    for v in config.channels.values():
+        for val in v.groupby.value:
+            if val in config.realm:
+                groupby_value = groupby_value + val + "-" 
+
+    return config.role + '-' + groupby_value + config.agent_id[:8]

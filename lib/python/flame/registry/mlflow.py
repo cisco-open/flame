@@ -41,14 +41,20 @@ class MLflowRegistryClient(AbstractRegistryClient):
     def __new__(cls):
         """Create a singleton instance."""
         if cls._instance is None:
-            logger.info('Create an MLflow registry client instance')
+            logger.info("Create an MLflow registry client instance")
             cls._instance = super().__new__(cls)
         return cls._instance
 
     def __call__(self, uri: str, experiment: str) -> None:
         """Initialize the instance."""
         mlflow.set_tracking_uri(uri)
-        mlflow.set_experiment(experiment)
+        try:
+            exp = mlflow.set_experiment(experiment)
+            logger.info(f"Set experiment {exp.name}")
+        except:
+            logger.info(f"Failed to set experiment; the experiment is set to {exp.name}, trying to reset...")
+            exp = mlflow.set_experiment(experiment)
+            logger.info(f"reset experiment {exp.name}")
 
         self.experiment = experiment
 
