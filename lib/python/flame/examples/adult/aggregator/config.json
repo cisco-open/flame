@@ -1,0 +1,54 @@
+{
+    "agentid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "mosquitto",
+            "sort": "mqtt"
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+	    "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "hyperparameters": {
+        "batchSize": 32,
+        "rounds": 5
+    },
+    "baseModel": {
+	"name": "",
+	"version": 1
+    },
+    "job" : {
+	"id": "622a358619ab59012eabeefb",
+	"name": "adult"
+    },
+    "registry": {
+	"sort": "mlflow",
+	"uri": "http://mlflow:5000"
+    },
+    "selector": {
+	"sort": "random",
+	"kwargs": {"k": 1}
+    },
+    "maxRunTime": 300,
+    "realm": "",
+    "role": "aggregator"
+}
