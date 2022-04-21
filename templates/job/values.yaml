@@ -19,3 +19,7 @@ componentPorts:
   apiserver: "10100"
   notifier: "10101"
   agent: "10103"
+
+endpoints:
+  apiserver: http://flame-apiserver:10100
+  notifier: flame-notifier:10101
