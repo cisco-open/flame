@@ -4,7 +4,7 @@
 
 ## What is Flame?
 
-The vision of Flame is to democratize federated learning (FL). In that regard, it is the goal of the project that makes FL training as easy and productive as possible for data scientists and machine learning engineers. In particular, as applications and use-cases are emerging in the edge computing space, Flame aims to facilitate FL at the edge, hence the name - Flame.
+The vision of Flame is to democratize federated learning (FL). In that regard, it is the goal of the project that makes FL training as easy and productive as possible for data scientists and machine learning engineers. In particular, as applications and use-cases are emerging in the edge computing space, Flame aims to facilitate FL at the edge.
 
 As FL is a fast evolving technology, Flame tries to decouple the development of a machine learning workload from its deployment and management.
 With Flame, a diverse of set of topologies (e.g., central, hierarchical, vertical, hybrid, etc.) can be easily composed
