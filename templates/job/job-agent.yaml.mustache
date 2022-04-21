@@ -15,9 +15,9 @@ spec:
       containers:
         - args:
             - "--apiserver"
-            - "http://{{ .Values.servicename }}-apiserver:{{ .Values.componentPorts.apiserver }}"
+            - "{{ .Values.endpoints.apiserver }}"
             - "--notifier"
-            - "{{ .Values.servicename }}-notifier:{{ .Values.componentPorts.notifier }}"
+            - "{{ .Values.endpoints.notifier }}"
           command: ["/usr/bin/flamelet"]
           image: <% imageLoc %>
           imagePullPolicy: IfNotPresent
