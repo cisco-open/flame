@@ -33,6 +33,8 @@ JobSpec:
       type: string
     dataSpec:
       $ref: '#/components/schemas/DataSpec'
+    optimizer:
+      $ref: '#/components/schemas/Optimizer'
     selector:
       $ref: '#/components/schemas/Selector'
     priority:
@@ -126,6 +128,24 @@ DataSpec:
       us/foo: 3 # there are three user-fed datasets under us/foo realm
     fromSystem:
       - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
+
+########################################
+# Optimizer
+########################################
+Optimizer:
+  type: object
+  properties:
+    sort:
+      type: string
+    kwargs:
+      type: object
+  example:
+    sort: fedyogi
+    kwargs:
+      beta_1: 0.9
+      beta_2: 0.99
+      eta: 0.01
+      tau: 0.001
 
 ########################################
 # Selector
