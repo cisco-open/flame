@@ -23,7 +23,7 @@ from diskcache import Cache
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks)
+                            valid_frameworks, mlflow_runname)
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
@@ -76,8 +76,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             self.model = self.registry_client.load_model(
                 base_model.name, base_model.version)
 
-        run_name = self.config.role + '-' + self.config.agent_id[:8]
-        self.registry_client.setup_run(run_name)
+        self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
 
         # disk cache is used for saving memory in case model is large

@@ -21,7 +21,7 @@ import time
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks)
+                            valid_frameworks,  mlflow_runname)
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -55,8 +55,7 @@ class Trainer(Role, metaclass=ABCMeta):
         # initialize registry client
         self.registry_client(self.config.registry.uri, self.config.job.job_id)
 
-        name = self.config.role + '-' + self.config.agent_id[:8]
-        self.registry_client.setup_run(name)
+        self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
 
         self._work_done = False
