@@ -39,6 +39,8 @@ type JobSpec struct {
 
 	DataSpec DataSpec `json:"dataSpec,omitempty"`
 
+	Optimizer Optimizer `json:"optimizer,omitempty"`
+
 	Selector Selector `json:"selector,omitempty"`
 
 	Priority JobPriority `json:"priority,omitempty"`
@@ -68,6 +70,9 @@ func AssertJobSpecRequired(obj JobSpec) error {
 	}
 
 	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
+		return err
+	}
+	if err := AssertOptimizerRequired(obj.Optimizer); err != nil {
 		return err
 	}
 	if err := AssertSelectorRequired(obj.Selector); err != nil {

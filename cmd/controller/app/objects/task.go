@@ -56,6 +56,7 @@ type JobConfig struct {
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
 	Dependencies    []string               `json:"dependencies,omitempty"`
 	DatasetUrl      string                 `json:"dataset,omitempty"`
+	Optimizer       openapi.Optimizer      `json:"optimizer,omitempty"`
 	Selector        openapi.Selector       `json:"selector,omitempty"`
 }
 
@@ -86,6 +87,7 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	cfg.MaxRunTime = jobSpec.MaxRunTime
 	cfg.BaseModel = jobSpec.BaseModel
 	cfg.Hyperparameters = jobSpec.Hyperparameters
+	cfg.Optimizer = jobSpec.Optimizer
 	cfg.Selector = jobSpec.Selector
 	cfg.Dependencies = jobSpec.Dependencies
 	cfg.BackEnd = string(jobSpec.Backend)
