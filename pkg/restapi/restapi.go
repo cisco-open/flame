@@ -61,6 +61,7 @@ const (
 	GetJobEndPoint          = "GET_JOB"
 	GetJobsEndPoint         = "GET_JOBS"
 	GetTasksInfoEndpoint    = "GET_TASKS_INFO"
+	GetTaskInfoEndpoint     = "GET_TASK_INFO"
 	DeleteJobEndPoint       = "DELETE_JOB"
 	UpdateJobEndPoint       = "UPDATE_JOB"
 	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
@@ -99,14 +100,15 @@ var URI = map[string]string{
 	GetJobEndPoint:          "/{{.user}}/jobs/{{.jobId}}",
 	GetJobsEndPoint:         "/{{.user}}/jobs/?limit={{.limit}}",
 	GetTasksInfoEndpoint:    "/{{.user}}/jobs/{{.jobId}}/tasks/?limit={{.limit}}",
+	GetTaskInfoEndpoint:     "/{{.user}}/jobs/{{.jobId}}/tasks/{{.taskId}}",
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	DeleteJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
 	ChangeJobSchemaEndPoint: "/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
 	UpdateJobStatusEndPoint: "/{{.user}}/jobs/{{.jobId}}/status",
 
 	// Task
-	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.agentId}}/task/?key={{.key}}",
-	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.agentId}}/task/status",
+	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.taskId}}/task/?key={{.key}}",
+	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.taskId}}/task/status",
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {

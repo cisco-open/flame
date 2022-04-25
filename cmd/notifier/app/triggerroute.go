@@ -37,34 +37,34 @@ func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventReque
 		return nil, fmt.Errorf("unknown event type: %s", in.GetType())
 	}
 
-	failedAgents := make([]string, 0)
-	for _, agentId := range in.AgentIds {
+	failedTasks := make([]string, 0)
+	for _, taskId := range in.TaskIds {
 		event := pbNotify.Event{
 			Type:  in.Type,
 			JobId: in.JobId,
 		}
 
-		eventCh := s.getEventChannel(agentId)
+		eventCh := s.getEventChannel(taskId)
 
 		select {
 		case eventCh <- &event:
 			// Do nothing
 		default:
-			failedAgents = append(failedAgents, agentId)
+			failedTasks = append(failedTasks, taskId)
 		}
 	}
 
 	resp := &pbNotify.Response{
-		Status:       pbNotify.Response_SUCCESS,
-		Message:      "Successfully registered event for all agents",
-		FailedAgents: failedAgents,
+		Status:      pbNotify.Response_SUCCESS,
+		Message:     "Successfully registered event for all tasks",
+		FailedTasks: failedTasks,
 	}
 
-	if len(in.AgentIds) > 0 && len(failedAgents) == len(in.AgentIds) {
-		resp.Message = "Failed to register event for all agents"
+	if len(in.TaskIds) > 0 && len(failedTasks) == len(in.TaskIds) {
+		resp.Message = "Failed to register event for all tasks"
 		resp.Status = pbNotify.Response_ERROR
-	} else if len(failedAgents) > 0 && len(failedAgents) < len(in.AgentIds) {
-		resp.Message = "Registered event for some agents successfully"
+	} else if len(failedTasks) > 0 && len(failedTasks) < len(in.TaskIds) {
+		resp.Message = "Registered event for some tasks successfully"
 		resp.Status = pbNotify.Response_PARTIAL_SUCCESS
 	}
 

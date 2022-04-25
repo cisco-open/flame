@@ -161,16 +161,16 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	return openapi.Response(http.StatusOK, jobStatusList), err
 }
 
-// GetTask - Get a job task for a given job and agent
-func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string, key string) (openapi.ImplResponse, error) {
+// GetTask - Get a job task for a given job and task
+func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId string, key string) (openapi.ImplResponse, error) {
 	if key == "" {
 		return openapi.Response(http.StatusBadRequest, nil), fmt.Errorf("key can't be empty")
 	}
 
 	uriMap := map[string]string{
-		"jobId":   jobId,
-		"agentId": agentId,
-		"key":     key,
+		"jobId":  jobId,
+		"taskId": taskId,
+		"key":    key,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskEndpoint, uriMap)
 
@@ -184,6 +184,30 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId stri
 	}
 
 	return openapi.Response(http.StatusOK, taskMap), nil
+}
+
+// GetTaskInfo - Get the info of a task in a job
+func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId string, taskId string) (openapi.ImplResponse, error) {
+	uriMap := map[string]string{
+		"user":   user,
+		"jobId":  jobId,
+		"taskId": taskId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskInfoEndpoint, uriMap)
+
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, err), err
+	}
+
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+
+	taskInfo := openapi.TaskInfo{}
+	err = util.ByteToStruct(resp, &taskInfo)
+
+	return openapi.Response(http.StatusOK, taskInfo), err
 }
 
 // GetTasksInfo - Get the info of tasks in a job
@@ -261,14 +285,14 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 }
 
 // UpdateTaskStatus - Update the status of a task
-func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, agentId string,
+func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, taskId string,
 	taskStatus openapi.TaskStatus) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Task status update request received for job %s | agent: %s", jobId, agentId)
+	zap.S().Debugf("Task status update request received for job %s | task: %s", jobId, taskId)
 
 	// create controller request
 	uriMap := map[string]string{
-		"jobId":   jobId,
-		"agentId": agentId,
+		"jobId":  jobId,
+		"taskId": taskId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateTaskStatusEndPoint, uriMap)
 

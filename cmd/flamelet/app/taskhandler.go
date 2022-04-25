@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"os/exec"
@@ -45,8 +46,8 @@ const (
 	logFilePrefix = "task"
 	logFileExt    = "log"
 
-	keyAgentId = "agentid"
-	keyRole    = "role"
+	keyTaskId = "taskid"
+	keyRole   = "role"
 )
 
 type taskHandler struct {
@@ -54,8 +55,8 @@ type taskHandler struct {
 	notifierEp  string
 	name        string
 	jobId       string
-	agentId     string
-	agentKey    string
+	taskId      string
+	taskKey     string
 
 	stream pbNotify.EventRoute_GetEventClient
 
@@ -66,13 +67,13 @@ type taskHandler struct {
 	cancel context.CancelFunc
 }
 
-func newTaskHandler(apiserverEp string, notifierEp string, name string, agentId string, agentKey string) *taskHandler {
+func newTaskHandler(apiserverEp string, notifierEp string, name string, taskId string, taskKey string) *taskHandler {
 	return &taskHandler{
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
 		name:        name,
-		agentId:     agentId,
-		agentKey:    agentKey,
+		taskId:      taskId,
+		taskKey:     taskKey,
 		state:       openapi.READY,
 	}
 }
@@ -111,8 +112,8 @@ func (t *taskHandler) connect() error {
 	}
 
 	client := pbNotify.NewEventRouteClient(conn)
-	in := &pbNotify.AgentInfo{
-		Id:       t.agentId,
+	in := &pbNotify.TaskInfo{
+		Id:       t.taskId,
 		Hostname: t.name,
 	}
 
@@ -193,9 +194,9 @@ func (t *taskHandler) startJob(jobId string) {
 func (t *taskHandler) getTask() ([]string, error) {
 	// construct URL
 	uriMap := map[string]string{
-		"jobId":   t.jobId,
-		"agentId": t.agentId,
-		"key":     t.agentKey,
+		"jobId":  t.jobId,
+		"taskId": t.taskId,
+		"key":    t.taskKey,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.GetTaskEndpoint, uriMap)
 
@@ -285,8 +286,8 @@ func (t *taskHandler) prepareConfig(configFilePath string) error {
 	}
 	t.role = tmp[keyRole].(string)
 
-	// add agent id in the config
-	tmp[keyAgentId] = t.agentId
+	// add task id in the config
+	tmp[keyTaskId] = t.taskId
 
 	// marshall the updated config
 	input, err = json.Marshal(&tmp)
@@ -358,9 +359,7 @@ func (t *taskHandler) runTask() {
 	cmd := exec.CommandContext(ctx, pythonBin, taskFilePath, configFilePath)
 	zap.S().Debugf("Running task with command: %v", cmd)
 
-	logFileName := fmt.Sprintf("%s-%s.%s", logFilePrefix, t.jobId, logFileExt)
-	logFilePath := filepath.Join(util.LogDirPath, logFileName)
-	file, err := os.Create(logFilePath)
+	file, err := os.Create(t.getLogfilePath())
 	if err != nil {
 		zap.S().Errorf("Failed to create a log file: %v", err)
 		return
@@ -375,12 +374,22 @@ func (t *taskHandler) runTask() {
 	// this is for keeping state transition simple, meaning that flamelet always
 	// set running state first before making transition to one of three states
 	// -- failed, terminated, completed
-	t.updateTaskStatus(openapi.RUNNING)
+	t.updateTaskStatus(openapi.RUNNING, "")
+
+	getLog := func() string {
+		bytesToRead := 1000
+		log := ""
+		log, err = t.readLastNBytesFromFile(t.getLogfilePath(), bytesToRead)
+		if err != nil {
+			log = fmt.Sprintf("failed to access log: %v", err)
+		}
+		return log
+	}
 
 	err = cmd.Start()
 	if err != nil {
 		zap.S().Errorf("Failed to start task: %v", err)
-		t.updateTaskStatus(openapi.FAILED)
+		t.updateTaskStatus(openapi.FAILED, getLog())
 		return
 	}
 
@@ -389,30 +398,68 @@ func (t *taskHandler) runTask() {
 		if ctx.Err() == context.Canceled {
 			// cancel() function was called
 			zap.S().Infof("Task execution canceled for job %s: %v", t.jobId, err)
-			t.updateTaskStatus(openapi.TERMINATED)
+			t.updateTaskStatus(openapi.TERMINATED, getLog())
 		} else {
 			zap.S().Infof("Task execution failed for job %s: %v", t.jobId, err)
-			t.updateTaskStatus(openapi.FAILED)
+			t.updateTaskStatus(openapi.FAILED, getLog())
 		}
 	} else {
 		zap.S().Infof("Task execution successful for job %s", t.jobId)
-		t.updateTaskStatus(openapi.COMPLETED)
+		t.updateTaskStatus(openapi.COMPLETED, getLog())
 	}
 }
 
-func (t *taskHandler) updateTaskStatus(state openapi.JobState) {
+func (t *taskHandler) getLogfilePath() string {
+	logFileName := fmt.Sprintf("%s-%s.%s", logFilePrefix, t.jobId, logFileExt)
+	logFilePath := filepath.Join(util.LogDirPath, logFileName)
+
+	return logFilePath
+}
+
+func (t *taskHandler) readLastNBytesFromFile(filePath string, nbytes int) (string, error) {
+	fileHandle, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("fail to open log file")
+	}
+	defer fileHandle.Close()
+
+	var cursor int64
+	stat, _ := fileHandle.Stat()
+	filesize := stat.Size()
+	if filesize > int64(nbytes) {
+		cursor = -int64(nbytes)
+	} else {
+		cursor = -filesize
+	}
+
+	_, err = fileHandle.Seek(cursor, io.SeekEnd)
+	if err != nil {
+		return "", fmt.Errorf("fail to seek log file")
+	}
+
+	buf := make([]byte, 0-cursor)
+	_, err = fileHandle.Read(buf)
+	if err != nil {
+		return "", fmt.Errorf("fail to read log file")
+	}
+
+	return string(buf), nil
+}
+
+func (t *taskHandler) updateTaskStatus(state openapi.JobState, log string) {
 	// update state in the task handler
 	t.state = state
 
 	// construct URL
 	uriMap := map[string]string{
-		"jobId":   t.jobId,
-		"agentId": t.agentId,
+		"jobId":  t.jobId,
+		"taskId": t.taskId,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.UpdateTaskStatusEndPoint, uriMap)
 
 	taskStatus := openapi.TaskStatus{
 		State: state,
+		Log:   log,
 	}
 
 	code, _, err := restapi.HTTPPut(url, taskStatus, "application/json")

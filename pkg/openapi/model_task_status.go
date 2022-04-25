@@ -33,5 +33,24 @@ import (
 type TaskStatus struct {
 	State JobState `json:"state,omitempty"`
 
+	Log string `json:"log,omitempty"`
+
 	Timestamp time.Time `json:"timestamp,omitempty"`
+}
+
+// AssertTaskStatusRequired checks if the required fields are not zero-ed
+func AssertTaskStatusRequired(obj TaskStatus) error {
+	return nil
+}
+
+// AssertRecurseTaskStatusRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of TaskStatus (e.g. [][]TaskStatus), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseTaskStatusRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aTaskStatus, ok := obj.(TaskStatus)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertTaskStatusRequired(aTaskStatus)
+	})
 }

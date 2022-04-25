@@ -199,3 +199,15 @@ func Contains(haystack []string, needle string) bool {
 
 	return false
 }
+
+func PrettyJsonString(data []byte) (string, error) {
+	var prettyJSON bytes.Buffer
+
+	prefix := ""
+	indent := "    "
+	if err := json.Indent(&prettyJSON, data, prefix, indent); err != nil {
+		return "", err
+	}
+
+	return prettyJSON.String(), nil
+}

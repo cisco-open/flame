@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.servicename }}-agent-<% agentId %>
+  name: {{ .Values.servicename }}-agent-<% taskId %>
   namespace: {{ .Release.Namespace }}
 spec:
   template:
@@ -21,7 +21,7 @@ spec:
           command: ["/usr/bin/flamelet"]
           image: <% imageLoc %>
           imagePullPolicy: IfNotPresent
-          name: {{ .Values.servicename }}-agent-<% agentId %>
+          name: {{ .Values.servicename }}-agent-<% taskId %>
 
           ports:
             - containerPort: {{ .Values.componentPorts.agent }}
@@ -35,9 +35,9 @@ spec:
           env:
             - name: LOG_LEVEL
               value: INFO
-            - name: FLAME_AGENT_ID
-              value: <% agentId %>
-            - name: FLAME_AGENT_KEY
-              value: <% agentKey %>
+            - name: FLAME_TASK_ID
+              value: <% taskId %>
+            - name: FLAME_TASK_KEY
+              value: <% taskKey %>
       restartPolicy: Never
 <%={{ }}=%>

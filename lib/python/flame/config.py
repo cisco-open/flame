@@ -13,15 +13,14 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Config parser."""
 
 import json
 import sys
 from enum import Enum
 
-CONF_KEY_AGENT = 'agent'
-CONF_KEY_AGENT_ID = 'agentid'
+CONF_KEY_TASK = 'task'
+CONF_KEY_TASK_ID = 'taskid'
 CONF_KEY_BACKEND = 'backend'
 CONF_KEY_CHANNEL = 'channels'
 CONF_KEY_DATASET = 'dataset'
@@ -89,9 +88,9 @@ class OptimizerType(Enum):
     """Define optimizer types."""
 
     FEDAVG = 1  # default
-    FEDADAGRAD = 2 # FedAdaGrad
-    FEDADAM = 3 # FedAdam
-    FEDYOGI = 4 # FedYogi
+    FEDADAGRAD = 2  # FedAdaGrad
+    FEDADAM = 3  # FedAdam
+    FEDYOGI = 4  # FedYogi
 
 
 class SelectorType(Enum):
@@ -299,12 +298,12 @@ class Config(object):
 
             if CONF_KEY_OPTIMIZER not in json_data:
                 return
-            
+
             json_data = json_data[CONF_KEY_OPTIMIZER]
 
             if CONF_KEY_OPTIMIZER_SORT not in json_data:
                 return
-            
+
             sort = json_data[CONF_KEY_OPTIMIZER_SORT].upper()
             try:
                 self.sort = OptimizerType[sort]
@@ -312,10 +311,10 @@ class Config(object):
                 valid_types = [optimizer.name for optimizer in OptimizerType]
                 sys.exit(f"invailid optimizer type: {sort}" +
                          f"valid optimizer type(s) are {valid_types}")
-            
+
             if CONF_KEY_OPTIMIZER_KWARGS in json_data:
                 self.kwargs = json_data[CONF_KEY_OPTIMIZER_KWARGS]
-            
+
         def __str__(self) -> str:
             """Return FL aggregation optimizer's detail in string format."""
             return ("\t--- optimizer ---\n" +
@@ -331,11 +330,11 @@ class Config(object):
         self.role = json_data[CONF_KEY_ROLE]
         self.realm = json_data[CONF_KEY_REALM]
 
-        self.agent = 'local'
-        if CONF_KEY_AGENT in json_data:
-            self.agent = json_data[CONF_KEY_AGENT]
+        self.task = 'local'
+        if CONF_KEY_TASK in json_data:
+            self.task = json_data[CONF_KEY_TASK]
 
-        self.agent_id = json_data[CONF_KEY_AGENT_ID]
+        self.task_id = json_data[CONF_KEY_TASK_ID]
 
         self._init_backend(json_data)
 
@@ -399,7 +398,7 @@ class Config(object):
         """Return config info as string."""
         info = ("--- config ---\n" +
                 f"\t{CONF_KEY_BACKEND}: {self.backend}\n" +
-                f"\t{CONF_KEY_AGENT}: {self.agent}\n" +
+                f"\t{CONF_KEY_TASK}: {self.task}\n" +
                 f"\t{CONF_KEY_ROLE}: {self.role}\n" +
                 f"\t{CONF_KEY_REALM}: {self.realm}\n" + str(self.base_model) +
                 str(self.brokers) + str(self.job) + str(self.registry))

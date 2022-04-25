@@ -106,7 +106,7 @@ func NewMongoService(uri string) (*MongoService, error) {
 		},
 		{
 			mongoDB.taskCollection,
-			map[string]int32{"jobid": orderAscend, "agentid": orderAscend},
+			map[string]int32{"jobid": orderAscend, "taskid": orderAscend},
 		},
 	}
 	for _, uii := range uiiList {

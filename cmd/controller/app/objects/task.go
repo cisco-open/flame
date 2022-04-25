@@ -26,11 +26,11 @@ import (
 )
 
 type Task struct {
-	JobId   string           `json:"jobid"`
-	AgentId string           `json:"agentid"`
-	Role    string           `json:"role"`
-	Type    openapi.TaskType `json:"type"`
-	Key     string           `json:"key"`
+	JobId  string           `json:"jobid"`
+	TaskId string           `json:"taskid"`
+	Role   string           `json:"role"`
+	Type   openapi.TaskType `json:"type"`
+	Key    string           `json:"key"`
 
 	// the following are config and code
 	JobConfig  JobConfig
@@ -60,12 +60,12 @@ type JobConfig struct {
 	Selector        openapi.Selector       `json:"selector,omitempty"`
 }
 
-func (tsk *Task) generateAgentId(idx int) {
+func (tsk *Task) generateTaskId(idx int) {
 	h := sha1.New()
 	data := fmt.Sprintf("%s-%d-%v", tsk.JobId, idx, tsk.JobConfig)
 	h.Write([]byte(data))
 
-	tsk.AgentId = fmt.Sprintf("%x", h.Sum(nil))
+	tsk.TaskId = fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (tsk *Task) Configure(taskType openapi.TaskType, taskKey string, realm string, datasetUrl string, idx int) {
@@ -75,8 +75,8 @@ func (tsk *Task) Configure(taskType openapi.TaskType, taskKey string, realm stri
 	tsk.JobConfig.Realm = realm
 	tsk.JobConfig.DatasetUrl = datasetUrl
 
-	// generateAgentId() should be called after JobConfig is completely populated
-	tsk.generateAgentId(idx)
+	// generateTaskId() should be called after JobConfig is completely populated
+	tsk.generateTaskId(idx)
 }
 
 func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broker, registry config.Registry,

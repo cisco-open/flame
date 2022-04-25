@@ -60,7 +60,7 @@ For example,
 ```bash
 $ flamectl get tasks 624888fda8001d773e34de43
 +--------------------------+------------------------------------------+--------+-------+--------------------------------+
-|          JOB ID          |                 AGENT ID                 |  TYPE  | STATE |           TIMESTAMP            |
+|          JOB ID          |                 TASK ID                  |  TYPE  | STATE |           TIMESTAMP            |
 +--------------------------+------------------------------------------+--------+-------+--------------------------------+
 | 624888fda8001d773e34de43 | 18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 | user   | ready | 2022-04-02 17:33:49.927 +0000  |
 |                          |                                          |        |       | UTC                            |
@@ -88,14 +88,14 @@ $ curl -O https://raw.githubusercontent.com/myungjin/datasets/main/adult/train.c
 Let's first start the user-type task. In this example, we use docker image built in minikube VM and manually run a user docker container in the VM.
 Therefore, the container is outside of the minikube cluster.
 
-For agent ID, it can be obtained from `flamectl get tasks <job_id>` command (see the example in Step 5).
+For task ID, it can be obtained from `flamectl get tasks <job_id>` command (see the example in Step 5).
 In this example, it's `18d2671fbf597f2200fd4a01f4dfc7878fce5ca9`.
 
 ```bash
 $ minikube ssh
 $ docker run \
-    -e FLAME_AGENT_ID=18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 \
-    -e FLAME_AGENT_KEY=any_key_chosen_by_user \
+    -e FLAME_TASK_ID=18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 \
+    -e FLAME_TASK_KEY=any_key_chosen_by_user \
     -v /home/docker/data:/flame/data:ro \
     --dns 10.96.0.10 \
     flame:latest \
@@ -139,7 +139,7 @@ By running `flamectl get tasks <job_id>`, one can check the status of each task.
 ```bash
 $ flamectl get tasks 624888fda8001d773e34de43
 +--------------------------+------------------------------------------+--------+---------+--------------------------------+
-|          JOB ID          |                 AGENT ID                 |  TYPE  |  STATE  |           TIMESTAMP            |
+|          JOB ID          |                 TASK ID                  |  TYPE  |  STATE  |           TIMESTAMP            |
 +--------------------------+------------------------------------------+--------+---------+--------------------------------+
 | 624888fda8001d773e34de43 | 18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 | user   | running | 2022-04-02 18:24:45.704 +0000  |
 |                          |                                          |        |         | UTC                            |
@@ -153,7 +153,7 @@ After some time later, run the same command above. If the job is successfully co
 ```bash
 $ flamectl get tasks 624888fda8001d773e34de43
 +--------------------------+------------------------------------------+--------+-----------+--------------------------------+
-|          JOB ID          |                 AGENT ID                 |  TYPE  |   STATE   |           TIMESTAMP            |
+|          JOB ID          |                 TASK ID                  |  TYPE  |   STATE   |           TIMESTAMP            |
 +--------------------------+------------------------------------------+--------+-----------+--------------------------------+
 | 624888fda8001d773e34de43 | 18d2671fbf597f2200fd4a01f4dfc7878fce5ca9 | user   | completed | 2022-04-02 18:25:14.237 +0000  |
 |                          |                                          |        |           | UTC                            |

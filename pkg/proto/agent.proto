@@ -17,7 +17,7 @@
 syntax = "proto3";
 
 package grpcAgent;
-option go_package = "github.com/cisco-open/flame/pkg/proto/go/flamelet";
+option go_package = "github.com/cisco-open/flame/pkg/proto/agent";
 
 import "google/protobuf/struct.proto";
 

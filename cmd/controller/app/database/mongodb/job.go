@@ -28,6 +28,10 @@ import (
 	"github.com/cisco-open/flame/pkg/util"
 )
 
+const (
+	hiddenMessage = "hidden by system"
+)
+
 // CreateJob creates a new job specification and returns JobStatus
 func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error) {
 	// override userId in jobSpec to prevent an incorrect record in the db
@@ -239,21 +243,50 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 	return nil
 }
 
+func (db *MongoService) jobExists(userId string, jobId string) error {
+	filter := bson.M{util.DBFieldId: jobId, util.DBFieldUserId: userId}
+
+	return db.jobCollection.FindOne(context.TODO(), filter).Err()
+}
+
+func (db *MongoService) GetTaskInfo(userId string, jobId string, taskId string) (openapi.TaskInfo, error) {
+	zap.S().Infof("Get info of task %s in job %s owned by user: %s", taskId, jobId, userId)
+
+	if err := db.jobExists(userId, jobId); err != nil {
+		zap.S().Warnf("failed to find a matching job", err)
+		return openapi.TaskInfo{}, ErrorCheck(err)
+	}
+
+	// found a job; so we can proceed to fetch the task info
+
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldTaskId: taskId}
+
+	var taskInfo openapi.TaskInfo
+	err := db.taskCollection.FindOne(context.TODO(), filter).Decode(&taskInfo)
+	if err != nil {
+		zap.S().Warnf("failed to fetch task info: %v", err)
+
+		return openapi.TaskInfo{}, ErrorCheck(err)
+	}
+
+	// strip off the key field in the data structure
+	// This is to protect key information
+	taskInfo.Key = hiddenMessage
+
+	return taskInfo, nil
+}
+
 func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32, inclKey bool) ([]openapi.TaskInfo, error) {
 	zap.S().Infof("Get info of all tasks in a job %s owned by user: %s", jobId, userId)
 
-	filter := bson.M{util.DBFieldId: jobId, util.DBFieldUserId: userId}
-
-	err := db.jobCollection.FindOne(context.TODO(), filter).Err()
-	if err != nil {
+	if err := db.jobExists(userId, jobId); err != nil {
 		zap.S().Warnf("failed to find a matching job: %v", err)
-
 		return nil, ErrorCheck(err)
 	}
 
 	// found a job; so we can proceed to fetch the info of tasks
 
-	filter = bson.M{util.DBFieldJobId: jobId}
+	filter := bson.M{util.DBFieldJobId: jobId}
 	cursor, err := db.taskCollection.Find(context.TODO(), filter)
 	if err != nil {
 		zap.S().Warnf("failed to fetch task info: %v", err)
@@ -277,7 +310,7 @@ func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32, i
 			// strip off the key field in the data structure
 			//
 			// So, the bool parameter should be enabled only for internal calls
-			taskInfo.Key = ""
+			taskInfo.Key = hiddenMessage
 		}
 
 		tasksInfoList = append(tasksInfoList, taskInfo)
