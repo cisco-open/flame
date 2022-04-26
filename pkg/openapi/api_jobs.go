@@ -35,7 +35,7 @@ import (
 	"github.com/gorilla/mux"
 )
 
-// A JobsApiController binds http requests to an api service and writes the service results to the http response
+// JobsApiController binds http requests to an api service and writes the service results to the http response
 type JobsApiController struct {
 	service      JobsApiServicer
 	errorHandler ErrorHandler
@@ -101,8 +101,14 @@ func (c *JobsApiController) Routes() Routes {
 		{
 			"GetTask",
 			strings.ToUpper("Get"),
-			"/jobs/{jobId}/{agentId}/task",
+			"/jobs/{jobId}/{taskId}/task",
 			c.GetTask,
+		},
+		{
+			"GetTaskInfo",
+			strings.ToUpper("Get"),
+			"/{user}/jobs/{jobId}/tasks/{taskId}",
+			c.GetTaskInfo,
 		},
 		{
 			"GetTasksInfo",
@@ -125,7 +131,7 @@ func (c *JobsApiController) Routes() Routes {
 		{
 			"UpdateTaskStatus",
 			strings.ToUpper("Put"),
-			"/jobs/{jobId}/{agentId}/task/status",
+			"/jobs/{jobId}/{taskId}/task/status",
 			c.UpdateTaskStatus,
 		},
 	}
@@ -134,17 +140,23 @@ func (c *JobsApiController) Routes() Routes {
 // CreateJob - Create a new job specification
 func (c *JobsApiController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobSpec := &JobSpec{}
-	if err := json.NewDecoder(r.Body).Decode(&jobSpec); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	jobSpecParam := JobSpec{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&jobSpecParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.CreateJob(r.Context(), user, *jobSpec)
+	if err := AssertJobSpecRequired(jobSpecParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.CreateJob(r.Context(), userParam, jobSpecParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -154,14 +166,14 @@ func (c *JobsApiController) CreateJob(w http.ResponseWriter, r *http.Request) {
 // DeleteJob - Delete job specification
 func (c *JobsApiController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	result, err := c.service.DeleteJob(r.Context(), user, jobId)
+	result, err := c.service.DeleteJob(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -171,14 +183,14 @@ func (c *JobsApiController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 // GetJob - Get a job specification
 func (c *JobsApiController) GetJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	result, err := c.service.GetJob(r.Context(), user, jobId)
+	result, err := c.service.GetJob(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -188,14 +200,14 @@ func (c *JobsApiController) GetJob(w http.ResponseWriter, r *http.Request) {
 // GetJobStatus - Get job status of a given jobId
 func (c *JobsApiController) GetJobStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	result, err := c.service.GetJobStatus(r.Context(), user, jobId)
+	result, err := c.service.GetJobStatus(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -206,48 +218,48 @@ func (c *JobsApiController) GetJobStatus(w http.ResponseWriter, r *http.Request)
 func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	user := params["user"]
+	userParam := params["user"]
 
-	limit, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get("limit"), false)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.GetJobs(r.Context(), user, limit)
+	result, err := c.service.GetJobs(r.Context(), userParam, limitParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// GetTask - Get a job task for a given job and agent
+// GetTask - Get a job task for a given job and task
 func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
 	jobIdParam := params["jobId"]
 
-	agentIdParam := params["agentId"]
+	taskIdParam := params["taskId"]
 
 	keyParam := query.Get("key")
-	result, err := c.service.GetTask(r.Context(), jobIdParam, agentIdParam, keyParam)
+	result, err := c.service.GetTask(r.Context(), jobIdParam, taskIdParam, keyParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 
 	mediatype, _, err := mime.ParseMediaType(r.Header.Get("Accept"))
 	if err != nil {
-		code := http.StatusNotAcceptable
-		EncodeJSONResponse(err.Error(), &code, w)
+		result.Code = http.StatusNotAcceptable
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	if mediatype != "multipart/form-data" {
-		code := http.StatusMultipleChoices
-		EncodeJSONResponse("set Accept: multipart/form-data", &code, w)
+		result.Code = http.StatusMultipleChoices
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 
@@ -256,8 +268,8 @@ func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 
 	taskMap, ok := result.Body.(map[string][]byte)
 	if !ok {
-		code := http.StatusNotFound
-		EncodeJSONResponse("task object not found", &code, w)
+		result.Code = http.StatusNotFound
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 
@@ -265,24 +277,42 @@ func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	for filename, data := range taskMap {
 		fw, err := mw.CreateFormFile(filename, filename)
 		if err != nil {
-			code := http.StatusInternalServerError
-			EncodeJSONResponse(err.Error(), &code, w)
+			result.Code = http.StatusInternalServerError
+			c.errorHandler(w, r, err, &result)
 			return
 		}
 		if _, err := fw.Write(data); err != nil {
-			code := http.StatusInternalServerError
-			EncodeJSONResponse(err.Error(), &code, w)
+			result.Code = http.StatusInternalServerError
+			c.errorHandler(w, r, err, &result)
 			return
 		}
 	}
 
 	if err := mw.Close(); err != nil {
-		code := http.StatusInternalServerError
-		EncodeJSONResponse(err.Error(), &code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 
 	w.WriteHeader(result.Code)
+}
+
+// GetTaskInfo - Get the info of a task in a job
+func (c *JobsApiController) GetTaskInfo(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params["user"]
+
+	jobIdParam := params["jobId"]
+
+	taskIdParam := params["taskId"]
+
+	result, err := c.service.GetTaskInfo(r.Context(), userParam, jobIdParam, taskIdParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
 // GetTasksInfo - Get the info of tasks in a job
@@ -311,41 +341,53 @@ func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request)
 // UpdateJob - Update a job specification
 func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	jobSpec := &JobSpec{}
-	if err := json.NewDecoder(r.Body).Decode(&jobSpec); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	jobSpecParam := JobSpec{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&jobSpecParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateJob(r.Context(), user, jobId, *jobSpec)
+	if err := AssertJobSpecRequired(jobSpecParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.UpdateJob(r.Context(), userParam, jobIdParam, jobSpecParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// UpdateJobStatus - Update a job's status
+// UpdateJobStatus - Update the status of a job
 func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params["user"]
 
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	jobStatus := &JobStatus{}
-	if err := json.NewDecoder(r.Body).Decode(&jobStatus); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	jobStatusParam := JobStatus{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&jobStatusParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateJobStatus(r.Context(), user, jobId, *jobStatus)
+	if err := AssertJobStatusRequired(jobStatusParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.UpdateJobStatus(r.Context(), userParam, jobIdParam, jobStatusParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -355,19 +397,25 @@ func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Reque
 // UpdateTaskStatus - Update the status of a task
 func (c *JobsApiController) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	jobId := params["jobId"]
+	jobIdParam := params["jobId"]
 
-	agentId := params["agentId"]
+	taskIdParam := params["taskId"]
 
-	taskStatus := &TaskStatus{}
-	if err := json.NewDecoder(r.Body).Decode(&taskStatus); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	taskStatusParam := TaskStatus{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&taskStatusParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateTaskStatus(r.Context(), jobId, agentId, *taskStatus)
+	if err := AssertTaskStatusRequired(taskStatusParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.UpdateTaskStatus(r.Context(), jobIdParam, taskIdParam, taskStatusParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code

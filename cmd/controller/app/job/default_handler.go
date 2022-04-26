@@ -234,22 +234,22 @@ func (h *DefaultHandler) allocateComputes() error {
 
 		context := map[string]string{
 			"imageLoc": h.jobParams.Image,
-			"agentId":  taskInfo.AgentId,
-			"agentKey": taskInfo.Key,
+			"taskId":   taskInfo.TaskId,
+			"taskKey":  taskInfo.Key,
 		}
 		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
 		if err != nil {
-			errMsg := fmt.Sprintf("failed to render a template for agent %s: %v", taskInfo.AgentId, err)
+			errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskInfo.TaskId, err)
 			zap.S().Debugf(errMsg)
 
 			return fmt.Errorf(errMsg)
 		}
 
-		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.AgentId)
+		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.TaskId)
 		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
 		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if err != nil {
-			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.AgentId, err)
+			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.TaskId, err)
 			zap.S().Debugf(errMsg)
 
 			return fmt.Errorf(errMsg)
@@ -289,13 +289,13 @@ func (h *DefaultHandler) allocateComputes() error {
 
 func (h *DefaultHandler) notify(evtType pbNotify.EventType) error {
 	req := &pbNotify.EventRequest{
-		Type:     evtType,
-		AgentIds: make([]string, 0),
+		Type:    evtType,
+		TaskIds: make([]string, 0),
 	}
 
 	for _, taskInfo := range h.tasksInfo {
 		req.JobId = taskInfo.JobId
-		req.AgentIds = append(req.AgentIds, taskInfo.AgentId)
+		req.TaskIds = append(req.TaskIds, taskInfo.TaskId)
 	}
 
 	resp, err := newNotifyClient(h.notifier).sendNotification(req)

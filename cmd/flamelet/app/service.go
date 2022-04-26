@@ -25,13 +25,13 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	pbAgent "github.com/cisco-open/flame/pkg/proto/go/agent"
+	pbAgent "github.com/cisco-open/flame/pkg/proto/agent"
 	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
-	envAgentId  = "FLAME_AGENT_ID"
-	envAgentKey = "FLAME_AGENT_KEY"
+	envTaskId  = "FLAME_TASK_ID"
+	envTaskKey = "FLAME_TASK_KEY"
 )
 
 type AgentService struct {
@@ -48,24 +48,24 @@ func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 		return nil, err
 	}
 
-	agentId := os.Getenv(envAgentId)
+	taskId := os.Getenv(envTaskId)
 	// in case agent id env variable is not set
-	if agentId == "" {
-		return nil, fmt.Errorf("agent id not found from env variable %s", envAgentId)
+	if taskId == "" {
+		return nil, fmt.Errorf("task id not found from env variable %s", envTaskId)
 	}
 
-	agentKey := os.Getenv(envAgentKey)
-	if agentKey == "" {
-		return nil, fmt.Errorf("agent key not found from env variable %s", envAgentKey)
+	taskKey := os.Getenv(envTaskKey)
+	if taskKey == "" {
+		return nil, fmt.Errorf("agent key not found from env variable %s", envTaskKey)
 	}
 
-	tHandler := newTaskHandler(apiserverEp, notifierEp, name, agentId, agentKey)
+	tHandler := newTaskHandler(apiserverEp, notifierEp, name, taskId, taskKey)
 
 	agent := &AgentService{
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
 		name:        name,
-		id:          agentId,
+		id:          taskId,
 		tHandler:    tHandler,
 	}
 

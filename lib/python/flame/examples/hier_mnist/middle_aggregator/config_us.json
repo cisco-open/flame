@@ -1,5 +1,5 @@
 {
-    "agentid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa744",
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa744",
     "backend": "mqtt",
     "brokers": [
         {

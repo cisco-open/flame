@@ -20,6 +20,8 @@ from sys import modules
 from typing import Any, Optional
 
 import mlflow
+from mlflow.exceptions import MlflowException
+from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS, ErrorCode
 
 from .abstract import AbstractRegistryClient
 
@@ -51,10 +53,13 @@ class MLflowRegistryClient(AbstractRegistryClient):
         try:
             exp = mlflow.set_experiment(experiment)
             logger.info(f"Set experiment {exp.name}")
-        except:
-            logger.info(f"Failed to set experiment; the experiment is set to {exp.name}, trying to reset...")
-            exp = mlflow.set_experiment(experiment)
-            logger.info(f"reset experiment {exp.name}")
+        except MlflowException as e:
+            if e.error_code == ErrorCode.Name(RESOURCE_ALREADY_EXISTS):
+                logger.info("resource already exists; trying to set again")
+                exp = mlflow.set_experiment(experiment)
+                logger.info(f"successfully set experiment {exp.name}")
+            else:
+                raise e
 
         self.experiment = experiment
 

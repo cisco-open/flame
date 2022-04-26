@@ -26,7 +26,7 @@ option go_package = "github.com/cisco-open/flame/pkg/proto/notification";
 // EventRoute service defines communication between agent and notifier
 service EventRoute {
   // This implements a server side streaming RPC
-  rpc GetEvent(AgentInfo) returns (stream Event) {}
+  rpc GetEvent(TaskInfo) returns (stream Event) {}
 }
 
 enum EventType {
@@ -36,7 +36,7 @@ enum EventType {
   UPDATE_JOB = 3;
 }
 
-message AgentInfo {
+message TaskInfo {
   string id = 1;
   string hostname = 2;
 }
@@ -58,7 +58,7 @@ service TriggerRoute {
 message EventRequest {
   EventType type = 1;
   string job_id = 2;
-  repeated string agent_ids = 3;
+  repeated string task_ids = 3;
 }
 
 message Response{
@@ -69,5 +69,5 @@ message Response{
   }
   Status status = 1;
   string message = 2;
-  repeated string failed_agents = 3;
+  repeated string failed_tasks = 3;
 }

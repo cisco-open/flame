@@ -43,3 +43,30 @@ type JobStatus struct {
 
 	EndedAt time.Time `json:"endedAt,omitempty"`
 }
+
+// AssertJobStatusRequired checks if the required fields are not zero-ed
+func AssertJobStatusRequired(obj JobStatus) error {
+	elements := map[string]interface{}{
+		"id":    obj.Id,
+		"state": obj.State,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	return nil
+}
+
+// AssertRecurseJobStatusRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of JobStatus (e.g. [][]JobStatus), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseJobStatusRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aJobStatus, ok := obj.(JobStatus)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertJobStatusRequired(aJobStatus)
+	})
+}

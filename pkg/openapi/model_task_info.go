@@ -33,7 +33,7 @@ import (
 type TaskInfo struct {
 	JobId string `json:"jobId,omitempty"`
 
-	AgentId string `json:"agentId,omitempty"`
+	TaskId string `json:"taskId,omitempty"`
 
 	Role string `json:"role,omitempty"`
 
@@ -42,6 +42,8 @@ type TaskInfo struct {
 	Key string `json:"key,omitempty"`
 
 	State JobState `json:"state,omitempty"`
+
+	Log string `json:"log,omitempty"`
 
 	Timestamp time.Time `json:"timestamp,omitempty"`
 }

@@ -64,6 +64,7 @@ type JobService interface {
 	GetJobs(string, int32) ([]openapi.JobStatus, error)
 	UpdateJob(string, string, openapi.JobSpec) error
 	UpdateJobStatus(string, string, openapi.JobStatus) error
+	GetTaskInfo(string, string, string) (openapi.TaskInfo, error)
 	GetTasksInfo(string, string, int32, bool) ([]openapi.TaskInfo, error)
 }
 

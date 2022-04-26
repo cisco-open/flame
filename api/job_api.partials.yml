@@ -299,6 +299,56 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
+/{user}/jobs/{jobId}/tasks/{taskId}:
+  ########################################
+  # Get info of a task in a job
+  ########################################
+  get:
+    operationId: getTaskInfo
+    summary: Get the info of a task in a job
+    tags:
+      - jobs
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: taskId
+        description: task id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInfo'
+        description: details about task
+      "401":
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
 /{user}/jobs/{jobId}/tasks:
   ########################################
   # Get info of tasks in a job
@@ -359,13 +409,13 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/jobs/{jobId}/{agentId}/task:
+/jobs/{jobId}/{taskId}/task:
   ########################################
   # Get job task
   ########################################
   get:
     operationId: getTask
-    summary: Get a job task for a given job and agent
+    summary: Get a job task for a given job and task
     tags:
       - jobs
     parameters:
@@ -377,8 +427,8 @@
         schema:
           type: string
         style: simple
-      - name: agentId
-        description: flamelet agent Id
+      - name: taskId
+        description: flamelet task Id
         explode: false
         in: path
         required: true
@@ -405,7 +455,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/jobs/{jobId}/{agentId}/task/status:
+/jobs/{jobId}/{taskId}/task/status:
   ########################################
   # Update task status from flamelet agent
   ########################################
@@ -423,8 +473,8 @@
         style: simple
         explode: false
         required: true
-      - name: agentId
-        description: agent id
+      - name: taskId
+        description: task id
         in: path
         schema:
           type: string

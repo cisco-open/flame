@@ -230,7 +230,7 @@ TaskInfo:
   properties:
     jobId:
       type: string
-    agentId:
+    taskId:
       type: string
     role:
       type: string
@@ -240,6 +240,8 @@ TaskInfo:
       type: string
     state:
       $ref: '#/components/schemas/JobState' # reuse job state
+    log:
+      type: string
     timestamp:
       type: string
       format: date-time
@@ -267,6 +269,8 @@ TaskStatus:
   properties:
     state:
       $ref: '#/components/schemas/JobState' # reuse job state
+    log:
+      type: string
     timestamp:
       type: string
       format: date-time

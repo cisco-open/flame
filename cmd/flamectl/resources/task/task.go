@@ -32,8 +32,37 @@ import (
 type Params struct {
 	resources.CommonParams
 
-	JobId string
-	Limit string
+	JobId  string
+	TaskId string
+	Limit  string
+}
+
+func Get(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":   params.User,
+		"jobId":  params.JobId,
+		"taskId": params.TaskId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetTaskInfoEndpoint, uriMap)
+
+	code, responseBody, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		var errMsg error
+		_ = util.ByteToStruct(responseBody, &errMsg)
+		fmt.Printf("Failed to retrieve task info - code: %d, error: %v, msg: %v\n", code, err, errMsg)
+		return nil
+	}
+
+	taskInfoString, err := util.PrettyJsonString(responseBody)
+	if err != nil {
+		fmt.Printf("Failed to process task info: %v\n", err)
+		return nil
+	}
+
+	fmt.Printf("%s\n", taskInfoString)
+
+	return nil
 }
 
 func GetMany(params Params) error {
@@ -67,10 +96,10 @@ func GetMany(params Params) error {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Job ID", "Agent ID", "Type", "State", "Timestamp"})
+	table.SetHeader([]string{"Job ID", "Task ID", "Type", "State", "Timestamp"})
 
 	for _, v := range infoList {
-		table.Append([]string{v.JobId, v.AgentId, string(v.Type), string(v.State), v.Timestamp.String()})
+		table.Append([]string{v.JobId, v.TaskId, string(v.Type), string(v.State), v.Timestamp.String()})
 	}
 
 	table.Render() // Send output

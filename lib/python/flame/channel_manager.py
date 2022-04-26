@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Channel manager."""
 
 import asyncio
@@ -60,7 +59,7 @@ class ChannelManager(object):
         self._config = config
         self._job_id = self._config.job.job_id
         self._role = self._config.role
-        self._agent_id = self._config.agent_id
+        self._task_id = self._config.task_id
 
         self._channels = {}
 
@@ -69,9 +68,9 @@ class ChannelManager(object):
 
         self._backend = backend_provider.get(self._config.backend)
         broker = self._config.brokers.sort_to_host[self._config.backend]
-        self._backend.configure(broker, self._job_id, self._agent_id)
+        self._backend.configure(broker, self._job_id, self._task_id)
         self._discovery_client = discovery_client_provider.get(
-            self._config.agent)
+            self._config.task)
 
         async def inner():
             # create a coroutine task
@@ -114,8 +113,8 @@ class ChannelManager(object):
         selector = selector_provider.get(self._config.selector.sort,
                                          **self._config.selector.kwargs)
 
-        self._channels[name] = Channel(self._backend, selector,
-                                       self._job_id, name, me, other, groupby)
+        self._channels[name] = Channel(self._backend, selector, self._job_id,
+                                       name, me, other, groupby)
         self._channels[name].join()
 
     def leave(self, name):

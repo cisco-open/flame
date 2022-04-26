@@ -151,18 +151,30 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	return openapi.Response(http.StatusOK, jobsStatus), nil
 }
 
-// GetTask - Get a job task for a given job and agent
-func (s *JobsApiService) GetTask(ctx context.Context, jobId string, agentId string, key string) (openapi.ImplResponse, error) {
+// GetTask - Get a job task for a given job and task
+func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId string, key string) (openapi.ImplResponse, error) {
 	if key == "" {
 		return openapi.Response(http.StatusBadRequest, nil), fmt.Errorf("key can't be empty")
 	}
 
-	taskMap, err := s.dbService.GetTask(jobId, agentId, key)
+	taskMap, err := s.dbService.GetTask(jobId, taskId, key)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get task")
 	}
 
 	return openapi.Response(http.StatusOK, taskMap), nil
+}
+
+// GetTaskInfo - Get the info of a task in a job
+func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId string, taskId string) (openapi.ImplResponse, error) {
+	taskInfo, err := s.dbService.GetTaskInfo(user, jobId, taskId)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get info for task %s in job %s: %v", taskId, jobId, err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusOK, taskInfo), nil
 }
 
 // GetTasksInfo - Get the info of tasks in a job
@@ -236,9 +248,9 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 }
 
 // UpdateTaskStatus - Update the status of a task
-func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, agentId string,
+func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, taskId string,
 	taskStatus openapi.TaskStatus) (openapi.ImplResponse, error) {
-	err := s.dbService.UpdateTaskStatus(jobId, agentId, taskStatus)
+	err := s.dbService.UpdateTaskStatus(jobId, taskId, taskStatus)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to update a task status: %v", err)
 		zap.S().Debug(errMsg)

@@ -22,8 +22,30 @@ import (
 	"github.com/cisco-open/flame/cmd/flamectl/resources/task"
 )
 
+const (
+	nArgsGetTask = 2
+)
+
+var getTaskCmd = &cobra.Command{
+	Use:   "task <jobID> <taskID>",
+	Short: "Get the info of a task in a job",
+	Long:  "This command retrieves the info of a task in a given job",
+	Args:  cobra.RangeArgs(nArgsGetTask, nArgsGetTask),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		jobId := args[0]
+		taskId := args[1]
+		params := task.Params{}
+		params.Endpoint = config.ApiServer.Endpoint
+		params.User = config.User
+		params.JobId = jobId
+		params.TaskId = taskId
+
+		return task.Get(params)
+	},
+}
+
 var getTasksCmd = &cobra.Command{
-	Use:   "tasks",
+	Use:   "tasks <jobID>",
 	Short: "Get info of all tasks in a job",
 	Long:  "This command retrieves the info of all tasks in a given job",
 	Args:  cobra.RangeArgs(1, 1),
@@ -39,5 +61,6 @@ var getTasksCmd = &cobra.Command{
 }
 
 func init() {
+	getCmd.AddCommand(getTaskCmd)
 	getCmd.AddCommand(getTasksCmd)
 }

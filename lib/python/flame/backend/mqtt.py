@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MQTT backend."""
 
 import asyncio
@@ -119,13 +118,13 @@ class MqttBackend(AbstractBackend):
 
             await asyncio.sleep(period)
 
-    def configure(self, broker: str, job_id: str, agent_id: str):
+    def configure(self, broker: str, job_id: str, task_id: str):
         """Configure the backend."""
         self._msg_chunks: dict[str, ChunkStore] = {}
 
         self._broker = broker
         self._job_id = job_id
-        self._id = agent_id
+        self._id = task_id
 
         self._mqtt_client = mqtt.Client(self._id, protocol=MQTTv5)
 

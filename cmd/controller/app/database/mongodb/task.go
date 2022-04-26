@@ -52,8 +52,8 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 			return fmt.Errorf("failed to marshal task: %v", err)
 		}
 
-		zap.S().Debugf("Creating task for agent %s", task.AgentId)
-		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldAgentId: task.AgentId}
+		zap.S().Debugf("Creating task for task %s", task.TaskId)
+		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldTaskId: task.TaskId}
 		update := bson.M{
 			"$set": bson.M{
 				util.DBFieldRole:      task.Role,
@@ -88,8 +88,8 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 	return nil
 }
 
-func (db *MongoService) GetTask(jobId string, agentId string, key string) (map[string][]byte, error) {
-	zap.S().Infof("Fetching task - jobId: %s, agentId: %s", jobId, agentId)
+func (db *MongoService) GetTask(jobId string, taskId string, key string) (map[string][]byte, error) {
+	zap.S().Infof("Fetching task - jobId: %s, taskId: %s", jobId, taskId)
 
 	type taskInMongo struct {
 		Config []byte `json:"config"`
@@ -98,7 +98,7 @@ func (db *MongoService) GetTask(jobId string, agentId string, key string) (map[s
 	}
 	var task taskInMongo
 
-	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldTaskId: taskId}
 
 	err := db.taskCollection.FindOne(context.TODO(), filter).Decode(&task)
 	if err != nil {
@@ -118,7 +118,7 @@ func (db *MongoService) GetTask(jobId string, agentId string, key string) (map[s
 		util.TaskCodeFile:   task.Code,
 	}
 
-	// This is the first time that agent is registered; let's set the key in DB
+	// This is the first time that task is registered; let's set the key in DB
 	if task.Key == "" {
 		setElements := bson.M{util.DBFieldTaskKey: key}
 
@@ -155,7 +155,7 @@ func (db *MongoService) DeleteTasks(jobId string, dirty bool) error {
 	return nil
 }
 
-func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatus openapi.TaskStatus) error {
+func (db *MongoService) UpdateTaskStatus(jobId string, taskId string, taskStatus openapi.TaskStatus) error {
 	switch taskStatus.State {
 	case openapi.RUNNING:
 		fallthrough
@@ -180,9 +180,13 @@ func (db *MongoService) UpdateTaskStatus(jobId string, agentId string, taskStatu
 		return fmt.Errorf("unknown state: %s", taskStatus.State)
 	}
 
-	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldAgentId: agentId}
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldTaskId: taskId}
 
-	setElements := bson.M{util.DBFieldState: taskStatus.State, util.DBFieldTimestamp: time.Now()}
+	setElements := bson.M{
+		util.DBFieldState:     taskStatus.State,
+		util.DBFieldTaskLog:   taskStatus.Log,
+		util.DBFieldTimestamp: time.Now(),
+	}
 
 	update := bson.M{"$set": setElements}
 

@@ -28,40 +28,40 @@ const (
 
 // GetEvent is called by the client to subscribe to the notification service.
 // Adds the client to the server client map and stores the client stream.
-func (s *notificationServer) GetEvent(in *pbNotify.AgentInfo, stream pbNotify.EventRoute_GetEventServer) error {
-	zap.S().Debugf("Serving event for agent %v", in)
+func (s *notificationServer) GetEvent(in *pbNotify.TaskInfo, stream pbNotify.EventRoute_GetEventServer) error {
+	zap.S().Debugf("Serving event for task %v", in)
 
-	agentId := in.GetId()
+	taskId := in.GetId()
 
-	eventCh := s.getEventChannel(agentId)
+	eventCh := s.getEventChannel(taskId)
 	for {
 		select {
 		case event := <-eventCh:
-			zap.S().Infof("Pushing event %v to agent %s", event, agentId)
+			zap.S().Infof("Pushing event %v to task %s", event, taskId)
 			err := stream.Send(event)
 			if err != nil {
-				zap.S().Warnf("Failed to push notification to agent %s: %v", agentId, err)
+				zap.S().Warnf("Failed to push notification to task %s: %v", taskId, err)
 			}
 
 		case <-stream.Context().Done():
-			zap.S().Infof("Stream context is done for agent %s", agentId)
+			zap.S().Infof("Stream context is done for task %s", taskId)
 			s.mutex.Lock()
-			delete(s.eventQueues, agentId)
+			delete(s.eventQueues, taskId)
 			s.mutex.Unlock()
 			return nil
 		}
 	}
 }
 
-func (s *notificationServer) getEventChannel(agentId string) chan *pbNotify.Event {
+func (s *notificationServer) getEventChannel(taskId string) chan *pbNotify.Event {
 	var eventCh chan *pbNotify.Event
 
 	s.mutex.Lock()
-	if _, ok := s.eventQueues[agentId]; !ok {
+	if _, ok := s.eventQueues[taskId]; !ok {
 		eventCh = make(chan *pbNotify.Event, eventChannelLen)
-		s.eventQueues[agentId] = eventCh
+		s.eventQueues[taskId] = eventCh
 	} else {
-		eventCh = s.eventQueues[agentId]
+		eventCh = s.eventQueues[taskId]
 	}
 	s.mutex.Unlock()
 

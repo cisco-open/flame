@@ -21,7 +21,7 @@ import (
 
 	"go.uber.org/zap"
 
-	pbAgent "github.com/cisco-open/flame/pkg/proto/go/agent"
+	pbAgent "github.com/cisco-open/flame/pkg/proto/agent"
 )
 
 // appServer implement the flamelet grpc service and include - proto unimplemented method and
