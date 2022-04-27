@@ -45,13 +45,13 @@ type handler interface {
 
 func NewHandler(handlerType string, dbService database.DBService, jobId string,
 	eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, jobParams config.JobParams, platform string) (handler, error) {
+	notifier string, jobParams config.JobParams, platform string, namespace string) (handler, error) {
 	var hdlr handler
 	var err error
 
 	switch handlerType {
 	case defaultHandler:
-		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, platform)
+		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, platform, namespace)
 
 	default:
 		err = fmt.Errorf("unknown handler type")

@@ -26,6 +26,7 @@ data:
     db: mongodb://flame-mongodb-headless:27017/?replicaSet=rs0
     notifier: flame-notifier:10101
     platform: k8s
+    namespace: {{ .Values.servicename }}
     jobParams:
       image: flame:latest
       brokers:

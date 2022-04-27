@@ -46,6 +46,7 @@ type DefaultHandler struct {
 	notifier   string
 	jobParams  config.JobParams
 	platform   string
+	namespace  string
 
 	jobSpec openapi.JobSpec
 
@@ -66,7 +67,7 @@ type DefaultHandler struct {
 }
 
 func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, jobParams config.JobParams, platform string) (*DefaultHandler, error) {
+	notifier string, jobParams config.JobParams, platform string, namespace string) (*DefaultHandler, error) {
 	// start task monitoring
 	tskEventCh, errCh, tskWatchCancelFn, err := dbService.MonitorTasks(jobId)
 	if err != nil {
@@ -83,6 +84,7 @@ func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *E
 		notifier:   notifier,
 		jobParams:  jobParams,
 		platform:   platform,
+		namespace:  namespace,
 		tasksInfo:  make([]openapi.TaskInfo, 0),
 		roles:      make([]openapi.Role, 0),
 
@@ -266,7 +268,7 @@ func (h *DefaultHandler) allocateComputes() error {
 		return fmt.Errorf(errMsg)
 	}
 
-	err = dplyr.Initialize("", util.ProjectName)
+	err = dplyr.Initialize("", h.namespace)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
 		zap.S().Debugf(errMsg)
