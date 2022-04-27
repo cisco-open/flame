@@ -34,6 +34,7 @@ type Controller struct {
 	notifier  string
 	restPort  string
 	platform  string
+	namespace string
 	dbService database.DBService
 	jobParams config.JobParams
 
@@ -63,6 +64,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		notifier:  cfg.Notifier,
 		restPort:  cfg.Port,
 		platform:  cfg.Platform,
+		namespace: cfg.Namespace,
 		dbService: dbService,
 		jobParams: cfg.JobParams,
 
@@ -74,7 +76,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform, c.namespace)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

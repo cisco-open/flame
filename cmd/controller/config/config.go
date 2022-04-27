@@ -27,10 +27,11 @@ import (
 )
 
 type Config struct {
-	Db       string `yaml:"db"`
-	Notifier string `yaml:"notifier"`
-	Platform string `yaml:"platform,omitempty"`
-	Port     string `yaml:"port,omitempty"`
+	Db        string `yaml:"db"`
+	Notifier  string `yaml:"notifier"`
+	Platform  string `yaml:"platform"`
+	Namespace string `yaml:"namespace"`
+	Port      string `yaml:"port,omitempty"`
 
 	JobParams JobParams `yaml:"jobParams"`
 }
