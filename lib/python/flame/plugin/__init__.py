@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Flame plugin."""
 
 import importlib
@@ -50,10 +49,14 @@ class PluginManager(object):
         self.filter: set[str] = set()
         self.plugins: dict[PluginType, list[Plugin]] = dict()
 
-        for filename in os.listdir(plugins_path):
-            filepath = os.path.join(plugins_path, filename)
-            cls_name, package, ptype = self.parse_plugin(filepath)
-            self.register_plugin(cls_name, package, ptype)
+        try:
+            for filename in os.listdir(plugins_path):
+                filepath = os.path.join(plugins_path, filename)
+                cls_name, package, ptype = self.parse_plugin(filepath)
+                self.register_plugin(cls_name, package, ptype)
+        except FileNotFoundError as e:
+            logger.warn(f"{e.filename} not found; stop plugin registration.")
+            return
 
     def parse_plugin(self, filepath: str) -> Tuple[str, str, PluginType]:
         """Parse plugin configuration."""
