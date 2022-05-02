@@ -14,15 +14,3 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
-"""Message class."""
-
-from enum import Enum
-
-class MessageType(Enum):
-    """Define Message types."""
-
-    WEIGHTS = 1  # model weights
-    EOT = 2  # end of training
-    DATASET_SIZE = 3 # dataset size
-    ROUND = 4 # round number

@@ -66,7 +66,7 @@ GROUPBY_DEFAULT_GROUP = 'default'
 DEFAULT_HYPERARAMETERS_DICT = {
     'rounds': 1,
     'epochs': 1,
-    'batchSize': 16,
+    'batchSize': 16
 }
 
 
