@@ -1,0 +1,30 @@
+{
+    "name": "A simple schema for distributed training with MQTT backend",
+    "description": "This implementation is on Keras using MNIST dataset.",
+    "roles": [
+	{
+	    "name": "trainer",
+	    "description": "It consumes the data and trains local model",
+	    "isDataConsumer": true
+	}
+    ],
+    "channels": [
+	{
+	    "name": "param-channel",
+	    "description": "Model update is sent from trainer to other trainers",
+	    "pair": [
+			"trainer",
+			"trainer"
+	    ],
+	    "groupBy": {
+			"type": "tag",
+			"value": [
+		    	"default/us"
+		]
+	    },
+	    "funcTags": {
+			"trainer": ["fetch", "upload"]
+	    }
+	}
+    ]
+}
