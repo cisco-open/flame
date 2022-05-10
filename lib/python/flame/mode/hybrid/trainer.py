@@ -13,66 +13,36 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""horizontal FL trainer."""
+
+"""hybrid FL trainer."""
 
 import logging
 import time
 
-from ...channel_manager import ChannelManager
-from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks,  mlflow_runname)
-from ...registries import registry_provider
+from ...mode.distributed.trainer import Trainer as DistTrainer
 from ..composer import Composer
 from ..message import MessageType
-from ..role import Role
 from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
+TAG_RECEIVE = 'receive'
+TAG_SEND = 'send'
 
-class Trainer(Role, metaclass=ABCMeta):
-    """Trainer implements an ML training role."""
-
-    @abstract_attribute
-    def config(self):
-        """Abstract attribute for config object."""
-
-    @abstract_attribute
-    def dataset_size(self):
-        """Abstract attribute for size of dataset used to train."""
-
-    def internal_init(self) -> None:
-        """Initialize internal state for role."""
-        self.cm = ChannelManager()
-        self.cm(self.config)
-        self.cm.join_all()
-
-        self.registry_client = registry_provider.get(self.config.registry.sort)
-        # initialize registry client
-        self.registry_client(self.config.registry.uri, self.config.job.job_id)
-
-        self.registry_client.setup_run(mlflow_runname(self.config))
-        self.metrics = dict()
-
-        self._round = 1
-        self._work_done = False
-
-        self.framework = get_ml_framework_in_use()
-        if self.framework == MLFramework.UNKNOWN:
-            raise NotImplementedError(
-                "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}")
+class Trainer(DistTrainer):
+    """Trainer inherit distributed trainer."""
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
         if tag == TAG_FETCH:
             self._fetch_weights(tag)
+        elif tag == TAG_RECEIVE:
+            super().get(tag)
 
     def _fetch_weights(self, tag: str) -> None:
-        logger.debug("calling _fetch_weights")
+        logger.debug("calling _fetch_weights from aggregator")
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
@@ -97,48 +67,30 @@ class Trainer(Role, metaclass=ABCMeta):
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
         if tag == TAG_UPLOAD:
-            self._send_weights(tag)
+            self._upload_weights(tag)
+        elif tag == TAG_SEND:
+            super().put(tag)
 
-    def _send_weights(self, tag: str) -> None:
-        logger.debug("calling _send_weights")
+    def _upload_weights(self, tag: str) -> None:
+        logger.debug("calling _upload_weights to aggregator")
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_send_weights] channel not found with {tag}")
+            logger.debug(f"[_upload_weights] channel not found with {tag}")
             return
 
         while channel.empty():
             time.sleep(1)
-            logger.debug("[_send_weights] waiting for channel ends")
+            logger.debug("[_upload_weights] waiting for channel ends")
 
         # one aggregator is sufficient
         end = channel.one_end()
 
         self._update_weights()
-        channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
+        if channel.get_backend_id() == self._lead_trainer:
+            channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
+        else:
+            channel.send(end, {MessageType.WEIGHTS: None, MessageType.DATASET_SIZE: 0})
         logger.debug("sending weights done")
-
-    def save_metrics(self):
-        """Save metrics in a model registry."""
-        logger.debug(f"saving metrics: {self.metrics}")
-        if self.metrics:
-            self.registry_client.save_metrics(self._round - 1, self.metrics)
-            logger.debug("saving metrics done")
-
-    def update_metrics(self, metrics: dict[str, float]):
-        """Update metrics."""
-        self.metrics = self.metrics | metrics
-
-    def _update_model(self):
-        if self.framework == MLFramework.PYTORCH:
-            self.model.load_state_dict(self.weights)
-        elif self.framework == MLFramework.TENSORFLOW:
-            self.model.set_weights(self.weights)
-
-    def _update_weights(self):
-        if self.framework == MLFramework.PYTORCH:
-            self.weights = self.model.state_dict()
-        elif self.framework == MLFramework.TENSORFLOW:
-            self.weights = self.model.get_weights()
 
     def compose(self) -> None:
         """Compose role with tasklets."""
@@ -153,25 +105,32 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_get = Tasklet(self.get, TAG_FETCH)
 
+            task_receive = Tasklet(self.get, TAG_RECEIVE)
+
             task_train = Tasklet(self.train)
 
             task_eval = Tasklet(self.evaluate)
 
             task_put = Tasklet(self.put, TAG_UPLOAD)
 
+            task_send = Tasklet(self.put, TAG_SEND)
+
+            task_aggregate = Tasklet(self._aggregate_weights)
+
             task_save_metrics = Tasklet(self.save_metrics)
+
+            task_save_params = Tasklet(self.save_params)
+
+            task_save_model = Tasklet(self.save_model)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_load_data >> task_init >> loop(
-                task_get >> task_train >> task_eval >> task_put >>
-                task_save_metrics)
-
-    def run(self) -> None:
-        """Run role."""
-        self.composer.run()
+                task_get >> task_send >> task_receive >> task_aggregate 
+                >> task_train >> task_eval >> task_save_metrics >> task_put 
+                ) >> task_save_params >> task_save_model
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the trainer role."""
-        return [TAG_FETCH, TAG_UPLOAD]
+        return [TAG_FETCH, TAG_UPLOAD, TAG_SEND, TAG_RECEIVE]

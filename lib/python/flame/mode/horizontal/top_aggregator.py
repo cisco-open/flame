@@ -38,7 +38,6 @@ logger = logging.getLogger(__name__)
 TAG_DISTRIBUTE = 'distribute'
 TAG_AGGREGATE = 'aggregate'
 
-
 class TopAggregator(Role, metaclass=ABCMeta):
     """Top level Aggregator implements an ML aggregation role."""
 
@@ -110,20 +109,24 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # receive local model parameters from trainers
         for end in channel.ends():
             logger.debug(f"waiting to receive data from {end}")
-            msg = channel.recv(end)
-            if not msg:
+            dict = channel.recv(end)
+            if not dict:
                 logger.debug(f"No data received from {end}")
                 continue
 
-            weights = msg[0]
-            count = msg[1]
+            for k, v in dict.items():
+                if k == MessageType.WEIGHTS:
+                    weights = v
+                elif k == MessageType.DATASET_SIZE:
+                    count = v
+                    total += count
 
-            total += count
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
-            tres = TrainResult(weights, count)
-            # save training result from trainer in a disk cache
-            self.cache[end] = tres
+            if weights is not None:
+                tres = TrainResult(weights, count)
+                # save training result from trainer in a disk cache
+                self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(self.cache, total)
@@ -160,7 +163,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {MessageType.WEIGHTS: self.weights})
+            channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round})
 
     def inform_end_of_training(self) -> None:
         """Inform all the trainers that the training is finished."""

@@ -1,5 +1,5 @@
 {
-    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
+    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580371",
     "backend": "mqtt",
     "brokers": [
         {
@@ -9,20 +9,21 @@
     ],
     "channels": [
         {
-            "description": "Model update is sent from a trainer to another trainer",
+            "description": "Model update is sent from a trainer to an aggregator",
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/us"
+                    "default"
                 ]
             },
-            "name": "param-channel",
+            "name": "global-channel",
             "pair": [
                 "trainer",
-                "trainer"
+                "aggregator"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["fetch", "upload"],
+                "aggregator": ["distribute", "aggregate"]
             }
         }
     ],
@@ -33,15 +34,15 @@
     "hyperparameters": {
         "batchSize": 32,
         "learningRate": 0.01,
-        "rounds": 10
+        "rounds": 5
     },
     "baseModel": {
 	    "name": "",
 	    "version": 1
     },
     "job" : {
-	    "id": "622a358619ab59012eabeefb",
-	    "name": "dist_mnist"
+	    "id": "622a358619ab59012eabeefc",
+	    "name": "hybrid_mnist"
     },
     "registry": {
 	    "sort": "mlflow",
@@ -56,6 +57,6 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/us",
-    "role": "trainer"
+    "realm": "default",
+    "role": "aggregator"
 }
