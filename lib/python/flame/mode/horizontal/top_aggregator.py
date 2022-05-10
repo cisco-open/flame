@@ -23,7 +23,7 @@ from diskcache import Cache
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks, mlflow_runname)
+                            mlflow_runname, valid_frameworks)
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
@@ -109,6 +109,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         total = 0
         # receive local model parameters from trainers
         for end in channel.ends():
+            logger.debug(f"waiting to receive data from {end}")
             msg = channel.recv(end)
             if not msg:
                 logger.debug(f"No data received from {end}")

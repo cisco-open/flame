@@ -42,7 +42,7 @@ END_STATUS_OFF = 'offline'
 # if no message arrives after the wait time
 MQTT_TIME_WAIT = 10  # 10 sec
 MIN_CHECK_PERIOD = 1  # 1 sec
-MQTT_LOOP_CHECK_PERIOD = 0.1  # 100ms
+MQTT_LOOP_CHECK_PERIOD = 1  # 1 sec
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +113,7 @@ class MqttBackend(AbstractBackend):
         while True:
             for end_id, expiry in list(self._cleanup_waits.items()):
                 if time.time() >= expiry:
+                    logger.debug(f"end termination check timed out: {end_id}")
                     await self._eventq.put((BackendEvent.DISCONNECT, end_id))
                     del self._cleanup_waits[end_id]
 
@@ -152,8 +153,6 @@ class MqttBackend(AbstractBackend):
 
     def join(self, channel: Channel):
         """Join a channel by subscribing to topics."""
-        self.notify(channel.name())
-
         # format for broadcast topic to subscribe:
         #   /flame/<job_id>/<channel_name>/<groupby>/broadcast/<other_role>/+
         # format for unicast topic to subscribe:
@@ -174,6 +173,9 @@ class MqttBackend(AbstractBackend):
                 topic = sep.join([topic, channel.my_role(), self._id])
 
             self.subscribe(topic)
+
+        # notify after subscription to topics are finished
+        self.notify(channel.name())
 
     def _handle_health_message(self, message):
         health_data = str(message.payload.decode("utf-8"))
@@ -434,8 +436,9 @@ class MqttBackend(AbstractBackend):
                                          qos=MqttQoS.EXACTLY_ONCE)
 
         while not info.is_published():
-            logger.debug('waiting for publish completion')
-            self._mqtt_client.loop(MQTT_LOOP_CHECK_PERIOD)
+            logger.debug(f"waiting for publish completion: rc = {info.rc}")
+            retval = self._mqtt_client.loop(MQTT_LOOP_CHECK_PERIOD)
+            logger.debug(f"retval from loop = {retval}")
 
         logger.debug(f'sending chunk {seqno} to {topic} is done')
 
