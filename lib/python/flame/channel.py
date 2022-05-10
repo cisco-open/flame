@@ -217,3 +217,7 @@ class Channel(object):
     def broadcast_q(self):
         """Return a broadcast queue object."""
         return self._bcast_queue
+
+    def get_backend_id(self) -> str:
+        """Return backend id."""
+        return self._backend.uid()

@@ -17,7 +17,6 @@
 """distributed FL trainer."""
 
 import logging
-import time
 
 from diskcache import Cache
 
@@ -35,9 +34,8 @@ from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
-
+TAG_RECEIVE = 'receive'
+TAG_SEND = 'send'
 
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
@@ -77,6 +75,8 @@ class Trainer(Role, metaclass=ABCMeta):
         self._rounds = self.config.hyperparameters['rounds']
         self._work_done = False
 
+        self._lead_trainer = None
+
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
@@ -85,19 +85,15 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
-        if tag == TAG_FETCH:
-            self._fetch_weights(tag)
+        if tag == TAG_RECEIVE:
+            self._receive_weights(tag)
 
-    def _fetch_weights(self, tag: str) -> None:
-        logger.debug("calling _fetch_weights")
+    def _receive_weights(self, tag: str) -> None:
+        logger.debug("calling _receive_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
+            logger.debug(f"[_receive_weights] channel not found with tag {tag}")
             return
-
-        while channel.empty():
-            logger.debug("[_fetch_weights] waiting for channel ends")
-            time.sleep(1)
 
         self.total_data_points = 0
         for end in channel.ends():
@@ -127,7 +123,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if global_weights is None:
             logger.debug("failed model aggregation")
             return
- 
+
         # set global weights
         self.weights = global_weights
         # update model with global weights
@@ -135,7 +131,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
-        if tag == TAG_UPLOAD:
+        if tag == TAG_SEND:
+            self.select_tag = tag
             self._send_weights(tag)
 
     def _send_weights(self, tag: str) -> None:
@@ -144,10 +141,8 @@ class Trainer(Role, metaclass=ABCMeta):
         if not channel:
             logger.debug(f"[_send_weights] channel not found with {tag}")
             return
-
-        while channel.empty():
-            logger.debug("[_send_weights] waiting for channel ends")
-            time.sleep(1)
+        
+        self._lead_trainer = sorted(channel.ends())[0]
 
         self._update_weights()
         channel.broadcast({MessageType.WEIGHTS: self.weights if self._round != 1 else None, 
@@ -181,17 +176,24 @@ class Trainer(Role, metaclass=ABCMeta):
     def increment_round(self):
         """Increment the round counter."""
         logger.debug(f"Incrementing current round: {self._round}")
+
         self._round += 1
         self._work_done = (self._round > self._rounds)
 
     def save_params(self):
         """Save hyperparamets in a model registry."""
-        if self.config.hyperparameters:
+
+        channel = self.cm.get_by_tag(self.select_tag)
+
+        if self.config.hyperparameters and channel.get_backend_id() == self._lead_trainer:
             self.registry_client.save_params(self.config.hyperparameters)
 
     def save_model(self):
         """Save model in a model registry."""
-        if self.model:
+
+        channel = self.cm.get_by_tag(self.select_tag)
+
+        if self.model and channel.get_backend_id() == self._lead_trainer:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
 
@@ -206,13 +208,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_init = Tasklet(self.initialize)
 
-            task_get = Tasklet(self.get, TAG_FETCH)
+            task_receive = Tasklet(self.get, TAG_RECEIVE)
 
             task_train = Tasklet(self.train)
 
             task_eval = Tasklet(self.evaluate)
 
-            task_put = Tasklet(self.put, TAG_UPLOAD)
+            task_send = Tasklet(self.put, TAG_SEND)
 
             task_aggregate = Tasklet(self._aggregate_weights)
 
@@ -227,7 +229,7 @@ class Trainer(Role, metaclass=ABCMeta):
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_load_data >> task_init >> loop(
-                task_put >> task_get >> task_aggregate 
+                task_send >> task_receive >> task_aggregate 
                 >> task_train >> task_eval >> task_save_metrics 
                 >> task_increment_round) >> task_save_params >> task_save_model
 
@@ -238,4 +240,4 @@ class Trainer(Role, metaclass=ABCMeta):
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the trainer role."""
-        return [TAG_FETCH, TAG_UPLOAD]
+        return [TAG_RECEIVE, TAG_SEND]

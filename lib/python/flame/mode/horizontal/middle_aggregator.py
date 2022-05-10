@@ -37,7 +37,6 @@ TAG_AGGREGATE = 'aggregate'
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
 
-
 class MiddleAggregator(Role, metaclass=ABCMeta):
     """Middle level aggregator.
 
@@ -114,7 +113,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {MessageType.WEIGHTS: self.weights})
+            channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round})
 
     def _aggregate_weights(self, tag: str) -> None:
         channel = self.cm.get_by_tag(tag)
@@ -124,15 +123,18 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         total = 0
         # receive local model parameters from trainers
         for end in channel.ends():
-            msg = channel.recv(end)
-            if not msg:
+            dict = channel.recv(end)
+            if not dict:
                 logger.debug(f"No data received from {end}")
                 continue
 
-            weights = msg[0]
-            count = msg[1]
+            for k, v in dict.items():
+                if k == MessageType.WEIGHTS:
+                    weights = v
+                elif k == MessageType.DATASET_SIZE:
+                    count = v
+                    total += count
 
-            total += count
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
             tres = TrainResult(weights, count)
@@ -164,8 +166,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         # one aggregator is sufficient
         end = channel.one_end()
 
-        data = (self.weights, self.dataset_size)
-        channel.send(end, data)
+        channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
         logger.debug("sending weights done")
 
     def increment_round(self):
