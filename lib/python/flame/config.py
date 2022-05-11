@@ -63,11 +63,9 @@ CONF_KEY_SELECTOR_KWARGS = 'kwargs'
 
 GROUPBY_DEFAULT_GROUP = 'default'
 
-DEFAULT_HYPERARAMETERS_DICT = {
-    'rounds': 1,
-    'epochs': 1,
-    'batchSize': 16
-}
+DEFAULT_HYPERARAMETERS_DICT = {'rounds': 1, 'epochs': 1, 'batchSize': 16}
+
+CONF_KEY_CHANNELCONFIGS = 'channelConfigs'
 
 
 class BackendType(Enum):
@@ -321,6 +319,28 @@ class Config(object):
                     f"\t\t{CONF_KEY_OPTIMIZER_SORT}: {self.sort}\n" +
                     f"\t\t{CONF_KEY_OPTIMIZER_KWARGS}: {self.kwargs}\n")
 
+    class ChannelConfigs(object):
+        """ChannelConfigs class."""
+
+        def __init__(self, json_data=None) -> None:
+            """Initialize ChannelConfigs instance."""
+            self.backends = dict()
+            self.channel_brokers = dict()
+
+            if CONF_KEY_CHANNELCONFIGS not in json_data:
+                return
+            json_data = json_data[CONF_KEY_CHANNELCONFIGS]
+
+            for k, v in json_data.items():
+                backend_key = v['backend'].upper()
+                try:
+                    self.backends[k] = BackendType[backend_key]
+                except:
+                    valid_types = [backend.name for backend in BackendType]
+                    sys.exit(f"invailid backend type: {backend_key}\n" +
+                    f"valid backend type(s) are {valid_types}")
+                self.channel_brokers[k] = Config.Brokers(v['brokers'])
+
     def __init__(self, config_file: str):
         """Initialize Config instance."""
         with open(config_file) as f:
@@ -351,6 +371,10 @@ class Config(object):
         self.selector = Config.Selector(json_data)
 
         self.optimizer = Config.Optimizer(json_data)
+
+        self.channelConfigs = None
+        if CONF_KEY_CHANNELCONFIGS in json_data:
+            self.channelConfigs = Config.ChannelConfigs(json_data)
 
         self.dataset = ''
         if CONF_KEY_DATASET in json_data:
