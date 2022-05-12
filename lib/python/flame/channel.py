@@ -13,10 +13,10 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Channel."""
 
 import asyncio
+from typing import Union
 
 import cloudpickle
 
@@ -48,7 +48,8 @@ class Channel(object):
         self._groupby = groupby
         self.properties = dict()
 
-        # _ends must be accessed within backend's loop
+        # access _ends with caution.
+        # in many cases, _ends must be accessed within a backend's loop
         self._ends: dict[str, End] = dict()
 
         async def _setup_bcast_tx():
@@ -133,6 +134,19 @@ class Channel(object):
         result, _ = run_async(inner(), self._backend.loop())
         return result
 
+    def ends_digest(self) -> str:
+        """Compute a digest of ends."""
+        list_ends = self.ends()
+        if len(list_ends) == 0:
+            return ""
+
+        # convert my end id (string) into an array
+        digest = [c for c in self._backend.uid()]
+        for end_id in list_ends:
+            digest = [chr(ord(a) ^ ord(b)) for a, b in zip(digest, end_id)]
+
+        return "".join(digest)
+
     def broadcast(self, message):
         """Broadcast a message in a blocking call fashion."""
 
@@ -172,9 +186,32 @@ class Channel(object):
 
         return cloudpickle.loads(payload) if payload and status else None
 
+    def peek(self, end_id):
+        """Peek rxq of end_id and return data if queue is not empty."""
+
+        async def _peek():
+            if not self.has(end_id):
+                # can't peek message from end_id
+                return None
+
+            payload = await self._ends[end_id].peek()
+            return payload
+
+        payload, status = run_async(_peek(), self._backend.loop())
+
+        return cloudpickle.loads(payload) if payload and status else None
+
     def join(self):
         """Join the channel."""
         self._backend.join(self)
+
+    def is_rxq_empty(self, end_id: str) -> bool:
+        """Return true if rxq is empty; otherwise, false."""
+        return self._ends[end_id].is_rxq_empty()
+
+    def is_txq_empty(self, end_id: str) -> bool:
+        """Return true if txq is empty; otherwise, false."""
+        return self._ends[end_id].is_txq_empty()
 
     """
     ### The following are asyncio methods of backend loop
@@ -206,12 +243,18 @@ class Channel(object):
         """Check if an end is in the channel."""
         return end_id in self._ends
 
-    def get_rxq(self, end_id: str) -> asyncio.Queue:
+    def get_rxq(self, end_id: str) -> Union[None, asyncio.Queue]:
         """Return a rx queue associated wtih an end."""
+        if not self.has(end_id):
+            return None
+
         return self._ends[end_id].get_rxq()
 
-    def get_txq(self, end_id: str) -> asyncio.Queue:
+    def get_txq(self, end_id: str) -> Union[None, asyncio.Queue]:
         """Return a tx queue associated wtih an end."""
+        if not self.has(end_id):
+            return None
+
         return self._ends[end_id].get_txq()
 
     def broadcast_q(self):

@@ -13,29 +13,30 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """distributed FL trainer."""
 
+# import hashlib
 import logging
-
-from diskcache import Cache
+from collections import OrderedDict
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks,  mlflow_runname)
-from ...optimizer.train_result import TrainResult
-from ...optimizers import optimizer_provider
+                            mlflow_runname, valid_frameworks)
 from ...registries import registry_provider
 from ..composer import Composer
-from ..role import Role
 from ..message import MessageType
+from ..role import Role
 from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
-TAG_RECEIVE = 'receive'
-TAG_SEND = 'send'
+TAG_RING_ALLREDUCE = 'ring_allreduce'
+
+# the number of copies to save parameters and model artifact
+# this is for redundancy
+COMMIT_COUNT = 3
+
 
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
@@ -66,16 +67,11 @@ class Trainer(Role, metaclass=ABCMeta):
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
 
-        self.cache = Cache()
-        self.total_data_points = 0
-        self.optimizer = optimizer_provider.get(self.config.optimizer.sort,
-                                                **self.config.optimizer.kwargs)
-
         self._round = 1
         self._rounds = self.config.hyperparameters['rounds']
         self._work_done = False
 
-        self._lead_trainer = None
+        self.is_commiter = False
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
@@ -83,72 +79,289 @@ class Trainer(Role, metaclass=ABCMeta):
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
 
-    def get(self, tag: str) -> None:
-        """Get data from remote role(s)."""
-        if tag == TAG_RECEIVE:
-            self._receive_weights(tag)
+        if self.framework == MLFramework.PYTORCH:
+            self._scale_down_weights_fn = self._scale_down_weights_pytorch
+            self._get_send_chunk_fn = self._get_send_chunk_pytorch
+            self._allreduce_fn = self._allreduce_pytorch
+            self._allgather_fn = self._allgather_pytorch
 
-    def _receive_weights(self, tag: str) -> None:
-        logger.debug("calling _receive_weights")
+        elif self.framework == MLFramework.TENSORFLOW:
+            self._scale_down_weights_fn = self._scale_down_weights_tensorflow
+            self._get_send_chunk_fn = self._get_send_chunk_tensorflow
+            self._allreduce_fn = self._allreduce_tensorflow
+            self._allgather_fn = self._allgather_tensorflow
+
+    def _ring_allreduce(self, tag: str) -> None:
+        if tag != TAG_RING_ALLREDUCE:
+            return
+
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_receive_weights] channel not found with tag {tag}")
+            logger.debug(f"channel not found with tag {tag}")
             return
 
-        self.total_data_points = 0
-        for end in channel.ends():
-            dict = channel.recv(end)
-            if not dict:
-                logger.debug(f"No data received from {end}")
-                continue
-
-            for k, v in dict.items():
-                if k == MessageType.WEIGHTS:
-                    weights = v
-                elif k == MessageType.DATASET_SIZE:
-                    count = v
-                elif k == MessageType.ROUND and v > self._round:
-                    self._round = v
-
-            self.total_data_points += count
-            logger.debug(f"{end}'s parameters trained with {count} samples")
-
-            if weights is not None:
-                tres = TrainResult(weights, count)
-                self.cache[end] = tres
-
-    def _aggregate_weights(self) -> None:
-        logger.debug("aggregating weights from all trainers")
-        global_weights = self.optimizer.do(self.cache, self.total_data_points)
-        if global_weights is None:
-            logger.debug("failed model aggregation")
+        success, total_data_count = self._member_check(channel)
+        logger.debug(f"member check: {success}")
+        logger.debug(f"total_data_count: {total_data_count}")
+        if not success:
+            # members don't agree, we can't do ring-allreduce
+            self.is_commiter = True
             return
 
-        # set global weights
-        self.weights = global_weights
-        # update model with global weights
+        self._update_weights()
+
+        self._scale_down_weights_fn(total_data_count)
+
+        self._do_ring_allreduce(channel)
+
         self._update_model()
+
+    def _do_ring_allreduce(self, channel):
+        # This method is implemented based on
+        # https://github.com/baidu-research/baidu-allreduce/blob/master/collectives.cu
+        logger.info("starting ring-allreduce")
+        my_id = channel.get_backend_id()
+        ends = channel.ends()
+        ends.append(my_id)
+        ends.sort()
+
+        rank = ends.index(my_id)
+        size = len(ends)
+
+        logger.debug(f"weights length = {len(self.weights)}")
+        chunk_size = int(len(self.weights) / size)
+        chunk_sizes = [chunk_size] * size
+
+        residual = len(self.weights) % size
+        for i in range(residual):
+            chunk_sizes[i] += 1
+
+        chunk_ends = [0] * size
+        chunk_ends[0] = chunk_sizes[0]
+        for i in range(1, len(chunk_ends)):
+            chunk_ends[i] = chunk_sizes[i] + chunk_ends[i - 1]
+
+        recv_from = (rank - 1 + size) % size
+        send_to = (rank + 1) % size
+
+        # enable the following "digest" computation lines
+        # to check if ring-allreduce work correctly.
+        #
+        # digest = hashlib.sha1(str(self.weights).encode('utf-8')).hexdigest()
+        # logger.debug(f"initial: weight digest - {digest}")
+
+        # allreduce
+        for i in range(size - 1):
+            send_chunk_idx = (rank - i + size) % size
+            from_idx = chunk_ends[send_chunk_idx] - chunk_sizes[send_chunk_idx]
+            to_idx = chunk_ends[send_chunk_idx]
+
+            send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
+            logger.debug(
+                f"sending chunk: {len(send_chunk)} to {ends[send_to]}")
+
+            channel.send(ends[send_to], {MessageType.WEIGHTS: send_chunk})
+
+            recv_chunk_idx = (rank - i - 1 + size) % size
+            msg = channel.recv(ends[recv_from])
+            if MessageType.WEIGHTS not in msg:
+                logger.error(f"end_id: {ends[recv_from]}, msg: {msg}")
+            recv_chunk = msg[MessageType.WEIGHTS]
+
+            logger.debug(
+                f"receiving chunk: {len(recv_chunk)} from {ends[recv_from]}")
+
+            try:
+                assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
+            except AssertionError:
+                logger.error(
+                    f"AssertionError: got {recv_chunk} from {ends[recv_from]}")
+                exit(1)
+
+            from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
+
+            self._allreduce_fn(from_idx, recv_chunk)
+
+        # digest = hashlib.sha1(str(self.weights).encode('utf-8')).hexdigest()
+        # logger.debug(f"after allreduce: weight digest - {digest}")
+
+        # allgather
+        for i in range(size - 1):
+            send_chunk_idx = (rank - i + 1 + size) % size
+            from_idx = chunk_ends[send_chunk_idx] - chunk_sizes[send_chunk_idx]
+            to_idx = chunk_ends[send_chunk_idx]
+
+            send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
+            channel.send(ends[send_to], {MessageType.WEIGHTS: send_chunk})
+
+            recv_chunk_idx = (rank - i + size) % size
+            msg = channel.recv(ends[recv_from])
+            recv_chunk = msg[MessageType.WEIGHTS]
+
+            try:
+                assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
+            except AssertionError:
+                logger.error(
+                    f"AssertionError: got {recv_chunk} from {ends[recv_from]}")
+                exit(1)
+
+            from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
+
+            self._allgather_fn(from_idx, recv_chunk)
+
+        # digest = hashlib.sha1(str(self.weights).encode('utf-8')).hexdigest()
+        # logger.debug(f"after allgather: weight digest - {digest}")
+        logger.info("finished ring-allreduce")
+
+    """BEGIN: pytorch functions"""
+
+    def _scale_down_weights_pytorch(self, total: int) -> None:
+        if total == 0:
+            return
+
+        rate = self.dataset_size / float(total)
+
+        self.weights = {k: v * rate for k, v in self.weights.items()}
+
+    def _get_send_chunk_pytorch(self, from_idx, to_idx):
+        send_chunk = OrderedDict()
+        for i, key in enumerate(self.weights):
+            if i < from_idx:
+                continue
+            elif i >= to_idx:
+                break
+
+            send_chunk[key] = self.weights[key]
+
+        return send_chunk
+
+    def _allreduce_pytorch(self, from_idx, recv_chunk):
+        # from_idx is not used in case of pytorch
+        # recv_chunk is an ordered dictionary
+        # so, it's okay to update weights based on keys in recv_chunk
+        for k, v in recv_chunk.items():
+            self.weights[k] += v
+
+    def _allgather_pytorch(self, from_idx, recv_chunk):
+        # from_idx is not used in case of pytorch
+        # recv_chunk is an ordered dictionary
+        # so, it's okay to update weights based on keys in recv_chunk
+        for k, v in recv_chunk.items():
+            self.weights[k] = v
+
+    """END: pytorch functions"""
+    """BEGIN: tensorflow functions"""
+
+    def _scale_down_weights_tensorflow(self, total: int) -> None:
+        if total == 0:
+            return
+
+        rate = self.dataset_size / float(total)
+        self.weights = [weight * rate for weight in self.weights]
+
+    def _get_send_chunk_tensorflow(self, from_idx, to_idx):
+        return self.weights[from_idx:to_idx]
+
+    def _allreduce_tensorflow(self, from_idx, recv_chunk):
+        for i in range(len(recv_chunk)):
+            self.weights[from_idx + i] += recv_chunk[i]
+
+    def _allgather_tensorflow(self, from_idx, recv_chunk):
+        for i in range(len(recv_chunk)):
+            self.weights[from_idx + i] = recv_chunk[i]
+
+    """END: tensorflow functions"""
+
+    def _handle_member_check(self, channel, end, digest) -> tuple[bool, int]:
+        """Handle member check message.
+
+        Returns
+        -------
+        success: boolean variable to tell if there is a consistent group or not
+        dataset_size: the size of dataset used by a member
+        """
+        dataset_size = 0
+        while True:
+            msg = channel.peek(end)
+            if msg is not None and MessageType.WEIGHTS in msg:
+                logger.debug("weights msg seen; let's stop member check")
+                break
+
+            msg = channel.recv(end)
+
+            logger.debug(f"end_id: {end}, msg: {msg}")
+            if MessageType.MEMBER_DIGEST not in msg:
+                logger.debug("no member digest found")
+                return False, 0
+            if MessageType.DATASET_SIZE not in msg:
+                logger.debug("no dataset size found")
+                return False, 0
+            if MessageType.ROUND not in msg:
+                logger.debug("no round info found")
+                return False, 0
+
+            self._round = max(self._round, msg[MessageType.ROUND])
+
+            other_digest = msg[MessageType.MEMBER_DIGEST]
+            if digest != other_digest:
+                logger.debug(f"mine: {digest}, other: {other_digest}")
+                return False, 0
+
+            dataset_size = msg[MessageType.DATASET_SIZE]
+
+            if channel.is_rxq_empty(end):
+                break
+
+        return True, dataset_size
+
+    def _member_check(self, channel) -> tuple[bool, int]:
+        digest = channel.ends_digest()
+        if digest == "":
+            # This means that there is no ends in the channel,
+            # so there is no point of broadcasting digest.
+            # If the empty digest is broadcast, it can cause a bug
+            return False, 0
+
+        msg = {
+            MessageType.MEMBER_DIGEST: digest,
+            MessageType.DATASET_SIZE: self.dataset_size,
+            MessageType.ROUND: self._round
+        }
+        logger.debug(f"member check msg = {msg}")
+        channel.broadcast(msg)
+
+        total_count = self.dataset_size
+        ends = channel.ends()
+        for end in ends:
+            success, size = self._handle_member_check(channel, end, digest)
+            if not success:
+                logger.debug(f"_handle_member_check failed for {end}")
+                return False, 0
+
+            total_count += size
+
+        my_taskid = channel.get_backend_id()
+        ends.append(my_taskid)
+        ends.sort()
+        # if my taskid is in the first "COMMIT_COUNT" ends,
+        # then it's selected as a commiter
+        self.is_commiter = True if my_taskid in ends[:COMMIT_COUNT] else False
+
+        # check if work is done by others
+        # if work is done, then no further distributed learning needed
+        self._work_done = (self._round > self._rounds)
+        if self._work_done:
+            return False, 0
+
+        return True, total_count
+
+    def get(self, tag: str) -> None:
+        """Get data from remote role(s)."""
+        return
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
-        if tag == TAG_SEND:
-            self.select_tag = tag
-            self._send_weights(tag)
-
-    def _send_weights(self, tag: str) -> None:
-        logger.debug("calling _send_weights")
-        channel = self.cm.get_by_tag(tag)
-        if not channel:
-            logger.debug(f"[_send_weights] channel not found with {tag}")
-            return
-        
-        self._lead_trainer = sorted(channel.ends())[0]
-
-        self._update_weights()
-        channel.broadcast({MessageType.WEIGHTS: self.weights if self._round != 1 else None, 
-                           MessageType.DATASET_SIZE: self.dataset_size, 
-                           MessageType.ROUND: self._round})
-        logger.debug("broadcasting weights done")
+        return
 
     def save_metrics(self):
         """Save metrics in a model registry."""
@@ -162,12 +375,14 @@ class Trainer(Role, metaclass=ABCMeta):
         self.metrics = self.metrics | metrics
 
     def _update_model(self):
+        """Update model with weights."""
         if self.framework == MLFramework.PYTORCH:
             self.model.load_state_dict(self.weights)
         elif self.framework == MLFramework.TENSORFLOW:
             self.model.set_weights(self.weights)
 
     def _update_weights(self):
+        """Save weights from model."""
         if self.framework == MLFramework.PYTORCH:
             self.weights = self.model.state_dict()
         elif self.framework == MLFramework.TENSORFLOW:
@@ -180,20 +395,24 @@ class Trainer(Role, metaclass=ABCMeta):
         self._round += 1
         self._work_done = (self._round > self._rounds)
 
+        channel = self.cm.get_by_tag(TAG_RING_ALLREDUCE)
+        if not channel:
+            logger.debug(f"channel not found for tag {TAG_RING_ALLREDUCE}")
+            return
+
+        # set necessary properties to help channel decide how to select ends
+        channel.set_property("round", self._round)
+
     def save_params(self):
         """Save hyperparamets in a model registry."""
-
-        channel = self.cm.get_by_tag(self.select_tag)
-
-        if self.config.hyperparameters and channel.get_backend_id() == self._lead_trainer:
+        logger.debug(f"saving params: is_commiter: {self.is_commiter}")
+        if self.config.hyperparameters and self.is_commiter:
             self.registry_client.save_params(self.config.hyperparameters)
 
     def save_model(self):
         """Save model in a model registry."""
-
-        channel = self.cm.get_by_tag(self.select_tag)
-
-        if self.model and channel.get_backend_id() == self._lead_trainer:
+        logger.debug(f"saving model: is_commiter: {self.is_commiter}")
+        if self.model and self.is_commiter:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
 
@@ -208,15 +427,11 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_init = Tasklet(self.initialize)
 
-            task_receive = Tasklet(self.get, TAG_RECEIVE)
+            task_allreduce = Tasklet(self._ring_allreduce, TAG_RING_ALLREDUCE)
 
             task_train = Tasklet(self.train)
 
             task_eval = Tasklet(self.evaluate)
-
-            task_send = Tasklet(self.put, TAG_SEND)
-
-            task_aggregate = Tasklet(self._aggregate_weights)
 
             task_increment_round = Tasklet(self.increment_round)
 
@@ -229,8 +444,7 @@ class Trainer(Role, metaclass=ABCMeta):
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_load_data >> task_init >> loop(
-                task_send >> task_receive >> task_aggregate 
-                >> task_train >> task_eval >> task_save_metrics 
+                task_train >> task_allreduce >> task_eval >> task_save_metrics
                 >> task_increment_round) >> task_save_params >> task_save_model
 
     def run(self) -> None:
@@ -240,4 +454,4 @@ class Trainer(Role, metaclass=ABCMeta):
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the trainer role."""
-        return [TAG_RECEIVE, TAG_SEND]
+        return [TAG_RING_ALLREDUCE]
