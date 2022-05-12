@@ -13,40 +13,41 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""Abstract registry client."""
+"""Dummmy registry client."""
 
-from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+from .abstract import AbstractRegistryClient
 
-class AbstractRegistryClient(ABC):
-    """Abstract registry client."""
 
-    @abstractmethod
+class DummyRegistryClient(AbstractRegistryClient):
+    """Dummy registry client."""
+
     def __call__(self, uri: str, job_id: str) -> None:
-        """Abstract method for initializing a registry client."""
+        """Initialize the instance."""
+        pass
 
-    @abstractmethod
     def setup_run(self, name: str) -> None:
-        """Abstract method for setup a run."""
+        """Set up a run."""
+        pass
 
-    @abstractmethod
     def save_metrics(self, epoch: int, metrics: Optional[dict[str,
                                                               float]]) -> None:
-        """Abstract method for saving metrics in a model registry."""
+        """Save metrics in a model registry."""
+        pass
 
-    @abstractmethod
     def save_params(self, hyperparameters: Optional[dict[str, float]]) -> None:
-        """Abstract method for saving hyperparameters in a model registry."""
+        """Save hyperparameters in a model registry."""
+        pass
 
-    @abstractmethod
     def cleanup(self) -> None:
-        """Abstract method for cleanning up resources."""
+        """Clean up resources."""
+        pass
 
-    @abstractmethod
     def save_model(self, name: str, model: Any) -> None:
-        """Abstract method for saving a model in a model registry."""
+        """Save a model in a model registry."""
+        pass
 
-    @abstractmethod
     def load_model(self, name: str, version: int) -> object:
-        """Abstract method for loading a model from a model registry."""
+        """Load a model from a model registry."""
+        pass

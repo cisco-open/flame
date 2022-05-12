@@ -79,7 +79,8 @@ class BackendType(Enum):
 class RegistryType(Enum):
     """Define model registry types."""
 
-    MLFLOW = 1
+    DUMMY = 1
+    MLFLOW = 2
 
 
 class OptimizerType(Enum):
@@ -338,7 +339,7 @@ class Config(object):
                 except:
                     valid_types = [backend.name for backend in BackendType]
                     sys.exit(f"invailid backend type: {backend_key}\n" +
-                    f"valid backend type(s) are {valid_types}")
+                             f"valid backend type(s) are {valid_types}")
                 self.channel_brokers[k] = Config.Brokers(v['brokers'])
 
     def __init__(self, config_file: str):

@@ -13,23 +13,25 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Model registry provider."""
 
 from typing import Union
 
 from .config import RegistryType
 from .object_factory import ObjectFactory
+from .registry.dummy import DummyRegistryClient
 from .registry.mlflow import MLflowRegistryClient
 
 
 class RegistryProvider(ObjectFactory):
     """Model registry provider."""
 
-    def get(self, registry_name, **kwargs) -> Union[MLflowRegistryClient]:
+    def get(self, registry_name,
+            **kwargs) -> Union[DummyRegistryClient, MLflowRegistryClient]:
         """Return a registry client for a given registry name."""
         return self.create(registry_name, **kwargs)
 
 
 registry_provider = RegistryProvider()
+registry_provider.register(RegistryType.DUMMY, DummyRegistryClient)
 registry_provider.register(RegistryType.MLFLOW, MLflowRegistryClient)
