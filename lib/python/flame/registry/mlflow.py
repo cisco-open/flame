@@ -63,7 +63,7 @@ class MLflowRegistryClient(AbstractRegistryClient):
 
         self.experiment = experiment
 
-    def setup_run(self, name: str):
+    def setup_run(self, name: str) -> None:
         """
         Set up a run for logging parameters, metrics and model.
 
