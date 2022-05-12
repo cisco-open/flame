@@ -60,30 +60,30 @@ class MqttQoS(IntEnum):
 class MqttBackend(AbstractBackend):
     """MqttBackend class. It only allows a singleton instance."""
 
-    # variables for class initialization
-    _instance = None
-    _initialized = False
-    _eventq = None  # inform channel manager of events occurring at backend
-    _loop = None
-
-    # variables for functionality
-    _id = None
-    _channels = None
-    _broker = None
-    _mqtt_client = None
-    _last_payload_sig = None
-    _msg_chunks = None
-    _cleanup_waits = None
-
-    def __new__(cls):
-        """Create an instance if not exist."""
-        if cls._instance is None:
-            logger.info('creating an MqttBackend instance')
-            cls._instance = super(MqttBackend, cls).__new__(cls)
-        return cls._instance
+    # def __new__(cls):
+    #     """Create an instance if not exist."""
+    #     if cls._instance is None:
+    #         logger.info('creating an MqttBackend instance')
+    #         cls._instance = super(MqttBackend, cls).__new__(cls)
+    #     return cls._instance
 
     def __init__(self):
         """Initialize an instance."""
+
+        # variables for class initialization
+        self._instance = None
+        self._initialized = False
+        self._eventq = None  # inform channel manager of events occurring at backend
+        self._loop = None
+
+        # variables for functionality
+        self._id = None
+        self._channels = None
+        self._broker = None
+        self._mqtt_client = None
+        self._last_payload_sig = None
+        self._msg_chunks = None
+        self._cleanup_waits = None
         if self._initialized:
             return
 

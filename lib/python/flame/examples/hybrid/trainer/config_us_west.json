@@ -76,5 +76,25 @@
     },
     "maxRunTime": 300,
     "realm": "default/us/west",
-    "role": "trainer"
+    "role": "trainer",
+    "channelConfigs": {
+        "param-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto2",
+                    "sort": "mqtt"
+                }
+            ]
+        },
+        "global-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto",
+                    "sort": "mqtt"
+                }
+            ]
+        }
+    }
 }

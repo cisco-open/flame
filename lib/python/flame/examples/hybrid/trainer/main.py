@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Hybrid FL trainer for Keras."""
 
 import logging
@@ -27,6 +26,7 @@ from tensorflow import keras
 from tensorflow.keras import layers
 
 logger = logging.getLogger(__name__)
+
 
 class KerasMnistTrainer(Trainer):
     """Keras Mnist Trainer."""
@@ -124,11 +124,12 @@ class KerasMnistTrainer(Trainer):
         # logged in a model registry.
         self.update_metrics({'test-loss': score[0], 'test-accuracy': score[1]})
 
+
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument('--config', nargs='?', default="./config.json")
+    parser.add_argument('config', nargs='?', default="./config.json")
 
     args = parser.parse_args()
 
