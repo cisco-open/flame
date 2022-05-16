@@ -1,5 +1,5 @@
 {
-    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa746",
     "backend": "mqtt",
     "brokers": [
         {
@@ -22,7 +22,7 @@
                 "trainer"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["ring_allreduce"]
             }
         }
     ],
@@ -44,8 +44,8 @@
 	    "name": "dist_mnist"
     },
     "registry": {
-	    "sort": "mlflow",
-	    "uri": "http://mlflow:5000"
+	"sort": "mlflow",
+	"uri": "http://mlflow:5000"
     },
     "selector": {
 	    "sort": "default",

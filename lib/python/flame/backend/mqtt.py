@@ -69,7 +69,6 @@ class MqttBackend(AbstractBackend):
 
     def __init__(self):
         """Initialize an instance."""
-
         # variables for class initialization
         self._instance = None
         self._initialized = False
@@ -194,6 +193,12 @@ class MqttBackend(AbstractBackend):
         msg = msg_pb2.Notify()
         any_msg.Unpack(msg)
 
+        if msg.end_id == self._id:
+            # This case happens when message is broadcast to a self-loop
+            # e.g., distributed topology
+            logger.debug('message sent to self; do nothing')
+            return
+
         if msg.channel_name not in self._channels:
             logger.debug('channel not found')
             return
@@ -212,6 +217,12 @@ class MqttBackend(AbstractBackend):
         msg = msg_pb2.Data()
         any_msg.Unpack(msg)
 
+        if msg.end_id == self._id:
+            # This case happens when message is broadcast to a self-loop
+            # e.g., distributed topology
+            logger.debug('message sent to self; do nothing')
+            return
+
         # update is needed only if end_id's termination is detected
         if msg.end_id in self._cleanup_waits:
             # update end_id to _cleanup_waits dictionary
@@ -225,6 +236,10 @@ class MqttBackend(AbstractBackend):
         if fully_assembled:
             logger.debug(f'fully assembled data size = {len(payload)}')
             rxq = channel.get_rxq(msg.end_id)
+            if rxq is None:
+                logger.debug(f"rxq not found for {msg.end_id}")
+                return
+
             await rxq.put(payload)
 
     async def _rx_task(self):

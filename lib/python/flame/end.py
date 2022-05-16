@@ -13,8 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """End class."""
 
 import asyncio
@@ -31,6 +29,7 @@ class End(object):
         self.end_id = end_id
         self.rxq = asyncio.Queue()
         self.txq = asyncio.Queue()
+        self.peek_buf = None
 
         # a property is a key-value pair where key is a name of property
         # and value is a scalar that describes or quantifies the property.
@@ -61,10 +60,27 @@ class End(object):
 
     async def get(self) -> bytes:
         """Get a payload from a rx queue."""
+        if self.peek_buf is not None:
+            data = self.peek_buf
+            self.peek_buf = None
+            return data
+
         payload = await self.rxq.get()
         self.rxq.task_done()
 
         return payload
+
+    async def peek(self) -> Union[None, bytes]:
+        """Peek item in a rxq."""
+        if self.peek_buf is not None:
+            return self.peek_buf
+
+        if self.rxq.empty():
+            return None
+
+        self.peek_buf = await self.get()
+
+        return self.peek_buf
 
     def get_rxq(self) -> asyncio.Queue:
         """Return a rx queue."""
@@ -73,3 +89,11 @@ class End(object):
     def get_txq(self) -> asyncio.Queue:
         """Return a tx queue."""
         return self.txq
+
+    def is_rxq_empty(self) -> bool:
+        """Return true if rxq is empty; otherwise, false."""
+        return self.rxq.empty()
+
+    def is_txq_empty(self) -> bool:
+        """Return true if txq is empty; otherwise, false."""
+        return self.txq.empty()
