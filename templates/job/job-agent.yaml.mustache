@@ -18,6 +18,9 @@ spec:
             - "{{ .Values.endpoints.apiserver }}"
             - "--notifier"
             - "{{ .Values.endpoints.notifier }}"
+            {{ if .Values.insecure }}
+            - "--insecure"
+            {{ end }}
           command: ["/usr/bin/flamelet"]
           image: <% imageLoc %>
           imagePullPolicy: IfNotPresent

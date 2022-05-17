@@ -22,7 +22,7 @@ metadata:
     app.kubernetes.io/name: postgres
     tier: backend
   name: postgres
-  namespace: {{ .Values.servicename }}
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
     - name: "5432"

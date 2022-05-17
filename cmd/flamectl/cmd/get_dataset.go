@@ -32,6 +32,8 @@ var getDatasetsCmd = &cobra.Command{
 	Long:  "This comand retrieves datasets",
 	Args:  cobra.RangeArgs(0, 0),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		flagAllValue, _ := cmd.Flags().GetBool(flagAll)
 
 		params := dataset.Params{}

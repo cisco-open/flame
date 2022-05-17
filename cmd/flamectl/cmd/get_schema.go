@@ -28,6 +28,8 @@ var getDesignSchemaCmd = &cobra.Command{
 	Long:  "This comand retrieves a design schema",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		version := args[0]
 
 		flags := cmd.Flags()
@@ -53,6 +55,8 @@ var getDesignSchemasCmd = &cobra.Command{
 	Long:  "This comand retrieves schemas of a design",
 	Args:  cobra.RangeArgs(0, 0),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		flags := cmd.Flags()
 
 		designId, err := flags.GetString("design")

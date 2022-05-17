@@ -32,6 +32,8 @@ var getTaskCmd = &cobra.Command{
 	Long:  "This command retrieves the info of a task in a given job",
 	Args:  cobra.RangeArgs(nArgsGetTask, nArgsGetTask),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		jobId := args[0]
 		taskId := args[1]
 		params := task.Params{}
@@ -50,6 +52,8 @@ var getTasksCmd = &cobra.Command{
 	Long:  "This command retrieves the info of all tasks in a given job",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		jobId := args[0]
 		params := task.Params{}
 		params.Endpoint = config.ApiServer.Endpoint

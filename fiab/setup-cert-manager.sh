@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Copyright 2022 Cisco Systems, Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,9 +15,23 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
----
-apiVersion: v1
-kind: ServiceAccount
+helm repo add jetstack https://charts.jetstack.io
+helm repo update
+
+helm install \
+     cert-manager jetstack/cert-manager \
+     --namespace cert-manager \
+     --create-namespace \
+     --version v1.8.0 \
+     --set installCRDs=true
+
+
+# create cluster issuer
+cat <<EOF | kubectl apply -f -
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
 metadata:
-  name: controller
-  namespace: flame
+  name: selfsigned
+spec:
+  selfSigned: {}
+EOF

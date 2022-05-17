@@ -17,13 +17,20 @@
 package cmd
 
 import (
+	"crypto/tls"
+	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/spf13/cobra"
 
 	"github.com/cisco-open/flame/pkg/util"
+)
+
+const (
+	optionInsecure = "insecure"
 )
 
 /*
@@ -55,6 +62,7 @@ func init() {
 
 	usage := "config file (default: $HOME/.flame/config.yaml)"
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
+	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
 }
 
@@ -77,4 +85,12 @@ func initConfig() {
 
 func Execute() error {
 	return rootCmd.Execute()
+}
+
+func checkInsecure(cmd *cobra.Command) {
+	insecureFlag, _ := cmd.Flags().GetBool(optionInsecure)
+	if insecureFlag {
+		fmt.Printf("Warning: --%s flag is set; allow insecure connection.\n", optionInsecure)
+		http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
+	}
 }

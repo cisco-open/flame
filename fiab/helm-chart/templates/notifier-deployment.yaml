@@ -18,24 +18,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.servicename }}-notifier
-  namespace: {{ .Values.servicename }}
+  name: {{ .Release.Name }}-notifier
+  namespace: {{ .Release.Namespace }}
 
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.servicename }}-notifier
+      app: {{ .Release.Name }}-notifier
   template:
     metadata:
       labels:
-        app: {{ .Values.servicename }}-notifier
+        app: {{ .Release.Name }}-notifier
     spec:
       containers:
         - args: []
           command: ["/usr/bin/notifier"]
-          image: {{ .Values.imageName }}:latest
+          image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent
-          name: {{ .Values.servicename }}-notifier
+          name: {{ .Release.Name }}-notifier
           ports:
-            - containerPort: {{ .Values.componentPorts.notifier }}
+            - containerPort: {{ .Values.servicePort.notifier }}

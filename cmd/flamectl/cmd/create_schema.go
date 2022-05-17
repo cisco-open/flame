@@ -28,6 +28,8 @@ var createDesignSchemaCmd = &cobra.Command{
 	Long:  "Command to create a new design schema",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		schemaPath := args[0]
 
 		flags := cmd.Flags()

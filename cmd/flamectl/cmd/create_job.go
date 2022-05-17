@@ -28,6 +28,8 @@ var createJobCmd = &cobra.Command{
 	Long:  "This command creates a new job",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		jobFile := args[0]
 
 		params := job.Params{}

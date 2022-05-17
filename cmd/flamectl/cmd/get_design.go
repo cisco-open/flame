@@ -28,6 +28,8 @@ var getDesignCmd = &cobra.Command{
 	Long:  "This command retrieves the design template of a given design ID",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		designId := args[0]
 
 		params := design.Params{}
@@ -45,6 +47,8 @@ var getDesignsCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(0, 0),
 	Long:  "This command retrieves a list of all design templates",
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		flags := cmd.Flags()
 
 		limit, err := flags.GetString("limit")

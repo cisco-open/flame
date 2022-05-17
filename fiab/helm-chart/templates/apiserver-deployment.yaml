@@ -18,26 +18,26 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.servicename }}-apiserver
-  namespace: {{ .Values.servicename }}
+  name: {{ .Release.Name }}-apiserver
+  namespace: {{ .Release.Namespace }}
 
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: {{ .Values.servicename }}-apiserver
+      app: {{ .Release.Name }}-apiserver
   template:
     metadata:
       labels:
-        app: {{ .Values.servicename }}-apiserver
+        app: {{ .Release.Name }}-apiserver
     spec:
       containers:
         - args:
             - --controller
-            - "http://{{ .Values.servicename }}-controller:{{ .Values.componentPorts.controller }}"
+            - "http://{{ .Release.Name }}-controller:{{ .Values.servicePort.controller }}"
           command: ["/usr/bin/apiserver"]
-          image: {{ .Values.imageName }}:latest
+          image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent
-          name: {{ .Values.servicename }}-apiserver
+          name: {{ .Release.Name }}-apiserver
           ports:
-            - containerPort: {{ .Values.componentPorts.apiserver }}
+            - containerPort: {{ .Values.servicePort.apiserver }}

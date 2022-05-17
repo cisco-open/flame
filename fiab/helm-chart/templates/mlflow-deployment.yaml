@@ -18,25 +18,25 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mlflow
-  namespace: {{ .Values.servicename }}
+  name: {{ .Release.Name }}-mlflow
+  namespace: {{ .Release.Namespace }}
 
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: mlflow
+      app: {{ .Release.Name }}-mlflow
   template:
     metadata:
       labels:
-        app: mlflow
+        app: {{ .Release.Name }}-mlflow
     spec:
       containers:
         - args:
             - "mlflow server --backend-store-uri postgresql://mlflow:mlflow@postgres/mlflow --default-artifact-root file:./mlruns --host 0.0.0.0"
           command: ["bash", "-c"]
           image: adacotechjp/mlflow:1.21.0
-          name: mlflow
+          name: {{ .Release.Name }}-mlflow
           ports:
-            - containerPort: 5000
+            - containerPort: {{ .Values.servicePort.mlflow }}
       restartPolicy: Always

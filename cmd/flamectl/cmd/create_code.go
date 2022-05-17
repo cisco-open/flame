@@ -28,6 +28,8 @@ var createDesignCodeCmd = &cobra.Command{
 	Long:  "Command to create a new ML code for a design",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		codePath := args[0]
 		flags := cmd.Flags()
 

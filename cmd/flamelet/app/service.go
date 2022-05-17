@@ -42,7 +42,7 @@ type AgentService struct {
 	tHandler    *taskHandler
 }
 
-func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
+func NewAgent(apiserverEp string, notifierEp string, bInsecure bool, bPlain bool) (*AgentService, error) {
 	name, err := os.Hostname()
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func NewAgent(apiserverEp string, notifierEp string) (*AgentService, error) {
 		return nil, fmt.Errorf("agent key not found from env variable %s", envTaskKey)
 	}
 
-	tHandler := newTaskHandler(apiserverEp, notifierEp, name, taskId, taskKey)
+	tHandler := newTaskHandler(apiserverEp, notifierEp, name, taskId, taskKey, bInsecure, bPlain)
 
 	agent := &AgentService{
 		apiserverEp: apiserverEp,

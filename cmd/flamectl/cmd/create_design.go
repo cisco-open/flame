@@ -28,6 +28,8 @@ var createDesignCmd = &cobra.Command{
 	Long:  "This command creates a new design template",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		designId := args[0]
 
 		flags := cmd.Flags()

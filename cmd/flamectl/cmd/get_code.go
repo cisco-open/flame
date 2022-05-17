@@ -28,6 +28,8 @@ var getDesignCodeCmd = &cobra.Command{
 	Long:  "This command retrieves an ML code for a design",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		codeVer := args[0]
 
 		flags := cmd.Flags()

@@ -15,8 +15,8 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
-apiserver_ip=$(kubectl get svc -n flame  | grep flame-apiserver | awk '{print $4}')
+# Assumption: apiserver ingress doesn't have tls enabled. Hence, http is used in config.yaml below.
+apiserver_host=$(kubectl get ing -n flame  | grep flame-apiserver | awk '{print $3}')
 
 FLAME_DIR=$HOME/.flame
 
@@ -26,6 +26,6 @@ cat > $FLAME_DIR/config.yaml <<EOF
 # local fiab env
 ---
 apiserver:
-  endpoint: http://$apiserver_ip:10100
+  endpoint: https://$apiserver_host
 user: foo
 EOF

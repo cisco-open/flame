@@ -28,6 +28,8 @@ var updateDesignSchemaCmd = &cobra.Command{
 	Long:  "Command to update an existing design schema",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		version := args[0]
 
 		flags := cmd.Flags()

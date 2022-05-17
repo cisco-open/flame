@@ -15,18 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 
 ---
-imageName: flame
-servicename: flame
-componentPorts:
-  apiserver: "10100"
-  notifier: "10101"
-  controller: "10102"
-  agent: "10103"
-replicas: 1
-
 mongodb:
-  global:
-    namespaceOverride: flame
   architecture: replicaset
   auth:
     enabled: false
@@ -45,10 +34,49 @@ mongodb:
   #   create: true
   #######
 
+imageName: flame
+imageTag: latest
+workerImageName: flame
+workerImageTag: latest
+
 broker:
   sort: mqtt
-  host: mosquitto.flame.svc.cluster.local
+  host: flame-mosquitto
 
 registry:
   sort: mlflow
-  uri: http://mlflow.flame.svc.cluster.local:5000
+  uri: http://mlflow.flame.test
+
+ingress:
+  ingressClassName: nginx
+  apiVersion: networking.k8s.io/v1
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    cert-manager.io/cluster-issuer: selfsigned
+  annotationsGrpc:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    cert-manager.io/cluster-issuer: selfsigned
+  # In mlflow, selfsigned certificate raises SSLCertVerificationError
+  # So, fiab env disable tls; tls can be enabled with a legitimate cert
+  annotationsMlflow:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+frontDoorUrl:
+  apiserver: apiserver.flame.test
+  notifier: notifier.flame.test
+  mlflow: mlflow.flame.test
+
+servicePort:
+  apiserver: "10100"
+  notifier: "10101"
+  controller: "10102"
+  agent: "10103"
+  mlflow: "5000"
+  mqtt: "1883"
+
+replicas: 1
+
+# enable this in case a selfsigned cert is in use (for test only)
+# this holds true in fiab setting
+insecure: true
