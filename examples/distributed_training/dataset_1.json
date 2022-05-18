@@ -9,7 +9,7 @@
 
     "dataFormat": "npy",
 
-    "realm": "default/us/org1",
+    "realm": "default/us/org",
 
     "isPublic": true
 }

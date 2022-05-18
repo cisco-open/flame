@@ -70,13 +70,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
         self.is_committer = False
         self.ends_of_ring = None
+        self.total_count = 0
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}"
-            )
+                f"supported frameworks are: {valid_frameworks}")
 
         if self.framework == MLFramework.PYTORCH:
             self._scale_down_weights_fn = self._scale_down_weights_pytorch
@@ -99,16 +99,15 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found with tag {tag}")
             return
 
-        success, total_data_count = self._member_check(channel)
-        logger.debug(f"member check: {success}")
-        logger.debug(f"total_data_count: {total_data_count}")
-        if not success:
+        self._member_check(channel)
+        if not self.can_ring_allreduce():
             # members don't agree, we can't do ring-allreduce
+            logger.debug("ring was not formed")
             return
 
         self._update_weights()
 
-        self._scale_down_weights_fn(total_data_count)
+        self._scale_down_weights_fn(self.total_count)
 
         self._do_ring_allreduce(channel)
 
@@ -330,7 +329,10 @@ class Trainer(Role, metaclass=ABCMeta):
 
         return True, dataset_size
 
-    def _member_check(self, channel) -> tuple[bool, int]:
+    def _member_check(self, channel) -> None:
+        # reset ends in the ring
+        self.ends_of_ring = None
+
         digest = channel.ends_digest()
         if digest == "":
             # This means that there is no ends in the channel,
@@ -339,7 +341,7 @@ class Trainer(Role, metaclass=ABCMeta):
             self.is_committer = True
             self._update_weights()
             self._update_model()
-            return False, 0
+            return
 
         msg = {
             MessageType.MEMBER_DIGEST: digest,
@@ -354,15 +356,15 @@ class Trainer(Role, metaclass=ABCMeta):
         logger.debug(f"member check msg = {msg}")
         channel.broadcast(msg)
 
-        total_count = self.dataset_size
+        self.total_count = self.dataset_size
         ends = channel.ends()
         for end in ends:
             success, size = self._handle_member_check(channel, end, digest)
             if not success:
                 logger.debug(f"_handle_member_check failed for {end}")
-                return False, 0
+                return
 
-            total_count += size
+            self.total_count += size
 
         my_taskid = channel.get_backend_id()
         ends.append(my_taskid)
@@ -374,10 +376,15 @@ class Trainer(Role, metaclass=ABCMeta):
         # if work is done, then no further distributed learning needed
         self._work_done = (self._round > self._rounds)
         if self._work_done:
-            return False, 0
+            return
 
+        # save ends that agree to form a ring
         self.ends_of_ring = ends
-        return True, total_count
+        return
+
+    def can_ring_allreduce(self) -> bool:
+        """Return true if a ring is formed for ring-allreduce."""
+        return self.ends_of_ring is not None
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""

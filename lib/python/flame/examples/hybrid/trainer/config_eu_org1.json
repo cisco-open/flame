@@ -23,7 +23,7 @@
                 "trainer"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["ring_allreduce"]
             }
         },
         {
@@ -63,8 +63,8 @@
 	    "name": "hybrid_mnist"
     },
     "registry": {
-	    "sort": "mlflow",
-	    "uri": "http://flame-mlflow:5000"
+	    "sort": "dummy",
+	    "uri": ""
     },
     "selector": {
 	    "sort": "default",
@@ -75,6 +75,26 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/eu/german",
-    "role": "trainer"
+    "realm": "default/eu/org",
+    "role": "trainer",
+    "channelConfigs": {
+        "param-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "flame-mosquitto2",
+                    "sort": "mqtt"
+                }
+            ]
+        },
+        "global-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "flame-mosquitto",
+                    "sort": "mqtt"
+                }
+            ]
+        }
+    }
 }
