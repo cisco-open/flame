@@ -35,7 +35,7 @@ TAG_RING_ALLREDUCE = 'ring_allreduce'
 
 # the number of copies to save parameters and model artifact
 # this is for redundancy
-COMMIT_COUNT = 3
+COMMIT_COUNT = 1
 
 
 class Trainer(Role, metaclass=ABCMeta):

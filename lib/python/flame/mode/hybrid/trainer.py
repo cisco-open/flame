@@ -28,8 +28,7 @@ logger = logging.getLogger(__name__)
 
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
-TAG_RECEIVE = 'receive'
-TAG_SEND = 'send'
+TAG_RING_ALLREDUCE = 'ring_allreduce'
 
 class Trainer(DistTrainer):
     """Trainer inherit distributed trainer."""
@@ -38,8 +37,6 @@ class Trainer(DistTrainer):
         """Get data from remote role(s)."""
         if tag == TAG_FETCH:
             self._fetch_weights(tag)
-        elif tag == TAG_RECEIVE:
-            super().get(tag)
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights from aggregator")
@@ -68,8 +65,6 @@ class Trainer(DistTrainer):
         """Set data to remote role(s)."""
         if tag == TAG_UPLOAD:
             self._upload_weights(tag)
-        elif tag == TAG_SEND:
-            super().put(tag)
 
     def _upload_weights(self, tag: str) -> None:
         logger.debug("calling _upload_weights to aggregator")
@@ -86,7 +81,7 @@ class Trainer(DistTrainer):
         end = channel.one_end()
 
         self._update_weights()
-        if channel.get_backend_id() == self._lead_trainer:
+        if self.is_commiter:
             channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
         else:
             channel.send(end, {MessageType.WEIGHTS: None, MessageType.DATASET_SIZE: 0})
@@ -105,17 +100,13 @@ class Trainer(DistTrainer):
 
             task_get = Tasklet(self.get, TAG_FETCH)
 
-            task_receive = Tasklet(self.get, TAG_RECEIVE)
+            task_allreduce = Tasklet(self._ring_allreduce, TAG_RING_ALLREDUCE)
 
             task_train = Tasklet(self.train)
 
             task_eval = Tasklet(self.evaluate)
 
             task_put = Tasklet(self.put, TAG_UPLOAD)
-
-            task_send = Tasklet(self.put, TAG_SEND)
-
-            task_aggregate = Tasklet(self._aggregate_weights)
 
             task_save_metrics = Tasklet(self.save_metrics)
 
@@ -126,11 +117,10 @@ class Trainer(DistTrainer):
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_internal_init >> task_load_data >> task_init >> loop(
-                task_get >> task_send >> task_receive >> task_aggregate 
-                >> task_train >> task_eval >> task_save_metrics >> task_put 
-                ) >> task_save_params >> task_save_model
+                task_get >> task_train >> task_allreduce >> task_eval >> 
+                task_save_metrics >> task_put) >> task_save_params >> task_save_model
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the trainer role."""
-        return [TAG_FETCH, TAG_UPLOAD, TAG_SEND, TAG_RECEIVE]
+        return [TAG_FETCH, TAG_UPLOAD, TAG_RING_ALLREDUCE]

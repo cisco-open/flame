@@ -23,7 +23,7 @@
                 "trainer"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["ring_allreduce"]
             }
         },
         {
@@ -75,7 +75,7 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/us/west",
+    "realm": "default/us/org",
     "role": "trainer",
     "channelConfigs": {
         "param-channel": {

@@ -23,7 +23,7 @@
                 "trainer"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["ring_allreduce"]
             }
         },
         {
@@ -75,6 +75,26 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/us/east",
-    "role": "trainer"
+    "realm": "default/us/org",
+    "role": "trainer",
+    "channelConfigs": {
+        "param-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto2",
+                    "sort": "mqtt"
+                }
+            ]
+        },
+        "global-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto",
+                    "sort": "mqtt"
+                }
+            ]
+        }
+    }
 }

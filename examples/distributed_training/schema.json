@@ -23,7 +23,7 @@
 		]
 	    },
 	    "funcTags": {
-			"trainer": ["fetch", "upload"]
+			"trainer": ["ring_allreduce"]
 	    }
 	}
     ]

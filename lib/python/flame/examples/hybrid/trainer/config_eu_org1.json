@@ -1,5 +1,5 @@
 {
-    "taskid": "305f9fc483cf4df68a2409257b5fad7d3c580370",
+    "taskid": "205f9fc483cf4df68a2409257b5fad7d3c580370",
     "backend": "mqtt",
     "brokers": [
         {
@@ -23,7 +23,7 @@
                 "trainer"
             ],
 	    "funcTags": {
-                "trainer": ["receive", "send"]
+                "trainer": ["ring_allreduce"]
             }
         },
         {
@@ -75,6 +75,26 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/eu/uk",
-    "role": "trainer"
+    "realm": "default/eu/org",
+    "role": "trainer",
+    "channelConfigs": {
+        "param-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto2",
+                    "sort": "mqtt"
+                }
+            ]
+        },
+        "global-channel": {
+            "backend": "mqtt",
+            "brokers": [
+                {
+                    "host": "mosquitto",
+                    "sort": "mqtt"
+                }
+            ]
+        }
+    }
 }
