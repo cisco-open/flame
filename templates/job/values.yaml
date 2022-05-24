@@ -21,5 +21,9 @@ componentPorts:
   agent: "10103"
 
 endpoints:
-  apiserver: http://flame-apiserver:10100
-  notifier: flame-notifier:10101
+  apiserver: https://apiserver.flame.test:443
+  notifier: notifier.flame.test:443
+
+# enable this in case a selfsigned cert is in use (for test only)
+# this holds true in fiab setting
+insecure: true

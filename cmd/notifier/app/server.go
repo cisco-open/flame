@@ -23,6 +23,7 @@ import (
 
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
@@ -53,6 +54,8 @@ func StartGRPCService(portNo uint16) {
 	// register grpc services
 	pbNotify.RegisterEventRouteServer(s, server)
 	pbNotify.RegisterTriggerRouteServer(s, server)
+
+	reflection.Register(s)
 
 	zap.S().Infof("Notification GRPC server listening at %v", lis.Addr())
 	if err := s.Serve(lis); err != nil {

@@ -43,15 +43,15 @@ type handler interface {
 	Do()
 }
 
-func NewHandler(handlerType string, dbService database.DBService, jobId string,
-	eventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, jobParams config.JobParams, platform string, namespace string) (handler, error) {
+func NewHandler(handlerType string, dbService database.DBService, jobId string, eventQ *EventQ,
+	jobQueues map[string]*EventQ, mu *sync.Mutex, notifier string, jobParams config.JobParams,
+	platform string, namespace string, bInsecure bool, bPlain bool) (handler, error) {
 	var hdlr handler
 	var err error
 
 	switch handlerType {
 	case defaultHandler:
-		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, platform, namespace)
+		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, platform, namespace, bInsecure, bPlain)
 
 	default:
 		err = fmt.Errorf("unknown handler type")

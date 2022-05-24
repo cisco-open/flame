@@ -19,16 +19,16 @@ apiVersion: v1
 kind: Service
 metadata:
   labels:
-    app.kubernetes.io/name: {{ .Values.servicename }}-controller
+    app.kubernetes.io/name: {{ .Release.Name }}-controller
     tier: backend
-  name: {{ .Values.servicename }}-controller
-  namespace: {{ .Values.servicename }}
+  name: {{ .Release.Name }}-controller
+  namespace: {{ .Release.Namespace }}
 spec:
   ports:
     - name: controller
       protocol: TCP
-      port: {{ .Values.componentPorts.controller }}
-      targetPort: {{ .Values.componentPorts.controller }}
+      port: {{ .Values.servicePort.controller }}
+      targetPort: {{ .Values.servicePort.controller }}
   type: ClusterIP
   selector:
-    app: {{ .Values.servicename }}-controller
+    app: {{ .Release.Name }}-controller

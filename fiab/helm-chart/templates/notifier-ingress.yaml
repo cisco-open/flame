@@ -1,0 +1,35 @@
+apiVersion: {{ .Values.ingress.apiVersion }}
+kind: Ingress
+metadata:
+    name: {{ .Release.Name }}-notifier
+    namespace: {{ .Release.Namespace }}
+    {{- if .Values.ingress.annotations }}
+    annotations:
+      {{- range $key, $value := .Values.ingress.annotationsGrpc }}
+      {{ $key }}: {{ tpl $value $ | quote }}
+      {{- end }}
+    {{- end }}
+spec:
+    ingressClassName: {{ .Values.ingress.ingressClassName }}
+    tls:
+    - hosts:
+      - {{ .Values.frontDoorUrl.notifier }}
+      secretName: {{ .Release.Name }}-notifier-tls
+    rules:
+    - host: {{ .Values.frontDoorUrl.notifier }}
+      http:
+        paths:
+        {{ if eq .Values.ingress.apiVersion "networking.k8s.io/v1" }}
+        - backend:
+            service:
+              name: {{ .Release.Name }}-notifier
+              port:
+                number: {{ .Values.servicePort.notifier }}
+          pathType: Prefix
+          path: /
+        {{ else }}
+        - backend:
+            serviceName: {{ .Release.Name }}-notifier
+            servicePort: {{ .Values.servicePort.notifier }}
+          path: /
+        {{ end }}

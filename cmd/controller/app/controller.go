@@ -35,6 +35,8 @@ type Controller struct {
 	restPort  string
 	platform  string
 	namespace string
+	bInsecure bool
+	bPlain    bool
 	dbService database.DBService
 	jobParams config.JobParams
 
@@ -42,7 +44,7 @@ type Controller struct {
 	jobBuilder *job.JobBuilder
 }
 
-func NewController(cfg *config.Config) (*Controller, error) {
+func NewController(cfg *config.Config, bInsecure bool, bPlain bool) (*Controller, error) {
 	zap.S().Infof("Connecting to database at %s", cfg.Db)
 	dbService, err := database.NewDBService(cfg.Db)
 	if err != nil {
@@ -65,6 +67,8 @@ func NewController(cfg *config.Config) (*Controller, error) {
 		restPort:  cfg.Port,
 		platform:  cfg.Platform,
 		namespace: cfg.Namespace,
+		bInsecure: bInsecure,
+		bPlain:    bPlain,
 		dbService: dbService,
 		jobParams: cfg.JobParams,
 
@@ -76,7 +80,7 @@ func NewController(cfg *config.Config) (*Controller, error) {
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform, c.namespace)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform, c.namespace, c.bInsecure, c.bPlain)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}

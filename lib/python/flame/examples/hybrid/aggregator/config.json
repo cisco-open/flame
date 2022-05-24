@@ -3,7 +3,7 @@
     "backend": "mqtt",
     "brokers": [
         {
-            "host": "mosquitto",
+            "host": "flame-mosquitto",
             "sort": "mqtt"
         }
     ],
@@ -46,7 +46,7 @@
     },
     "registry": {
 	    "sort": "mlflow",
-	    "uri": "http://mlflow:5000"
+	    "uri": "http://flame-mlflow:5000"
     },
     "selector": {
 	    "sort": "default",

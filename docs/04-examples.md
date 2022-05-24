@@ -7,17 +7,28 @@ This section currently presents one example: FL training for MNIST. More example
 Here we go over how to run MNIST example with [fiab](03-fiab.md) environment.
 If `flamectl` command is not found, please refer to [fiab](03-fiab.md).
 
+### Caution
+Note: all the components in the fiab environment uses a selfsigned certificate.
+Hence, certificate verification will fail when `flamectl` is executed.
+
+If a `flamectl` command throws an error like the following, `--insecure` flag should be added to skip the verification.
+```console
+$ flamectl create design mnist
+Failed to create a new design - code: -1, error: Post "https://apiserver.flame.test/foo/designs": x509: certificate signed by unknown authority
+```
+Note that `--insecure` flag should be used with caution and shouldn't be used in production.
+
 ### Step 1: create a design
 ```bash
 flamectl create design mnist -d "mnist example"
 ```
-This creates a unique name for a  particular task. 
+This creates a unique name for a particular job.
 
 ### Step 2: create a schema for design mnist
 ```bash
 flamectl create schema schema.json --design mnist
 ```
-This defines the topology (e.g., type of **Roles** and **Channels**) of this FL task.
+This defines the topology (e.g., type of **Roles** and **Channels**) of this FL job.
 
 ### Step 3: create (i.e., add) mnist code to the design
 
@@ -84,9 +95,34 @@ flamectl start job 6131576d6667387296a5ada3
 
 ### Step 8: check progress
 To check the status of the job, you can find the following command.
-```bash
-flamectl get tasks 6131576d6667387296a5ada3
+```console
+$ flamectl get tasks 6131576d6667387296a5ada3
++--------------------------+------------------------------------------+--------+---------+--------------------------------+
+|          JOB ID          |                 TASK ID                  |  TYPE  |  STATE  |           TIMESTAMP            |
++--------------------------+------------------------------------------+--------+---------+--------------------------------+
+| 6131576d6667387296a5ada3 | 0257219f78288b6272393f86f2d4985f674af741 | system | running | 2022-05-21 18:16:48.565 +0000  |
+|                          |                                          |        |         | UTC                            |
+| 6131576d6667387296a5ada3 | 7ffd8a7b9c015d72e08cb3a5c574f7dddd422bde | system | running | 2022-05-21 18:16:42.881 +0000  |
+|                          |                                          |        |         | UTC                            |
++--------------------------+------------------------------------------+--------+---------+--------------------------------+
 ```
+
+More details on a task can be obtained with the following command:
+```console
+$ flamectl get task 6131576d6667387296a5ada3 0257219f78288b6272393f86f2d4985f674af741
+{
+    "jobId": "6131576d6667387296a5ada3",
+    "taskId": "0257219f78288b6272393f86f2d4985f674af741",
+    "role": "aggregator",
+    "type": "system",
+    "key": "hidden by system",
+    "state": "completed",
+    "log": "8:16:25.840425: I tensorflow/core/platform/cpu_feature_guard.cc:142] This TensorFlow binary is optimized with oneAPI Deep Neural Network Library (oneDNN) to use the following CPU instructions in performance-critical operations:  AVX2 FMA\nTo enable them in other operations, rebuild TensorFlow with the appropriate compiler flags.\n2022-05-21 18:16:42.693490: W tensorflow/python/util/util.cc:348] Sets are not currently considered sequences, but this may change in the future, so consider avoiding using them.\n2022-05-21 18:16:43,359 | builder_impl.py:780 | INFO | MainThread | copy_assets_to_destination_dir | Assets written to: /tmp/tmppmfrysna/model/data/model/assets\nSuccessfully registered model 'mnist-62892c6a582e4d43984c378c'.\n2022/05/21 18:16:48 INFO mlflow.tracking._model_registry.client: Waiting up to 300 seconds for model version to finish creation.                     Model name: mnist-62892c6a582e4d43984c378c, version 1\nCreated version '1' of model 'mnist-62892c6a582e4d43984c378c'.\n",
+    "timestamp": "2022-05-21T18:16:48.565Z"
+}
+```
+The second argument is a task id. The log section shows the last 1000 bytes of logs from a task.
+
 
 Currently, the flame doesn't provide any dedicated UI or tool to check to the process of a job.
 To check it, log into a pod and check logs in `/var/log/flame` folder.
@@ -98,13 +134,13 @@ kubectl get pods -n flame
 For example, the output is similar to:
 ```bash
 NAME                                                             READY   STATUS    RESTARTS   AGE
-flame-agent-e276cf6311c723e7bf0693553a0d858d2b75a100--1-bjmb2   1/1     Running   0          69s
-flame-agent-e2b3182eb9c2218d820fc9d2e9443e53c2213a72--1-8mqzn   1/1     Running   0          69s
-flame-agent-f5a0b353dc3ca60d24174cbbbece3597c3287f3f--1-qlbkv   1/1     Running   0          69s
-flame-apiserver-65d8c7fcf4-2jsm6                                1/1     Running   0          164m
-flame-controller-f6c99d8d5-b6dt6                                1/1     Running   0          26m
-flame-db-869cccd84c-kvnzn                                       1/1     Running   0          164m
-flame-notifier-c59bbcf65-qp4lw                                  1/1     Running   0          164m
+flame-agent-e276cf6311c723e7bf0693553a0d858d2b75a100--1-bjmb2    1/1     Running   0          69s
+flame-agent-e2b3182eb9c2218d820fc9d2e9443e53c2213a72--1-8mqzn    1/1     Running   0          69s
+flame-agent-f5a0b353dc3ca60d24174cbbbece3597c3287f3f--1-qlbkv    1/1     Running   0          69s
+flame-apiserver-65d8c7fcf4-2jsm6                                 1/1     Running   0          164m
+flame-controller-f6c99d8d5-b6dt6                                 1/1     Running   0          26m
+flame-db-869cccd84c-kvnzn                                        1/1     Running   0          164m
+flame-notifier-c59bbcf65-qp4lw                                   1/1     Running   0          164m
 mlflow-6dd895c889-npbwv                                          1/1     Running   0          164m
 postgres-748c47694c-dvzv8                                        1/1     Running   0          164m
 ```
@@ -115,16 +151,11 @@ kubectl exec -it -n flame flame-agent-e276cf6311c723e7bf0693553a0d858d2b75a100--
 ```
 
 The log for the flame agent (`flamelet`) is `flamelet.log` under `/var/log/flame`.
-The log for an ML task is similar to `task-61bd2da4dcaed8024865247e.log` under `/var/log/flame`.
+The log for a task is similar to `task-61bd2da4dcaed8024865247e.log` under `/var/log/flame`.
 
 
 As an alternative, one can check the progress at MLflow UI in the fiab setup.
-Run the following command:
-```bash
-kubectl get svc -n flame  | grep mlflow | awk '{print $4}'
-```
-The above command returns an IP address (say, 10.104.56.68).
-Use the IP address and paste "http://10.104.56.68:5000" on a web browser.
+Open a browser and go to http://mlflow.flame.test.
 
 ## Hierarchical MNIST
 Likewise, the hierarchical FL example follows the same fashion. 
@@ -139,7 +170,7 @@ flamectl create design hier_mnist -d "hier_mnist example"
 ```bash
 flamectl create schema schema.json --design hier_mnist
 ```
-The schema defines the topology of this FL task. For more info, please refer to [05-flame-basics](05-flame-basics.md).
+The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
 ### Step 3:
 ```bash
 flamectl create code hier_mnist.zip --design hier_mnist

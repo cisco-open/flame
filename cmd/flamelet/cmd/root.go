@@ -29,6 +29,9 @@ import (
 const (
 	argApiserver = "apiserver"
 	argNotifier  = "notifier"
+
+	optionInsecure = "insecure"
+	optionPlain    = "plain"
 )
 
 var rootCmd = &cobra.Command{
@@ -53,7 +56,15 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
 		}
 
-		agent, err := app.NewAgent(apiserver, notifier)
+		bInsecure, _ := flags.GetBool(optionInsecure)
+		bPlain, _ := flags.GetBool(optionPlain)
+
+		if bInsecure && bPlain {
+			err = fmt.Errorf("options --%s and --%s are incompatible; enable one of them.\n", optionInsecure, optionPlain)
+			return err
+		}
+
+		agent, err := app.NewAgent(apiserver, notifier, bInsecure, bPlain)
 		if err != nil {
 			return err
 		}
@@ -74,6 +85,9 @@ func init() {
 	defaultNotifierEp := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
 	rootCmd.Flags().StringP(argNotifier, "n", defaultNotifierEp, "Notifier endpoint")
 	rootCmd.MarkFlagRequired(argNotifier)
+
+	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
+	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")
 }
 
 func Execute() error {

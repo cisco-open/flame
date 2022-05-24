@@ -19,7 +19,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-mosquitto-configmap
-  namespace: {{ .Values.servicename }}
+  namespace: {{ .Release.Namespace }}
 data:
   mosquitto.conf: |
     allow_anonymous true

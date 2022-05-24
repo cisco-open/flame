@@ -28,6 +28,8 @@ var createDatasetCmd = &cobra.Command{
 	Long:  "This command creates a new dataset",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		datasetFile := args[0]
 
 		params := dataset.Params{}

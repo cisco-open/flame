@@ -1,0 +1,38 @@
+apiVersion: {{ .Values.ingress.apiVersion }}
+kind: Ingress
+metadata:
+    name: {{ .Release.Name }}-mlflow
+    namespace: {{ .Release.Namespace }}
+    {{- if .Values.ingress.annotations }}
+    annotations:
+      {{- range $key, $value := .Values.ingress.annotationsMlflow }}
+      {{ $key }}: {{ tpl $value $ | quote }}
+      {{- end }}
+    {{- end }}
+spec:
+    ingressClassName: {{ .Values.ingress.ingressClassName }}
+    # In mlflow, selfsigned certificate raises SSLCertVerificationError
+    # So, fiab env disable tls; tls can be enabled with a legitimate cert
+    #
+    # tls:
+    # - hosts:
+    #   - {{ .Values.frontDoorUrl.mlflow }}
+    #   secretName: {{ .Release.Name }}-mlflow-tls
+    rules:
+    - host: {{ .Values.frontDoorUrl.mlflow }}
+      http:
+        paths:
+        {{ if eq .Values.ingress.apiVersion "networking.k8s.io/v1" }}
+        - backend:
+            service:
+              name: {{ .Release.Name }}-mlflow
+              port:
+                number: {{ .Values.servicePort.mlflow }}
+          pathType: Prefix
+          path: /
+        {{ else }}
+        - backend:
+            serviceName: {{ .Release.Name }}-mlflow
+            servicePort: {{ .Values.servicePort.mlflow }}
+          path: /
+        {{ end }}

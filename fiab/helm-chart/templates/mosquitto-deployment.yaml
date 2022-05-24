@@ -18,22 +18,22 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mosquitto
-  namespace: {{ .Values.servicename }}
+  name: {{ .Release.Name }}-mosquitto
+  namespace: {{ .Release.Namespace }}
 
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: mosquitto
+      app: {{ .Release.Name }}-mosquitto
   template:
     metadata:
       labels:
-        app: mosquitto
+        app: {{ .Release.Name }}-mosquitto
     spec:
       containers:
         - image: eclipse-mosquitto:2.0.14
-          name: mosquitto
+          name: {{ .Release.Name }}-mosquitto
           ports:
             - containerPort: 1883
           volumeMounts:

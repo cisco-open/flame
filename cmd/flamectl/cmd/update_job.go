@@ -32,6 +32,8 @@ var updateJobCmd = &cobra.Command{
 	Long:  "This command updates the specification of a job",
 	Args:  cobra.RangeArgs(argNum4UpdateJobCmd, argNum4UpdateJobCmd),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		jobId := args[0]
 		jobFile := args[1]
 

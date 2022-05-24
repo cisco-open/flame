@@ -28,6 +28,11 @@ import (
 	"github.com/cisco-open/flame/pkg/util"
 )
 
+const (
+	optionInsecure = "insecure"
+	optionPlain    = "plain"
+)
+
 var (
 	cfgFile string
 	cfg     *config.Config
@@ -36,7 +41,17 @@ var (
 		Use:   util.Controller,
 		Short: util.ProjectName + util.Controller,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			instance, err := app.NewController(cfg)
+			flags := cmd.Flags()
+			bInsecure, _ := flags.GetBool(optionInsecure)
+			bPlain, _ := flags.GetBool(optionPlain)
+
+			if bInsecure && bPlain {
+				err := fmt.Errorf("options --%s and --%s are incompatible; enable one of them.\n",
+					optionInsecure, optionPlain)
+				return err
+			}
+
+			instance, err := app.NewController(cfg, bInsecure, bPlain)
 			if err != nil {
 				fmt.Printf("Failed to create a new controller instance\n")
 				return nil
@@ -54,6 +69,9 @@ func init() {
 	usage := "config file (default: /etc/flame/controller.yaml)"
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", usage)
 	rootCmd.CompletionOptions.DisableDefaultCmd = true
+
+	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
+	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")
 }
 
 func initConfig() {

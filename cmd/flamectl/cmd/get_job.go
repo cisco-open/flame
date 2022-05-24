@@ -32,6 +32,8 @@ var getJobCmd = &cobra.Command{
 	Long:  "This command retrieves a job specification or status",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		jobId := args[0]
 
 		params := job.Params{}
@@ -53,6 +55,8 @@ var getJobsCmd = &cobra.Command{
 	Long:  "This command retrieves the status of all jobs",
 	Args:  cobra.RangeArgs(0, 0),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		checkInsecure(cmd)
+
 		params := job.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User

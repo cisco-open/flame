@@ -64,10 +64,14 @@ type DefaultHandler struct {
 	isDone chan bool
 
 	state JobHandlerState
+
+	bInsecure bool
+	bPlain    bool
 }
 
-func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *EventQ, jobQueues map[string]*EventQ, mu *sync.Mutex,
-	notifier string, jobParams config.JobParams, platform string, namespace string) (*DefaultHandler, error) {
+func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *EventQ,
+	jobQueues map[string]*EventQ, mu *sync.Mutex, notifier string, jobParams config.JobParams,
+	platform string, namespace string, bInsecure bool, bPlain bool) (*DefaultHandler, error) {
 	// start task monitoring
 	tskEventCh, errCh, tskWatchCancelFn, err := dbService.MonitorTasks(jobId)
 	if err != nil {
@@ -85,8 +89,12 @@ func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *E
 		jobParams:  jobParams,
 		platform:   platform,
 		namespace:  namespace,
-		tasksInfo:  make([]openapi.TaskInfo, 0),
-		roles:      make([]openapi.Role, 0),
+
+		bInsecure: bInsecure,
+		bPlain:    bPlain,
+
+		tasksInfo: make([]openapi.TaskInfo, 0),
+		roles:     make([]openapi.Role, 0),
 
 		roleStateCount: make(map[string]map[openapi.JobState]int),
 
@@ -300,7 +308,7 @@ func (h *DefaultHandler) notify(evtType pbNotify.EventType) error {
 		req.TaskIds = append(req.TaskIds, taskInfo.TaskId)
 	}
 
-	resp, err := newNotifyClient(h.notifier).sendNotification(req)
+	resp, err := newNotifyClient(h.notifier, h.bInsecure, h.bPlain).sendNotification(req)
 	if err != nil {
 		return fmt.Errorf("failed to notify: %v", err)
 	}

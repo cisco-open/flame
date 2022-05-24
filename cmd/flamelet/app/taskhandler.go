@@ -18,10 +18,12 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -31,6 +33,7 @@ import (
 	backoff "github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -65,9 +68,27 @@ type taskHandler struct {
 
 	state  openapi.JobState
 	cancel context.CancelFunc
+
+	grpcDialOpt grpc.DialOption
 }
 
-func newTaskHandler(apiserverEp string, notifierEp string, name string, taskId string, taskKey string) *taskHandler {
+func newTaskHandler(apiserverEp string, notifierEp string, name string, taskId string, taskKey string,
+	bInsecure bool, bPlain bool) *taskHandler {
+	var grpcDialOpt grpc.DialOption
+
+	if bPlain {
+		grpcDialOpt = grpc.WithTransportCredentials(insecure.NewCredentials())
+	} else {
+		tlsCfg := &tls.Config{}
+		if bInsecure {
+			zap.S().Warn("Warning: allow insecure connection\n")
+
+			tlsCfg.InsecureSkipVerify = true
+			http.DefaultTransport.(*http.Transport).TLSClientConfig = tlsCfg
+		}
+		grpcDialOpt = grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
+	}
+
 	return &taskHandler{
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
@@ -75,6 +96,7 @@ func newTaskHandler(apiserverEp string, notifierEp string, name string, taskId s
 		taskId:      taskId,
 		taskKey:     taskKey,
 		state:       openapi.READY,
+		grpcDialOpt: grpcDialOpt,
 	}
 }
 
@@ -105,7 +127,7 @@ func (t *taskHandler) doStart() {
 
 func (t *taskHandler) connect() error {
 	// dial server
-	conn, err := grpc.Dial(t.notifierEp, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(t.notifierEp, t.grpcDialOpt)
 	if err != nil {
 		zap.S().Debugf("Cannot connect with notifier: %v", err)
 		return err

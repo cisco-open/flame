@@ -19,16 +19,16 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: {{ .Release.Name }}-controller-configmap
-  namespace: {{ .Values.servicename }}
+  namespace: {{ .Release.Namespace }}
 data:
   controller.yaml: |
     ---
     db: mongodb://flame-mongodb-headless:27017/?replicaSet=rs0
-    notifier: flame-notifier:10101
+    notifier: {{ .Values.frontDoorUrl.notifier }}:443
     platform: k8s
-    namespace: {{ .Values.servicename }}
+    namespace: {{ .Release.Namespace }}
     jobParams:
-      image: flame:latest
+      image: {{ .Values.workerImageName }}:{{ .Values.workerImageTag }}
       brokers:
         - sort: {{ .Values.broker.sort }}
           host: {{ .Values.broker.host }}
