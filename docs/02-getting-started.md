@@ -24,7 +24,7 @@ eval "$(pyenv init -)"
 echo -e '\nif command -v pyenv 1>/dev/null 2>&1; then\n    eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
 ```
 
-The following shows how to install the above packages in Ubuntu environments.
+The following shows how to install the above packages in Ubuntu.
 ```bash
 sudo apt install golang 
 sudo snap install golangci-lint
