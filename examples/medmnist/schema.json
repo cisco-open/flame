@@ -1,5 +1,5 @@
 {
-    "name": "MedMNIST example schema v1.0.0 via PyTorch",
+    "name": "Benchmark of FedOPT Aggregators/Optimizers using MedMNIST example schema v1.0.0 via PyTorch",
     "description": "A simple example of MedMNIST using PyTorch to test out different aggregator algorithms.",
     "roles": [
 	{
