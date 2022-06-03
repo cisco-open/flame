@@ -1,0 +1,13 @@
+{
+    "name": "MedMNIST dataset6",
+
+    "description": "Dataset Repo: https://github.com/MedMNIST/MedMNIST, NonIID generating algorithm from FedMA paper repo",
+
+    "url": "https://www.googleapis.com/drive/v3/files/12En4ilEgZphff9pmI7Rh4CYZ76opAaAq?alt=media&key=AIzaSyBf3w6fXTWfLorEogaUcdnxArtsb8S0VT8",
+
+    "dataFormat": "npz",
+
+    "realm": "default/us/org6",
+
+    "isPublic": true
+}

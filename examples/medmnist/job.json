@@ -7,7 +7,8 @@
 	        "default": 0
 	    },
 	    "fromSystem": [
-	        "61e0c1e86bdf29b562de7c22"
+	        "6291bdc76a1ba7c24edca412",
+            "6291be116a1ba7c24edca414"
 	    ]
     },
     "priority": "low",
@@ -20,18 +21,20 @@
 	    "version": 0
     },
     "hyperparameters": {
-	    "rounds": 5,
+	    "rounds": 50,
 	    "batchSize": 32,
 	    "learningRate": 0.01,
-        "epochs": 2
+        "epochs": 1
     },
     "dependencies" : [
 	    "numpy >= 1.2.0"
     ],
     "selector": {
-	    "sort": "random",
-	    "kwargs": {
-	        "k": 1
-	    }
+	    "sort": "default",
+	    "kwargs": {}
+    },
+    "optimizer": {
+        "sort": "fedavg",
+        "kwargs": {}
     }
 }
