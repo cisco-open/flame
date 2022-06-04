@@ -27,7 +27,6 @@ package apiserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -85,53 +84,79 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 
 // DeleteJob - Delete job specification
 func (s *JobsApiService) DeleteJob(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Job delete request received for user: %s | jobId: %v", user, jobId)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	// create controller request
+	uriMap := map[string]string{
+		"user":  user,
+		"jobId": jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.DeleteJobEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return Response(404, nil),nil
+	// send put request
+	code, resp, err := restapi.HTTPDelete(url, jobId, "application/json")
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // GetJob - Get a job specification
 func (s *JobsApiService) GetJob(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Get jobId %s for user: %s", jobId, user)
 
-	//TODO: Uncomment the next line to return response Response(200, JobSpec{}) or use other options such as http.Ok ...
-	//return Response(200, JobSpec{}), nil
+	//create controller request
+	uriMap := map[string]string{
+		"user":  user,
+		"jobId": jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetJobEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send get request
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJob method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+
+	jobSpec := openapi.JobSpec{}
+	err = util.ByteToStruct(resp, &jobSpec)
+
+	return openapi.Response(http.StatusOK, jobSpec), err
 }
 
 // GetJobStatus - Get job status of a given jobId
 func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetJobStatus with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Get jobId %s status for user: %s", jobId, user)
 
-	//TODO: Uncomment the next line to return response Response(200, JobStatus{}) or use other options such as http.Ok ...
-	//return Response(200, JobStatus{}), nil
+	//create controller request
+	uriMap := map[string]string{
+		"user":  user,
+		"jobId": jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetJobStatusEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send get request
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobStatus method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+
+	jobStatus := openapi.JobStatus{}
+	err = util.ByteToStruct(resp, &jobStatus)
+
+	return openapi.Response(http.StatusOK, jobStatus), err
 }
 
 // GetJobs - Get status info on all the jobs owned by user
