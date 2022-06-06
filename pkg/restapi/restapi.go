@@ -60,6 +60,7 @@ const (
 	CreateJobEndpoint       = "CREATE_JOB"
 	GetJobEndPoint          = "GET_JOB"
 	GetJobsEndPoint         = "GET_JOBS"
+	GetJobStatusEndPoint    = "GET_JOB_STATUS"
 	GetTasksInfoEndpoint    = "GET_TASKS_INFO"
 	GetTaskInfoEndpoint     = "GET_TASK_INFO"
 	DeleteJobEndPoint       = "DELETE_JOB"
@@ -99,6 +100,7 @@ var URI = map[string]string{
 	CreateJobEndpoint:       "/{{.user}}/jobs",
 	GetJobEndPoint:          "/{{.user}}/jobs/{{.jobId}}",
 	GetJobsEndPoint:         "/{{.user}}/jobs/?limit={{.limit}}",
+	GetJobStatusEndPoint:    "/{{.user}}/jobs/{{.jobId}}/status",
 	GetTasksInfoEndpoint:    "/{{.user}}/jobs/{{.jobId}}/tasks/?limit={{.limit}}",
 	GetTaskInfoEndpoint:     "/{{.user}}/jobs/{{.jobId}}/tasks/{{.taskId}}",
 	UpdateJobEndPoint:       "/{{.user}}/jobs/{{.jobId}}",
@@ -180,6 +182,36 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 	//Read the response body
 	body, err := ioutil.ReadAll(resp.Body)
 	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
+		return -1, nil, err
+	}
+
+	return resp.StatusCode, body, nil
+}
+
+func HTTPDelete(url string, msg interface{}, contentType string) (int, []byte, error) {
+	deleteBody, err := json.Marshal(msg)
+	if err != nil {
+		zap.S().Errorf("error encoding the payload for delete")
+		return -1, nil, err
+	}
+
+	req, err := http.NewRequest(http.MethodDelete, url, bytes.NewBuffer(deleteBody))
+	if ErrorNilCheck(GetFunctionName(HTTPDelete), err) != nil {
+		return -1, nil, err
+	}
+
+	client := &http.Client{}
+	req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	resp, err := client.Do(req)
+
+	if ErrorNilCheck(GetFunctionName(HTTPDelete), err) != nil {
+		return -1, nil, err
+	}
+	defer resp.Body.Close()
+
+	//Read the response body
+	body, err := ioutil.ReadAll(resp.Body)
+	if ErrorNilCheck(GetFunctionName(HTTPDelete), err) != nil {
 		return -1, nil, err
 	}
 

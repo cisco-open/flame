@@ -109,6 +109,15 @@ func FormatJSON(data []byte) ([]byte, error) {
 	return data, nil
 }
 
+//Marshal JSON to escape HTML characters like <, > while printing
+func JSONMarshal(t interface{}) ([]byte, error) {
+	buffer := &bytes.Buffer{}
+	encoder := json.NewEncoder(buffer)
+	encoder.SetEscapeHTML(false)
+	err := encoder.Encode(t)
+	return buffer.Bytes(), err
+}
+
 //StructToMapInterface converts any struct interface into map interface using json de-coding/encoding.
 func StructToMapInterface(in interface{}) (map[string]interface{}, error) {
 	//todo maybe a better way to do this https://github.com/golang/protobuf/issues/1259#issuecomment-750453617

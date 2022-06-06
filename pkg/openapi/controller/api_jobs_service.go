@@ -27,7 +27,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -90,53 +89,52 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 
 // DeleteJob - Delete job specification
 func (s *JobsApiService) DeleteJob(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	jobStaus, err := s.dbService.GetJobStatus(user, jobId)
+	if err != nil {
+		errMsg := fmt.Errorf("job: %s not found", jobId)
+		zap.S().Infof("%v", errMsg)
+		return errMsgFunc(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return Response(404, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteJob method not implemented")
+	if jobStaus.State == openapi.READY || jobStaus.State == openapi.COMPLETED ||
+		jobStaus.State == openapi.FAILED || jobStaus.State == openapi.TERMINATED {
+		err1 := s.dbService.DeleteTasks(jobId, true)
+		err2 := s.dbService.DeleteJob(user, jobId)
+		if err1 != nil || err2 != nil {
+			errMsg := fmt.Errorf("delete tasks's error: %v; delete job's error: %v", err1, err2)
+			zap.S().Infof("%v", errMsg)
+			return errMsgFunc(errMsg)
+		}
+	} else {
+		errMsg := fmt.Errorf("delete job not allowed since job: %s in state: %s. Stop the job first", jobId, jobStaus.State)
+		zap.S().Infof("%v", errMsg)
+		return errMsgFunc(errMsg)
+	}
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // GetJob - Get a job specification
 func (s *JobsApiService) GetJob(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetJob with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	jobSpec, err := s.dbService.GetJob(user, jobId)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get job specification: %v", err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, JobSpec{}) or use other options such as http.Ok ...
-	//return Response(200, JobSpec{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJob method not implemented")
+	return openapi.Response(http.StatusOK, jobSpec), nil
 }
 
 // GetJobStatus - Get job status of a given jobId
 func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetJobStatus with the required logic for this service method.
-	// Add api_jobs_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	jobStatus, err := s.dbService.GetJobStatus(user, jobId)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get status of job: %v", err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, JobStatus{}) or use other options such as http.Ok ...
-	//return Response(200, JobStatus{}), nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetJobStatus method not implemented")
+	return openapi.Response(http.StatusOK, jobStatus), nil
 }
 
 // GetJobs - Get status info on all the jobs owned by user
