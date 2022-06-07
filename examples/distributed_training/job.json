@@ -3,14 +3,14 @@
     "schemaVersion": "1",
     "codeVersion": "1",
     "dataSpec": {
-	    "fromUser": {
-	        "default": 0
-	    },
-	    "fromSystem": [
-	        "6270770d081ef2787befd972",
+        "fromUser": {
+            "default": 0
+        },
+        "fromSystem": [
+            "6270770d081ef2787befd972",
             "62707721081ef2787befd973",
             "6270772a081ef2787befd974"
-	    ]
+        ]
     },
     "priority": "low",
 
@@ -18,23 +18,23 @@
     "maxRunTime": 1800,
 
     "baseModel": {
-	    "name": "",
-	    "version": 0
+        "name": "",
+        "version": 0
     },
     "hyperparameters": {
-	    "rounds": 5,
-	    "batchSize": 32,
-	    "learningRate": 0.01
+        "rounds": 5,
+        "batchSize": 32,
+        "learningRate": 0.01
     },
     "dependencies" : [
-	    "numpy >= 1.2.0"
+        "numpy >= 1.2.0"
     ],
     "selector": {
-	    "sort": "default",
-	    "kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "optimizer": {
-	    "sort": "fedavg",
-	    "kwargs": {}
+        "sort": "fedavg",
+        "kwargs": {}
     }
 }
