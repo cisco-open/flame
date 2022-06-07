@@ -90,6 +90,10 @@ class MLflowRegistryClient(AbstractRegistryClient):
             return
 
         mlflow.log_params(hyperparameters)
+    
+    def save_artifact(self, local_path: str) -> None:
+        """Save an artifact in a model registry."""
+        mlflow.log_artifact(local_path) # path could be a path to a file or a directory
 
     def cleanup(self) -> None:
         """
