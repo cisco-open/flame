@@ -1,0 +1,3 @@
+To illustrate the power of using adaptive aggregation algorithm on the server end of Federated Learning (FL), we provided an example of comparing FedYogi, FedAdaGrad and FedAdam with FedAvg on a Non-IID medical imaging dataset.
+
+Thanks to NVFlare providing [the NonIID dataset generation script](https://github.com/NVIDIA/NVFlare/blob/main/examples/cifar10/pt/utils/prepare_data.py) proposed by [FedMA](https://github.com/IBM/FedMA). We used the script to split the PathMNIST dataset of MedMNIST into 10 non-overlapping portions in a Non-IID fashion. And for each individual dataset, we splitted it into training and testing set in a 8:2 ratio. 
