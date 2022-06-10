@@ -7,7 +7,7 @@ The flame system consists of four components: apiserver, controller, notifier an
 It also includes mongodb as backend state store.
 This development environment is mainly tested under MacOS.
 This guideline is primarily based on MacOS.
-However, this dev environment doesn't work under latest Apple machines with M1 chip set.
+However, this dev environment doesn't work under latest Apple machines with M1 chip set because hyperkit is not yet supported for M1 Mac.
 The fiab is also tested under Archlinux. Hence, it may work on other Linux distributions such as Ubuntu.
 
 The `flame/fiab` folder contains several scripts to configure and set up the fiab environment.
@@ -21,15 +21,15 @@ fiab relies on `minikube`, `kubectl`, `helm`, `docker` and `jq`.
 
 fiab doesn't support docker driver (hence, docker desktop). fiab uses ingress and ingress-dns addons in minikube.
 When docker driver is chosen, these two addons are only supported on Linux (see [here](https://minikube.sigs.k8s.io/docs/drivers/docker/)
-and [here](https://github.com/kubernetes/minikube/issues/7332)). Note that while the issue 7332 is not closed and appears to be fixed,
-ingress and ingress-dns still doesn't work under fiab environment on MacOs.
+and [here](https://github.com/kubernetes/minikube/issues/7332)). Note that while the issue 7332 is now closed and appears to be fixed,
+ingress and ingress-dns still don't work under fiab environment on MacOs.
 In addition, note that the docker subscription service agreement has been updated for `docker desktop`.
 Hence, `docker desktop` may not be free. Please check out the [agreement](https://www.docker.com/products/docker-desktop).
 
 Hence, fiab uses `hyperkit` as its default vm driver. Using `hyperkit` has some drawbacks.
 First, as of May 21, 2022, `hyperkit` driver doesn't support M1 chipset.
 Second, the `hyperkit` driver doesn't work with dnscrypt-proxy or dnsmasq well.
-Thus, if dnscrypt-proxy or dnsmasq is installed in the system, see [here](#Fixing docker build error) for details and a workaround.
+Thus, if dnscrypt-proxy or dnsmasq is installed in the system, see [here](#fixing-docker-build-error) for details and a workaround.
 
 Note that other drivers such as `virtualbox` are not tested.
 
@@ -80,7 +80,7 @@ Next, `ingress` and `ingress` addons need to be installed with the following com
 minikube addons enable ingress
 minikube addons enable ingress-dns
 ```
-When `hyperkit` driver is in use, enabling `ingress` addon may fail due to the same issue shown in [here](#Fixing docker build error),
+When `hyperkit` driver is in use, enabling `ingress` addon may fail due to the same issue shown in [here](#fixing-docker-build-error),
 which explains a workaround. Once the workload is applied, come back here and rerun these commands.
 
 

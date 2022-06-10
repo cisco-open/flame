@@ -3,10 +3,10 @@
     "schemaVersion": "1",
     "codeVersion": "1",
     "dataSpec": {
-	"fromUser": {
-	    "default": 1
-	},
-	"fromSystem": []
+        "fromUser": {
+            "default": 1
+        },
+        "fromSystem": []
     },
     "priority": "low",
 
@@ -14,17 +14,17 @@
     "maxRunTime": 1800,
 
     "baseModel": {
-	"name": "",
-	"version": 0
+        "name": "",
+        "version": 0
     },
     "hyperparameters": {
-	"rounds": 5
+        "rounds": 5
     },
     "dependencies" : [
-	"numpy >= 1.2.0"
+        "numpy >= 1.2.0"
     ],
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     }
 }
