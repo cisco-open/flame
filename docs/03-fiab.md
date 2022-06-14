@@ -106,8 +106,8 @@ echo \
 ```
 4.Update the apt package index, and install the latest version of Docker Engine
 ```bash
-$ sudo apt-get update
-$ sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
 ```
 
 
