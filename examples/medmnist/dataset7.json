@@ -3,7 +3,7 @@
 
     "description": "Dataset Repo: https://github.com/MedMNIST/MedMNIST, NonIID generating algorithm from FedMA paper repo",
 
-    "url": "https://www.googleapis.com/drive/v3/files/1Gq9Owx8nsz6e8N0V0INC57hHcOYXpqx7?alt=media&key=${Google Drive API Key}",
+    "url": "https://github.com/GaoxiangLuo/NonIID-PathMNIST/blob/main/site7.npz",
 
     "dataFormat": "npz",
 

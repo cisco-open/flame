@@ -1,6 +1,6 @@
 ## MedMNIST
 
-We use the PathMNIST dataset from MedMNIST to go over an example of using adaptive aggregator on a data heterogeneity setting, implemented in PyTorch. This example is run within [fiab](../../docs/03-fiab.md) environment.
+We use the PathMNIST dataset from (MedMNIST)[https://medmnist.com/] to go over an example of using adaptive aggregator on a data heterogeneity setting, implemented in PyTorch. This example is run within [fiab](../../docs/03-fiab.md) environment.
 
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
 
@@ -26,12 +26,10 @@ flamectl create code medmnist.zip --design medmnist
 
 ### Step 4: create datasets
 
-Thanks to NVFlare providing [the NonIID dataset generation script](https://github.com/NVIDIA/NVFlare/blob/main/examples/cifar10/pt/utils/prepare_data.py) proposed by [FedMA](https://github.com/IBM/FedMA). We used the script to split the PathMNIST dataset of MedMNIST into 10 non-overlapping portions in a Non-IID fashion. And for each individual dataset, we splitted it into training and validation set in a 8:2 ratio. The following is the data distribution of the training set of all clients:
+We use NVFlare's NonIID dataset generation script to split the PathMNIST dataset of MedMNIST into 10 non-overlapping portions in a Non-IID fashion. And for each individual dataset, we splitted it into training and validation set in a 8:2 ratio. The following is the data distribution of the training set of all clients:
 ![train_summary](images/train_summary.png)
 And the following is the data distribution of the validation set of all clients:
 ![val_summary](images/val_summary.png)
-
-As the heterogenous split of PathMNIST datasets are stored at Google Drive, it requires the user to generate a Google Drive API key and replace it with the `${Google Drive API Key}` in the URL.
 
 ```bash
 $ flamectl create dataset dataset1.json
