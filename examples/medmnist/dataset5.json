@@ -3,7 +3,7 @@
 
     "description": "Dataset Repo: https://github.com/MedMNIST/MedMNIST, NonIID generating algorithm from FedMA paper repo",
 
-    "url": "https://github.com/GaoxiangLuo/NonIID-PathMNIST/blob/main/site5.npz",
+    "url": "https://github.com/GaoxiangLuo/flame-datasets/blob/main/site5.npz",
 
     "dataFormat": "npz",
 
