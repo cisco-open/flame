@@ -112,3 +112,4 @@ Here we select one of the clients to demonstrate the performance of these server
 |Training Round|77|**21**|31|37|
 
 The validation accuracy was calculated by the weighted summation, in terms of dataset size, of the final global model evaluating on the validation set across all 10 clients respectively. And the training round records the number of rounds required for the global model to achieve 90% of the validation accuracy, from which we see that adaptive optimizer on the server end increases the convergence speed of the federated learning training while still preserving the good accuracy. 
+

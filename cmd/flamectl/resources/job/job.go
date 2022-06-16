@@ -27,6 +27,7 @@ import (
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/cisco-open/flame/pkg/restapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 type Params struct {
@@ -80,8 +81,42 @@ func Create(params Params) error {
 }
 
 func Get(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetJobEndPoint, uriMap)
+
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to Get job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		return nil
+	}
+
+	fmt.Printf("Request to get job successful\n")
+
+	// convert the response into list of struct
+	jobSpec := openapi.JobSpec{}
+	err = json.Unmarshal(resp, &jobSpec)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal get job: %v\n", err)
+		return nil
+	}
+
+	respJson, err := util.JSONMarshal(jobSpec)
+	if err != nil {
+		fmt.Printf("WARNING: error while marshaling json: %v\n\n", err)
+		fmt.Println(string(resp))
+	}
+
+	prettyJSON, err := util.FormatJSON(respJson)
+	if err != nil {
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
+		fmt.Println(string(resp))
+	} else {
+		fmt.Println(string(prettyJSON))
+	}
 
 	return nil
 }
@@ -121,8 +156,34 @@ func GetMany(params Params) error {
 }
 
 func GetStatus(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetJobStatusEndPoint, uriMap)
+
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to Get job status - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		return nil
+	}
+
+	fmt.Printf("Request to get job status successful\n")
+
+	// convert the response into list of struct
+	jobStatus := openapi.JobStatus{}
+	err = json.Unmarshal(resp, &jobStatus)
+	if err != nil {
+		fmt.Printf("Failed to unmarshal get job status: %v\n", err)
+		return nil
+	}
+
+	table := tablewriter.NewWriter(os.Stdout)
+	table.SetHeader([]string{"Job ID", "State", "created At", "started At", "ended At"})
+	table.Append([]string{jobStatus.Id, string(jobStatus.State), jobStatus.CreatedAt.String(),
+		jobStatus.StartedAt.String(), jobStatus.EndedAt.String()})
+	table.Render() // Send output
 
 	return nil
 }
@@ -162,8 +223,24 @@ func Update(params Params) error {
 }
 
 func Remove(params Params) error {
-	// TODO: implement me!
-	fmt.Println("Not yet implemented")
+	// construct URL
+	uriMap := map[string]string{
+		"user":  params.User,
+		"jobId": params.JobId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.DeleteJobEndPoint, uriMap)
+
+	jobStatus := openapi.JobStatus{
+		Id: params.JobId,
+	}
+
+	code, resp, err := restapi.HTTPDelete(url, jobStatus, "application/json")
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Failed to delete a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		return nil
+	}
+
+	fmt.Printf("Request to delete a job successful\n")
 
 	return nil
 }

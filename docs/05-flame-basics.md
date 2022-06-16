@@ -18,13 +18,13 @@ The key benefits of the abstraction are:
 Depending on the availability of different communication infrastructures and security policies,
 a workload can be easily changed from one communication technology to another.
 
-**High extensibility**: TAG makes it easy to support a variety of different topologies. Therefore, it can potentially support many different usecases easily.
+**High extensibility**: TAG makes it easy to support a variety of different topologies. Therefore, it can potentially support many different use cases easily.
 
 <p align="center"><img src="images/role_channel.png" alt="role and channel"" /></p>
 
 
 Now let us describe how TAG is enabled. TAG is comprised of two basic and yet simple building blocks: *role* and *channel*.
-A *role* represents a vertex in TAG and should be associated with some hevaviors.
+A *role* represents a vertex in TAG and should be associated with some behaviors.
 To create association between role and its behavior, a (python) code must be attached to a role.
 Once the association is done, a role is fully *defined*.
 
@@ -45,7 +45,7 @@ A channel also has two attributes: *groupBy* and *funcTags*.
 
 **groupBy**: This attribute is used to group roles of the channel based on a tag.
 Therefore, the groupBy attribute allows to build a hierarchical topology (e.g., a single-rooted multi-level tree), for instance, based on geographical location tags (e.g., us, uk, fr, etc).
-Currently a string-based tag is supported. Future extensions may include more dynamic grouping based on dynamic metrics such as latency, data (dis)simiarlity, and so on.
+Currently a string-based tag is supported. Future extensions may include more dynamic grouping based on dynamic metrics such as latency, data (dis)similarity, and so on.
 
 **funcTags** This attribute (discussed later in detail) contains what actions a role would take on the channel.
 As mentioned earlier, a role is associated with executable code.
@@ -54,13 +54,13 @@ We will discuss how to use funcTags correctly in the later part.
 
 ### TAG Example 1: Two-Tier Topology
 In flame, a topology is expressed within a concept called *schema*. 
-A schema is a resuable component as a template.
+A schema is a reusable component as a template.
 The following presents a simple two-tier cross-device topology.
 
 ```json
 {
     "name": "A sample schema",
-    "description": "a sample schema to demostrate a TAG layout",
+    "description": "a sample schema to demonstrate a TAG layout",
     "roles": [
 		{
 			"name": "trainer",
@@ -102,7 +102,7 @@ When datasets are selected (more details [here (not yet updated)]()), each datas
 Therefore, in the flame system, **the number of datasets will drive the number of data-consuming workers** (e.g., trainer in this case).
 Subsequently, the number of non data-consuming workers is derived from the entries in the *groupBy* feature (more on [later]()).
 
-Now let's look at channels. Channels are expressed as a list. A channel consits of four key attributes: *name*, *pair*, *groupBy* and *funcTags*.
+Now let's look at channels. Channels are expressed as a list. A channel consists of four key attributes: *name*, *pair*, *groupBy* and *funcTags*.
 The *name* attribute is used to uniquely identify a channel.
 The *pair* attribute contains two roles that constitute the channel; each role takes one of the channel.
 For the correctness, roles in the pair must exist in the role list.
@@ -110,7 +110,7 @@ For the correctness, roles in the pair must exist in the role list.
 The *groupBy* attribute allows how to group or cluster workers of two ends (or roles) in the channel. It's optional.
 If this attribute is not defined, workers belonging to the channel are grouped into a default group.
 
-With *pair* and *groupBy*, a channel only specifies what roles consititue a channel and how they are grouped.
+With *pair* and *groupBy*, a channel only specifies what roles constitute a channel and how they are grouped.
 But it doesn't know what actions each role takes on the channel. The *funcTags* attribute allows *dynamic* binding of functions to a channel.
 The software code attached to a role must define a set of functions that it wants to expose to users
 so that the users can specify it in the schema. Therefore, it allows more complex operations on a channel.
@@ -125,7 +125,7 @@ def get_func_tags(cls) -> list[str]:
 ```
 
 Note that keys used in *funcTags* (e.g., "trainer" or "aggregator") do not have direct relation to classes
-such as Aggregtor or Trainer in the `lib/python/flame/mode/horizontal/`. Those keys are only meaningful in the schema.
+such as Aggregator or Trainer in the `lib/python/flame/mode/horizontal/`. Those keys are only meaningful in the schema.
 And *funcTags* is updated at the time when code is associated with a role in the schema.
 
 With the above configuration, the deployed topology looks like as follows.
@@ -139,7 +139,7 @@ The hierarchical topology is very similar to the simple two-tier topology except
 ```json
 {
     "name": "A simple example schema v1.0.1",
-    "description": "a sample schema to demostrate the hierarchical FL setting",
+    "description": "a sample schema to demonstrate the hierarchical FL setting",
     "roles": [
 		{
 	    	"name": "trainer",
@@ -210,8 +210,8 @@ The above example uses "us", "europe" and "asia" as labels and is visualized as 
 
 <p align="center"><img src="images/hierarchical_topo.png" alt="Hierarchical topology" width="600px" /></p>
 
-### How to move from 2-tier to Hierarchical Topology
-From 2-tier to hierarchical (e.g., 3-tier), you need to have one more role in between top aggreagator and trainer, so you add middle aggreagator into the topology (i.e., schema), which also require you to define new channels connecting between each two roles. In order for the hierarchical concept to work, the `groupBy` of upstream channel shouldn't be more specific than the downstream channel.
+#### How to move from 2-tier to hierarchical topology
+From 2-tier to hierarchical (e.g., 3-tier), you need to have one more role in between top aggregator and trainer, so you add middle aggregator into the topology (i.e., schema), which also require you to define new channels connecting between each two roles. In order for the hierarchical concept to work, the `groupBy` of upstream channel shouldn't be more specific than the downstream channel.
 Likewise, when you want to expand to 4-tier topology, you will need a new channel definition connecting between two middle aggregators.
 
 However, it is still unclear how workers are grouped together at run time.
@@ -219,4 +219,91 @@ A brief answer is as follows: in the flame system, before workers are created, t
 This attribute is a logical hierarchical value which is similar to a directory-like structure in a file system.
 It basically dictates where workers should be created and to which path the workers belong in the logical hierarchy.
 Given this hierarchical information, users can judiciously choose grouping labels.
-Further discussion is available [here (not yet updated)]().
+
+### TAG Example 3: Parallel Experiments
+Flame system allows multiple identical TAGs to run in parallel based on the `groupBy` tag, such as allowing a 2-tier FL task to run in parallel for 3 geographical regions simultaneously (see image below).
+
+<p align="center"><img src="images/parallel_exps.png" alt="Parallel Experiments" width="600px" /></p>
+
+```json
+{
+    "name": "A sample schema",
+    "description": "a sample schema to demonstrate the parallel experiment setting",
+    "roles": [
+		{
+			"name": "trainer",
+			"description": "It consumes the data and trains local model",
+			"isDataConsumer": true
+		},
+		{
+			"name": "aggregator",
+			"description": "It aggregates the updates from trainers",
+		}
+    ],
+    "channels": [
+		{
+			"name": "param-channel",
+			"description": "Model update is sent from trainer to aggregator and vice-versa",
+			"pair": [
+				"trainer",
+				"aggregator"
+			],
+			"groupBy": {
+			"type": "tag",
+			"value": [
+				"default/us",
+				"default/eu",
+				"default/asia"
+			]
+		    },
+			"funcTags": {
+				"trainer": ["fetch", "upload"],
+				"aggregator": ["distribute", "aggregate"]
+			}
+		}
+    ]
+}
+```
+
+This topology is the same as the 2-tier one except there are additional *value* in the *groupBy* tag.
+
+### TAG Example 4: Distributed Learning
+Flame system allows distributed training besides federated learning. In TAG, it's creating a self-loop (see image below) to allow channel communication between trainers so that algorithms such as ring all-reduce can be used to train the model utilizing multiple trainers.
+
+<p align="center"><img src="images/topologies.png" alt="Four Topologies" width="600px" /></p>
+
+```json
+{
+    "name": "A sample schema",
+    "description": "a sample schema to demonstrate the distributed training setting.",
+    "roles": [
+	{
+	    "name": "trainer",
+	    "description": "It consumes the data and trains local model",
+	    "isDataConsumer": true
+	}
+    ],
+    "channels": [
+	{
+	    "name": "param-channel",
+	    "description": "Model update is sent from trainer to other trainers",
+	    "pair": [
+			"trainer",
+			"trainer"
+	    ],
+	    "groupBy": {
+			"type": "tag",
+			"value": [
+		    	"default/us"
+		]
+	    },
+	    "funcTags": {
+			"trainer": ["ring_allreduce"]
+	    }
+	}
+    ]
+}
+```
+
+### TAG Example 5: Hybrid Model (TODO)
+

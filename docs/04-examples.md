@@ -1,6 +1,6 @@
 # Examples
 
-This section currently presents one example: FL training for MNIST. More examples will follow in the future.
+This section currently presents one example: FL training for MNIST. More examples will follow in the future, and you will find the instruction under the README file of their particular folder.
 
 ## MNIST
 
@@ -82,7 +82,7 @@ flamectl get jobs
 ```
 
 ### Step 7: start a job
-Before staring your job, you can always use `flamectl get` to check each step is set up corretly. For more info, check 
+Before staring your job, you can always use `flamectl get` to check each step is set up correctly. For more info, check 
 ```bash
 flamectl get --help
 ```
@@ -157,52 +157,9 @@ The log for a task is similar to `task-61bd2da4dcaed8024865247e.log` under `/var
 As an alternative, one can check the progress at MLflow UI in the fiab setup.
 Open a browser and go to http://mlflow.flame.test.
 
-## Hierarchical MNIST
-Likewise, the hierarchical FL example follows the same fashion. 
-
-Navigate to `./examples/hier_mnist`
-
-### Step 1:
-```bash 
-flamectl create design hier_mnist -d "hier_mnist example"
-```
-### Step 2:
-```bash
-flamectl create schema schema.json --design hier_mnist
-```
-The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
-### Step 3:
-```bash
-flamectl create code hier_mnist.zip --design hier_mnist
-```
-The zip file should contain code of every code specified in the schema.
-
-### Step 4:
-```bash
-flamectl create dataset dataset_eu_germany.json
-flamectl create dataset dataset_eu_uk.json
-flamectl create dataset dataset_na_canada.json
-flamectl create dataset dataset_na_us.json
-```
-Flame will assign a trainer to each dataset. As each dataset has a `realm` specified, the middle aggreagator will be created based on the corresponding `groupby` tag. In this case, there will be one middle aggregator for Europe (eu) and one for North America (na).
-
-### Step 5: 
-Put all four dataset IDs into `job.json`, and change training hyperparameters as you like.
-```json
-"fromSystem": [
-    "62439c3725fe244585396ad7",
-    "6243a10c25fe244585396af0",
-    "6243a13625fe244585396af2",
-    "6243a14525fe244585396af3"
-]
-```
-
-### Step 6:
-```bash
-flamectl create job job.json
-```
-
-### Step 7:
-```bash
-flamectl start job ${Job ID}
-```
+For other examples, please visit their particular example directories:
+- [Medical Image Multi-class Classification with PyTorch](../examples/medmnist/README.md)
+- [Binary Income Classifcation with Tabular Dataset](../examples/adult/README.md) 
+- [Toy Example of Hierarchical FL](../examples/hier_mnist/README.md)
+- [Toy Example of Parallel Experiments](../examples/parallel_experiment/README.md)
+- [Toy Example of Distributed Training](../examples/distributed_training/README.md)

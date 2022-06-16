@@ -81,7 +81,7 @@ The non-ochestration mode is useful in one of the following situations:
 * when the geo-distributed clusters are not under the management of one organization
 * when participants of a FL job want to have a control over when to join or leave the job
 
-In non-ochestration mode, the fleddge system is only responsible for managing (i.e., (de)allocation) non-data comsuming workers (e.g., model aggregating workers).
+In non-ochestration mode, the fleddge system is only responsible for managing (i.e., (de)allocation) non-data consuming workers (e.g., model aggregating workers).
 The system supports a hybrid mode where some are managed workers and others are non-managed workers.
 
 Note that the flame system is in active development and not all the functionalities are supported yet.
