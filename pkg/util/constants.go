@@ -66,6 +66,7 @@ const (
 	ApiServer  = "apiserver"
 	Controller = "controller"
 	Notifier   = "notifier"
+	Deployer   = "deployer"
 	CliTool    = "flamectl"
 
 	// file permission
