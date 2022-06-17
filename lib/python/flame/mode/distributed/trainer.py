@@ -33,11 +33,6 @@ logger = logging.getLogger(__name__)
 
 TAG_RING_ALLREDUCE = 'ring_allreduce'
 
-# the number of copies to save parameters and model artifact
-# this is for redundancy
-COMMIT_COUNT = 3
-
-
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
 
@@ -63,6 +58,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
                 base_model.name, base_model.version)
+        self.ring_weights = None # store the latest model weights from ring all-reduce
 
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
@@ -71,7 +67,7 @@ class Trainer(Role, metaclass=ABCMeta):
         self._rounds = self.config.hyperparameters['rounds']
         self._work_done = False
 
-        self.is_commiter = False
+        self.is_committer = False
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
@@ -105,7 +101,6 @@ class Trainer(Role, metaclass=ABCMeta):
         logger.debug(f"total_data_count: {total_data_count}")
         if not success:
             # members don't agree, we can't do ring-allreduce
-            self.is_commiter = True
             return
 
         self._update_weights()
@@ -164,8 +159,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
             recv_chunk_idx = (rank - i - 1 + size) % size
             msg = channel.recv(ends[recv_from])
-            if MessageType.WEIGHTS not in msg:
-                logger.error(f"end_id: {ends[recv_from]}, msg: {msg}")
+            while MessageType.WEIGHTS not in msg:
+                msg = channel.recv(ends[recv_from])
             recv_chunk = msg[MessageType.WEIGHTS]
 
             logger.debug(
@@ -289,6 +284,11 @@ class Trainer(Role, metaclass=ABCMeta):
 
             msg = channel.recv(end)
 
+            # check if a new trainer needs the latest weights
+            if MessageType.NEW_TRAINER in msg and self.is_committer:
+                logger.debug(f"{channel.get_backend_id()} sending weights to the new trainer {end}")
+                channel.send(end, {MessageType.RING_WEIGHTS: self.ring_weights})
+
             logger.debug(f"end_id: {end}, msg: {msg}")
             if MessageType.MEMBER_DIGEST not in msg:
                 logger.debug("no member digest found")
@@ -309,6 +309,16 @@ class Trainer(Role, metaclass=ABCMeta):
 
             dataset_size = msg[MessageType.DATASET_SIZE]
 
+            # new trainer fetches the latest weights from the committer
+            if msg[MessageType.IS_COMMITTER]:
+                while self.ring_weights is None:
+                    msg = channel.recv(end)
+                    logger.debug(f"new trainer {channel.get_backend_id()} fetching weights from {end} ")
+                    if MessageType.RING_WEIGHTS in msg:
+                        self.weights = msg[MessageType.RING_WEIGHTS]
+                        self._update_model()
+                        break
+
             if channel.is_rxq_empty(end):
                 break
 
@@ -320,13 +330,20 @@ class Trainer(Role, metaclass=ABCMeta):
             # This means that there is no ends in the channel,
             # so there is no point of broadcasting digest.
             # If the empty digest is broadcast, it can cause a bug
+            self.is_committer = True
+            self._update_weights()
+            self._update_model()
             return False, 0
 
         msg = {
             MessageType.MEMBER_DIGEST: digest,
             MessageType.DATASET_SIZE: self.dataset_size,
-            MessageType.ROUND: self._round
+            MessageType.ROUND: self._round,
+            MessageType.IS_COMMITTER: self.is_committer
         }
+        if self.ring_weights is None:
+            logger.debug("Sending arrival message...")
+            msg[MessageType.NEW_TRAINER] = True
         logger.debug(f"member check msg = {msg}")
         channel.broadcast(msg)
 
@@ -343,9 +360,8 @@ class Trainer(Role, metaclass=ABCMeta):
         my_taskid = channel.get_backend_id()
         ends.append(my_taskid)
         ends.sort()
-        # if my taskid is in the first "COMMIT_COUNT" ends,
-        # then it's selected as a commiter
-        self.is_commiter = True if my_taskid in ends[:COMMIT_COUNT] else False
+        # if my taskid is in the first ends, then it's selected as a committer
+        self.is_committer = True if my_taskid in ends[:1] else False
 
         # check if work is done by others
         # if work is done, then no further distributed learning needed
@@ -380,6 +396,7 @@ class Trainer(Role, metaclass=ABCMeta):
             self.model.load_state_dict(self.weights)
         elif self.framework == MLFramework.TENSORFLOW:
             self.model.set_weights(self.weights)
+        self.ring_weights = self.weights
 
     def _update_weights(self):
         """Save weights from model."""
@@ -405,14 +422,14 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def save_params(self):
         """Save hyperparamets in a model registry."""
-        logger.debug(f"saving params: is_commiter: {self.is_commiter}")
-        if self.config.hyperparameters and self.is_commiter:
+        logger.debug(f"saving params: is_commiter: {self.is_committer}")
+        if self.config.hyperparameters and self.is_committer:
             self.registry_client.save_params(self.config.hyperparameters)
 
     def save_model(self):
         """Save model in a model registry."""
-        logger.debug(f"saving model: is_commiter: {self.is_commiter}")
-        if self.model and self.is_commiter:
+        logger.debug(f"saving model: is_commiter: {self.is_committer}")
+        if self.model and self.is_committer:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
 
