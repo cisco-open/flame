@@ -68,8 +68,8 @@ We install the latest minikube [stable](https://minikube.sigs.k8s.io/docs/start/
 curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
 sudo install minikube-linux-amd64 /usr/local/bin/minikube
 ```
-### step 2: Installing kubect1, helm and jq.
-To install [kubect1](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
+### step 2: Installing kubectl, helm and jq.
+To install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
 ```bash
 snap install kubectl --classic
 kubectl version --client
