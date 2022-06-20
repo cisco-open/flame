@@ -1,5 +1,5 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "myungjin-lee/flame"
+  config.vm.box = "ubuntu/focal64"
 
   config.vm.synced_folder ".", "/vagrant", disabled: true
   config.vm.synced_folder "../", "/flame"
@@ -10,26 +10,7 @@ Vagrant.configure("2") do |config|
     vb.cpus = 2
   end
 
-  # define controller
-  config.vm.define "controller" do |controller|
-    controller.vm.hostname = "controller"
-    controller.vm.network :private_network, ip: "192.168.3.2"
-
-    # 8888: access to vernemq UI
-    controller.vm.network "forwarded_port", guest: 8888, host: 8880,
-                          auto_correct: true
-  end
-
-  # define workers
-  N = 2
-#   if ARGV[0] == 'up'
-#       print "Input number of worker nodes: "
-#       N = STDIN.gets.chomp.to_i
-#   end
-  (1..N).each do |i|
-    config.vm.define "worker#{i}" do |worker|
-      worker.vm.hostname = "worker#{i}"
-      worker.vm.network :private_network, ip: "192.168.3.#{10+i}"
-    end
+  config.vm.define "node" do |node|
+    node.vm.hostname = "flame"
   end
 end
