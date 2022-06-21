@@ -68,7 +68,7 @@ We install the latest minikube stable release on x86-64 Linux using binary downl
 #### step 2: Installing kubectl, helm and jq.
 To install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
 ```bash
-snap install kubectl --classic
+sudo snap install kubectl --classic
 kubectl version --client
 ```
 To install [helm](https://helm.sh/docs/intro/install/).
