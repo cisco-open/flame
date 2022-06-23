@@ -55,21 +55,30 @@ function start {
     done
     echo "done"
 
+    if [ "$1" == "false" ]; then
+	return
+    fi
+
+    # Warning: The remaining part in this function is not stable.
+    # It can sometimes make mongodb broken.
+    # Since exposing mongodb externally is for debugging purposes, the below is
+    # only executed when --exposedb is set.
     echo "mongodb pods are ready; working on enabling roadbalancer for mongodb..."
     # To enable external access for mongodb,
     # uncomment the lines of interest and upgrade the release
     sed -i $SED_MAC_FIX -e "$LINES_OF_INTEREST"" s/^  # /  /" $FILE_OF_INTEREST
     
-
     helm upgrade --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/
-    
+
     # comment the lines of interest
     sed -i $SED_MAC_FIX -e "$LINES_OF_INTEREST"" s/^  /  # /" $FILE_OF_INTEREST
 
     # in mac os, sed somehow creates a backup file whose name ends
     # with '' (SED_MAX_FIX string). couldn't figure out why.
     # as a workaround, delete the backup file
-    rm -f $FILE_OF_INTEREST$SED_MAC_FIX
+    if [[ $SED_MAC_FIX ]]; then
+	rm -f $FILE_OF_INTEREST$SED_MAC_FIX
+    fi
 
     echo "done"
 }
@@ -78,10 +87,15 @@ function post_start_config {
     minikube_ip=$(minikube ip)
 
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-	resolver_file=/etc/systemd/resolved.conf
-	sudo sed -i "s/^#DNS=/DNS=$minikube_ip/g" $resolver_file
-	sudo sed -i "s/^#Domains=/Domains=~flame.test/g" $resolver_file
-	sudo systemctl restart systemd-resolved
+	subnet=$(ip a show | grep br- | grep inet | awk '{print $2}')
+	resolver_file=/etc/systemd/network/minikube.network
+	echo "[Match]" | sudo tee $resolver_file > /dev/null
+	echo "Name=br*" | sudo tee -a $resolver_file > /dev/null
+	echo "[Network]" | sudo tee -a $resolver_file > /dev/null
+	echo "Address=$subnet" | sudo tee -a $resolver_file > /dev/null
+	echo "DNS=$minikube_ip" | sudo tee -a $resolver_file > /dev/null
+	echo "Domains=~flame.test" | sudo tee -a $resolver_file > /dev/null
+	sudo systemctl restart systemd-networkd
     elif [[ "$OSTYPE" == "darwin"* ]]; then
 	resolver_file=/etc/resolver/flame-test
 	echo "domain flame.test" | sudo tee $resolver_file > /dev/null
@@ -140,10 +154,9 @@ function post_stop_cleanup {
     minikube_ip=$(minikube ip)
 
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-	resolver_file=/etc/systemd/resolved.conf
-	sudo sed -i "s/^DNS=$minikube_ip/#DNS=/g" $resolver_file
-	sudo sed -i "s/^Domains=~flame.test/#Domains=/g" $resolver_file
-	sudo systemctl restart systemd-resolved
+	resolver_file=/etc/systemd/network/minikube.network
+	sudo rm -f $resolver_file
+	sudo systemctl restart systemd-networkd
     elif [[ "$OSTYPE" == "darwin"* ]]; then
 	resolver_file=/etc/resolver/flame-test
 	sudo rm -f $resolver_file
@@ -173,16 +186,21 @@ function post_stop_cleanup {
 }
 
 function main {
+    exposedb=false
+    if [ "$2" == "--exposedb" ]; then
+	exposedb=true
+    fi
+
     if [ "$1" == "start" ]; then
 	init
-	start
+	start $exposedb
 	post_start_config
     elif [ "$1" == "stop" ]; then
 	stop
 	post_stop_cleanup
     else
-	echo "usage: ./flame.sh [start|stop]"
+	echo "usage: ./flame.sh <start [--exposedb] | stop>"
     fi
 }
 
-main $1
+main "$@"
