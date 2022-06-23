@@ -225,7 +225,7 @@ func (h *DefaultHandler) allocateComputes() error {
 
 	// Copy helm chart files to destination folder
 	for _, chartFile := range helmChartFiles {
-		srcFilePath := filepath.Join(deploymentDirPath, chartFile)
+		srcFilePath := filepath.Join(jobTemplateDirPath, chartFile)
 		dstFilePath := filepath.Join(deploymentChartPath, chartFile)
 		err := util.CopyFile(srcFilePath, dstFilePath)
 		if err != nil {

@@ -1,0 +1,29 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-controller-job-configmap
+  namespace: {{ .Release.Namespace }}
+data:
+  Chart.yaml: |
+    ---
+    apiVersion: v1
+    appVersion: "1.0"
+    description: a helm chart for flame job
+    name: flame-job
+    version: 1.0
+
+  values.yaml: |
+    ---
+    servicePort:
+      agent: {{ .Values.servicePort.agent }}
+
+    endpoint:
+      apiserver: https://{{ .Values.frontDoorUrl.apiserver }}:443
+      notifier: {{ .Values.frontDoorUrl.notifier }}:443
+
+    # enable this in case a selfsigned cert is in use (for test only)
+    # this holds true in fiab setting
+    insecure: true
+
+  {{- (.Files.Glob "job/job-agent.yaml.mustache").AsConfig | nindent 2}}

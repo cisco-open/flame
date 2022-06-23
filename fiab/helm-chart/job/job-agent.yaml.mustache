@@ -3,7 +3,7 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: {{ .Values.servicename }}-agent-<% taskId %>
+  name: {{ .Release.Namespace }}-agent-<% taskId %>
   namespace: {{ .Release.Namespace }}
 spec:
   template:
@@ -15,19 +15,19 @@ spec:
       containers:
         - args:
             - "--apiserver"
-            - "{{ .Values.endpoints.apiserver }}"
+            - "{{ .Values.endpoint.apiserver }}"
             - "--notifier"
-            - "{{ .Values.endpoints.notifier }}"
+            - "{{ .Values.endpoint.notifier }}"
             {{ if .Values.insecure }}
             - "--insecure"
             {{ end }}
           command: ["/usr/bin/flamelet"]
           image: <% imageLoc %>
           imagePullPolicy: IfNotPresent
-          name: {{ .Values.servicename }}-agent-<% taskId %>
+          name: {{ .Release.Namespace }}-agent-<% taskId %>
 
           ports:
-            - containerPort: {{ .Values.componentPorts.agent }}
+            - containerPort: {{ .Values.servicePort.agent }}
 
           resources:
             limits:

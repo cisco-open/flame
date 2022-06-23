@@ -29,8 +29,9 @@ const (
 	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
 	deploymentTemplateDir = "templates"
 
+	jobTemplateDirPath      = "/" + util.ProjectName + "/template"
 	jobDeploymentFilePrefix = "job-agent"
-	jobTemplatePath         = deploymentDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
+	jobTemplatePath         = jobTemplateDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
 
 	defaultHandler = "default"
 )
