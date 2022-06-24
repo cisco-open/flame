@@ -49,19 +49,19 @@ func (c *DesignsApiController) Routes() Routes {
 		{
 			"CreateDesign",
 			strings.ToUpper("Post"),
-			"/{user}/designs",
+			"/users/{user}/designs",
 			c.CreateDesign,
 		},
 		{
 			"GetDesign",
 			strings.ToUpper("Get"),
-			"/{user}/designs/{designId}",
+			"/users/{user}/designs/{designId}",
 			c.GetDesign,
 		},
 		{
 			"GetDesigns",
 			strings.ToUpper("Get"),
-			"/{user}/designs",
+			"/users/{user}/designs",
 			c.GetDesigns,
 		},
 	}

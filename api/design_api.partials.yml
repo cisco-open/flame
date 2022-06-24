@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-/{user}/designs:
+/users/{user}/designs:
   #------------------------------------#
   # Get Template - get list of all designs
   #------------------------------------#
@@ -98,7 +98,7 @@
     tags:
       - designs
 
-/{user}/designs/{designId}:
+/users/{user}/designs/{designId}:
   #------------------------------------#
   # Get Design via ID
   #------------------------------------#
@@ -146,7 +146,7 @@
     tags:
       - designs
 
-/{user}/designs/{designId}/schemas:
+/users/{user}/designs/{designId}/schemas:
   #------------------------------------#
   # Get All Design Schemas
   #------------------------------------#
@@ -226,7 +226,7 @@
     tags:
       - designSchemas
 
-/{user}/designs/{designId}/schemas/{version}:
+/users/{user}/designs/{designId}/schemas/{version}:
   #------------------------------------#
   # Get Design Schema
   #------------------------------------#
@@ -322,7 +322,7 @@
     tags:
       - designSchemas
 
-/{user}/designs/{designId}/codes:
+/users/{user}/designs/{designId}/codes:
   #------------------------------------#
   # Upload Code Zip
   #------------------------------------#
@@ -363,7 +363,7 @@
     tags:
       - designCodes
 
-/{user}/designs/{designId}/codes/{version}:
+/users/{user}/designs/{designId}/codes/{version}:
   #------------------------------------#
   # Get Code Zip
   #------------------------------------#

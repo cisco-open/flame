@@ -49,7 +49,7 @@ func (c *DatasetsApiController) Routes() Routes {
 		{
 			"CreateDataset",
 			strings.ToUpper("Post"),
-			"/{user}/datasets",
+			"/users/{user}/datasets",
 			c.CreateDataset,
 		},
 		{
@@ -61,19 +61,19 @@ func (c *DatasetsApiController) Routes() Routes {
 		{
 			"GetDataset",
 			strings.ToUpper("Get"),
-			"/{user}/datasets/{datasetId}",
+			"/users/{user}/datasets/{datasetId}",
 			c.GetDataset,
 		},
 		{
 			"GetDatasets",
 			strings.ToUpper("Get"),
-			"/{user}/datasets",
+			"/users/{user}/datasets",
 			c.GetDatasets,
 		},
 		{
 			"UpdateDataset",
 			strings.ToUpper("Put"),
-			"/{user}/datasets/{datasetId}",
+			"/users/{user}/datasets/{datasetId}",
 			c.UpdateDataset,
 		},
 	}

@@ -49,25 +49,25 @@ func (c *DesignSchemasApiController) Routes() Routes {
 		{
 			"CreateDesignSchema",
 			strings.ToUpper("Post"),
-			"/{user}/designs/{designId}/schemas",
+			"/users/{user}/designs/{designId}/schemas",
 			c.CreateDesignSchema,
 		},
 		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
-			"/{user}/designs/{designId}/schemas/{version}",
+			"/users/{user}/designs/{designId}/schemas/{version}",
 			c.GetDesignSchema,
 		},
 		{
 			"GetDesignSchemas",
 			strings.ToUpper("Get"),
-			"/{user}/designs/{designId}/schemas",
+			"/users/{user}/designs/{designId}/schemas",
 			c.GetDesignSchemas,
 		},
 		{
 			"UpdateDesignSchema",
 			strings.ToUpper("Put"),
-			"/{user}/designs/{designId}/schemas/{version}",
+			"/users/{user}/designs/{designId}/schemas/{version}",
 			c.UpdateDesignSchema,
 		},
 	}
