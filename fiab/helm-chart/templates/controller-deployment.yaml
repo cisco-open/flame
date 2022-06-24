@@ -46,8 +46,15 @@ spec:
             - mountPath: /etc/flame/controller.yaml
               name: config-volume
               subPath: controller.yaml
+
+            - mountPath: /flame/template
+              name: job-template-volume
+
       serviceAccountName: controller
       volumes:
         - name: config-volume
           configMap:
             name: {{ .Release.Name }}-controller-configmap
+        - name: job-template-volume
+          configMap:
+            name: {{ .Release.Name }}-controller-job-configmap
