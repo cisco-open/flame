@@ -50,19 +50,19 @@ func (c *DesignCodesApiController) Routes() Routes {
 		{
 			"CreateDesignCode",
 			strings.ToUpper("Post"),
-			"/{user}/designs/{designId}/codes",
+			"/users/{user}/designs/{designId}/codes",
 			c.CreateDesignCode,
 		},
 		{
 			"GetDesignCode",
 			strings.ToUpper("Get"),
-			"/{user}/designs/{designId}/codes/{version}",
+			"/users/{user}/designs/{designId}/codes/{version}",
 			c.GetDesignCode,
 		},
 		{
 			"UpdateDesignCode",
 			strings.ToUpper("Put"),
-			"/{user}/designs/{designId}/codes/{version}",
+			"/users/{user}/designs/{designId}/codes/{version}",
 			c.UpdateDesignCode,
 		},
 	}

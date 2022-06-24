@@ -56,7 +56,7 @@
     tags:
       - datasets
 
-/{user}/datasets:
+/users/{user}/datasets:
   ########################################
   # Get the meta info on all datasets owned by user
   ########################################
@@ -140,7 +140,7 @@
     tags:
       - datasets
 
-/{user}/datasets/{datasetId}:
+/users/{user}/datasets/{datasetId}:
   ########################################
   # Get dataset meta info via ID
   ########################################
