@@ -31,6 +31,17 @@ import (
 	"os"
 )
 
+// ComputesApiRouter defines the required methods for binding the api requests to a responses for the ComputesApi
+// The ComputesApiRouter implementation should parse necessary information from the http request,
+// pass the data to a ComputesApiServicer to perform the required actions, then write the service results to the http response.
+type ComputesApiRouter interface {
+	DeleteCompute(http.ResponseWriter, *http.Request)
+	GetComputeConfig(http.ResponseWriter, *http.Request)
+	GetComputeStatus(http.ResponseWriter, *http.Request)
+	RegisterCompute(http.ResponseWriter, *http.Request)
+	UpdateCompute(http.ResponseWriter, *http.Request)
+}
+
 // DatasetsApiRouter defines the required methods for binding the api requests to a responses for the DatasetsApi
 // The DatasetsApiRouter implementation should parse necessary information from the http request,
 // pass the data to a DatasetsApiServicer to perform the required actions, then write the service results to the http response.
@@ -85,6 +96,18 @@ type JobsApiRouter interface {
 	UpdateJob(http.ResponseWriter, *http.Request)
 	UpdateJobStatus(http.ResponseWriter, *http.Request)
 	UpdateTaskStatus(http.ResponseWriter, *http.Request)
+}
+
+// ComputesApiServicer defines the api actions for the ComputesApi service
+// This interface intended to stay up to date with the openapi yaml used to generate it,
+// while the service implementation can ignored with the .openapi-generator-ignore file
+// and updated with the logic required for the API.
+type ComputesApiServicer interface {
+	DeleteCompute(context.Context, string) (ImplResponse, error)
+	GetComputeConfig(context.Context, string) (ImplResponse, error)
+	GetComputeStatus(context.Context, string) (ImplResponse, error)
+	RegisterCompute(context.Context, string, ComputeSpec) (ImplResponse, error)
+	UpdateCompute(context.Context, string, ComputeSpec) (ImplResponse, error)
 }
 
 // DatasetsApiServicer defines the api actions for the DatasetsApi service
