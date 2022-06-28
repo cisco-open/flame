@@ -30,3 +30,20 @@ type BaseModel struct {
 
 	Version int32 `json:"version"`
 }
+
+// AssertBaseModelRequired checks if the required fields are not zero-ed
+func AssertBaseModelRequired(obj BaseModel) error {
+	return nil
+}
+
+// AssertRecurseBaseModelRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of BaseModel (e.g. [][]BaseModel), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseBaseModelRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aBaseModel, ok := obj.(BaseModel)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertBaseModelRequired(aBaseModel)
+	})
+}

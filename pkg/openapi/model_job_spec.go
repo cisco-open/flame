@@ -78,6 +78,9 @@ func AssertJobSpecRequired(obj JobSpec) error {
 	if err := AssertSelectorRequired(obj.Selector); err != nil {
 		return err
 	}
+	if err := AssertBaseModelRequired(obj.BaseModel); err != nil {
+		return err
+	}
 	return nil
 }
 
