@@ -42,10 +42,10 @@ JobSpec:
     backend:
       $ref: '#/components/schemas/CommBackend'
     maxRunTime:
-      type: int32
+      type: integer
+      format: int32
       default: 600 # 600s = 10min
     baseModel:
-      type: object
       $ref: '#/components/schemas/BaseModel'
     hyperparameters:
       type: object
@@ -98,10 +98,8 @@ BaseModel:
     name:
       type: string
     version:
-      type: int32
-  required:
-    - name
-    - version
+      type: integer
+      format: int32
   example:
     name: mnist-624d9fc43395791
     version: 2
@@ -117,6 +115,7 @@ DataSpec:
       type: object
       additionalProperties:
         type: integer
+        format: int32
     fromSystem:
       type: array
       items:
