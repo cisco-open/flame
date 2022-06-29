@@ -68,6 +68,7 @@ class Trainer(Role, metaclass=ABCMeta):
         self._work_done = False
 
         self.is_committer = False
+        self.ends_of_ring = None
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
@@ -116,12 +117,9 @@ class Trainer(Role, metaclass=ABCMeta):
         # https://github.com/baidu-research/baidu-allreduce/blob/master/collectives.cu
         logger.info("starting ring-allreduce")
         my_id = channel.get_backend_id()
-        ends = channel.ends()
-        ends.append(my_id)
-        ends.sort()
 
-        rank = ends.index(my_id)
-        size = len(ends)
+        rank = self.ends_of_ring.index(my_id)
+        size = len(self.ends_of_ring)
 
         logger.debug(f"weights length = {len(self.weights)}")
         chunk_size = int(len(self.weights) / size)
@@ -153,24 +151,22 @@ class Trainer(Role, metaclass=ABCMeta):
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
             logger.debug(
-                f"sending chunk: {len(send_chunk)} to {ends[send_to]}")
+                f"sending chunk: {len(send_chunk)} to {self.ends_of_ring[send_to]}")
 
-            channel.send(ends[send_to], {MessageType.WEIGHTS: send_chunk})
+            channel.send(self.ends_of_ring[send_to], {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i - 1 + size) % size
-            msg = channel.recv(ends[recv_from])
-            while MessageType.WEIGHTS not in msg:
-                msg = channel.recv(ends[recv_from])
+            msg = channel.recv(self.ends_of_ring[recv_from])
             recv_chunk = msg[MessageType.WEIGHTS]
 
             logger.debug(
-                f"receiving chunk: {len(recv_chunk)} from {ends[recv_from]}")
+                f"receiving chunk: {len(recv_chunk)} from {self.ends_of_ring[recv_from]}")
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
                 logger.error(
-                    f"AssertionError: got {recv_chunk} from {ends[recv_from]}")
+                    f"AssertionError: got {recv_chunk} from {self.ends_of_ring[recv_from]}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -187,17 +183,17 @@ class Trainer(Role, metaclass=ABCMeta):
             to_idx = chunk_ends[send_chunk_idx]
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
-            channel.send(ends[send_to], {MessageType.WEIGHTS: send_chunk})
+            channel.send(self.ends_of_ring[send_to], {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i + size) % size
-            msg = channel.recv(ends[recv_from])
+            msg = channel.recv(self.ends_of_ring[recv_from])
             recv_chunk = msg[MessageType.WEIGHTS]
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
                 logger.error(
-                    f"AssertionError: got {recv_chunk} from {ends[recv_from]}")
+                    f"AssertionError: got {recv_chunk} from {self.ends_of_ring[recv_from]}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -277,11 +273,6 @@ class Trainer(Role, metaclass=ABCMeta):
         """
         dataset_size = 0
         while True:
-            msg = channel.peek(end)
-            if msg is not None and MessageType.WEIGHTS in msg:
-                logger.debug("weights msg seen; let's stop member check")
-                break
-
             msg = channel.recv(end)
 
             # check if a new trainer needs the latest weights
@@ -369,6 +360,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if self._work_done:
             return False, 0
 
+        self.ends_of_ring = ends
         return True, total_count
 
     def get(self, tag: str) -> None:
