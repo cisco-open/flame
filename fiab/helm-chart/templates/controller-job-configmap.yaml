@@ -22,6 +22,10 @@ data:
       apiserver: https://{{ .Values.frontDoorUrl.apiserver }}:443
       notifier: {{ .Values.frontDoorUrl.notifier }}:443
 
+    s3EndpointUrl: {{ .Values.mlflow.s3EndpointUrl }}
+    accessKeyId: {{ (index .Values.minio.users 0).accessKey }}
+    secretAccessKey: {{ (index .Values.minio.users 0).secretKey }}
+
     # enable this in case a selfsigned cert is in use (for test only)
     # this holds true in fiab setting
     insecure: true
