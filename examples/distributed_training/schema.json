@@ -9,22 +9,22 @@
 	}
     ],
     "channels": [
-	{
-	    "name": "param-channel",
-	    "description": "Model update is sent from trainer to other trainers",
-	    "pair": [
-			"trainer",
-			"trainer"
-	    ],
-	    "groupBy": {
-			"type": "tag",
-			"value": [
-		    	"default/us"
-		]
-	    },
+        {
+            "description": "Model update is sent from a trainer to another trainer",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default/us"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "trainer"
+            ],
 	    "funcTags": {
-			"trainer": ["fetch", "upload"]
-	    }
-	}
+                "trainer": ["ring_allreduce"]
+            }
+        }
     ]
 }
