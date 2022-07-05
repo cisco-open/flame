@@ -33,6 +33,7 @@ logger = logging.getLogger(__name__)
 
 TAG_RING_ALLREDUCE = 'ring_allreduce'
 
+
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
 
@@ -58,7 +59,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
                 base_model.name, base_model.version)
-        self.ring_weights = None # store the latest model weights from ring all-reduce
+        self.ring_weights = None  # latest model weights from ring all-reduce
 
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
@@ -74,7 +75,8 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}")
+                f"supported frameworks are: {valid_frameworks}"
+            )
 
         if self.framework == MLFramework.PYTORCH:
             self._scale_down_weights_fn = self._scale_down_weights_pytorch
@@ -137,6 +139,9 @@ class Trainer(Role, metaclass=ABCMeta):
         recv_from = (rank - 1 + size) % size
         send_to = (rank + 1) % size
 
+        recvfrom_id = self.ends_of_ring[recv_from]
+        sendto_id = self.ends_of_ring[send_to]
+
         # enable the following "digest" computation lines
         # to check if ring-allreduce work correctly.
         #
@@ -150,23 +155,20 @@ class Trainer(Role, metaclass=ABCMeta):
             to_idx = chunk_ends[send_chunk_idx]
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
-            logger.debug(
-                f"sending chunk: {len(send_chunk)} to {self.ends_of_ring[send_to]}")
+            logger.debug(f"sending chunk: {len(send_chunk)} to {sendto_id}")
 
-            channel.send(self.ends_of_ring[send_to], {MessageType.WEIGHTS: send_chunk})
+            channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i - 1 + size) % size
-            msg = channel.recv(self.ends_of_ring[recv_from])
+            msg = channel.recv(recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
-            logger.debug(
-                f"receiving chunk: {len(recv_chunk)} from {self.ends_of_ring[recv_from]}")
+            logger.debug(f"recv'd chunk: {len(recv_chunk)} from {recvfrom_id}")
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
-                logger.error(
-                    f"AssertionError: got {recv_chunk} from {self.ends_of_ring[recv_from]}")
+                logger.error(f"Assertion: got {recv_chunk} from {recvfrom_id}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -183,17 +185,16 @@ class Trainer(Role, metaclass=ABCMeta):
             to_idx = chunk_ends[send_chunk_idx]
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
-            channel.send(self.ends_of_ring[send_to], {MessageType.WEIGHTS: send_chunk})
+            channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i + size) % size
-            msg = channel.recv(self.ends_of_ring[recv_from])
+            msg = channel.recv(recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
-                logger.error(
-                    f"AssertionError: got {recv_chunk} from {self.ends_of_ring[recv_from]}")
+                logger.error(f"Assertion: got {recv_chunk} from {recvfrom_id}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -272,13 +273,14 @@ class Trainer(Role, metaclass=ABCMeta):
         dataset_size: the size of dataset used by a member
         """
         dataset_size = 0
+        my_id = channel.get_backend_id()
         while True:
-            msg = channel.recv(end)
+            msg = channel.peek(end)
+            if msg is not None and MessageType.WEIGHTS in msg:
+                logger.debug("weights msg seen; let's stop member check")
+                break
 
-            # check if a new trainer needs the latest weights
-            if MessageType.NEW_TRAINER in msg and self.is_committer:
-                logger.debug(f"{channel.get_backend_id()} sending weights to the new trainer {end}")
-                channel.send(end, {MessageType.RING_WEIGHTS: self.ring_weights})
+            msg = channel.recv(end)
 
             logger.debug(f"end_id: {end}, msg: {msg}")
             if MessageType.MEMBER_DIGEST not in msg:
@@ -300,15 +302,28 @@ class Trainer(Role, metaclass=ABCMeta):
 
             dataset_size = msg[MessageType.DATASET_SIZE]
 
-            # new trainer fetches the latest weights from the committer
-            if msg[MessageType.IS_COMMITTER]:
-                while self.ring_weights is None:
-                    msg = channel.recv(end)
-                    logger.debug(f"new trainer {channel.get_backend_id()} fetching weights from {end} ")
-                    if MessageType.RING_WEIGHTS in msg:
-                        self.weights = msg[MessageType.RING_WEIGHTS]
-                        self._update_model()
-                        break
+            # check if a new trainer needs the latest weights
+            if MessageType.NEW_TRAINER in msg and self.is_committer:
+                logger.debug(f"{my_id} sending weights to new trainer {end}")
+                ring_weights_msg = {
+                    MessageType.MEMBER_DIGEST: digest,
+                    MessageType.DATASET_SIZE: self.dataset_size,
+                    MessageType.ROUND: self._round,
+                    MessageType.IS_COMMITTER: self.is_committer,
+                    MessageType.RING_WEIGHTS: self.ring_weights
+                }
+                channel.send(end, ring_weights_msg)
+
+            if self.ring_weights is None and msg[MessageType.IS_COMMITTER]:
+                if MessageType.RING_WEIGHTS in msg:
+                    # set latest weights sent from committer
+                    logger.debug(f"{my_id}: fetching ring weights from {end}")
+                    self.weights = msg[MessageType.RING_WEIGHTS]
+                    self._update_model()
+                else:
+                    # since ring weights are not in the message from committer,
+                    # let's wait
+                    continue
 
             if channel.is_rxq_empty(end):
                 break
@@ -332,6 +347,7 @@ class Trainer(Role, metaclass=ABCMeta):
             MessageType.ROUND: self._round,
             MessageType.IS_COMMITTER: self.is_committer
         }
+
         if self.ring_weights is None:
             logger.debug("Sending arrival message...")
             msg[MessageType.NEW_TRAINER] = True
@@ -414,13 +430,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def save_params(self):
         """Save hyperparamets in a model registry."""
-        logger.debug(f"saving params: is_commiter: {self.is_committer}")
+        logger.debug(f"saving params: is_committer: {self.is_committer}")
         if self.config.hyperparameters and self.is_committer:
             self.registry_client.save_params(self.config.hyperparameters)
 
     def save_model(self):
         """Save model in a model registry."""
-        logger.debug(f"saving model: is_commiter: {self.is_committer}")
+        logger.debug(f"saving model: is_committer: {self.is_committer}")
         if self.model and self.is_committer:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
