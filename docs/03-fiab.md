@@ -65,7 +65,7 @@ The fiab env was tested under Archlinux in a x86 machine.
 #### step 1: Installing minikube
 We install the latest minikube stable release on x86-64 Linux using binary downloaded from [here](https://minikube.sigs.k8s.io/docs/start/).
 
-#### step 2: Installing kubectl, helm and jq.
+#### step 2: Installing kubectl, helm and jq
 To install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
 ```bash
 sudo snap install kubectl --classic
@@ -80,7 +80,7 @@ To install jq.
 sudo apt update
 sudo apt install -y jq
 ```
-#### step3: Install docker.
+#### step3: Install docker
 1. Update the apt package index and install packages to allow apt to use a repository over HTTPS.                                                                       
 ```bash
 sudo apt-get update
