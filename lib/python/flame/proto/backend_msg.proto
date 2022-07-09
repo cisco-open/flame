@@ -18,6 +18,12 @@ syntax = "proto3";
 
 package backend;
 
+enum NotifyType {
+  UNKNOWN_NOTIFY_TYPE = 0; // default
+  JOIN = 1;
+  LEAVE = 2;
+}
+
 message Connect {
   string end_id = 1;
 }
@@ -25,6 +31,7 @@ message Connect {
 message Notify {
   string end_id = 1;
   string channel_name = 2;
+  NotifyType type = 3;
 }
 
 message Data {

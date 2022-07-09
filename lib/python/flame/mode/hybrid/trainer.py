@@ -18,6 +18,7 @@
 import logging
 import time
 
+from ...channel_manager import ChannelManager
 from ...mode.distributed.trainer import Trainer as DistTrainer
 from ..composer import Composer
 from ..message import MessageType
@@ -32,6 +33,27 @@ TAG_RING_ALLREDUCE = 'ring_allreduce'
 
 class Trainer(DistTrainer):
     """Trainer inherits distributed trainer."""
+
+    def init_cm(self) -> None:
+        """Initialize channel manager."""
+        self.cm = ChannelManager()
+        self.cm(self.config)
+
+        self.ring_channel_name = ""
+        for ch_name, ch_config in self.config.channels.items():
+            skip = False
+            for _, fn_tag_list in ch_config.func_tags.items():
+                if TAG_RING_ALLREDUCE in fn_tag_list:
+                    skip = True
+
+            # if skip is true, we found a channel that is for ring allreduce
+            # trainer needs to join that channel on a on-demand fashion.
+            # so, here we skip join.
+            if skip:
+                self.ring_channel_name = ch_name
+                continue
+
+            self.cm.join(ch_name)
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -59,6 +81,11 @@ class Trainer(DistTrainer):
             self._work_done = msg[MessageType.EOT]
         elif MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
+
+        # once global weights were received, let's join ring channel
+        # calling join more than once is okay because channel manager
+        # checks if a role already joined that channel or not.
+        self.cm.join(self.ring_channel_name)
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
@@ -112,6 +139,8 @@ class Trainer(DistTrainer):
         with Composer() as composer:
             self.composer = composer
 
+            task_init_cm = Tasklet(self.init_cm)
+
             task_internal_init = Tasklet(self.internal_init)
 
             task_load_data = Tasklet(self.load_data)
@@ -136,7 +165,7 @@ class Trainer(DistTrainer):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_internal_init >> task_load_data >> task_init >> loop(
+            task_init_cm >> task_internal_init >> task_load_data >> task_init >> loop(
                 task_get >> task_train >> task_allreduce >> task_eval >>
                 task_save_metrics >> task_put
             ) >> task_save_params >> task_save_model
