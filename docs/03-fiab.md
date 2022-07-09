@@ -121,6 +121,8 @@ For example,
 ```bash
 minikube start --cpus 4 --memory 4096m --disk-size 100gb
 ```
+When `docker` driver is in use, run ```minikube config set driver docker``` to make docker driver default. These changes will take effect upon a minikube delete and then a minikube start.
+
 We recommend a disk space of 100GB to allow sufficient disk space to store the flame container images and other images in the minikube VM.
 
 Next, `ingress` and `ingress` addons need to be installed with the following command:
