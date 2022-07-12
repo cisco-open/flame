@@ -65,7 +65,7 @@ The fiab env was tested under Archlinux in a x86 machine.
 #### step 1: Installing minikube
 We install the latest minikube stable release on x86-64 Linux using binary downloaded from [here](https://minikube.sigs.k8s.io/docs/start/).
 
-#### step 2: Installing kubectl, helm and jq.
+#### step 2: Installing kubectl, helm and jq
 To install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
 ```bash
 sudo snap install kubectl --classic
@@ -80,7 +80,7 @@ To install jq.
 sudo apt update
 sudo apt install -y jq
 ```
-#### step3: Install docker.
+#### step3: Install docker
 1. Update the apt package index and install packages to allow apt to use a repository over HTTPS.                                                                       
 ```bash
 sudo apt-get update
@@ -90,18 +90,18 @@ sudo apt-get install \
     gnupg \
     lsb-release
 ```
-2. Add Docker’s official GPG key:
+2. Add Docker’s official GPG key.
 ```bash
 sudo mkdir -p /etc/apt/keyrings
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
 ```
-3. Use the following command to set up the repository:
+3. Use the following command to set up the repository.
 ```bash
 echo \
   "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
   $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 ```
-4. Update the apt package index, and install the latest version of Docker Engine
+4. Update the apt package index, and install the latest version of Docker Engine.
 ```bash
 sudo apt-get update
 sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
@@ -121,6 +121,8 @@ For example,
 ```bash
 minikube start --cpus 4 --memory 4096m --disk-size 100gb
 ```
+When `docker` driver is in use, run ```minikube config set driver docker``` to make docker driver default. These changes will take effect upon a minikube delete and then a minikube start.
+
 We recommend a disk space of 100GB to allow sufficient disk space to store the flame container images and other images in the minikube VM.
 
 Next, `ingress` and `ingress` addons need to be installed with the following command:
