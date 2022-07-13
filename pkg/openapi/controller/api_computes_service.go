@@ -28,6 +28,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
@@ -101,20 +102,12 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, compute strin
 
 // RegisterCompute - Register a new compute cluster
 func (s *ComputesApiService) RegisterCompute(ctx context.Context, computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
-	// TODO - update RegisterCompute with the required logic for this service method.
-	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
-	// this service implementation when updating open api generation.
-
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("RegisterCompute method not implemented")
+	computeStatus, err := s.dbService.RegisterCompute(computeSpec)
+	if err != nil {
+		errMsg := fmt.Errorf("failed to register a new compute: %v", err)
+		return errMsgFunc(errMsg)
+	}
+	return openapi.Response(http.StatusCreated, computeStatus), nil
 }
 
 // UpdateCompute - Update a compute cluster&#39;s specification

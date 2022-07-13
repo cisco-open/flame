@@ -28,7 +28,9 @@ import (
 )
 
 const (
-	DatabaseName      = "flame"
+	DatabaseName = "flame"
+
+	ComputeCollection = "t_compute"
 	DatasetCollection = "t_dataset"
 	DesignCollection  = "t_design"
 	JobCollection     = "t_job"
@@ -39,8 +41,10 @@ const (
 )
 
 type MongoService struct {
-	client            *mongo.Client
-	database          *mongo.Database
+	client   *mongo.Client
+	database *mongo.Database
+
+	computeCollection *mongo.Collection
 	datasetCollection *mongo.Collection
 	designCollection  *mongo.Collection
 	jobCollection     *mongo.Collection
@@ -89,6 +93,7 @@ func NewMongoService(uri string) (*MongoService, error) {
 	mongoDB := &MongoService{
 		client:            client,
 		database:          db,
+		computeCollection: db.Collection(ComputeCollection),
 		datasetCollection: db.Collection(DatasetCollection),
 		designCollection:  db.Collection(DesignCollection),
 		jobCollection:     db.Collection(JobCollection),
@@ -96,6 +101,10 @@ func NewMongoService(uri string) (*MongoService, error) {
 	}
 
 	uiiList := []uniqueIndexInfo{
+		{
+			mongoDB.computeCollection,
+			map[string]int32{"computeid": orderAscend, "region": orderAscend},
+		},
 		{
 			mongoDB.datasetCollection,
 			map[string]int32{"userid": orderAscend, "url": orderAscend},

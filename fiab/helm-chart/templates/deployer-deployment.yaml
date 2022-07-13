@@ -36,7 +36,17 @@ spec:
           - "https://{{ .Values.frontDoorUrl.apiserver }}:443"
           - --notifier
           - "{{ .Values.frontDoorUrl.notifier }}:443"
-          - --insecure
+          - --adminid
+          - {{ .Values.deployer.adminId }}
+          - --region
+          - {{ .Values.deployer.region }}
+          - --computeid
+          - {{ .Values.deployer.computeId }}
+          - --apikey
+          - {{ .Values.deployer.apiKey }}
+          {{ if .Values.insecure }}
+          - "--insecure"
+          {{ end }}
           command: ["/usr/bin/deployer"]
           image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent

@@ -206,7 +206,7 @@ func (db *MongoService) UpdateJobStatus(userId string, jobId string, jobStatus o
 		dateKey = "startedat"
 
 	case openapi.APPLYING:
-		dateKey = "updatedat"
+		dateKey = updatedAt
 
 	case openapi.FAILED:
 		fallthrough

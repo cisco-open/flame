@@ -30,10 +30,10 @@ ComputeSpec:
     computeId:
       type: string
   example:
-    adminId: "admin1"
+    adminId: "admin-1"
     region: "us-east"
-    apiKey: "892nsfd2ds82"
-    computeId: "62cdd50e5e28e1473c3768fc"
+    apiKey: "apikey-1"
+    computeId: "compute-1"
 
 ########################################
 # Compute status
@@ -42,6 +42,8 @@ ComputeStatus:
   description: Cluster compute status
   type: object
   properties:
+    computeId:
+      type: string
     registeredAt:
       type: string
       format: date-time
@@ -50,11 +52,9 @@ ComputeStatus:
     updatedAt:
       type: string
       format: date-time
-    spec:
-      $ref: '#/components/schemas/ComputeSpec'
   required:
+    - computeId
     - state
-    - spec
 
 ########################################
 # Compute state
