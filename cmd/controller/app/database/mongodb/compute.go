@@ -14,4 +14,22 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package app
+package mongodb
+
+import (
+	"github.com/cisco-open/flame/pkg/openapi"
+)
+
+// RegisterCompute creates a new cluster compute specification and returns ComputeStatus
+func (db *MongoService) RegisterCompute(computeSpec openapi.ComputeSpec) (openapi.ComputeStatus, error) {
+	// TODO implement the method
+
+	return openapi.ComputeStatus{}, nil
+}
+
+// UpdateComputeStatus update compute cluster status
+func (db *MongoService) UpdateComputeStatus(computeId string, computeStatus openapi.ComputeStatus) error {
+	// TODO implement the method
+
+	return nil
+}

@@ -30,6 +30,7 @@ type DBService interface {
 	DesignService
 	JobService
 	TaskService
+	ComputeService
 }
 
 // DatasetService is an interface that defines a collection of APIs related to dataset
@@ -79,4 +80,9 @@ type TaskService interface {
 	SetTaskDirtyFlag(string, bool) error
 	UpdateTaskStateByFilter(string, openapi.JobState, map[string]interface{}) error
 	UpdateTaskStatus(string, string, openapi.TaskStatus) error
+}
+
+// ComputeService is an interface that defines a collection of APIs related to computes
+type ComputeService interface {
+	RegisterCompute(openapi.ComputeSpec) (openapi.ComputeStatus, error)
 }

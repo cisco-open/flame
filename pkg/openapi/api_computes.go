@@ -87,7 +87,7 @@ func (c *ComputesApiController) Routes() Routes {
 		{
 			"RegisterCompute",
 			strings.ToUpper("Post"),
-			"/computes/{compute}",
+			"/computes",
 			c.RegisterCompute,
 		},
 		{
@@ -146,9 +146,6 @@ func (c *ComputesApiController) GetComputeStatus(w http.ResponseWriter, r *http.
 
 // RegisterCompute - Register a new compute cluster
 func (c *ComputesApiController) RegisterCompute(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	computeParam := params["compute"]
-
 	computeSpecParam := ComputeSpec{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
@@ -160,7 +157,7 @@ func (c *ComputesApiController) RegisterCompute(w http.ResponseWriter, r *http.R
 		c.errorHandler(w, r, err, nil)
 		return
 	}
-	result, err := c.service.RegisterCompute(r.Context(), computeParam, computeSpecParam)
+	result, err := c.service.RegisterCompute(r.Context(), computeSpecParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)

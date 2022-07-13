@@ -106,7 +106,7 @@ type ComputesApiServicer interface {
 	DeleteCompute(context.Context, string) (ImplResponse, error)
 	GetComputeConfig(context.Context, string) (ImplResponse, error)
 	GetComputeStatus(context.Context, string) (ImplResponse, error)
-	RegisterCompute(context.Context, string, ComputeSpec) (ImplResponse, error)
+	RegisterCompute(context.Context, ComputeSpec) (ImplResponse, error)
 	UpdateCompute(context.Context, string, ComputeSpec) (ImplResponse, error)
 }
 

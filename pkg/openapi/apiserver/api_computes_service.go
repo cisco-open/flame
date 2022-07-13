@@ -28,9 +28,14 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 
+	"go.uber.org/zap"
+
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/restapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 // ComputesApiService is a service that implements the logic for the ComputesApiServicer
@@ -96,22 +101,35 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, compute strin
 }
 
 // RegisterCompute - Register a new compute cluster
-func (s *ComputesApiService) RegisterCompute(ctx context.Context, compute string,
-	computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
-	// TODO - update RegisterCompute with the required logic for this service method.
-	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
-	// this service implementation when updating open api generation.
+func (s *ComputesApiService) RegisterCompute(ctx context.Context, computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Registering new compute cluster with computeSpec: %v", computeSpec)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	// create controller request
+	uriMap := map[string]string{}
+	url := restapi.CreateURL(HostEndpoint, restapi.RegisterComputeEndpoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	// send post request
+	code, resp, err := restapi.HTTPPost(url, computeSpec, "application/json")
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to send post to controller: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("RegisterCompute method not implemented")
+	// Once everything goes well, the ComputeStatus is updated
+	computeStatus := openapi.ComputeStatus{}
+	err = util.ByteToStruct(resp, &computeStatus)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to construct response message: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusCreated, computeStatus), nil
 }
 
 // UpdateCompute - Update a compute cluster&#39;s specification

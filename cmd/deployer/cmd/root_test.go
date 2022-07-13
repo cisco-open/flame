@@ -14,4 +14,31 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-package app
+package cmd
+
+import (
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+
+	"github.com/cisco-open/flame/cmd/deployer/app"
+	"github.com/cisco-open/flame/pkg/openapi"
+)
+
+var (
+	testComputeSpec = openapi.ComputeSpec{
+		AdminId: "admin1",
+		Region:  "us-east",
+		ApiKey:  "temp",
+	}
+
+	apiargApiserver = "apiserver.flame.test"
+	bInsecure       = true
+	bPlain          = false
+)
+
+func TestNewCompute(t *testing.T) {
+	compute, err := app.NewCompute(apiargApiserver, testComputeSpec, bInsecure, bPlain)
+	assert.NotNil(t, compute)
+	assert.Nil(t, err)
+}

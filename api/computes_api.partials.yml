@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-/computes/{compute}:
+/computes:
   ########################################
   # Register a new compute cluster
   ########################################
@@ -23,15 +23,6 @@
     summary: Register a new compute cluster
     tags:
       - computes
-    parameters:
-      - name: compute
-        description: deployer id of compute cluster
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
     requestBody:
       content:
         application/json:
@@ -49,6 +40,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
+/computes/{compute}:
   ########################################
   # Get the status of a compute cluster
   ########################################
