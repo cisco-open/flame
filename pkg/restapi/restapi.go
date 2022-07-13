@@ -71,6 +71,13 @@ const (
 	// Keys for task
 	GetTaskEndpoint          = "GET_TASK"
 	UpdateTaskStatusEndPoint = "UPDATE_TASK_STATUS"
+
+	// Keys for computes endpoints
+	RegisterComputeEndpoint  = "REGISTER_COMPUTE"
+	GetComputeStatusEndpoint = "GET_COMPUTE_STATUS"
+	UpdateComputeEndpoint    = "UPDATE_COMPUTE"
+	DeleteComputeEndpoint    = "DELETE_COMPUTE"
+	GetComputeConfigEndpoint = "GET_COMPUTE_CONFIG"
 )
 
 var URI = map[string]string{
@@ -111,6 +118,13 @@ var URI = map[string]string{
 	// Task
 	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.taskId}}/task/?key={{.key}}",
 	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.taskId}}/task/status",
+
+	// Computes
+	RegisterComputeEndpoint:  "/computes",
+	GetComputeStatusEndpoint: "/computes/{{.compute}}",
+	UpdateComputeEndpoint:    "/computes/{{.compute}}",
+	DeleteComputeEndpoint:    "/computes/{{.compute}}",
+	GetComputeConfigEndpoint: "/computes/{{.compute}}/config",
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {

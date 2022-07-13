@@ -102,6 +102,7 @@ func (c *Controller) serveRestApi() {
 		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService(c.dbService)),
 		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService(c.dbService)),
 		openapi.NewJobsApiController(controller.NewJobsApiService(c.dbService, c.jobEventQ, c.jobBuilder)),
+		openapi.NewComputesApiController(controller.NewComputesApiService(c.dbService)),
 	}
 
 	router := openapi.NewRouter(apiRouters...)

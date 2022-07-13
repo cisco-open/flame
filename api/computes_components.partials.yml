@@ -21,24 +21,19 @@ ComputeSpec:
   description: Compute specification
   type: object
   properties:
-    deployerId:
-      type: string
     adminId:
       type: string
     region:
       type: string
-    computeId:
-      type: string
     apiKey:
       type: string
-  required:
-    - deployerId
+    computeId:
+      type: string
   example:
-    deployerId: "60d0d66716af13b787d9ef0a"
     adminId: "admin1"
     region: "us-east"
-    computeId: "1"
     apiKey: "892nsfd2ds82"
+    computeId: "62cdd50e5e28e1473c3768fc"
 
 ########################################
 # Compute status
@@ -47,27 +42,19 @@ ComputeStatus:
   description: Cluster compute status
   type: object
   properties:
-    deployerId:
-      type: string
-    state:
-      $ref: '#/components/schemas/ComputeState'
     registeredAt:
       type: string
       format: date-time
+    state:
+      $ref: '#/components/schemas/ComputeState'
     updatedAt:
       type: string
       format: date-time
-    region:
-      type: string
-    computeId:
-      type: string
-    computeSpec:
-      type: string
+    spec:
+      $ref: '#/components/schemas/ComputeSpec'
   required:
-    - deployerId
     - state
-    - region
-    - computeId
+    - spec
 
 ########################################
 # Compute state

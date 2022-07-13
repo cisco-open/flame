@@ -27,8 +27,6 @@ package openapi
 
 // ComputeSpec - Compute specification
 type ComputeSpec struct {
-	DeployerId string `json:"deployerId"`
-
 	AdminId string `json:"adminId,omitempty"`
 
 	Region string `json:"region,omitempty"`
@@ -40,15 +38,6 @@ type ComputeSpec struct {
 
 // AssertComputeSpecRequired checks if the required fields are not zero-ed
 func AssertComputeSpecRequired(obj ComputeSpec) error {
-	elements := map[string]interface{}{
-		"deployerId": obj.DeployerId,
-	}
-	for name, el := range elements {
-		if isZero := IsZeroValue(el); isZero {
-			return &RequiredError{Field: name}
-		}
-	}
-
 	return nil
 }
 

@@ -16,15 +16,21 @@
 
 package main
 
-import "time"
+import (
+	"os"
+
+	"go.uber.org/zap"
+
+	"github.com/cisco-open/flame/cmd/deployer/cmd"
+	"github.com/cisco-open/flame/pkg/util"
+)
 
 func main() {
-	go forever()
-	select {} // block forever
-}
+	loggerMgr := util.InitZapLog(util.Deployer)
+	zap.ReplaceGlobals(loggerMgr)
+	defer loggerMgr.Sync()
 
-func forever() {
-	for {
-		time.Sleep(time.Second)
+	if err := cmd.Execute(); err != nil {
+		os.Exit(1)
 	}
 }

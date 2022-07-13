@@ -31,28 +31,20 @@ import (
 
 // ComputeStatus - Cluster compute status
 type ComputeStatus struct {
-	DeployerId string `json:"deployerId"`
+	RegisteredAt time.Time `json:"registeredAt,omitempty"`
 
 	State ComputeState `json:"state"`
 
-	RegisteredAt time.Time `json:"registeredAt,omitempty"`
-
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 
-	Region string `json:"region"`
-
-	ComputeId string `json:"computeId"`
-
-	ComputeSpec string `json:"computeSpec,omitempty"`
+	Spec ComputeSpec `json:"spec"`
 }
 
 // AssertComputeStatusRequired checks if the required fields are not zero-ed
 func AssertComputeStatusRequired(obj ComputeStatus) error {
 	elements := map[string]interface{}{
-		"deployerId": obj.DeployerId,
-		"state":      obj.State,
-		"region":     obj.Region,
-		"computeId":  obj.ComputeId,
+		"state": obj.State,
+		"spec":  obj.Spec,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {
@@ -60,6 +52,9 @@ func AssertComputeStatusRequired(obj ComputeStatus) error {
 		}
 	}
 
+	if err := AssertComputeSpecRequired(obj.Spec); err != nil {
+		return err
+	}
 	return nil
 }
 

@@ -31,7 +31,10 @@ spec:
         app: {{ .Release.Name }}-deployer
     spec:
       containers:
-        - args: []
+        - args:
+          - --apiserver
+          - "https://{{ .Values.frontDoorUrl.apiserver }}:443"
+          - --insecure
           command: ["/usr/bin/deployer"]
           image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent

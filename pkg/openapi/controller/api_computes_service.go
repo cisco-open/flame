@@ -30,6 +30,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/pkg/openapi"
 )
 
@@ -37,11 +38,14 @@ import (
 // This service should implement the business logic for every endpoint for the ComputesApi API.
 // Include any external packages or services that will be required by this service.
 type ComputesApiService struct {
+	dbService database.DBService
 }
 
 // NewComputesApiService creates a default api service
-func NewComputesApiService() openapi.ComputesApiServicer {
-	return &ComputesApiService{}
+func NewComputesApiService(dbService database.DBService) openapi.ComputesApiServicer {
+	return &ComputesApiService{
+		dbService: dbService,
+	}
 }
 
 // DeleteCompute - Delete compute cluster specification
@@ -96,8 +100,7 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, compute strin
 }
 
 // RegisterCompute - Register a new compute cluster
-func (s *ComputesApiService) RegisterCompute(ctx context.Context, compute string,
-	computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
+func (s *ComputesApiService) RegisterCompute(ctx context.Context, computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
 	// TODO - update RegisterCompute with the required logic for this service method.
 	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
 	// this service implementation when updating open api generation.
