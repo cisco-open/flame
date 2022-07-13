@@ -61,7 +61,7 @@ func NewCompute(apiserverEp string, computeSpec openapi.ComputeSpec, bInsecure b
 	return compute, nil
 }
 
-func (compute *ComputeResource) RegisterNewCompute() error {
+func (compute *ComputeResource) RegisterNewCompute() (openapi.ComputeSpec, error) {
 	// construct URL
 	uriMap := map[string]string{}
 	url := restapi.CreateURL(compute.apiserverEp, restapi.RegisterComputeEndpoint, uriMap)
@@ -70,12 +70,12 @@ func (compute *ComputeResource) RegisterNewCompute() error {
 	if err != nil || restapi.CheckStatusCode(code) != nil {
 		zap.S().Errorf("Failed to register compute, sent computeSpec: %v, resp: %v, code: %d, err: %v",
 			compute.spec, string(resp), code, err)
-		return err
+		return openapi.ComputeSpec{}, err
 	}
 
 	zap.S().Infof("Success in registering new compute, sent obj: %v, resp: %v, code: %d",
 		compute.spec, string(resp), code)
 	compute.registered = true
 
-	return nil
+	return compute.spec, nil
 }

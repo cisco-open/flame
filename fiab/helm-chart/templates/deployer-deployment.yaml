@@ -34,6 +34,8 @@ spec:
         - args:
           - --apiserver
           - "https://{{ .Values.frontDoorUrl.apiserver }}:443"
+          - --notifier
+          - "{{ .Values.frontDoorUrl.notifier }}:443"
           - --insecure
           command: ["/usr/bin/deployer"]
           image: {{ .Values.imageName }}:{{ .Values.imageTag }}
