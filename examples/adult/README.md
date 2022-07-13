@@ -25,12 +25,11 @@ Note: to understand relationship between schema and code, unzip adult.zip and ch
 
 ### Step 4: create a job
 ```
-
+flamectl create job job.json
 ```
 If successful, this command returns the id of the created job.
 For example,
 ```bash
-$ flamectl create job job.json
 New job created successfully
 	ID: 624888fda8001d773e34de43
 	state: ready
