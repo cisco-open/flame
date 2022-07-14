@@ -29,6 +29,7 @@ import (
 
 const (
 	argApiserver = "apiserver"
+	argNotifier  = "notifier"
 
 	optionInsecure = "insecure"
 	optionPlain    = "plain"
@@ -46,6 +47,14 @@ var rootCmd = &cobra.Command{
 		}
 		if len(strings.Split(apiserver, ":")) != util.NumTokensInRestEndpoint {
 			return fmt.Errorf("incorrect format for apiserver endpoint: %s", apiserver)
+		}
+
+		notifier, err := flags.GetString(argNotifier)
+		if err != nil {
+			return err
+		}
+		if len(strings.Split(notifier, ":")) != util.NumTokensInEndpoint {
+			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
 		}
 
 		bInsecure, _ := flags.GetBool(optionInsecure)
@@ -69,10 +78,14 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		if err := compute.RegisterNewCompute(); err != nil {
+		computeSpec, err = compute.RegisterNewCompute()
+		if err != nil {
 			err = fmt.Errorf("error from RegisterNewCompute: %s", err)
 			return err
 		}
+
+		resoureHandler := app.NewResourceHandler(apiserver, notifier, computeSpec, bInsecure, bPlain)
+		resoureHandler.Start()
 
 		select {}
 	},
@@ -82,6 +95,10 @@ func init() {
 	defaultApiServerEp := fmt.Sprintf("http://0.0.0.0:%d", util.ApiServerRestApiPort)
 	rootCmd.Flags().StringP(argApiserver, "a", defaultApiServerEp, "API server endpoint")
 	rootCmd.MarkFlagRequired(argApiserver)
+
+	defaultNotifierEp := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
+	rootCmd.Flags().StringP(argNotifier, "n", defaultNotifierEp, "Notifier endpoint")
+	rootCmd.MarkFlagRequired(argNotifier)
 
 	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
 	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")
