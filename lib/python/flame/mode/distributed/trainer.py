@@ -45,11 +45,14 @@ class Trainer(Role, metaclass=ABCMeta):
     def dataset_size(self):
         """Abstract attribute for size of dataset used to train."""
 
-    def internal_init(self) -> None:
-        """Initialize internal state for role."""
+    def init_cm(self) -> None:
+        """Initialize channel manager."""
         self.cm = ChannelManager()
         self.cm(self.config)
         self.cm.join_all()
+
+    def internal_init(self) -> None:
+        """Initialize internal state for role."""
 
         self.registry_client = registry_provider.get(self.config.registry.sort)
         # initialize registry client
@@ -58,7 +61,8 @@ class Trainer(Role, metaclass=ABCMeta):
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
-                base_model.name, base_model.version)
+                base_model.name, base_model.version
+            )
         self.ring_weights = None  # latest model weights from ring all-reduce
 
         self.registry_client.setup_run(mlflow_runname(self.config))
@@ -76,7 +80,8 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}")
+                f"supported frameworks are: {valid_frameworks}"
+            )
 
         if self.framework == MLFramework.PYTORCH:
             self._scale_down_weights_fn = self._scale_down_weights_pytorch
@@ -453,6 +458,8 @@ class Trainer(Role, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
+            task_init_cm = Tasklet(self.init_cm)
+
             task_internal_init = Tasklet(self.internal_init)
 
             task_load_data = Tasklet(self.load_data)
@@ -475,9 +482,10 @@ class Trainer(Role, metaclass=ABCMeta):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_internal_init >> task_load_data >> task_init >> loop(
+            task_init_cm >> task_internal_init >> task_load_data >> task_init >> loop(
                 task_train >> task_allreduce >> task_eval >> task_save_metrics
-                >> task_increment_round) >> task_save_params >> task_save_model
+                >> task_increment_round
+            ) >> task_save_params >> task_save_model
 
     def run(self) -> None:
         """Run role."""

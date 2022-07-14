@@ -19,7 +19,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='flame',
-    version='0.0.8',
+    version='0.0.9',
     author='Flame Maintainers',
     author_email='flame-github-owners@cisco.com',
     include_package_data=True,
@@ -32,6 +32,11 @@ setup(
     " to run ML workloads in the flame system",
     long_description=open('README.md').read(),
     install_requires=[
-        'boto3', 'cloudpickle', 'diskcache', 'mlflow', 'paho-mqtt'
+        'boto3',
+        'cloudpickle',
+        'diskcache',
+        'mlflow',
+        'paho-mqtt',
+        'protobuf==3.19.4',
     ],
 )
