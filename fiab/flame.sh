@@ -168,19 +168,26 @@ function post_stop_cleanup {
     kubectl get configmap coredns -n kube-system -o json | jq -r '.data."Corefile"' > $tmp_file
 
     sed -i $SED_MAC_FIX '/^$/d' $tmp_file
-    # remove last five lines
-    for i in {1..5}; do
-	sed -i $SED_MAC_FIX '$d' $tmp_file
-    done
 
-    # step 4: create patch file
-    echo "{\"data\": {\"Corefile\": $(jq -R -s < $tmp_file)}}" > $tmp_file
+    # patch coredns configmap only if flame.test domain section exists
+    if [[ "$(grep flame.test $tmp_file)" != "" ]]; then 
+	# remove last five lines
+	for i in {1..5}; do
+	    sed -i $SED_MAC_FIX '$d' $tmp_file
+	done
 
-    # step 5: patch configmap of coredns with the updated dns entries
-    kubectl patch configmap coredns \
-	    -n kube-system \
-	    --type merge \
-	    -p "$(cat $tmp_file)"
+	# step 4: create patch file
+	echo "{\"data\": {\"Corefile\": $(jq -R -s < $tmp_file)}}" > $tmp_file
+
+	# step 5: patch configmap of coredns with the updated dns entries
+	kubectl patch configmap coredns \
+		-n kube-system \
+		--type merge \
+		-p "$(cat $tmp_file)"
+
+	echo "removed flame.test domain section from coredns"
+    fi
+
 
     rm -f $tmp_file $tmp_file$SED_MAC_FIX
 }
