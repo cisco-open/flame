@@ -7,42 +7,40 @@ We will run this example in non-orchestration mode within [fiab](../../docs/03-f
 In non-orchestration mode, participants drive participation. Hence, participants should bring their dataset along with compute.
 
 ### Step 1: create a design
-```
+```bash
 flamectl create design adult -d "census income dataset example in non-orchestration mode"
 ```
 
 ### Step 2: create a schema for design mnist
-```
+```bash
 flamectl create schema schema.json --design adult
 ```
 
 ### Step 3: create (i.e., add) mnist code to the design
 
-```
+```bash
 flamectl create code adult.zip --design adult
 ```
 Note: to understand relationship between schema and code, unzip adult.zip and check the folder structure in it.
 
 ### Step 4: create a job
-```
-
+```bash
+flamectl create job job.json
 ```
 If successful, this command returns the id of the created job.
 For example,
 ```bash
-$ flamectl create job job.json
 New job created successfully
 	ID: 624888fda8001d773e34de43
 	state: ready
-$
 ```
 
 The ids of jobs can be obtained via the following command.
-```
+```bash
 flamectl get jobs
 ```
 For example,
-```
+```bash
 $ flamectl get jobs
 +--------------------------+-------+--------------------------------+-------------------------------+-------------------------------+
 |          JOB ID          | STATE |           CREATED AT           |          STARTED AT           |           ENDED AT            |
@@ -128,7 +126,7 @@ Dataset fetchers are not yet supported.
 ### Step 8: start a job
 
 Assuming the id is `6131576d6667387296a5ada3`, run the following command to schedule a job.
-```
+```bash
 flamectl start job 6131576d6667387296a5ada3
 ```
 
@@ -164,7 +162,7 @@ $
 ```
 
 Also, the command `flamectl get jobs` will return messages similar to:
-```
+```bash
 $ flamectl get jobs
 +--------------------------+-----------+--------------------------------+--------------------------------+--------------------------------+
 |          JOB ID          |   STATE   |           CREATED AT           |           STARTED AT           |            ENDED AT            |
