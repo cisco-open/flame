@@ -29,6 +29,7 @@ import (
 const (
 	latestVersion  = "latest"
 	unknownVersion = "unknown"
+	updatedAt      = "updatedat"
 )
 
 /*

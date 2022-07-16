@@ -96,6 +96,12 @@ mlflow:
   s3EndpointUrl: http://minio.flame.test
   servicePort: "5000"
 
+deployer:
+  adminId: "admin-1"
+  region: "us-east"
+  computeId: "compute-1"
+  apiKey: "apiKey-1"
+
 servicePort:
   apiserver: "10100"
   notifier: "10101"

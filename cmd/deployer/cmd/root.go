@@ -30,6 +30,10 @@ import (
 const (
 	argApiserver = "apiserver"
 	argNotifier  = "notifier"
+	argAdminId   = "adminid"
+	argRegion    = "region"
+	argComputeId = "computeid"
+	argApiKey    = "apikey"
 
 	optionInsecure = "insecure"
 	optionPlain    = "plain"
@@ -57,6 +61,26 @@ var rootCmd = &cobra.Command{
 			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
 		}
 
+		adminId, err := flags.GetString(argAdminId)
+		if err != nil {
+			return err
+		}
+
+		region, err := flags.GetString(argRegion)
+		if err != nil {
+			return err
+		}
+
+		computeId, err := flags.GetString(argComputeId)
+		if err != nil {
+			return err
+		}
+
+		apikey, err := flags.GetString(argApiKey)
+		if err != nil {
+			return err
+		}
+
 		bInsecure, _ := flags.GetBool(optionInsecure)
 		bPlain, _ := flags.GetBool(optionPlain)
 
@@ -65,12 +89,11 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		// Pass more values to NewCompute using
 		computeSpec := openapi.ComputeSpec{
-			AdminId:   "admin1",
-			Region:    "us-east",
-			ComputeId: "1",
-			ApiKey:    "temp",
+			AdminId:   adminId,
+			Region:    region,
+			ComputeId: computeId,
+			ApiKey:    apikey,
 		}
 
 		compute, err := app.NewCompute(apiserver, computeSpec, bInsecure, bPlain)
@@ -78,9 +101,9 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		computeSpec, err = compute.RegisterNewCompute()
+		err = compute.RegisterNewCompute()
 		if err != nil {
-			err = fmt.Errorf("error from RegisterNewCompute: %s", err)
+			err = fmt.Errorf("unable to register new compute with controller: %s", err)
 			return err
 		}
 
@@ -99,6 +122,22 @@ func init() {
 	defaultNotifierEp := fmt.Sprintf("0.0.0.0:%d", util.NotifierGrpcPort)
 	rootCmd.Flags().StringP(argNotifier, "n", defaultNotifierEp, "Notifier endpoint")
 	rootCmd.MarkFlagRequired(argNotifier)
+
+	defaultAdminId := "admin"
+	rootCmd.Flags().StringP(argAdminId, "d", defaultAdminId, "unique admin id")
+	rootCmd.MarkFlagRequired(argAdminId)
+
+	defaultRegion := "region"
+	rootCmd.Flags().StringP(argRegion, "r", defaultRegion, "region name")
+	rootCmd.MarkFlagRequired(argRegion)
+
+	defaultComputeId := "compute"
+	rootCmd.Flags().StringP(argComputeId, "c", defaultComputeId, "unique compute id")
+	rootCmd.MarkFlagRequired(argComputeId)
+
+	defaultApiKey := "apiKey"
+	rootCmd.Flags().StringP(argApiKey, "k", defaultApiKey, "unique apikey")
+	rootCmd.MarkFlagRequired(argApiKey)
 
 	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
 	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")
