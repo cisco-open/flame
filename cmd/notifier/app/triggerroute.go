@@ -25,13 +25,13 @@ import (
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
 
-func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventRequest) (*pbNotify.Response, error) {
+func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
 	switch in.Type {
-	case pbNotify.EventType_START_JOB:
-	case pbNotify.EventType_STOP_JOB:
-	case pbNotify.EventType_UPDATE_JOB:
+	case pbNotify.JobEventType_START_JOB:
+	case pbNotify.JobEventType_STOP_JOB:
+	case pbNotify.JobEventType_UPDATE_JOB:
 
-	case pbNotify.EventType_UNKNOWN_EVENT_TYPE:
+	case pbNotify.JobEventType_UNKNOWN_EVENT_TYPE:
 		fallthrough
 	default:
 		return nil, fmt.Errorf("unknown event type: %s", in.GetType())
@@ -39,12 +39,12 @@ func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventReque
 
 	failedTasks := make([]string, 0)
 	for _, taskId := range in.TaskIds {
-		event := pbNotify.Event{
+		event := pbNotify.JobEvent{
 			Type:  in.Type,
 			JobId: in.JobId,
 		}
 
-		eventCh := s.getEventChannel(taskId)
+		eventCh := s.getJobEventChannel(taskId)
 
 		select {
 		case eventCh <- &event:
@@ -54,18 +54,18 @@ func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.EventReque
 		}
 	}
 
-	resp := &pbNotify.Response{
-		Status:      pbNotify.Response_SUCCESS,
+	resp := &pbNotify.JobResponse{
+		Status:      pbNotify.JobResponse_SUCCESS,
 		Message:     "Successfully registered event for all tasks",
 		FailedTasks: failedTasks,
 	}
 
 	if len(in.TaskIds) > 0 && len(failedTasks) == len(in.TaskIds) {
 		resp.Message = "Failed to register event for all tasks"
-		resp.Status = pbNotify.Response_ERROR
+		resp.Status = pbNotify.JobResponse_ERROR
 	} else if len(failedTasks) > 0 && len(failedTasks) < len(in.TaskIds) {
 		resp.Message = "Registered event for some tasks successfully"
-		resp.Status = pbNotify.Response_PARTIAL_SUCCESS
+		resp.Status = pbNotify.JobResponse_PARTIAL_SUCCESS
 	}
 
 	zap.S().Info(resp.Message)

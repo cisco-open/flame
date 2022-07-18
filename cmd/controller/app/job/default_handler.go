@@ -140,7 +140,7 @@ func (h *DefaultHandler) Do() {
 		case <-timer.C:
 			h.state.Timeout()
 
-		case event := <-h.userEventQ.GetEventBuffer():
+		case event := <-h.userEventQ.GetJobEventBuffer():
 			state := event.JobStatus.State
 			if state != openapi.STARTING && state != openapi.STOPPING && state != openapi.APPLYING {
 				event.ErrCh <- fmt.Errorf("status update operation not allowed from user")
@@ -148,7 +148,7 @@ func (h *DefaultHandler) Do() {
 			}
 			h.doHandle(event)
 
-		case event := <-h.sysEventQ.GetEventBuffer():
+		case event := <-h.sysEventQ.GetJobEventBuffer():
 			h.doHandle(event)
 
 		case <-h.isDone:
@@ -297,8 +297,8 @@ func (h *DefaultHandler) allocateComputes() error {
 	return nil
 }
 
-func (h *DefaultHandler) notify(evtType pbNotify.EventType) error {
-	req := &pbNotify.EventRequest{
+func (h *DefaultHandler) notify(evtType pbNotify.JobEventType) error {
+	req := &pbNotify.JobEventRequest{
 		Type:    evtType,
 		TaskIds: make([]string, 0),
 	}

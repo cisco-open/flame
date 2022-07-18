@@ -61,7 +61,7 @@ type taskHandler struct {
 	taskId      string
 	taskKey     string
 
-	stream pbNotify.EventRoute_GetEventClient
+	stream pbNotify.JobEventRoute_GetJobEventClient
 
 	// role of the task given to flamelet
 	role string
@@ -133,14 +133,14 @@ func (t *taskHandler) connect() error {
 		return err
 	}
 
-	client := pbNotify.NewEventRouteClient(conn)
-	in := &pbNotify.TaskInfo{
+	client := pbNotify.NewJobEventRouteClient(conn)
+	in := &pbNotify.JobTaskInfo{
 		Id:       t.taskId,
 		Hostname: t.name,
 	}
 
 	// setup notification stream
-	stream, err := client.GetEvent(context.Background(), in)
+	stream, err := client.GetJobEvent(context.Background(), in)
 	if err != nil {
 		zap.S().Debugf("Open stream error: %v", err)
 		return err
@@ -167,18 +167,18 @@ func (t *taskHandler) do() {
 }
 
 //newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
-func (t *taskHandler) dealWith(in *pbNotify.Event) {
+func (t *taskHandler) dealWith(in *pbNotify.JobEvent) {
 	switch in.GetType() {
-	case pbNotify.EventType_START_JOB:
+	case pbNotify.JobEventType_START_JOB:
 		t.startJob(in.JobId)
 
-	case pbNotify.EventType_STOP_JOB:
+	case pbNotify.JobEventType_STOP_JOB:
 		t.stopJob(in.JobId)
 
-	case pbNotify.EventType_UPDATE_JOB:
+	case pbNotify.JobEventType_UPDATE_JOB:
 		t.updateJob(in.JobId)
 
-	case pbNotify.EventType_UNKNOWN_EVENT_TYPE:
+	case pbNotify.JobEventType_UNKNOWN_EVENT_TYPE:
 		fallthrough
 	default:
 		zap.S().Errorf("Invalid message type: %s", in.GetType())

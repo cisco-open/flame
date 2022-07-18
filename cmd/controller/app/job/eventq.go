@@ -77,6 +77,6 @@ func (q *EventQ) Dequeue() *JobEvent {
 	return <-q.buf
 }
 
-func (q *EventQ) GetEventBuffer() <-chan *JobEvent {
+func (q *EventQ) GetJobEventBuffer() <-chan *JobEvent {
 	return q.buf
 }
