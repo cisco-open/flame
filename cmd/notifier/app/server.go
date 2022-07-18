@@ -31,11 +31,11 @@ import (
 // notificationServer implement the notification service and include - proto unimplemented method and
 // maintains list of connected clients & their streams.
 type notificationServer struct {
-	eventQueues map[string]chan *pbNotify.Event
+	eventQueues map[string]chan *pbNotify.JobEvent
 	mutex       sync.Mutex
 
-	pbNotify.UnimplementedEventRouteServer
-	pbNotify.UnimplementedTriggerRouteServer
+	pbNotify.UnimplementedJobEventRouteServer
+	pbNotify.UnimplementedJobTriggerRouteServer
 }
 
 // StartGRPCService starts the notification grpc server
@@ -48,12 +48,12 @@ func StartGRPCService(portNo uint16) {
 	// create grpc server
 	s := grpc.NewServer()
 	server := &notificationServer{
-		eventQueues: make(map[string]chan *pbNotify.Event),
+		eventQueues: make(map[string]chan *pbNotify.JobEvent),
 	}
 
 	// register grpc services
-	pbNotify.RegisterEventRouteServer(s, server)
-	pbNotify.RegisterTriggerRouteServer(s, server)
+	pbNotify.RegisterJobEventRouteServer(s, server)
+	pbNotify.RegisterJobTriggerRouteServer(s, server)
 
 	reflection.Register(s)
 

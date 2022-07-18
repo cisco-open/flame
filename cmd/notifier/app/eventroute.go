@@ -26,14 +26,14 @@ const (
 	eventChannelLen = 1
 )
 
-// GetEvent is called by the client to subscribe to the notification service.
+// GetJobEvent is called by the client to subscribe to the notification service.
 // Adds the client to the server client map and stores the client stream.
-func (s *notificationServer) GetEvent(in *pbNotify.TaskInfo, stream pbNotify.EventRoute_GetEventServer) error {
+func (s *notificationServer) GetJobEvent(in *pbNotify.JobTaskInfo, stream pbNotify.JobEventRoute_GetJobEventServer) error {
 	zap.S().Debugf("Serving event for task %v", in)
 
 	taskId := in.GetId()
 
-	eventCh := s.getEventChannel(taskId)
+	eventCh := s.getJobEventChannel(taskId)
 	for {
 		select {
 		case event := <-eventCh:
@@ -53,12 +53,12 @@ func (s *notificationServer) GetEvent(in *pbNotify.TaskInfo, stream pbNotify.Eve
 	}
 }
 
-func (s *notificationServer) getEventChannel(taskId string) chan *pbNotify.Event {
-	var eventCh chan *pbNotify.Event
+func (s *notificationServer) getJobEventChannel(taskId string) chan *pbNotify.JobEvent {
+	var eventCh chan *pbNotify.JobEvent
 
 	s.mutex.Lock()
 	if _, ok := s.eventQueues[taskId]; !ok {
-		eventCh = make(chan *pbNotify.Event, eventChannelLen)
+		eventCh = make(chan *pbNotify.JobEvent, eventChannelLen)
 		s.eventQueues[taskId] = eventCh
 	} else {
 		eventCh = s.eventQueues[taskId]

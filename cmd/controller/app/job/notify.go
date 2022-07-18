@@ -56,14 +56,14 @@ func newNotifyClient(endpoint string, bInsecure bool, bPlain bool) *notifyClient
 }
 
 // sendNotification sends a notification request to the notifier
-func (nc *notifyClient) sendNotification(req *pbNotify.EventRequest) (*pbNotify.Response, error) {
+func (nc *notifyClient) sendNotification(req *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
 	conn, err := grpc.Dial(nc.endpoint, nc.grpcDialOpt)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to notifier: %v", err)
 	}
 	defer conn.Close()
 
-	trClient := pbNotify.NewTriggerRouteClient(conn)
+	trClient := pbNotify.NewJobTriggerRouteClient(conn)
 
 	zap.S().Infof("Successfully connected to notifier: %s", nc.endpoint)
 
