@@ -67,7 +67,7 @@ func (nc *notifyClient) sendNotification(req *pbNotify.JobEventRequest) (*pbNoti
 
 	zap.S().Infof("Successfully connected to notifier: %s", nc.endpoint)
 
-	response, err := trClient.Notify(context.Background(), req)
+	response, err := trClient.NotifyJob(context.Background(), req)
 
 	if err != nil {
 		errMsg := fmt.Sprintf("notification failed: %v", err)

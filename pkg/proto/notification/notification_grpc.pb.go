@@ -250,7 +250,7 @@ var DeployEventRoute_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type JobTriggerRouteClient interface {
-	Notify(ctx context.Context, in *JobEventRequest, opts ...grpc.CallOption) (*JobResponse, error)
+	NotifyJob(ctx context.Context, in *JobEventRequest, opts ...grpc.CallOption) (*JobResponse, error)
 }
 
 type jobTriggerRouteClient struct {
@@ -261,9 +261,9 @@ func NewJobTriggerRouteClient(cc grpc.ClientConnInterface) JobTriggerRouteClient
 	return &jobTriggerRouteClient{cc}
 }
 
-func (c *jobTriggerRouteClient) Notify(ctx context.Context, in *JobEventRequest, opts ...grpc.CallOption) (*JobResponse, error) {
+func (c *jobTriggerRouteClient) NotifyJob(ctx context.Context, in *JobEventRequest, opts ...grpc.CallOption) (*JobResponse, error) {
 	out := new(JobResponse)
-	err := c.cc.Invoke(ctx, "/grpcNotification.JobTriggerRoute/Notify", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpcNotification.JobTriggerRoute/NotifyJob", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func (c *jobTriggerRouteClient) Notify(ctx context.Context, in *JobEventRequest,
 // All implementations must embed UnimplementedJobTriggerRouteServer
 // for forward compatibility
 type JobTriggerRouteServer interface {
-	Notify(context.Context, *JobEventRequest) (*JobResponse, error)
+	NotifyJob(context.Context, *JobEventRequest) (*JobResponse, error)
 	mustEmbedUnimplementedJobTriggerRouteServer()
 }
 
@@ -282,8 +282,8 @@ type JobTriggerRouteServer interface {
 type UnimplementedJobTriggerRouteServer struct {
 }
 
-func (UnimplementedJobTriggerRouteServer) Notify(context.Context, *JobEventRequest) (*JobResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+func (UnimplementedJobTriggerRouteServer) NotifyJob(context.Context, *JobEventRequest) (*JobResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NotifyJob not implemented")
 }
 func (UnimplementedJobTriggerRouteServer) mustEmbedUnimplementedJobTriggerRouteServer() {}
 
@@ -298,20 +298,20 @@ func RegisterJobTriggerRouteServer(s grpc.ServiceRegistrar, srv JobTriggerRouteS
 	s.RegisterService(&JobTriggerRoute_ServiceDesc, srv)
 }
 
-func _JobTriggerRoute_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _JobTriggerRoute_NotifyJob_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JobEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(JobTriggerRouteServer).Notify(ctx, in)
+		return srv.(JobTriggerRouteServer).NotifyJob(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpcNotification.JobTriggerRoute/Notify",
+		FullMethod: "/grpcNotification.JobTriggerRoute/NotifyJob",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(JobTriggerRouteServer).Notify(ctx, req.(*JobEventRequest))
+		return srv.(JobTriggerRouteServer).NotifyJob(ctx, req.(*JobEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -324,8 +324,8 @@ var JobTriggerRoute_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*JobTriggerRouteServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Notify",
-			Handler:    _JobTriggerRoute_Notify_Handler,
+			MethodName: "NotifyJob",
+			Handler:    _JobTriggerRoute_NotifyJob_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -336,7 +336,7 @@ var JobTriggerRoute_ServiceDesc = grpc.ServiceDesc{
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type DeployTriggerRouteClient interface {
-	Notify(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error)
+	NotifyDeploy(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error)
 }
 
 type deployTriggerRouteClient struct {
@@ -347,9 +347,9 @@ func NewDeployTriggerRouteClient(cc grpc.ClientConnInterface) DeployTriggerRoute
 	return &deployTriggerRouteClient{cc}
 }
 
-func (c *deployTriggerRouteClient) Notify(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
+func (c *deployTriggerRouteClient) NotifyDeploy(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
 	out := new(DeployResponse)
-	err := c.cc.Invoke(ctx, "/grpcNotification.DeployTriggerRoute/Notify", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/grpcNotification.DeployTriggerRoute/NotifyDeploy", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +360,7 @@ func (c *deployTriggerRouteClient) Notify(ctx context.Context, in *DeployEventRe
 // All implementations must embed UnimplementedDeployTriggerRouteServer
 // for forward compatibility
 type DeployTriggerRouteServer interface {
-	Notify(context.Context, *DeployEventRequest) (*DeployResponse, error)
+	NotifyDeploy(context.Context, *DeployEventRequest) (*DeployResponse, error)
 	mustEmbedUnimplementedDeployTriggerRouteServer()
 }
 
@@ -368,8 +368,8 @@ type DeployTriggerRouteServer interface {
 type UnimplementedDeployTriggerRouteServer struct {
 }
 
-func (UnimplementedDeployTriggerRouteServer) Notify(context.Context, *DeployEventRequest) (*DeployResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+func (UnimplementedDeployTriggerRouteServer) NotifyDeploy(context.Context, *DeployEventRequest) (*DeployResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method NotifyDeploy not implemented")
 }
 func (UnimplementedDeployTriggerRouteServer) mustEmbedUnimplementedDeployTriggerRouteServer() {}
 
@@ -384,20 +384,20 @@ func RegisterDeployTriggerRouteServer(s grpc.ServiceRegistrar, srv DeployTrigger
 	s.RegisterService(&DeployTriggerRoute_ServiceDesc, srv)
 }
 
-func _DeployTriggerRoute_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _DeployTriggerRoute_NotifyDeploy_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeployEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(DeployTriggerRouteServer).Notify(ctx, in)
+		return srv.(DeployTriggerRouteServer).NotifyDeploy(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/grpcNotification.DeployTriggerRoute/Notify",
+		FullMethod: "/grpcNotification.DeployTriggerRoute/NotifyDeploy",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(DeployTriggerRouteServer).Notify(ctx, req.(*DeployEventRequest))
+		return srv.(DeployTriggerRouteServer).NotifyDeploy(ctx, req.(*DeployEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -410,8 +410,8 @@ var DeployTriggerRoute_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*DeployTriggerRouteServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Notify",
-			Handler:    _DeployTriggerRoute_Notify_Handler,
+			MethodName: "NotifyDeploy",
+			Handler:    _DeployTriggerRoute_NotifyDeploy_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

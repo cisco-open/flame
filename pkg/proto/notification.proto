@@ -76,7 +76,7 @@ message DeployEvent {
 
 // Job related notifications
 service JobTriggerRoute {
-  rpc Notify(JobEventRequest) returns (JobResponse) {}
+  rpc NotifyJob(JobEventRequest) returns (JobResponse) {}
 }
 
 message JobEventRequest {
@@ -98,7 +98,7 @@ message JobResponse{
 
 // Deployment related notifications
 service DeployTriggerRoute {
-  rpc Notify(DeployEventRequest) returns (DeployResponse) {}
+  rpc NotifyDeploy(DeployEventRequest) returns (DeployResponse) {}
 }
 
 message DeployEventRequest {
