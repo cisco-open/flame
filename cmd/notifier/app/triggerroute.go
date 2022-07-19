@@ -25,7 +25,7 @@ import (
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
 
-func (s *notificationServer) Notify(ctx context.Context, in *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
+func (s *notificationServer) NotifyJob(ctx context.Context, in *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
 	switch in.Type {
 	case pbNotify.JobEventType_START_JOB:
 	case pbNotify.JobEventType_STOP_JOB:
