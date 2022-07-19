@@ -24,6 +24,8 @@ option go_package = "github.com/cisco-open/flame/pkg/proto/notification";
 ////////////////////////////////////////////////////////////////////////////////
 
 // EventRoute service defines communication between agent and notifier
+
+// Job related notifications
 service JobEventRoute {
   // This implements a server side streaming RPC
   rpc GetJobEvent(JobTaskInfo) returns (stream JobEvent) {}
@@ -46,11 +48,33 @@ message JobEvent {
   string job_id = 2;
 }
 
+// Deployer related notifications
+service DeployEventRoute {
+  rpc GetDeployEvent(DeployInfo) returns (stream DeployEvent) {}
+}
+enum DeployEventType {
+  UNKNOWN_DEPLOYMENT_TYPE = 0; // default
+  ADD_RESOURCE = 1;
+  REVOKE_RESOURCE = 2;
+}
+
+message DeployInfo {
+  string compute_id = 1;
+  string api_key = 2;
+}
+
+message DeployEvent {
+  DeployEventType type = 1;
+  string job_id = 2;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Definitions for TriggerRoute
 ////////////////////////////////////////////////////////////////////////////////
 
 // TriggerRoute service defines communication between controller and notifier
+
+// Job related notifications
 service JobTriggerRoute {
   rpc Notify(JobEventRequest) returns (JobResponse) {}
 }
@@ -70,4 +94,26 @@ message JobResponse{
   Status status = 1;
   string message = 2;
   repeated string failed_tasks = 3;
+}
+
+// Deployment related notifications
+service DeployTriggerRoute {
+  rpc Notify(DeployEventRequest) returns (DeployResponse) {}
+}
+
+message DeployEventRequest {
+  DeployEventType type = 1;
+  repeated string compute_ids = 2;
+  string job_id = 3;
+}
+
+message DeployResponse{
+  enum Status {
+    ERROR = 0; // default
+    PARTIAL_SUCCESS = 1; // e.g., not all deployers received event
+    SUCCESS = 2;
+  }
+  Status status = 1;
+  string message = 2;
+  repeated string failed_deployers = 3;
 }

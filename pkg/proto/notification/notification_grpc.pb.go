@@ -133,6 +133,119 @@ var JobEventRoute_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "notification.proto",
 }
 
+// DeployEventRouteClient is the client API for DeployEventRoute service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type DeployEventRouteClient interface {
+	GetDeployEvent(ctx context.Context, in *DeployInfo, opts ...grpc.CallOption) (DeployEventRoute_GetDeployEventClient, error)
+}
+
+type deployEventRouteClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewDeployEventRouteClient(cc grpc.ClientConnInterface) DeployEventRouteClient {
+	return &deployEventRouteClient{cc}
+}
+
+func (c *deployEventRouteClient) GetDeployEvent(ctx context.Context, in *DeployInfo, opts ...grpc.CallOption) (DeployEventRoute_GetDeployEventClient, error) {
+	stream, err := c.cc.NewStream(ctx, &DeployEventRoute_ServiceDesc.Streams[0], "/grpcNotification.DeployEventRoute/GetDeployEvent", opts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &deployEventRouteGetDeployEventClient{stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+type DeployEventRoute_GetDeployEventClient interface {
+	Recv() (*DeployEvent, error)
+	grpc.ClientStream
+}
+
+type deployEventRouteGetDeployEventClient struct {
+	grpc.ClientStream
+}
+
+func (x *deployEventRouteGetDeployEventClient) Recv() (*DeployEvent, error) {
+	m := new(DeployEvent)
+	if err := x.ClientStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+// DeployEventRouteServer is the server API for DeployEventRoute service.
+// All implementations must embed UnimplementedDeployEventRouteServer
+// for forward compatibility
+type DeployEventRouteServer interface {
+	GetDeployEvent(*DeployInfo, DeployEventRoute_GetDeployEventServer) error
+	mustEmbedUnimplementedDeployEventRouteServer()
+}
+
+// UnimplementedDeployEventRouteServer must be embedded to have forward compatible implementations.
+type UnimplementedDeployEventRouteServer struct {
+}
+
+func (UnimplementedDeployEventRouteServer) GetDeployEvent(*DeployInfo, DeployEventRoute_GetDeployEventServer) error {
+	return status.Errorf(codes.Unimplemented, "method GetDeployEvent not implemented")
+}
+func (UnimplementedDeployEventRouteServer) mustEmbedUnimplementedDeployEventRouteServer() {}
+
+// UnsafeDeployEventRouteServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DeployEventRouteServer will
+// result in compilation errors.
+type UnsafeDeployEventRouteServer interface {
+	mustEmbedUnimplementedDeployEventRouteServer()
+}
+
+func RegisterDeployEventRouteServer(s grpc.ServiceRegistrar, srv DeployEventRouteServer) {
+	s.RegisterService(&DeployEventRoute_ServiceDesc, srv)
+}
+
+func _DeployEventRoute_GetDeployEvent_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(DeployInfo)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(DeployEventRouteServer).GetDeployEvent(m, &deployEventRouteGetDeployEventServer{stream})
+}
+
+type DeployEventRoute_GetDeployEventServer interface {
+	Send(*DeployEvent) error
+	grpc.ServerStream
+}
+
+type deployEventRouteGetDeployEventServer struct {
+	grpc.ServerStream
+}
+
+func (x *deployEventRouteGetDeployEventServer) Send(m *DeployEvent) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+// DeployEventRoute_ServiceDesc is the grpc.ServiceDesc for DeployEventRoute service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var DeployEventRoute_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "grpcNotification.DeployEventRoute",
+	HandlerType: (*DeployEventRouteServer)(nil),
+	Methods:     []grpc.MethodDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "GetDeployEvent",
+			Handler:       _DeployEventRoute_GetDeployEvent_Handler,
+			ServerStreams: true,
+		},
+	},
+	Metadata: "notification.proto",
+}
+
 // JobTriggerRouteClient is the client API for JobTriggerRoute service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
@@ -213,6 +326,92 @@ var JobTriggerRoute_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Notify",
 			Handler:    _JobTriggerRoute_Notify_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
+	Metadata: "notification.proto",
+}
+
+// DeployTriggerRouteClient is the client API for DeployTriggerRoute service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
+type DeployTriggerRouteClient interface {
+	Notify(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error)
+}
+
+type deployTriggerRouteClient struct {
+	cc grpc.ClientConnInterface
+}
+
+func NewDeployTriggerRouteClient(cc grpc.ClientConnInterface) DeployTriggerRouteClient {
+	return &deployTriggerRouteClient{cc}
+}
+
+func (c *deployTriggerRouteClient) Notify(ctx context.Context, in *DeployEventRequest, opts ...grpc.CallOption) (*DeployResponse, error) {
+	out := new(DeployResponse)
+	err := c.cc.Invoke(ctx, "/grpcNotification.DeployTriggerRoute/Notify", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// DeployTriggerRouteServer is the server API for DeployTriggerRoute service.
+// All implementations must embed UnimplementedDeployTriggerRouteServer
+// for forward compatibility
+type DeployTriggerRouteServer interface {
+	Notify(context.Context, *DeployEventRequest) (*DeployResponse, error)
+	mustEmbedUnimplementedDeployTriggerRouteServer()
+}
+
+// UnimplementedDeployTriggerRouteServer must be embedded to have forward compatible implementations.
+type UnimplementedDeployTriggerRouteServer struct {
+}
+
+func (UnimplementedDeployTriggerRouteServer) Notify(context.Context, *DeployEventRequest) (*DeployResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method Notify not implemented")
+}
+func (UnimplementedDeployTriggerRouteServer) mustEmbedUnimplementedDeployTriggerRouteServer() {}
+
+// UnsafeDeployTriggerRouteServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to DeployTriggerRouteServer will
+// result in compilation errors.
+type UnsafeDeployTriggerRouteServer interface {
+	mustEmbedUnimplementedDeployTriggerRouteServer()
+}
+
+func RegisterDeployTriggerRouteServer(s grpc.ServiceRegistrar, srv DeployTriggerRouteServer) {
+	s.RegisterService(&DeployTriggerRoute_ServiceDesc, srv)
+}
+
+func _DeployTriggerRoute_Notify_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeployEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(DeployTriggerRouteServer).Notify(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/grpcNotification.DeployTriggerRoute/Notify",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(DeployTriggerRouteServer).Notify(ctx, req.(*DeployEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+// DeployTriggerRoute_ServiceDesc is the grpc.ServiceDesc for DeployTriggerRoute service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var DeployTriggerRoute_ServiceDesc = grpc.ServiceDesc{
+	ServiceName: "grpcNotification.DeployTriggerRoute",
+	HandlerType: (*DeployTriggerRouteServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "Notify",
+			Handler:    _DeployTriggerRoute_Notify_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
