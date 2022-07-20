@@ -17,6 +17,7 @@
 package app
 
 import (
+	"context"
 	"crypto/tls"
 	"net/http"
 	"time"
@@ -28,12 +29,15 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 )
 
 type resourceHandler struct {
 	apiserverEp string
 	notifierEp  string
 	spec        openapi.ComputeSpec
+
+	stream pbNotify.DeployEventRoute_GetDeployEventClient
 
 	grpcDialOpt grpc.DialOption
 }
@@ -81,6 +85,8 @@ func (r *resourceHandler) doStart() {
 			zap.S().Fatalf("Cannot connect with notifier: %v", err)
 		}
 
+		r.do()
+
 		// if connection is broken right after connection is made, this can cause
 		// too many connection/disconnection events. To migitage that, add some static
 		// pause time.
@@ -95,7 +101,62 @@ func (r *resourceHandler) connect() error {
 		zap.S().Debugf("Cannot connect with notifier: %v, conn: %v", err, conn)
 		return err
 	}
-	zap.S().Infof("Connected with notifier at: %s", r.notifierEp)
+	zap.S().Infof("Connected with notifier at: %s, will open stream", r.notifierEp)
+
+	client := pbNotify.NewDeployEventRouteClient(conn)
+	in := &pbNotify.DeployInfo{
+		ComputeId: r.spec.ComputeId,
+		ApiKey:    r.spec.ApiKey,
+	}
+
+	// setup notification stream
+	stream, err := client.GetDeployEvent(context.Background(), in)
+	if err != nil {
+		zap.S().Debugf("Open stream error: %v", err)
+		return err
+	}
+
+	r.stream = stream
+	zap.S().Infof("Opened stream with notifier at %s", r.notifierEp)
 
 	return nil
+}
+
+func (r *resourceHandler) do() {
+	for {
+		resp, err := r.stream.Recv()
+		if err != nil {
+			zap.S().Errorf("Failed to receive notification: %v", err)
+			break
+		}
+
+		r.dealWith(resp)
+	}
+
+	zap.S().Info("Disconnected from notifier")
+}
+
+func (r *resourceHandler) dealWith(in *pbNotify.DeployEvent) {
+	switch in.GetType() {
+	case pbNotify.DeployEventType_ADD_RESOURCE:
+		r.addResource(in.JobId)
+
+	case pbNotify.DeployEventType_REVOKE_RESOURCE:
+		r.revokeResource(in.JobId)
+
+	case pbNotify.DeployEventType_UNKNOWN_DEPLOYMENT_TYPE:
+		fallthrough
+	default:
+		zap.S().Errorf("Invalid message type: %s", in.GetType())
+	}
+}
+
+func (r *resourceHandler) addResource(jobId string) {
+	zap.S().Infof("Received add resource request for job %s", jobId)
+	// TODO: implement addResource method
+}
+
+func (r *resourceHandler) revokeResource(jobId string) {
+	zap.S().Infof("Received revoke resource request for job %s", jobId)
+	// TODO: implement revokeResource method
 }

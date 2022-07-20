@@ -232,7 +232,7 @@ func (s *StateStarting) Deploy(event *JobEvent) {
 	}
 
 	// send a job start message to notifier
-	err = s.hdlr.notify(pbNotify.JobEventType_START_JOB)
+	err = s.hdlr.notifyJob(pbNotify.JobEventType_START_JOB)
 	if err != nil {
 		zap.S().Debugf("%v", err)
 

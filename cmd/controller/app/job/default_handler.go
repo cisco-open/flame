@@ -214,6 +214,10 @@ func (h *DefaultHandler) ChangeState(state JobHandlerState) {
 }
 
 func (h *DefaultHandler) allocateComputes() error {
+	// Placeholder invocation for new deployer
+	h.notifyDeploy(pbNotify.DeployEventType_ADD_RESOURCE)
+	zap.S().Infof("Invoking notifyDeploy - add resource - from allocateComputes()")
+
 	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
 	targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
 	if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
@@ -297,7 +301,7 @@ func (h *DefaultHandler) allocateComputes() error {
 	return nil
 }
 
-func (h *DefaultHandler) notify(evtType pbNotify.JobEventType) error {
+func (h *DefaultHandler) notifyJob(evtType pbNotify.JobEventType) error {
 	req := &pbNotify.JobEventRequest{
 		Type:    evtType,
 		TaskIds: make([]string, 0),
@@ -308,12 +312,32 @@ func (h *DefaultHandler) notify(evtType pbNotify.JobEventType) error {
 		req.TaskIds = append(req.TaskIds, taskInfo.TaskId)
 	}
 
-	resp, err := newNotifyClient(h.notifier, h.bInsecure, h.bPlain).sendNotification(req)
+	resp, err := newNotifyClient(h.notifier, h.bInsecure, h.bPlain).sendJobNotification(req)
 	if err != nil {
-		return fmt.Errorf("failed to notify: %v", err)
+		return fmt.Errorf("failed to notify for job: %v", err)
 	}
 
-	zap.S().Infof("response status = %s", resp.Status.String())
+	zap.S().Infof("response status from notifyJob = %s", resp.Status.String())
+
+	return nil
+}
+
+func (h *DefaultHandler) notifyDeploy(evtType pbNotify.DeployEventType) error {
+	// TODO: add computeId field to tasks and remove hard-coding
+	computeIds := []string{"compute-1"}
+
+	req := &pbNotify.DeployEventRequest{
+		Type:       evtType,
+		ComputeIds: computeIds,
+		JobId:      h.jobId,
+	}
+
+	resp, err := newNotifyClient(h.notifier, h.bInsecure, h.bPlain).sendDeployNotification(req)
+	if err != nil {
+		return fmt.Errorf("failed to notify for deployment: %v", err)
+	}
+
+	zap.S().Infof("response status from notifyDeploy = %s", resp.Status.String())
 
 	return nil
 }
