@@ -34,7 +34,7 @@ func (s *notificationServer) NotifyJob(ctx context.Context, in *pbNotify.JobEven
 	case pbNotify.JobEventType_UNKNOWN_EVENT_TYPE:
 		fallthrough
 	default:
-		return nil, fmt.Errorf("unknown event type: %s", in.GetType())
+		return nil, fmt.Errorf("unknown job event type: %s", in.GetType())
 	}
 
 	failedTasks := make([]string, 0)
@@ -66,6 +66,54 @@ func (s *notificationServer) NotifyJob(ctx context.Context, in *pbNotify.JobEven
 	} else if len(failedTasks) > 0 && len(failedTasks) < len(in.TaskIds) {
 		resp.Message = "Registered event for some tasks successfully"
 		resp.Status = pbNotify.JobResponse_PARTIAL_SUCCESS
+	}
+
+	zap.S().Info(resp.Message)
+
+	return resp, nil
+}
+
+func (s *notificationServer) NotifyDeploy(ctx context.Context, in *pbNotify.DeployEventRequest) (*pbNotify.DeployResponse, error) {
+	zap.S().Info("TriggerRoute - received message from controller to %v for compute %v", in.GetType(), in.ComputeIds)
+	switch in.Type {
+	case pbNotify.DeployEventType_ADD_RESOURCE:
+	case pbNotify.DeployEventType_REVOKE_RESOURCE:
+
+	case pbNotify.DeployEventType_UNKNOWN_DEPLOYMENT_TYPE:
+		fallthrough
+	default:
+		return nil, fmt.Errorf("unknown deploy event type: %s", in.GetType())
+	}
+
+	failedDeployers := make([]string, 0)
+	for _, computeId := range in.ComputeIds {
+		event := pbNotify.DeployEvent{
+			Type:  in.Type,
+			JobId: in.JobId,
+		}
+
+		eventCh := s.getDeployEventChannel(computeId)
+
+		select {
+		case eventCh <- &event:
+			// Do nothing
+		default:
+			failedDeployers = append(failedDeployers, computeId)
+		}
+	}
+
+	resp := &pbNotify.DeployResponse{
+		Status:          pbNotify.DeployResponse_SUCCESS,
+		Message:         "Successfully issued deployment instructions to deployers",
+		FailedDeployers: failedDeployers,
+	}
+
+	if len(in.ComputeIds) > 0 && len(failedDeployers) == len(in.ComputeIds) {
+		resp.Message = "Failed to issue deployment instructions for all deployers"
+		resp.Status = pbNotify.DeployResponse_ERROR
+	} else if len(failedDeployers) > 0 && len(failedDeployers) < len(in.ComputeIds) {
+		resp.Message = "Issued deployment instructions for some deployers successfully"
+		resp.Status = pbNotify.DeployResponse_PARTIAL_SUCCESS
 	}
 
 	zap.S().Info(resp.Message)

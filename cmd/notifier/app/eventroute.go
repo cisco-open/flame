@@ -45,9 +45,9 @@ func (s *notificationServer) GetJobEvent(in *pbNotify.JobTaskInfo, stream pbNoti
 
 		case <-stream.Context().Done():
 			zap.S().Infof("Stream context is done for task %s", taskId)
-			s.mutex.Lock()
-			delete(s.eventQueues, taskId)
-			s.mutex.Unlock()
+			s.mutexJob.Lock()
+			delete(s.jobEventQueues, taskId)
+			s.mutexJob.Unlock()
 			return nil
 		}
 	}
@@ -56,14 +56,56 @@ func (s *notificationServer) GetJobEvent(in *pbNotify.JobTaskInfo, stream pbNoti
 func (s *notificationServer) getJobEventChannel(taskId string) chan *pbNotify.JobEvent {
 	var eventCh chan *pbNotify.JobEvent
 
-	s.mutex.Lock()
-	if _, ok := s.eventQueues[taskId]; !ok {
+	s.mutexJob.Lock()
+	if _, ok := s.jobEventQueues[taskId]; !ok {
 		eventCh = make(chan *pbNotify.JobEvent, eventChannelLen)
-		s.eventQueues[taskId] = eventCh
+		s.jobEventQueues[taskId] = eventCh
 	} else {
-		eventCh = s.eventQueues[taskId]
+		eventCh = s.jobEventQueues[taskId]
 	}
-	s.mutex.Unlock()
+	s.mutexJob.Unlock()
+
+	return eventCh
+}
+
+// GetDeployEvent is called by the client to subscribe to the notification service.
+// Adds the client to the server client map and stores the client stream.
+func (s *notificationServer) GetDeployEvent(in *pbNotify.DeployInfo, stream pbNotify.DeployEventRoute_GetDeployEventServer) error {
+	zap.S().Debugf("Serving event for deployer %v", in)
+
+	computeId := in.GetComputeId()
+
+	eventCh := s.getDeployEventChannel(computeId)
+	for {
+		select {
+		case event := <-eventCh:
+			zap.S().Infof("Pushing event %v to deployer %s", event, computeId)
+			err := stream.Send(event)
+			if err != nil {
+				zap.S().Warnf("Failed to push notification to deployer %s: %v", computeId, err)
+			}
+
+		case <-stream.Context().Done():
+			zap.S().Infof("Stream context is done for deployer %s", computeId)
+			s.mutexDeploy.Lock()
+			delete(s.deployEventQueues, computeId)
+			s.mutexDeploy.Unlock()
+			return nil
+		}
+	}
+}
+
+func (s *notificationServer) getDeployEventChannel(computeId string) chan *pbNotify.DeployEvent {
+	var eventCh chan *pbNotify.DeployEvent
+
+	s.mutexDeploy.Lock()
+	if _, ok := s.deployEventQueues[computeId]; !ok {
+		eventCh = make(chan *pbNotify.DeployEvent, eventChannelLen)
+		s.deployEventQueues[computeId] = eventCh
+	} else {
+		eventCh = s.deployEventQueues[computeId]
+	}
+	s.mutexDeploy.Unlock()
 
 	return eventCh
 }

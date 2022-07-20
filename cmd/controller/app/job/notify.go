@@ -55,22 +55,45 @@ func newNotifyClient(endpoint string, bInsecure bool, bPlain bool) *notifyClient
 	return &notifyClient{endpoint: endpoint, grpcDialOpt: grpcDialOpt}
 }
 
-// sendNotification sends a notification request to the notifier
-func (nc *notifyClient) sendNotification(req *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
+// sendJobNotification sends a job notification request to the notifier
+func (nc *notifyClient) sendJobNotification(req *pbNotify.JobEventRequest) (*pbNotify.JobResponse, error) {
 	conn, err := grpc.Dial(nc.endpoint, nc.grpcDialOpt)
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to notifier: %v", err)
+		return nil, fmt.Errorf("sendJobNotification failed to connect to notifier: %v", err)
 	}
 	defer conn.Close()
 
 	trClient := pbNotify.NewJobTriggerRouteClient(conn)
 
-	zap.S().Infof("Successfully connected to notifier: %s", nc.endpoint)
+	zap.S().Infof("sendJobNotification successfully connected to notifier: %s", nc.endpoint)
 
 	response, err := trClient.NotifyJob(context.Background(), req)
 
 	if err != nil {
-		errMsg := fmt.Sprintf("notification failed: %v", err)
+		errMsg := fmt.Sprintf("sendJobNotification failed: %v", err)
+		zap.S().Warn(errMsg)
+		return nil, fmt.Errorf(errMsg)
+	}
+
+	return response, nil
+}
+
+// sendDeployNotification sends a deployment notification request to the notifier
+func (nc *notifyClient) sendDeployNotification(req *pbNotify.DeployEventRequest) (*pbNotify.DeployResponse, error) {
+	conn, err := grpc.Dial(nc.endpoint, nc.grpcDialOpt)
+	if err != nil {
+		return nil, fmt.Errorf("sendDeployNotification failed to connect to notifier: %v", err)
+	}
+	defer conn.Close()
+
+	trClient := pbNotify.NewDeployTriggerRouteClient(conn)
+
+	zap.S().Infof("sendDeployNotification successfully connected to notifier: %s", nc.endpoint)
+
+	response, err := trClient.NotifyDeploy(context.Background(), req)
+
+	if err != nil {
+		errMsg := fmt.Sprintf("sendDeployNotification failed: %v", err)
 		zap.S().Warn(errMsg)
 		return nil, fmt.Errorf(errMsg)
 	}
