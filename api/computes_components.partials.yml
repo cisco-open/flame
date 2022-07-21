@@ -64,3 +64,67 @@ ComputeState:
     - up
     - down
     - maintenance
+
+########################################
+# Deployment config for agents
+########################################
+DeploymentConfig:
+  description: Deployment config for agents
+  type: object
+  properties:
+    jobId:
+      type: string
+    imageLoc:
+      type: string
+    agentKVs:
+      type: array
+      items:
+        $ref: '#/components/schemas/AgentKV'
+  required:
+    - jobId
+    - imageLoc
+    - agentKVs
+
+########################################
+# Config for agents in the deployment
+########################################
+AgentKV:
+  description:  Config for agents in the deployment
+  type: object
+  additionalProperties:
+    type: string
+
+########################################
+# Deployment status within a compute cluster
+########################################
+DeploymentStatus:
+  description: Deployment status within a compute cluster
+  type: object
+  properties:
+    jobId:
+      type: string
+    agentStatuses:
+      type: array
+      items: 
+        $ref: '#/components/schemas/AgentStatus'
+  required:
+    - jobId
+
+########################################
+# Status for an agent within a deployment
+########################################
+AgentStatus:
+  description: Status for an agent within a deployment
+  type: object
+  additionalProperties:
+    type: object
+    $ref: '#/components/schemas/AgentState'
+
+########################################
+# Agent state
+########################################
+AgentState:
+  enum:
+    - deployed
+    - revoked
+    - error

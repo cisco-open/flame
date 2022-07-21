@@ -25,30 +25,28 @@
 
 package openapi
 
-// ComputeSpec - Compute specification
-type ComputeSpec struct {
-	AdminId string `json:"adminId,omitempty"`
+type AgentState string
 
-	Region string `json:"region,omitempty"`
+// List of AgentState
+const (
+	DEPLOYED AgentState = "deployed"
+	REVOKED  AgentState = "revoked"
+	ERROR    AgentState = "error"
+)
 
-	ApiKey string `json:"apiKey,omitempty"`
-
-	ComputeId string `json:"computeId,omitempty"`
-}
-
-// AssertComputeSpecRequired checks if the required fields are not zero-ed
-func AssertComputeSpecRequired(obj ComputeSpec) error {
+// AssertAgentStateRequired checks if the required fields are not zero-ed
+func AssertAgentStateRequired(obj AgentState) error {
 	return nil
 }
 
-// AssertRecurseComputeSpecRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of ComputeSpec (e.g. [][]ComputeSpec), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseComputeSpecRequired(objSlice interface{}) error {
+// AssertRecurseAgentStateRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of AgentState (e.g. [][]AgentState), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseAgentStateRequired(objSlice interface{}) error {
 	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aComputeSpec, ok := obj.(ComputeSpec)
+		aAgentState, ok := obj.(AgentState)
 		if !ok {
 			return ErrTypeAssertionError
 		}
-		return AssertComputeSpecRequired(aComputeSpec)
+		return AssertAgentStateRequired(aAgentState)
 	})
 }

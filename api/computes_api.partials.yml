@@ -40,7 +40,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{compute}:
+/computes/{computeId}:
   ########################################
   # Get the status of a compute cluster
   ########################################
@@ -50,8 +50,8 @@
     tags:
       - computes
     parameters:
-      - name: compute
-        description: deployer id of compute cluster
+      - name: computeId
+        description: compute id of compute cluster
         in: path
         schema:
           type: string
@@ -81,8 +81,8 @@
     tags:
       - computes
     parameters:
-      - name: compute
-        description: deployer id of compute cluster
+      - name: computeId
+        description: compute id of compute cluster
         in: path
         schema:
           type: string
@@ -115,8 +115,8 @@
     tags:
       - computes
     parameters:
-      - name: compute
-        description: deployer id of compute cluster
+      - name: computeId
+        description: compute id of compute cluster
         in: path
         schema:
           type: string
@@ -127,7 +127,7 @@
       '200':
         description: Deleted
       '404':
-        description: Deployer id not found
+        description: compute id not found
       '401':
         description: Unauthorized
       default:
@@ -137,7 +137,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{compute}/config:
+/computes/{computeId}/config:
   ########################################
   # Get configuration of a compute cluster
   ########################################
@@ -147,8 +147,8 @@
     tags:
       - computes
     parameters:
-      - name: compute
-        description: deployer id of compute cluster
+      - name: computeId
+        description: compute id of compute cluster
         in: path
         schema:
           type: string
@@ -162,6 +162,206 @@
             schema:
               $ref: '#/components/schemas/ComputeSpec'
         description: Information about compute cluster
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/computes/{computeId}/deployments:
+  ########################################
+  # Get all deployments within a compute cluster
+  ########################################
+  get:
+    operationId: getDeployments
+    summary: Get all deployments within a compute cluster
+    tags:
+      - computes
+    parameters:
+      - name: computeId
+        description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/DeploymentStatus'
+        description: An array of status of all deployments in a compute cluster
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/computes/{computeId}/deployments/{jobId}/config:
+  ########################################
+  # Get the deployment config for a job for a compute cluster
+  ########################################
+  get:
+    operationId: getDeploymentConfig
+    summary: Get the deployment config for a job for a compute cluster
+    tags:
+      - computes
+    parameters:
+      - name: computeId
+        description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentConfig'
+        description: Get deployment configs for a job deployment
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+/computes/{computeId}/deployments/{jobId}/status:
+  ########################################
+  # Send the deployment status for a job on a compute cluster
+  ########################################
+  post:
+    operationId: addDeploymentStatus
+    summary: Add the deployment status for a job on a compute cluster
+    tags:
+      - computes
+    parameters:
+      - name: computeId
+        description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentStatus'
+      description: Status for agents in a job deployment
+    responses:
+      "200":
+        description: Added deployment status
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+  
+  ########################################
+  # Update the deployment status for a job on a compute cluster
+  ########################################
+  put:
+    operationId: updateDeploymentStatus
+    summary: Update the deployment status for a job on a compute cluster
+    tags:
+      - computes
+    parameters:
+      - name: computeId
+        description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentStatus'
+      description: Status for agents in a job deployment
+    responses:
+      "200":
+        description: Updated the deployment status
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+  
+  ########################################
+  # Get the deployment status for a job on a compute cluster
+  ########################################
+  get:
+    operationId: getDeploymentStatus
+    summary: Get the deployment status for a job on a compute cluster
+    tags:
+      - computes
+    parameters:
+      - name: computeId
+        description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: jobId
+        description: job id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeploymentStatus'
+        description: Status for agents in a job deployment
       default:
         content:
           application/json:

@@ -25,30 +25,35 @@
 
 package openapi
 
-// ComputeSpec - Compute specification
-type ComputeSpec struct {
-	AdminId string `json:"adminId,omitempty"`
+// DeploymentStatus - Deployment status within a compute cluster
+type DeploymentStatus struct {
+	JobId string `json:"jobId"`
 
-	Region string `json:"region,omitempty"`
-
-	ApiKey string `json:"apiKey,omitempty"`
-
-	ComputeId string `json:"computeId,omitempty"`
+	AgentStatuses []map[string]AgentState `json:"agentStatuses,omitempty"`
 }
 
-// AssertComputeSpecRequired checks if the required fields are not zero-ed
-func AssertComputeSpecRequired(obj ComputeSpec) error {
+// AssertDeploymentStatusRequired checks if the required fields are not zero-ed
+func AssertDeploymentStatusRequired(obj DeploymentStatus) error {
+	elements := map[string]interface{}{
+		"jobId": obj.JobId,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
 	return nil
 }
 
-// AssertRecurseComputeSpecRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of ComputeSpec (e.g. [][]ComputeSpec), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseComputeSpecRequired(objSlice interface{}) error {
+// AssertRecurseDeploymentStatusRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of DeploymentStatus (e.g. [][]DeploymentStatus), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDeploymentStatusRequired(objSlice interface{}) error {
 	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aComputeSpec, ok := obj.(ComputeSpec)
+		aDeploymentStatus, ok := obj.(DeploymentStatus)
 		if !ok {
 			return ErrTypeAssertionError
 		}
-		return AssertComputeSpecRequired(aComputeSpec)
+		return AssertDeploymentStatusRequired(aDeploymentStatus)
 	})
 }
