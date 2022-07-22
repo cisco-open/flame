@@ -49,8 +49,27 @@ func NewComputesApiService() openapi.ComputesApiServicer {
 	return &ComputesApiService{}
 }
 
+// AddDeploymentStatus - Add the deployment status for a job on a compute cluster
+func (s *ComputesApiService) AddDeploymentStatus(ctx context.Context, computeId string,
+	jobId string, deploymentStatus openapi.DeploymentStatus) (openapi.ImplResponse, error) {
+	// TODO - update AddDeploymentStatus with the required logic for this service method.
+	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
+	// this service implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
+	//return Response(200, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
+	//return Response(401, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("AddDeploymentStatus method not implemented")
+}
+
 // DeleteCompute - Delete compute cluster specification
-func (s *ComputesApiService) DeleteCompute(ctx context.Context, compute string) (openapi.ImplResponse, error) {
+func (s *ComputesApiService) DeleteCompute(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
 	// TODO - update DeleteCompute with the required logic for this service method.
 	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
 	// this service implementation when updating open api generation.
@@ -71,7 +90,7 @@ func (s *ComputesApiService) DeleteCompute(ctx context.Context, compute string) 
 }
 
 // GetComputeConfig - Get configuration for a compute cluster
-func (s *ComputesApiService) GetComputeConfig(ctx context.Context, compute string) (openapi.ImplResponse, error) {
+func (s *ComputesApiService) GetComputeConfig(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
 	// TODO - update GetComputeConfig with the required logic for this service method.
 	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
 	// this service implementation when updating open api generation.
@@ -86,7 +105,7 @@ func (s *ComputesApiService) GetComputeConfig(ctx context.Context, compute strin
 }
 
 // GetComputeStatus - Get status of a given compute cluster
-func (s *ComputesApiService) GetComputeStatus(ctx context.Context, compute string) (openapi.ImplResponse, error) {
+func (s *ComputesApiService) GetComputeStatus(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
 	// TODO - update GetComputeStatus with the required logic for this service method.
 	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
 	// this service implementation when updating open api generation.
@@ -98,6 +117,51 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, compute strin
 	//return Response(0, Error{}), nil
 
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetComputeStatus method not implemented")
+}
+
+// GetDeploymentConfig - Get the deployment config for a job for a compute cluster
+func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId string, jobId string) (openapi.ImplResponse, error) {
+	// TODO - update GetDeploymentConfig with the required logic for this service method.
+	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
+	// this service implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, DeploymentConfig{}) or use other options such as http.Ok ...
+	//return Response(200, DeploymentConfig{}), nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDeploymentConfig method not implemented")
+}
+
+// GetDeploymentStatus - Get the deployment status for a job on a compute cluster
+func (s *ComputesApiService) GetDeploymentStatus(ctx context.Context, computeId string, jobId string) (openapi.ImplResponse, error) {
+	// TODO - update GetDeploymentStatus with the required logic for this service method.
+	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
+	// this service implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, DeploymentStatus{}) or use other options such as http.Ok ...
+	//return Response(200, DeploymentStatus{}), nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDeploymentStatus method not implemented")
+}
+
+// GetDeployments - Get all deployments within a compute cluster
+func (s *ComputesApiService) GetDeployments(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
+	// TODO - update GetDeployments with the required logic for this service method.
+	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
+	// this service implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, []DeploymentStatus{}) or use other options such as http.Ok ...
+	//return Response(200, []DeploymentStatus{}), nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDeployments method not implemented")
 }
 
 // RegisterCompute - Register a new compute cluster
@@ -133,7 +197,7 @@ func (s *ComputesApiService) RegisterCompute(ctx context.Context, computeSpec op
 }
 
 // UpdateCompute - Update a compute cluster&#39;s specification
-func (s *ComputesApiService) UpdateCompute(ctx context.Context, compute string,
+func (s *ComputesApiService) UpdateCompute(ctx context.Context, computeId string,
 	computeSpec openapi.ComputeSpec) (openapi.ImplResponse, error) {
 	// TODO - update UpdateCompute with the required logic for this service method.
 	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
@@ -149,4 +213,23 @@ func (s *ComputesApiService) UpdateCompute(ctx context.Context, compute string,
 	//return Response(0, Error{}), nil
 
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateCompute method not implemented")
+}
+
+// UpdateDeploymentStatus - Update the deployment status for a job on a compute cluster
+func (s *ComputesApiService) UpdateDeploymentStatus(ctx context.Context, computeId string,
+	jobId string, deploymentStatus openapi.DeploymentStatus) (openapi.ImplResponse, error) {
+	// TODO - update UpdateDeploymentStatus with the required logic for this service method.
+	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
+	// this service implementation when updating open api generation.
+
+	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
+	//return Response(200, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
+	//return Response(401, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDeploymentStatus method not implemented")
 }
