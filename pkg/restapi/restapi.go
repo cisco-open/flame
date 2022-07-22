@@ -73,16 +73,15 @@ const (
 	UpdateTaskStatusEndPoint = "UPDATE_TASK_STATUS"
 
 	// Keys for computes endpoints
-	RegisterComputeEndpoint        = "REGISTER_COMPUTE"
-	GetComputeStatusEndpoint       = "GET_COMPUTE_STATUS"
-	UpdateComputeEndpoint          = "UPDATE_COMPUTE"
-	DeleteComputeEndpoint          = "DELETE_COMPUTE"
-	GetComputeConfigEndpoint       = "GET_COMPUTE_CONFIG"
-	GetDeploymentsEndpoint         = "GET_DEPLOYMENTS"
-	GetDeploymentConfigEndpoint    = "GET_DEPLOYMENT_CONFIG"
-	AddDeploymentStatusEndpoint    = "ADD_DEPLOYMENT_STATUS"
-	UpdateDeploymentStatusEndpoint = "UPDATE_DEPLOYMENT_STATUS"
-	GetDeploymentStatusEndpoint    = "GET_DEPLOYMENT_STATUS"
+	RegisterComputeEndpoint     = "REGISTER_COMPUTE"
+	GetComputeStatusEndpoint    = "GET_COMPUTE_STATUS"
+	UpdateComputeEndpoint       = "UPDATE_COMPUTE"
+	DeleteComputeEndpoint       = "DELETE_COMPUTE"
+	GetComputeConfigEndpoint    = "GET_COMPUTE_CONFIG"
+	GetDeploymentsEndpoint      = "GET_DEPLOYMENTS"
+	GetDeploymentConfigEndpoint = "GET_DEPLOYMENT_CONFIG"
+	PutDeploymentStatusEndpoint = "PUT_DEPLOYMENT_STATUS"
+	GetDeploymentStatusEndpoint = "GET_DEPLOYMENT_STATUS"
 )
 
 var URI = map[string]string{
@@ -125,16 +124,15 @@ var URI = map[string]string{
 	UpdateTaskStatusEndPoint: "/jobs/{{.jobId}}/{{.taskId}}/task/status",
 
 	// Computes
-	RegisterComputeEndpoint:        "/computes",
-	GetComputeStatusEndpoint:       "/computes/{{.computeId}}",
-	UpdateComputeEndpoint:          "/computes/{{.computeId}}",
-	DeleteComputeEndpoint:          "/computes/{{.computeId}}",
-	GetComputeConfigEndpoint:       "/computes/{{.computeId}}/config",
-	GetDeploymentsEndpoint:         "/computes/{{.computeId}}/deployments",
-	GetDeploymentConfigEndpoint:    "/computes/{{.computeId}}/deployments/{{.jobId}}/config",
-	AddDeploymentStatusEndpoint:    "/computes/{{.computeId}}/deployments/{{.jobId}}/status",
-	UpdateDeploymentStatusEndpoint: "/computes/{{.computeId}}/deployments/{{.jobId}}/status",
-	GetDeploymentStatusEndpoint:    "/computes/{{.computeId}}/deployments/{{.jobId}}/status",
+	RegisterComputeEndpoint:     "/computes",
+	GetComputeStatusEndpoint:    "/computes/{{.computeId}}",
+	UpdateComputeEndpoint:       "/computes/{{.computeId}}",
+	DeleteComputeEndpoint:       "/computes/{{.computeId}}",
+	GetComputeConfigEndpoint:    "/computes/{{.computeId}}/config",
+	GetDeploymentsEndpoint:      "/computes/{{.computeId}}/deployments",
+	GetDeploymentConfigEndpoint: "/computes/{{.computeId}}/deployments/{{.jobId}}/config",
+	PutDeploymentStatusEndpoint: "/computes/{{.computeId}}/deployments/{{.jobId}}/status",
+	GetDeploymentStatusEndpoint: "/computes/{{.computeId}}/deployments/{{.jobId}}/status",
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {

@@ -117,7 +117,6 @@ AgentStatus:
   description: Status for an agent within a deployment
   type: object
   additionalProperties:
-    type: object
     $ref: '#/components/schemas/AgentState'
 
 ########################################
@@ -125,6 +124,6 @@ AgentStatus:
 ########################################
 AgentState:
   enum:
-    - deployed
-    - revoked
-    - error
+    - agentDeployed
+    - agentRevoked
+    - agentFailed

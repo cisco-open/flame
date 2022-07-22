@@ -58,6 +58,13 @@
         style: simple
         explode: false
         required: true
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       "200":
         content:
@@ -84,6 +91,13 @@
       - name: computeId
         description: compute id of compute cluster
         in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - in: header
+        name: X-API-KEY
         schema:
           type: string
         style: simple
@@ -123,6 +137,13 @@
         style: simple
         explode: false
         required: true
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       '200':
         description: Deleted
@@ -155,6 +176,13 @@
         style: simple
         explode: false
         required: true
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       "200":
         content:
@@ -182,6 +210,13 @@
       - name: computeId
         description: compute id of compute cluster
         in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - in: header
+        name: X-API-KEY
         schema:
           type: string
         style: simple
@@ -229,6 +264,13 @@
         style: simple
         explode: false
         required: true
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       "200":
         content:
@@ -245,54 +287,11 @@
 
 /computes/{computeId}/deployments/{jobId}/status:
   ########################################
-  # Send the deployment status for a job on a compute cluster
-  ########################################
-  post:
-    operationId: addDeploymentStatus
-    summary: Add the deployment status for a job on a compute cluster
-    tags:
-      - computes
-    parameters:
-      - name: computeId
-        description: compute id of compute cluster
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-      - name: jobId
-        description: job id
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-    requestBody:
-      content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeploymentStatus'
-      description: Status for agents in a job deployment
-    responses:
-      "200":
-        description: Added deployment status
-      '401':
-        description: Unauthorized
-      default:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Error'
-        description: unexpected error
-  
-  ########################################
-  # Update the deployment status for a job on a compute cluster
+  # Add or update the deployment status for a job on a compute cluster
   ########################################
   put:
-    operationId: updateDeploymentStatus
-    summary: Update the deployment status for a job on a compute cluster
+    operationId: putDeploymentStatus
+    summary: Add or update the deployment status for a job on a compute cluster
     tags:
       - computes
     parameters:
@@ -312,6 +311,13 @@
         style: simple
         explode: false
         required: true
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     requestBody:
       content:
           application/json:
@@ -320,7 +326,7 @@
       description: Status for agents in a job deployment
     responses:
       "200":
-        description: Updated the deployment status
+        description: Added or updated the deployment status
       '401':
         description: Unauthorized
       default:
@@ -350,6 +356,13 @@
       - name: jobId
         description: job id
         in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - in: header
+        name: X-API-KEY
         schema:
           type: string
         style: simple

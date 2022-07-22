@@ -29,9 +29,9 @@ type AgentState string
 
 // List of AgentState
 const (
-	DEPLOYED AgentState = "deployed"
-	REVOKED  AgentState = "revoked"
-	ERROR    AgentState = "error"
+	AGENT_DEPLOYED AgentState = "agentDeployed"
+	AGENT_REVOKED  AgentState = "agentRevoked"
+	AGENT_FAILED   AgentState = "agentFailed"
 )
 
 // AssertAgentStateRequired checks if the required fields are not zero-ed

@@ -67,12 +67,6 @@ func NewComputesApiController(s ComputesApiServicer, opts ...ComputesApiOption) 
 func (c *ComputesApiController) Routes() Routes {
 	return Routes{
 		{
-			"AddDeploymentStatus",
-			strings.ToUpper("Post"),
-			"/computes/{computeId}/deployments/{jobId}/status",
-			c.AddDeploymentStatus,
-		},
-		{
 			"DeleteCompute",
 			strings.ToUpper("Delete"),
 			"/computes/{computeId}",
@@ -109,6 +103,12 @@ func (c *ComputesApiController) Routes() Routes {
 			c.GetDeployments,
 		},
 		{
+			"PutDeploymentStatus",
+			strings.ToUpper("Put"),
+			"/computes/{computeId}/deployments/{jobId}/status",
+			c.PutDeploymentStatus,
+		},
+		{
 			"RegisterCompute",
 			strings.ToUpper("Post"),
 			"/computes",
@@ -120,41 +120,7 @@ func (c *ComputesApiController) Routes() Routes {
 			"/computes/{computeId}",
 			c.UpdateCompute,
 		},
-		{
-			"UpdateDeploymentStatus",
-			strings.ToUpper("Put"),
-			"/computes/{computeId}/deployments/{jobId}/status",
-			c.UpdateDeploymentStatus,
-		},
 	}
-}
-
-// AddDeploymentStatus - Add the deployment status for a job on a compute cluster
-func (c *ComputesApiController) AddDeploymentStatus(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
-
-	jobIdParam := params["jobId"]
-
-	deploymentStatusParam := DeploymentStatus{}
-	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
-	if err := d.Decode(&deploymentStatusParam); err != nil {
-		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
-		return
-	}
-	if err := AssertDeploymentStatusRequired(deploymentStatusParam); err != nil {
-		c.errorHandler(w, r, err, nil)
-		return
-	}
-	result, err := c.service.AddDeploymentStatus(r.Context(), computeIdParam, jobIdParam, deploymentStatusParam)
-	// If an error occurred, encode the error with the status code
-	if err != nil {
-		c.errorHandler(w, r, err, &result)
-		return
-	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
 // DeleteCompute - Delete compute cluster specification
@@ -162,7 +128,8 @@ func (c *ComputesApiController) DeleteCompute(w http.ResponseWriter, r *http.Req
 	params := mux.Vars(r)
 	computeIdParam := params["computeId"]
 
-	result, err := c.service.DeleteCompute(r.Context(), computeIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.DeleteCompute(r.Context(), computeIdParam, xAPIKEYParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -177,7 +144,8 @@ func (c *ComputesApiController) GetComputeConfig(w http.ResponseWriter, r *http.
 	params := mux.Vars(r)
 	computeIdParam := params["computeId"]
 
-	result, err := c.service.GetComputeConfig(r.Context(), computeIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.GetComputeConfig(r.Context(), computeIdParam, xAPIKEYParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -192,7 +160,8 @@ func (c *ComputesApiController) GetComputeStatus(w http.ResponseWriter, r *http.
 	params := mux.Vars(r)
 	computeIdParam := params["computeId"]
 
-	result, err := c.service.GetComputeStatus(r.Context(), computeIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.GetComputeStatus(r.Context(), computeIdParam, xAPIKEYParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -209,7 +178,8 @@ func (c *ComputesApiController) GetDeploymentConfig(w http.ResponseWriter, r *ht
 
 	jobIdParam := params["jobId"]
 
-	result, err := c.service.GetDeploymentConfig(r.Context(), computeIdParam, jobIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.GetDeploymentConfig(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -226,7 +196,8 @@ func (c *ComputesApiController) GetDeploymentStatus(w http.ResponseWriter, r *ht
 
 	jobIdParam := params["jobId"]
 
-	result, err := c.service.GetDeploymentStatus(r.Context(), computeIdParam, jobIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.GetDeploymentStatus(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -241,7 +212,37 @@ func (c *ComputesApiController) GetDeployments(w http.ResponseWriter, r *http.Re
 	params := mux.Vars(r)
 	computeIdParam := params["computeId"]
 
-	result, err := c.service.GetDeployments(r.Context(), computeIdParam)
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	result, err := c.service.GetDeployments(r.Context(), computeIdParam, xAPIKEYParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// PutDeploymentStatus - Add or update the deployment status for a job on a compute cluster
+func (c *ComputesApiController) PutDeploymentStatus(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	computeIdParam := params["computeId"]
+
+	jobIdParam := params["jobId"]
+
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
+	deploymentStatusParam := DeploymentStatus{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&deploymentStatusParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+	if err := AssertDeploymentStatusRequired(deploymentStatusParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.PutDeploymentStatus(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam, deploymentStatusParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -279,6 +280,7 @@ func (c *ComputesApiController) UpdateCompute(w http.ResponseWriter, r *http.Req
 	params := mux.Vars(r)
 	computeIdParam := params["computeId"]
 
+	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	computeSpecParam := ComputeSpec{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
@@ -290,35 +292,7 @@ func (c *ComputesApiController) UpdateCompute(w http.ResponseWriter, r *http.Req
 		c.errorHandler(w, r, err, nil)
 		return
 	}
-	result, err := c.service.UpdateCompute(r.Context(), computeIdParam, computeSpecParam)
-	// If an error occurred, encode the error with the status code
-	if err != nil {
-		c.errorHandler(w, r, err, &result)
-		return
-	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
-}
-
-// UpdateDeploymentStatus - Update the deployment status for a job on a compute cluster
-func (c *ComputesApiController) UpdateDeploymentStatus(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
-
-	jobIdParam := params["jobId"]
-
-	deploymentStatusParam := DeploymentStatus{}
-	d := json.NewDecoder(r.Body)
-	d.DisallowUnknownFields()
-	if err := d.Decode(&deploymentStatusParam); err != nil {
-		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
-		return
-	}
-	if err := AssertDeploymentStatusRequired(deploymentStatusParam); err != nil {
-		c.errorHandler(w, r, err, nil)
-		return
-	}
-	result, err := c.service.UpdateDeploymentStatus(r.Context(), computeIdParam, jobIdParam, deploymentStatusParam)
+	result, err := c.service.UpdateCompute(r.Context(), computeIdParam, xAPIKEYParam, computeSpecParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
