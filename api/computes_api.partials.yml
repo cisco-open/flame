@@ -40,7 +40,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{computeId}:
+/computes/{computeId}/apikey/{apiKey}:
   ########################################
   # Get the status of a compute cluster
   ########################################
@@ -52,6 +52,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -83,6 +91,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -123,6 +139,14 @@
         style: simple
         explode: false
         required: true
+      - name: apiKey
+        description: api key for the compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       '200':
         description: Deleted
@@ -137,7 +161,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{computeId}/config:
+/computes/{computeId}/apikey/{apiKey}/config:
   ########################################
   # Get configuration of a compute cluster
   ########################################
@@ -149,6 +173,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -169,7 +201,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{computeId}/deployments:
+/computes/{computeId}/apikey/{apiKey}/deployments:
   ########################################
   # Get all deployments within a compute cluster
   ########################################
@@ -181,6 +213,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -203,7 +243,7 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{computeId}/deployments/{jobId}/config:
+/computes/{computeId}/apikey/{apiKey}/deployments/{jobId}/config:
   ########################################
   # Get the deployment config for a job for a compute cluster
   ########################################
@@ -215,6 +255,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -243,61 +291,26 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
-/computes/{computeId}/deployments/{jobId}/status:
+/computes/{computeId}/apikey/{apiKey}/deployments/{jobId}/status:
   ########################################
-  # Send the deployment status for a job on a compute cluster
-  ########################################
-  post:
-    operationId: addDeploymentStatus
-    summary: Add the deployment status for a job on a compute cluster
-    tags:
-      - computes
-    parameters:
-      - name: computeId
-        description: compute id of compute cluster
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-      - name: jobId
-        description: job id
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-    requestBody:
-      content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeploymentStatus'
-      description: Status for agents in a job deployment
-    responses:
-      "200":
-        description: Added deployment status
-      '401':
-        description: Unauthorized
-      default:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Error'
-        description: unexpected error
-  
-  ########################################
-  # Update the deployment status for a job on a compute cluster
+  # Add or update the deployment status for a job on a compute cluster
   ########################################
   put:
-    operationId: updateDeploymentStatus
-    summary: Update the deployment status for a job on a compute cluster
+    operationId: putDeploymentStatus
+    summary: Add or update the deployment status for a job on a compute cluster
     tags:
       - computes
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string
@@ -320,7 +333,7 @@
       description: Status for agents in a job deployment
     responses:
       "200":
-        description: Updated the deployment status
+        description: Added or updated the deployment status
       '401':
         description: Unauthorized
       default:
@@ -341,6 +354,14 @@
     parameters:
       - name: computeId
         description: compute id of compute cluster
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: apiKey
+        description: api key for the compute cluster
         in: path
         schema:
           type: string

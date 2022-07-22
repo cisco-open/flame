@@ -125,6 +125,6 @@ AgentStatus:
 ########################################
 AgentState:
   enum:
-    - deployed
-    - revoked
-    - error
+    - agentDeployed
+    - agentRevoked
+    - agentFailed

@@ -35,16 +35,15 @@ import (
 // The ComputesApiRouter implementation should parse necessary information from the http request,
 // pass the data to a ComputesApiServicer to perform the required actions, then write the service results to the http response.
 type ComputesApiRouter interface {
-	AddDeploymentStatus(http.ResponseWriter, *http.Request)
 	DeleteCompute(http.ResponseWriter, *http.Request)
 	GetComputeConfig(http.ResponseWriter, *http.Request)
 	GetComputeStatus(http.ResponseWriter, *http.Request)
 	GetDeploymentConfig(http.ResponseWriter, *http.Request)
 	GetDeploymentStatus(http.ResponseWriter, *http.Request)
 	GetDeployments(http.ResponseWriter, *http.Request)
+	PutDeploymentStatus(http.ResponseWriter, *http.Request)
 	RegisterCompute(http.ResponseWriter, *http.Request)
 	UpdateCompute(http.ResponseWriter, *http.Request)
-	UpdateDeploymentStatus(http.ResponseWriter, *http.Request)
 }
 
 // DatasetsApiRouter defines the required methods for binding the api requests to a responses for the DatasetsApi
@@ -108,16 +107,15 @@ type JobsApiRouter interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type ComputesApiServicer interface {
-	AddDeploymentStatus(context.Context, string, string, DeploymentStatus) (ImplResponse, error)
-	DeleteCompute(context.Context, string) (ImplResponse, error)
-	GetComputeConfig(context.Context, string) (ImplResponse, error)
-	GetComputeStatus(context.Context, string) (ImplResponse, error)
-	GetDeploymentConfig(context.Context, string, string) (ImplResponse, error)
-	GetDeploymentStatus(context.Context, string, string) (ImplResponse, error)
-	GetDeployments(context.Context, string) (ImplResponse, error)
+	DeleteCompute(context.Context, string, string) (ImplResponse, error)
+	GetComputeConfig(context.Context, string, string) (ImplResponse, error)
+	GetComputeStatus(context.Context, string, string) (ImplResponse, error)
+	GetDeploymentConfig(context.Context, string, string, string) (ImplResponse, error)
+	GetDeploymentStatus(context.Context, string, string, string) (ImplResponse, error)
+	GetDeployments(context.Context, string, string) (ImplResponse, error)
+	PutDeploymentStatus(context.Context, string, string, string, DeploymentStatus) (ImplResponse, error)
 	RegisterCompute(context.Context, ComputeSpec) (ImplResponse, error)
-	UpdateCompute(context.Context, string, ComputeSpec) (ImplResponse, error)
-	UpdateDeploymentStatus(context.Context, string, string, DeploymentStatus) (ImplResponse, error)
+	UpdateCompute(context.Context, string, string, ComputeSpec) (ImplResponse, error)
 }
 
 // DatasetsApiServicer defines the api actions for the DatasetsApi service
