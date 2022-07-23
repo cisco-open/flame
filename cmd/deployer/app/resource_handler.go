@@ -19,6 +19,8 @@ package app
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -30,6 +32,7 @@ import (
 
 	"github.com/cisco-open/flame/pkg/openapi"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
+	"github.com/cisco-open/flame/pkg/restapi"
 )
 
 type resourceHandler struct {
@@ -153,10 +156,56 @@ func (r *resourceHandler) dealWith(in *pbNotify.DeployEvent) {
 
 func (r *resourceHandler) addResource(jobId string) {
 	zap.S().Infof("Received add resource request for job %s", jobId)
-	// TODO: implement addResource method
+
+	// Sending request to apiserver to get deployment config for specific jobId and computeId
+	deploymentConfig, err := r.getDeploymentConfig(jobId)
+	if err != nil {
+		fmt.Printf("Failed to get deploymentConfig for job %s: %v\n", jobId, err)
+	}
+	zap.S().Infof("Got deployment config from apiserver")
+
+	// Deploy resources (agents) for the job based on the configuration
+	err = r.deployResources(deploymentConfig)
+	if err != nil {
+		fmt.Printf("Failed to deploy resources for job %s: %v\n", jobId, err)
+	}
+	zap.S().Infof("Successfully added resources for compute %s and jobId %s", r.spec.ComputeId, jobId)
 }
 
 func (r *resourceHandler) revokeResource(jobId string) {
 	zap.S().Infof("Received revoke resource request for job %s", jobId)
 	// TODO: implement revokeResource method
+}
+
+func (r *resourceHandler) getDeploymentConfig(jobId string) (openapi.DeploymentConfig, error) {
+	zap.S().Infof("Sending request to apiserver / controller to get deployment config")
+	// construct url
+	uriMap := map[string]string{
+		"computeId": r.spec.ComputeId,
+		"jobId":     jobId,
+	}
+	url := restapi.CreateURL(r.apiserverEp, restapi.GetDeploymentConfigEndpoint, uriMap)
+	code, respBody, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("Deployer failed to get deployment config for job %s - code: %d, error: %v\n", jobId, code, err)
+		return openapi.DeploymentConfig{}, nil
+	}
+
+	deploymentConfig := openapi.DeploymentConfig{}
+	err = json.Unmarshal(respBody, &deploymentConfig)
+	if err != nil {
+		fmt.Printf("WARNING: Failed to parse resp message: %v", err)
+		return openapi.DeploymentConfig{}, nil
+	}
+	return deploymentConfig, nil
+}
+
+func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentConfig) error {
+	zap.S().Infof("Beginning deployment of agents")
+
+	// iterate over agent kvs and invoke install for each
+	// Create more functions and move code from /cmd/controller/deployer/k8s.go
+
+	zap.S().Infof("Completed deployment of agents")
+	return nil
 }

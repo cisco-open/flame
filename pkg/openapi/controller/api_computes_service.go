@@ -33,6 +33,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"go.uber.org/zap"
 )
 
 // ComputesApiService is a service that implements the logic for the ComputesApiServicer
@@ -121,17 +122,12 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, computeId str
 
 // GetDeploymentConfig - Get the deployment config for a job for a compute cluster
 func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetDeploymentConfig with the required logic for this service method.
-	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
-	// this service implementation when updating open api generation.
+	// TODO - update logic to populate deployment config
 
-	//TODO: Uncomment the next line to return response Response(200, DeploymentConfig{}) or use other options such as http.Ok ...
-	//return Response(200, DeploymentConfig{}), nil
+	deploymentConfig := openapi.DeploymentConfig{}
+	zap.S().Infof("Populated deployment config for jobId %s and computeId %s", jobId, computeId)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDeploymentConfig method not implemented")
+	return openapi.Response(http.StatusOK, deploymentConfig), nil
 }
 
 // GetDeploymentStatus - Get the deployment status for a job on a compute cluster
