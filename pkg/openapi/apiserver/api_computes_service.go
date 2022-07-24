@@ -27,6 +27,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -121,17 +122,38 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, computeId str
 
 // GetDeploymentConfig - Get the deployment config for a job for a compute cluster
 func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId string, jobId string) (openapi.ImplResponse, error) {
-	// TODO - update GetDeploymentConfig with the required logic for this service method.
-	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
-	// this service implementation when updating open api generation.
+	// TODO - add logic later to validate the request coming from the deployer with ApiKey
+	// Report error if apikey for the deployer does not match with the apiserver cache or from db
 
-	//TODO: Uncomment the next line to return response Response(200, DeploymentConfig{}) or use other options such as http.Ok ...
-	//return Response(200, DeploymentConfig{}), nil
+	// create controller request
+	uriMap := map[string]string{
+		"computeId": computeId,
+		"jobId":     jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDeploymentConfigEndpoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	// send post request
+	code, resp, err := restapi.HTTPGet(url)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to send get request to controller: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("GetDeploymentConfig method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+	deploymentConfig := openapi.DeploymentConfig{}
+	err = json.Unmarshal(resp, &deploymentConfig)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to send get deployment config from controller: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	zap.S().Infof("Successfully got deployment config from controller for jobId %s and computeId %s", jobId, computeId)
+
+	return openapi.Response(http.StatusOK, deploymentConfig), nil
 }
 
 // GetDeploymentStatus - Get the deployment status for a job on a compute cluster
