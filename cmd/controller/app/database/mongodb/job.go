@@ -176,7 +176,7 @@ func (db *MongoService) UpdateJob(userId string, jobId string, jobSpec openapi.J
 	case openapi.STOPPING:
 		fallthrough
 	default:
-		err = fmt.Errorf("The current job state (%s) is not an updatable state", jobStatus.State)
+		err = fmt.Errorf("the current job state (%s) is not an updatable state", jobStatus.State)
 		return err
 	}
 
@@ -277,16 +277,38 @@ func (db *MongoService) GetTaskInfo(userId string, jobId string, taskId string) 
 }
 
 func (db *MongoService) GetTasksInfo(userId string, jobId string, limit int32, inclKey bool) ([]openapi.TaskInfo, error) {
-	zap.S().Infof("Get info of all tasks in a job %s owned by user: %s", jobId, userId)
-
-	if err := db.jobExists(userId, jobId); err != nil {
-		zap.S().Warnf("failed to find a matching job: %v", err)
-		return nil, ErrorCheck(err)
+	tasksInfoList, err := db.GetTasksInfoGeneric(userId, jobId, limit, inclKey, false)
+	if err != nil {
+		return []openapi.TaskInfo{}, ErrorCheck(err)
 	}
 
-	// found a job; so we can proceed to fetch the info of tasks
+	return tasksInfoList, nil
+}
 
+// This is a generic function to return a list of task information. Two types of clients us it: (a) users and (b) deployers.
+// If the client is a user, the taskInfo may or may not include taskKey (as required).
+// If the deployer calls it, the taskKey is likely to be returned.
+func (db *MongoService) GetTasksInfoGeneric(client string, jobId string, limit int32,
+	inclKey bool, isDeployer bool) ([]openapi.TaskInfo, error) {
 	filter := bson.M{util.DBFieldJobId: jobId}
+
+	// for user invoked calls client is the userId
+	// for deployer invoked calls client is the computeId
+	if !isDeployer {
+		// first find a job; so that we can proceed to fetching the info of tasks
+		// for deployer calls, it is assumed that the job check was previously performed. We can directly fetch tasks.
+		// TODO verify that this job-exists check is handled correctly even for internal system calls
+		zap.S().Infof("Get info of all tasks in a job %s owned by user: %s", jobId, client)
+
+		if err := db.jobExists(client, jobId); err != nil {
+			zap.S().Warnf("failed to find a matching job: %v", err)
+			return nil, ErrorCheck(err)
+		}
+	} else {
+		if client != "" {
+			filter = bson.M{util.DBFieldComputeId: client}
+		}
+	}
 	cursor, err := db.taskCollection.Find(context.TODO(), filter)
 	if err != nil {
 		zap.S().Warnf("failed to fetch task info: %v", err)

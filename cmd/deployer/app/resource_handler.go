@@ -162,7 +162,7 @@ func (r *resourceHandler) addResource(jobId string) {
 	if err != nil {
 		fmt.Printf("Failed to get deploymentConfig for job %s: %v\n", jobId, err)
 	}
-	zap.S().Infof("Got deployment config from apiserver")
+	zap.S().Infof("Got deployment config from apiserver: %v", deploymentConfig)
 
 	// Deploy resources (agents) for the job based on the configuration
 	err = r.deployResources(deploymentConfig)

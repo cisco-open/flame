@@ -54,6 +54,7 @@ const (
 	DBFieldTaskDirty = "dirty"
 	DBFieldTaskKey   = "key"
 	DBFieldTimestamp = "timestamp"
+	DBFieldComputeId = "computeid"
 
 	// Port numbers
 	ApiServerRestApiPort  = 10100 // REST API port
