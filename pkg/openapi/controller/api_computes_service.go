@@ -31,9 +31,11 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cisco-open/flame/cmd/controller/app/database"
-	"github.com/cisco-open/flame/pkg/openapi"
 	"go.uber.org/zap"
+
+	"github.com/cisco-open/flame/cmd/controller/app/database"
+	"github.com/cisco-open/flame/cmd/controller/config"
+	"github.com/cisco-open/flame/pkg/openapi"
 )
 
 // ComputesApiService is a service that implements the logic for the ComputesApiServicer
@@ -41,12 +43,14 @@ import (
 // Include any external packages or services that will be required by this service.
 type ComputesApiService struct {
 	dbService database.DBService
+	jobParams config.JobParams
 }
 
 // NewComputesApiService creates a default api service
-func NewComputesApiService(dbService database.DBService) openapi.ComputesApiServicer {
+func NewComputesApiService(dbService database.DBService, jobParams config.JobParams) openapi.ComputesApiServicer {
 	return &ComputesApiService{
 		dbService: dbService,
+		jobParams: jobParams,
 	}
 }
 
@@ -107,10 +111,30 @@ func (s *ComputesApiService) GetComputeStatus(ctx context.Context, computeId str
 // GetDeploymentConfig - Get the deployment config for a job for a compute cluster
 func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId string,
 	jobId string, xAPIKEY string) (openapi.ImplResponse, error) {
-	// TODO - update logic to populate deployment config
+	imageLoc := s.jobParams.Image
+
+	// Sending empty string as client name in GetTasksInfo_ call => No computeId filter will be
+	// applied as field doesnt exist in the mongodb task collection yet
+	// TODO Add computeId field to the task collection and send computeId into the GetTasksInfo_ call
+	jobTasks, err := s.dbService.GetTasksInfoGeneric("", jobId, 0, true, true)
+	if err != nil {
+		zap.S().Errorf("Error while populating deployment config for jobId %s and computeId %s, err: %v", jobId, computeId, err)
+		return openapi.Response(http.StatusInternalServerError, nil), nil
+	}
 
 	deploymentConfig := openapi.DeploymentConfig{}
-	zap.S().Infof("Populated deployment config for jobId %s and computeId %s", jobId, computeId)
+	deploymentConfig.JobId = jobId
+	deploymentConfig.ImageLoc = imageLoc
+
+	agentKVs := []map[string]string{}
+	for _, task := range jobTasks {
+		agent := make(map[string]string)
+		agent[task.TaskId] = task.Key
+		agentKVs = append(agentKVs, agent)
+	}
+	deploymentConfig.AgentKVs = agentKVs
+
+	zap.S().Infof("Populated deployment config %v for jobId %s and computeId %s", deploymentConfig, jobId, computeId)
 
 	return openapi.Response(http.StatusOK, deploymentConfig), nil
 }

@@ -136,7 +136,7 @@ func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId 
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
-	zap.S().Infof("Successfully got deployment config from controller for jobId %s and computeId %s", jobId, computeId)
+	zap.S().Infof("Successfully got deployment config %v from controller for jobId %s and computeId %s", deploymentConfig, jobId, computeId)
 
 	return openapi.Response(http.StatusOK, deploymentConfig), nil
 }
