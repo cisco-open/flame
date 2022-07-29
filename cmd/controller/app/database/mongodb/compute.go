@@ -26,19 +26,26 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 // RegisterCompute creates a new cluster compute specification and returns ComputeStatus
 func (db *MongoService) RegisterCompute(computeSpec openapi.ComputeSpec) (openapi.ComputeStatus, error) {
 	// First check if the compute was previously registered
-	filter := bson.M{"computeid": computeSpec.ComputeId}
+	filter := bson.M{util.DBFieldComputeId: computeSpec.ComputeId}
 	checkResult := db.computeCollection.FindOne(context.TODO(), filter)
+	if (checkResult.Err() != nil) && (checkResult.Err() != mongo.ErrNoDocuments) {
+		errMsg := fmt.Sprintf("Failed to register compute : %v", checkResult.Err())
+		zap.S().Errorf(errMsg)
+
+		return openapi.ComputeStatus{}, ErrorCheck(checkResult.Err())
+	}
 	if checkResult.Err() == mongo.ErrNoDocuments {
 		// If it was not registered previously, need to register
 		result, err := db.computeCollection.InsertOne(context.TODO(), computeSpec)
 		if err != nil {
-			zap.S().Errorf("Failed to register new compute in database: result: %v, error: %v", result, err)
-
+			errMsg := fmt.Sprintf("Failed to register new compute in database: result: %v, error: %v", result, err)
+			zap.S().Errorf(errMsg)
 			return openapi.ComputeStatus{}, ErrorCheck(err)
 		}
 
@@ -100,7 +107,7 @@ func (db *MongoService) UpdateComputeStatus(computeId string, computeStatus open
 		setElements[dateKey] = updateTime
 	}
 
-	filter := bson.M{"computeid": computeId}
+	filter := bson.M{util.DBFieldComputeId: computeId}
 	update := bson.M{"$set": setElements}
 
 	updatedDoc := openapi.ComputeStatus{}
@@ -110,4 +117,59 @@ func (db *MongoService) UpdateComputeStatus(computeId string, computeStatus open
 	}
 
 	return updateTime, nil
+}
+
+func (db *MongoService) GetComputeIdsByRegion(region string) ([]string, error) {
+	zap.S().Infof("get all computes in the region: %s", region)
+
+	filter := bson.M{util.DBFieldComputeRegion: region}
+	cursor, err := db.computeCollection.Find(context.TODO(), filter)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to fetch computes in the region: %s, err : %v", region, err)
+		zap.S().Errorf(errMsg)
+
+		return []string{}, fmt.Errorf(errMsg)
+	}
+
+	defer cursor.Close(context.TODO())
+	var computeIdList []string
+
+	for cursor.Next(context.TODO()) {
+		var computeSpec openapi.ComputeSpec
+		if err = cursor.Decode(&computeSpec); err != nil {
+			errMsg := fmt.Sprintf("failed to decode compute spec with error: %v", err)
+			zap.S().Errorf(errMsg)
+
+			return []string{}, ErrorCheck(err)
+		}
+
+		computeIdList = append(computeIdList, computeSpec.ComputeId)
+	}
+
+	if len(computeIdList) == 0 {
+		errMsg := fmt.Sprintf("could not find any computes for the region: %s", region)
+		zap.S().Errorf(errMsg)
+
+		return []string{}, fmt.Errorf(errMsg)
+	}
+	return computeIdList, nil
+}
+
+func (db *MongoService) GetComputeById(computeId string) (openapi.ComputeSpec, error) {
+	filter := bson.M{util.DBFieldComputeId: computeId}
+	checkResult := db.computeCollection.FindOne(context.TODO(), filter)
+	if checkResult.Err() != nil {
+		errMsg := fmt.Sprintf("failed to find a compute with computeId: %s", computeId)
+		zap.S().Errorf(errMsg)
+		return openapi.ComputeSpec{}, fmt.Errorf(errMsg)
+	}
+
+	var currentDocument openapi.ComputeSpec
+	err := checkResult.Decode(&currentDocument)
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to parse currentDocument: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.ComputeSpec{}, fmt.Errorf(errMsg)
+	}
+	return currentDocument, nil
 }

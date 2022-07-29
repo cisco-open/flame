@@ -39,22 +39,23 @@ const (
 
 	// Database Fields
 	//TODO append Field to distinguish the fields
-	DBFieldMongoID   = "_id"
-	DBFieldUserId    = "userid"
-	DBFieldId        = "id"
-	DBFieldDesignId  = "designid"
-	DBFieldSchemaId  = "schemaid"
-	DBFieldJobId     = "jobid"
-	DBFieldTaskId    = "taskid"
-	DBFieldState     = "state"
-	DBFieldRole      = "role"
-	DBFieldTaskLog   = "log"
-	DBFieldTaskType  = "type"
-	DBFieldIsPublic  = "ispublic"
-	DBFieldTaskDirty = "dirty"
-	DBFieldTaskKey   = "key"
-	DBFieldTimestamp = "timestamp"
-	DBFieldComputeId = "computeid"
+	DBFieldMongoID       = "_id"
+	DBFieldUserId        = "userid"
+	DBFieldId            = "id"
+	DBFieldDesignId      = "designid"
+	DBFieldSchemaId      = "schemaid"
+	DBFieldJobId         = "jobid"
+	DBFieldTaskId        = "taskid"
+	DBFieldState         = "state"
+	DBFieldRole          = "role"
+	DBFieldTaskLog       = "log"
+	DBFieldTaskType      = "type"
+	DBFieldIsPublic      = "ispublic"
+	DBFieldTaskDirty     = "dirty"
+	DBFieldTaskKey       = "key"
+	DBFieldTimestamp     = "timestamp"
+	DBFieldComputeId     = "computeid"
+	DBFieldComputeRegion = "region"
 
 	// Port numbers
 	ApiServerRestApiPort  = 10100 // REST API port
@@ -82,4 +83,7 @@ const (
 	TaskCodeFile   = "code.zip"
 
 	LogDirPath = "/var/log/" + ProjectName
+
+	DefaultRealm = "default"
+	RealmSep     = "/"
 )

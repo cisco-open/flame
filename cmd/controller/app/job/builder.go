@@ -31,7 +31,6 @@ import (
 )
 
 const (
-	realmSep       = "/"
 	defaultGroup   = "default"
 	groupByTypeTag = "tag"
 	taskKeyLen     = 32
@@ -350,7 +349,7 @@ func _walkForGroupByCheck(templates map[string]*taskTemplate, prevTmpl *taskTemp
 		minLen := 0
 		tmpLen := math.MaxInt32
 		for _, val := range channel.GroupBy.Value {
-			length := len(strings.Split(val, realmSep))
+			length := len(strings.Split(val, util.RealmSep))
 			tmpLen = funcMin(tmpLen, length)
 		}
 
@@ -466,6 +465,7 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 
 		for i, dataset := range datasets {
 			task := tmpl.Task
+			task.ComputeId = dataset.ComputeId
 			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
 			tasks = append(tasks, task)
 		}
@@ -481,7 +481,8 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 
 		for i := 0; i < len(channel.GroupBy.Value); i++ {
 			task := tmpl.Task
-			realm := channel.GroupBy.Value[i] + realmSep + util.ProjectName
+			realm := channel.GroupBy.Value[i] + util.RealmSep + util.ProjectName
+			task.ComputeId = util.DefaultRealm
 			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), realm, emptyDatasetUrl, i)
 
 			tasks = append(tasks, task)

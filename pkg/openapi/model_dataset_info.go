@@ -41,5 +41,7 @@ type DatasetInfo struct {
 
 	Realm string `json:"realm"`
 
+	ComputeId string `json:"computeId,omitempty"`
+
 	IsPublic bool `json:"isPublic,omitempty"`
 }

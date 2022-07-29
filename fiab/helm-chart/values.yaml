@@ -98,7 +98,7 @@ mlflow:
 
 deployer:
   adminId: "admin-1"
-  region: "us-east"
+  region: "default/us/west"
   computeId: "compute-1"
   apiKey: "apiKey-1"
 
