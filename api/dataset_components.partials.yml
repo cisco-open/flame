@@ -47,6 +47,8 @@ DatasetInfo:
     # helps launching an ML workload in a cluster or machine associated with the launcher).
     realm:
       type: string
+    computeId:
+      type: string
     # if it is not public, the dataset meta info is filtered when search is done by other users
     isPublic:
       type: boolean
@@ -61,5 +63,6 @@ DatasetInfo:
     description: dataset containing handwritten digits
     url: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
     dataFormat: npy
-    realm: "us|west|org1|cluster1"
+    realm: "us/west/org1/cluster1"
+    computeId: "cluster1"
     isPublic: true

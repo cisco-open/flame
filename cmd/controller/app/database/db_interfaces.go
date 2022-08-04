@@ -86,4 +86,6 @@ type TaskService interface {
 // ComputeService is an interface that defines a collection of APIs related to computes
 type ComputeService interface {
 	RegisterCompute(openapi.ComputeSpec) (openapi.ComputeStatus, error)
+	GetComputeIdsByRegion(string) ([]string, error)
+	GetComputeById(string) (openapi.ComputeSpec, error)
 }

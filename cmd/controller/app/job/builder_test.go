@@ -24,6 +24,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/controller/config"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 var (
@@ -123,7 +124,7 @@ var (
 )
 
 func composeGroup(tokens ...string) string {
-	return strings.Join(tokens, realmSep)
+	return strings.Join(tokens, util.RealmSep)
 }
 
 func TestGetTaskTemplates(t *testing.T) {

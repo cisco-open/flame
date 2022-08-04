@@ -60,12 +60,14 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 				util.DBFieldTaskType:  task.Type,
 				"config":              cfgData,
 				"code":                task.ZippedCode,
+				util.DBFieldComputeId: task.ComputeId,
 				util.DBFieldTaskDirty: dirty,
 				util.DBFieldTaskKey:   task.Key,
 				util.DBFieldState:     openapi.READY,
 				util.DBFieldTimestamp: time.Now(),
 			},
 		}
+		zap.S().Debugf("taskID %s is assigned compute %s", task.TaskId, task.ComputeId)
 
 		after := options.After
 		upsert := true
