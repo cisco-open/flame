@@ -166,7 +166,7 @@ func (t *taskHandler) do() {
 	zap.S().Info("Disconnected from notifier")
 }
 
-//newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
+// newNotification acts as a handler and calls respective functions based on the response type to act on the received notifications.
 func (t *taskHandler) dealWith(in *pbNotify.JobEvent) {
 	switch in.GetType() {
 	case pbNotify.JobEventType_START_JOB:

@@ -316,7 +316,7 @@ func CreateMultipartFormData(kv map[string]io.Reader) (*bytes.Buffer, *multipart
 	return &buf, writer, nil
 }
 
-//ErrorNilCheck logger function to avoid re-writing the checks
+// ErrorNilCheck logger function to avoid re-writing the checks
 func ErrorNilCheck(method string, err error) error {
 	if err != nil {
 		zap.S().Errorf("[%s] an error occurred %v", method, err)
