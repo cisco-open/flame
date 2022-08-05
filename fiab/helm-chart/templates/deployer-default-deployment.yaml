@@ -17,18 +17,18 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Release.Name }}-deployer
+  name: {{ .Release.Name }}-deployer-default
   namespace: {{ .Release.Namespace }}
 
 spec:
   replicas: {{ .Values.replicas }}
   selector:
     matchLabels:
-      app: {{ .Release.Name }}-deployer
+      app: {{ .Release.Name }}-deployer-default
   template:
     metadata:
       labels:
-        app: {{ .Release.Name }}-deployer
+        app: {{ .Release.Name }}-deployer-default
     spec:
       containers:
         - args:
@@ -37,17 +37,17 @@ spec:
           - --notifier
           - "{{ .Values.frontDoorUrl.notifier }}:443"
           - --adminid
-          - {{ .Values.deployer.adminId }}
+          - {{ .Values.deployerDefault.adminId }}
           - --region
-          - {{ .Values.deployer.region }}
+          - {{ .Values.deployerDefault.region }}
           - --computeid
-          - {{ .Values.deployer.computeId }}
+          - {{ .Values.deployerDefault.computeId }}
           - --apikey
-          - {{ .Values.deployer.apiKey }}
+          - {{ .Values.deployerDefault.apiKey }}
           {{ if .Values.insecure }}
           - "--insecure"
           {{ end }}
           command: ["/usr/bin/deployer"]
           image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent
-          name: {{ .Release.Name }}-deployer
+          name: {{ .Release.Name }}-deployer-default
