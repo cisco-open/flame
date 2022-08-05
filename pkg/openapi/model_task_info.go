@@ -43,6 +43,8 @@ type TaskInfo struct {
 
 	State JobState `json:"state,omitempty"`
 
+	ComputeId string `json:"computeId,omitempty"`
+
 	Log string `json:"log,omitempty"`
 
 	Timestamp time.Time `json:"timestamp,omitempty"`

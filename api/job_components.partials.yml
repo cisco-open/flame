@@ -239,6 +239,8 @@ TaskInfo:
       type: string
     state:
       $ref: '#/components/schemas/JobState' # reuse job state
+    computeId:
+      type: string
     log:
       type: string
     timestamp:

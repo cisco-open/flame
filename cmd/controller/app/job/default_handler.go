@@ -323,8 +323,22 @@ func (h *DefaultHandler) notifyJob(evtType pbNotify.JobEventType) error {
 }
 
 func (h *DefaultHandler) notifyDeploy(evtType pbNotify.DeployEventType) error {
-	// TODO: add computeId field to tasks and remove hard-coding
-	computeIds := []string{"compute-1"}
+	// Get a list of computeIds to notify for deployment
+	// To do this, get all tasks for the jobId, iterate and get computeId
+	computeIdMap := make(map[string]bool)
+
+	for _, taskInfo := range h.tasksInfo {
+		taskCompute := taskInfo.ComputeId
+		computeIdMap[taskCompute] = true
+	}
+
+	computeIds := make([]string, len(computeIdMap))
+	i := 0
+	for compute := range computeIdMap {
+		computeIds[i] = compute
+		i++
+	}
+	zap.S().Infof("In notifyDeploy for tasks, jobId %s, will be notifing computes: %v", h.jobId, computeIds)
 
 	req := &pbNotify.DeployEventRequest{
 		Type:       evtType,
