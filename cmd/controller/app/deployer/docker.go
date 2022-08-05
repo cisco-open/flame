@@ -21,7 +21,8 @@ import (
 )
 
 // NOTE: DockerDeployer doesn't support dynamic deployment as docker and
-//       docker-compose are only for local development purpose
+//
+//	docker-compose are only for local development purpose
 type DockerDeployer struct{}
 
 func NewDockerDeployer() (*DockerDeployer, error) {

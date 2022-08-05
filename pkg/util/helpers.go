@@ -39,13 +39,15 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-/*InitZapLog Zap Logger initialization
+/*
+InitZapLog Zap Logger initialization
 
 https://pkg.go.dev/go.uber.org/zap#ReplaceGlobals
 https://pkg.go.dev/go.uber.org/zap#hdr-Choosing_a_Logger
 
 In most circumstances, use the SugaredLogger. It's 4-10x faster than most
 other structured logging packages and has a familiar, loosely-typed API.
+
 	sugar := logger.Sugar()
 	sugar.Infow("Failed to fetch URL.",
 		// Structured context as loosely typed key-value pairs.
@@ -58,6 +60,7 @@ other structured logging packages and has a familiar, loosely-typed API.
 In the unusual situations where every microsecond matters, use the
 Logger. It's even faster than the SugaredLogger, but only supports
 structured logging.
+
 	logger.Info("Failed to fetch URL.",
 		// Structured context as strongly typed fields.
 		zap.String("url", url),
@@ -99,7 +102,7 @@ func InitZapLog(service string) *zap.Logger {
 	return logger
 }
 
-//FormatJSON prettify the json by adding tabs
+// FormatJSON prettify the json by adding tabs
 func FormatJSON(data []byte) ([]byte, error) {
 	var out bytes.Buffer
 	err := json.Indent(&out, data, "", "    ")
@@ -109,7 +112,7 @@ func FormatJSON(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-//Marshal JSON to escape HTML characters like <, > while printing
+// Marshal JSON to escape HTML characters like <, > while printing
 func JSONMarshal(t interface{}) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)
@@ -118,7 +121,7 @@ func JSONMarshal(t interface{}) ([]byte, error) {
 	return buffer.Bytes(), err
 }
 
-//StructToMapInterface converts any struct interface into map interface using json de-coding/encoding.
+// StructToMapInterface converts any struct interface into map interface using json de-coding/encoding.
 func StructToMapInterface(in interface{}) (map[string]interface{}, error) {
 	//todo maybe a better way to do this https://github.com/golang/protobuf/issues/1259#issuecomment-750453617
 	var out map[string]interface{}

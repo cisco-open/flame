@@ -33,9 +33,9 @@ const (
 )
 
 /*
-	Tutorial - https://www.mongodb.com/blog/post/quick-start-golang--mongodb--how-to-read-documents
+Tutorial - https://www.mongodb.com/blog/post/quick-start-golang--mongodb--how-to-read-documents
 
-	Bson.M vs .D https://stackoverflow.com/questions/64281675/bson-d-vs-bson-m-for-find-queries
+Bson.M vs .D https://stackoverflow.com/questions/64281675/bson-d-vs-bson-m-for-find-queries
 */
 func ConvertToObjectID(id string) primitive.ObjectID {
 	objID, err := primitive.ObjectIDFromHex(id)
