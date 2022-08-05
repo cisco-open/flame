@@ -87,6 +87,7 @@ func (s *notificationServer) NotifyDeploy(ctx context.Context, in *pbNotify.Depl
 
 	failedDeployers := make([]string, 0)
 	for _, computeId := range in.ComputeIds {
+		zap.S().Infof("Going to send deploy event to deployer %s", computeId)
 		event := pbNotify.DeployEvent{
 			Type:  in.Type,
 			JobId: in.JobId,
@@ -99,6 +100,7 @@ func (s *notificationServer) NotifyDeploy(ctx context.Context, in *pbNotify.Depl
 			// Do nothing
 		default:
 			failedDeployers = append(failedDeployers, computeId)
+			zap.S().Infof("Failed to send deploy event to deployer %s, updated failedDeployers: %v", computeId, failedDeployers)
 		}
 	}
 

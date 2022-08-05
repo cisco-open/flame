@@ -116,7 +116,7 @@ func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId 
 	// Sending empty string as client name in GetTasksInfo_ call => No computeId filter will be
 	// applied as field doesnt exist in the mongodb task collection yet
 	// TODO Add computeId field to the task collection and send computeId into the GetTasksInfo_ call
-	jobTasks, err := s.dbService.GetTasksInfoGeneric("", jobId, 0, true, true)
+	jobTasks, err := s.dbService.GetTasksInfoGeneric(computeId, jobId, 0, true, true)
 	if err != nil {
 		zap.S().Errorf("Error while populating deployment config for jobId %s and computeId %s, err: %v", jobId, computeId, err)
 		return openapi.Response(http.StatusInternalServerError, nil), nil

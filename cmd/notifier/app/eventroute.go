@@ -97,11 +97,13 @@ func (s *notificationServer) GetDeployEvent(in *pbNotify.DeployInfo, stream pbNo
 
 func (s *notificationServer) getDeployEventChannel(computeId string) chan *pbNotify.DeployEvent {
 	var eventCh chan *pbNotify.DeployEvent
+	zap.S().Infof("Getting deploy event channel for deployer %s", computeId)
 
 	s.mutexDeploy.Lock()
 	if _, ok := s.deployEventQueues[computeId]; !ok {
 		eventCh = make(chan *pbNotify.DeployEvent, eventChannelLen)
 		s.deployEventQueues[computeId] = eventCh
+		zap.S().Infof("Couldn't get existing channel. Created deploy event channel for deployer %s", computeId)
 	} else {
 		eventCh = s.deployEventQueues[computeId]
 	}
