@@ -172,9 +172,27 @@ func (r *resourceHandler) addResource(jobId string) {
 	zap.S().Infof("Successfully added resources for compute %s and jobId %s", r.spec.ComputeId, jobId)
 }
 
-func (r *resourceHandler) revokeResource(jobId string) {
+func (r *resourceHandler) revokeResource(jobId string) error {
 	zap.S().Infof("Received revoke resource request for job %s", jobId)
-	// TODO: implement revokeResource method
+
+	// WORK IN PROGRESS: Moved code directly from controller. Contains only core logic which could be used.
+	// However, it needs to be re-written to be used in the standalone deployer.
+
+	// // 1. decommission compute resources if they are in use
+	// if h.dplyr != nil {
+	// 	if err := h.dplyr.Uninstall("job-" + h.jobId); err != nil {
+	// 		zap.S().Warnf("failed to release resources for job %s: %v", h.jobId, err)
+	// 	}
+	// }
+
+	// // 2.delete all the job resource specification files
+	// deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
+	// _ = os.RemoveAll(deploymentChartPath)
+
+	// h.tskWatchCancelFn()
+
+	zap.S().Infof("Completed revocation of agent resources")
+	return nil
 }
 
 func (r *resourceHandler) getDeploymentConfig(jobId string) (openapi.DeploymentConfig, error) {
@@ -203,8 +221,88 @@ func (r *resourceHandler) getDeploymentConfig(jobId string) (openapi.DeploymentC
 func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentConfig) error {
 	zap.S().Infof("Beginning deployment of agents")
 
-	// iterate over agent kvs and invoke install for each
-	// Create more functions and move code from /cmd/controller/deployer/k8s.go
+	// WORK IN PROGRESS: Moved code directly from controller. Contains only core logic which could be used.
+	// However, it needs to be re-written to be used in the standalone deployer.
+
+	// deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
+	// targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
+	// if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
+	// 	errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
+	// 	zap.S().Debugf(errMsg)
+
+	// 	return fmt.Errorf(errMsg)
+	// }
+
+	// // Copy helm chart files to destination folder
+	// for _, chartFile := range helmChartFiles {
+	// 	srcFilePath := filepath.Join(jobTemplateDirPath, chartFile)
+	// 	dstFilePath := filepath.Join(deploymentChartPath, chartFile)
+	// 	err := util.CopyFile(srcFilePath, dstFilePath)
+	// 	if err != nil {
+	// 		errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
+	// 		zap.S().Debugf(errMsg)
+
+	// 		return fmt.Errorf(errMsg)
+	// 	}
+	// }
+
+	// for _, taskInfo := range h.tasksInfo {
+	// 	if taskInfo.Type == openapi.USER {
+	// 		// don't attempt to provision compute resource for user-driven task
+	// 		continue
+	// 	}
+
+	// 	context := map[string]string{
+	// 		"imageLoc": h.jobParams.Image,
+	// 		"taskId":   taskInfo.TaskId,
+	// 		"taskKey":  taskInfo.Key,
+	// 	}
+	// 	rendered, err := mustache.RenderFile(jobTemplatePath, &context)
+	// 	if err != nil {
+	// 		errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskInfo.TaskId, err)
+	// 		zap.S().Debugf(errMsg)
+
+	// 		return fmt.Errorf(errMsg)
+	// 	}
+
+	// 	deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.TaskId)
+	// 	deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
+	// 	err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
+	// 	if err != nil {
+	// 		errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.TaskId, err)
+	// 		zap.S().Debugf(errMsg)
+
+	// 		return fmt.Errorf(errMsg)
+	// 	}
+	// }
+
+	// // TODO: when multiple clusters are supported,
+	// //       set platform dynamically based on the target cluster type
+	// dplyr, err := deployer.NewDeployer(h.platform)
+	// if err != nil {
+	// 	errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
+	// 	zap.S().Debugf(errMsg)
+
+	// 	return fmt.Errorf(errMsg)
+	// }
+
+	// err = dplyr.Initialize("", h.namespace)
+	// if err != nil {
+	// 	errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
+	// 	zap.S().Debugf(errMsg)
+
+	// 	return fmt.Errorf(errMsg)
+	// }
+
+	// err = dplyr.Install("job-"+h.jobId, deploymentChartPath)
+	// if err != nil {
+	// 	errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
+	// 	zap.S().Debugf(errMsg)
+
+	// 	return fmt.Errorf(errMsg)
+	// }
+
+	// h.dplyr = dplyr
 
 	zap.S().Infof("Completed deployment of agents")
 	return nil

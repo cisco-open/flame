@@ -51,3 +51,11 @@ spec:
           image: {{ .Values.imageName }}:{{ .Values.imageTag }}
           imagePullPolicy: IfNotPresent
           name: {{ .Release.Name }}-deployer-compute1
+          volumeMounts:
+            - mountPath: /flame/template
+              name: job-template-volume
+      
+      volumes:
+        - name: job-template-volume
+          configMap:
+            name: {{ .Release.Name }}-deployer-job-configmap
