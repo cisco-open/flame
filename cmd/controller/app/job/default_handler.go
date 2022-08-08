@@ -195,6 +195,9 @@ func (h *DefaultHandler) doHandle(event *JobEvent) {
 }
 
 func (h *DefaultHandler) cleanup() {
+	h.notifyDeploy(pbNotify.DeployEventType_REVOKE_RESOURCE)
+	zap.S().Infof("Invoking notifyDeploy - revoke resource - from cleanup()")
+
 	// 1. decommission compute resources if they are in use
 	if h.dplyr != nil {
 		if err := h.dplyr.Uninstall("job-" + h.jobId); err != nil {
