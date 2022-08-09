@@ -22,16 +22,13 @@ import (
 	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 
-	"github.com/cisco-open/flame/cmd/controller/app/deployer"
 	"github.com/cisco-open/flame/pkg/util"
 )
 
 type Config struct {
-	Db        string `yaml:"db"`
-	Notifier  string `yaml:"notifier"`
-	Platform  string `yaml:"platform"`
-	Namespace string `yaml:"namespace"`
-	Port      string `yaml:"port,omitempty"`
+	Db       string `yaml:"db"`
+	Notifier string `yaml:"notifier"`
+	Port     string `yaml:"port,omitempty"`
 
 	JobParams JobParams `yaml:"jobParams"`
 }
@@ -73,10 +70,6 @@ func LoadConfig(configPath string) (*Config, error) {
 
 	if cfg.Port == "" {
 		cfg.Port = fmt.Sprintf("%d", util.ControllerRestApiPort)
-	}
-
-	if cfg.Platform == "" {
-		cfg.Platform = deployer.K8S
 	}
 
 	return cfg, nil

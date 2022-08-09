@@ -34,6 +34,8 @@ const (
 	argRegion    = "region"
 	argComputeId = "computeid"
 	argApiKey    = "apikey"
+	argPlatform  = "platform"
+	argNamespace = "namespace"
 
 	optionInsecure = "insecure"
 	optionPlain    = "plain"
@@ -81,6 +83,16 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
+		platform, err := flags.GetString(argPlatform)
+		if err != nil {
+			return err
+		}
+
+		namespace, err := flags.GetString(argNamespace)
+		if err != nil {
+			return err
+		}
+
 		bInsecure, _ := flags.GetBool(optionInsecure)
 		bPlain, _ := flags.GetBool(optionPlain)
 
@@ -107,7 +119,7 @@ var rootCmd = &cobra.Command{
 			return err
 		}
 
-		resoureHandler := app.NewResourceHandler(apiserver, notifier, computeSpec, bInsecure, bPlain)
+		resoureHandler := app.NewResourceHandler(apiserver, notifier, computeSpec, platform, namespace, bInsecure, bPlain)
 		resoureHandler.Start()
 
 		select {}
@@ -138,6 +150,14 @@ func init() {
 	defaultApiKey := "apiKey"
 	rootCmd.Flags().StringP(argApiKey, "k", defaultApiKey, "unique apikey")
 	rootCmd.MarkFlagRequired(argApiKey)
+
+	defaultPlatform := "k8s"
+	rootCmd.Flags().StringP(argPlatform, "p", defaultPlatform, "compute platform")
+	rootCmd.MarkFlagRequired(argPlatform)
+
+	defaultNamespace := "flame"
+	rootCmd.Flags().StringP(argNamespace, "s", defaultNamespace, "compute namespace")
+	rootCmd.MarkFlagRequired(argNamespace)
 
 	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
 	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")

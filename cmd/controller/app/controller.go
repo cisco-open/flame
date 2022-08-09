@@ -33,8 +33,6 @@ type Controller struct {
 	dbUri     string
 	notifier  string
 	restPort  string
-	platform  string
-	namespace string
 	bInsecure bool
 	bPlain    bool
 	dbService database.DBService
@@ -65,8 +63,6 @@ func NewController(cfg *config.Config, bInsecure bool, bPlain bool) (*Controller
 		dbUri:     cfg.Db,
 		notifier:  cfg.Notifier,
 		restPort:  cfg.Port,
-		platform:  cfg.Platform,
-		namespace: cfg.Namespace,
 		bInsecure: bInsecure,
 		bPlain:    bPlain,
 		dbService: dbService,
@@ -80,7 +76,7 @@ func NewController(cfg *config.Config, bInsecure bool, bPlain bool) (*Controller
 }
 
 func (c *Controller) Start() {
-	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.platform, c.namespace, c.bInsecure, c.bPlain)
+	jobMgr, err := job.NewManager(c.dbService, c.jobEventQ, c.notifier, c.jobParams, c.bInsecure, c.bPlain)
 	if err != nil {
 		zap.S().Fatalf("Failed to create a job manager: %v", err)
 	}
