@@ -55,6 +55,7 @@ spec:
             - mountPath: /flame/template
               name: job-template-volume
       
+      serviceAccountName: deployer
       volumes:
         - name: job-template-volume
           configMap:
