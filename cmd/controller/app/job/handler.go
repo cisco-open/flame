@@ -22,22 +22,10 @@ import (
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/cmd/controller/config"
-	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
-	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
-	deploymentTemplateDir = "templates"
-
-	jobTemplateDirPath      = "/" + util.ProjectName + "/template"
-	jobDeploymentFilePrefix = "job-agent"
-	jobTemplatePath         = jobTemplateDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
-
 	defaultHandler = "default"
-)
-
-var (
-	helmChartFiles = []string{"Chart.yaml", "values.yaml"}
 )
 
 type handler interface {
@@ -46,13 +34,13 @@ type handler interface {
 
 func NewHandler(handlerType string, dbService database.DBService, jobId string, eventQ *EventQ,
 	jobQueues map[string]*EventQ, mu *sync.Mutex, notifier string, jobParams config.JobParams,
-	platform string, namespace string, bInsecure bool, bPlain bool) (handler, error) {
+	bInsecure bool, bPlain bool) (handler, error) {
 	var hdlr handler
 	var err error
 
 	switch handlerType {
 	case defaultHandler:
-		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, platform, namespace, bInsecure, bPlain)
+		hdlr, err = NewDefaultHandler(dbService, jobId, eventQ, jobQueues, mu, notifier, jobParams, bInsecure, bPlain)
 
 	default:
 		err = fmt.Errorf("unknown handler type")

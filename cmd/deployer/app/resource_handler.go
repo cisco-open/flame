@@ -21,18 +21,37 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 
+	"github.com/cbroglie/mustache"
 	"github.com/cenkalti/backoff/v4"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 
+	"github.com/cisco-open/flame/cmd/deployer/app/deployer"
 	"github.com/cisco-open/flame/pkg/openapi"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 	"github.com/cisco-open/flame/pkg/restapi"
+	"github.com/cisco-open/flame/pkg/util"
+)
+
+const (
+	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
+	deploymentTemplateDir = "templates"
+
+	jobTemplateDirPath      = "/" + util.ProjectName + "/template"
+	jobDeploymentFilePrefix = "job-agent"
+	jobTemplatePath         = jobTemplateDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
+)
+
+var (
+	helmChartFiles = []string{"Chart.yaml", "values.yaml"}
 )
 
 type resourceHandler struct {
@@ -40,13 +59,17 @@ type resourceHandler struct {
 	notifierEp  string
 	spec        openapi.ComputeSpec
 
+	platform  string
+	namespace string
+	dplyr     deployer.Deployer
+
 	stream pbNotify.DeployEventRoute_GetDeployEventClient
 
 	grpcDialOpt grpc.DialOption
 }
 
 func NewResourceHandler(apiserverEp string, notifierEp string, computeSpec openapi.ComputeSpec,
-	bInsecure bool, bPlain bool) *resourceHandler {
+	platform string, namespace string, bInsecure bool, bPlain bool) *resourceHandler {
 	var grpcDialOpt grpc.DialOption
 
 	if bPlain {
@@ -66,6 +89,10 @@ func NewResourceHandler(apiserverEp string, notifierEp string, computeSpec opena
 		apiserverEp: apiserverEp,
 		notifierEp:  notifierEp,
 		spec:        computeSpec,
+
+		platform:  platform,
+		namespace: namespace,
+
 		grpcDialOpt: grpcDialOpt,
 	}
 
@@ -159,6 +186,7 @@ func (r *resourceHandler) addResource(jobId string) {
 
 	// Sending request to apiserver to get deployment config for specific jobId and computeId
 	deploymentConfig, err := r.getDeploymentConfig(jobId)
+	// TODO update deployment status to computeCollection in DB via restapi
 	if err != nil {
 		fmt.Printf("Failed to get deploymentConfig for job %s: %v\n", jobId, err)
 	}
@@ -175,21 +203,16 @@ func (r *resourceHandler) addResource(jobId string) {
 func (r *resourceHandler) revokeResource(jobId string) error {
 	zap.S().Infof("Received revoke resource request for job %s", jobId)
 
-	// WORK IN PROGRESS: Moved code directly from controller. Contains only core logic which could be used.
-	// However, it needs to be re-written to be used in the standalone deployer.
+	// 1. decommission compute resources if they are in use
+	if r.dplyr != nil {
+		if err := r.dplyr.Uninstall("job-" + jobId + "-" + r.spec.ComputeId); err != nil {
+			zap.S().Warnf("failed to release resources for job %s: %v", jobId, err)
+		}
+	}
 
-	// // 1. decommission compute resources if they are in use
-	// if h.dplyr != nil {
-	// 	if err := h.dplyr.Uninstall("job-" + h.jobId); err != nil {
-	// 		zap.S().Warnf("failed to release resources for job %s: %v", h.jobId, err)
-	// 	}
-	// }
-
-	// // 2.delete all the job resource specification files
-	// deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
-	// _ = os.RemoveAll(deploymentChartPath)
-
-	// h.tskWatchCancelFn()
+	// 2.delete all the job resource specification files
+	deploymentChartPath := filepath.Join(deploymentDirPath, jobId)
+	_ = os.RemoveAll(deploymentChartPath)
 
 	zap.S().Infof("Completed revocation of agent resources")
 	return nil
@@ -219,91 +242,79 @@ func (r *resourceHandler) getDeploymentConfig(jobId string) (openapi.DeploymentC
 }
 
 func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentConfig) error {
-	zap.S().Infof("Beginning deployment of agents")
+	deploymentChartPath := filepath.Join(deploymentDirPath, deploymentConfig.JobId)
+	targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
+	if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
+		errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
+		zap.S().Debugf(errMsg)
+		return fmt.Errorf(errMsg)
+	}
 
-	// WORK IN PROGRESS: Moved code directly from controller. Contains only core logic which could be used.
-	// However, it needs to be re-written to be used in the standalone deployer.
+	// Copy helm chart files to destination folder
+	for _, chartFile := range helmChartFiles {
+		srcFilePath := filepath.Join(jobTemplateDirPath, chartFile)
+		dstFilePath := filepath.Join(deploymentChartPath, chartFile)
+		if err := util.CopyFile(srcFilePath, dstFilePath); err != nil {
+			errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
+			zap.S().Debugf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
+	}
 
-	// deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
-	// targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
-	// if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
-	// 	errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
-	// 	zap.S().Debugf(errMsg)
+	for _, agentKV := range deploymentConfig.AgentKVs {
+		// the agentKV is a map but with just one key (taskId) and one value (taskKey)
+		// TODO fix the api spec to have a map with multiple key:value pairs
+		taskIds := make([]string, len(agentKV))
+		i := 0
+		for k := range agentKV {
+			taskIds[i] = k
+			i++
+		}
+		taskId := taskIds[0]
+		taskKey := agentKV[taskIds[0]]
 
-	// 	return fmt.Errorf(errMsg)
-	// }
+		context := map[string]string{
+			"imageLoc": deploymentConfig.ImageLoc,
+			"taskId":   taskId,
+			"taskKey":  taskKey,
+		}
+		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskId, err)
+			zap.S().Debugf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
 
-	// // Copy helm chart files to destination folder
-	// for _, chartFile := range helmChartFiles {
-	// 	srcFilePath := filepath.Join(jobTemplateDirPath, chartFile)
-	// 	dstFilePath := filepath.Join(deploymentChartPath, chartFile)
-	// 	err := util.CopyFile(srcFilePath, dstFilePath)
-	// 	if err != nil {
-	// 		errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
-	// 		zap.S().Debugf(errMsg)
+		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskId)
+		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
+		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
+		if err != nil {
+			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskId, err)
+			zap.S().Debugf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
+	}
 
-	// 		return fmt.Errorf(errMsg)
-	// 	}
-	// }
+	dplyr, err := deployer.NewDeployer(r.platform)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
+		zap.S().Debugf(errMsg)
+		return fmt.Errorf(errMsg)
+	}
 
-	// for _, taskInfo := range h.tasksInfo {
-	// 	if taskInfo.Type == openapi.USER {
-	// 		// don't attempt to provision compute resource for user-driven task
-	// 		continue
-	// 	}
+	if err = dplyr.Initialize("", r.namespace); err != nil {
+		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
+		zap.S().Debugf(errMsg)
+		return fmt.Errorf(errMsg)
+	}
 
-	// 	context := map[string]string{
-	// 		"imageLoc": h.jobParams.Image,
-	// 		"taskId":   taskInfo.TaskId,
-	// 		"taskKey":  taskInfo.Key,
-	// 	}
-	// 	rendered, err := mustache.RenderFile(jobTemplatePath, &context)
-	// 	if err != nil {
-	// 		errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskInfo.TaskId, err)
-	// 		zap.S().Debugf(errMsg)
+	err = dplyr.Install("job-"+deploymentConfig.JobId+"-"+r.spec.ComputeId, deploymentChartPath)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
+		zap.S().Debugf(errMsg)
+		return fmt.Errorf(errMsg)
+	}
 
-	// 		return fmt.Errorf(errMsg)
-	// 	}
-
-	// 	deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.TaskId)
-	// 	deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
-	// 	err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
-	// 	if err != nil {
-	// 		errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.TaskId, err)
-	// 		zap.S().Debugf(errMsg)
-
-	// 		return fmt.Errorf(errMsg)
-	// 	}
-	// }
-
-	// // TODO: when multiple clusters are supported,
-	// //       set platform dynamically based on the target cluster type
-	// dplyr, err := deployer.NewDeployer(h.platform)
-	// if err != nil {
-	// 	errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
-	// 	zap.S().Debugf(errMsg)
-
-	// 	return fmt.Errorf(errMsg)
-	// }
-
-	// err = dplyr.Initialize("", h.namespace)
-	// if err != nil {
-	// 	errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
-	// 	zap.S().Debugf(errMsg)
-
-	// 	return fmt.Errorf(errMsg)
-	// }
-
-	// err = dplyr.Install("job-"+h.jobId, deploymentChartPath)
-	// if err != nil {
-	// 	errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
-	// 	zap.S().Debugf(errMsg)
-
-	// 	return fmt.Errorf(errMsg)
-	// }
-
-	// h.dplyr = dplyr
-
-	zap.S().Infof("Completed deployment of agents")
+	r.dplyr = dplyr
 	return nil
 }

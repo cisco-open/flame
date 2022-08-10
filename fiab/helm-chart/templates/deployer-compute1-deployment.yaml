@@ -44,6 +44,10 @@ spec:
           - {{ .Values.deployerCompute1.computeId }}
           - --apikey
           - {{ .Values.deployerCompute1.apiKey }}
+          - --platform
+          - {{ .Values.deployerCompute1.platform }}
+          - --namespace
+          - {{ .Values.deployerCompute1.namespace }}
           {{ if .Values.insecure }}
           - "--insecure"
           {{ end }}

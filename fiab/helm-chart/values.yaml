@@ -101,12 +101,16 @@ deployerDefault:
   region: "default/us"
   computeId: "default"
   apiKey: "apiKey-default"
+  platform: "k8s"
+  namespace: "flame"
 
 deployerCompute1:
   adminId: "admin-2"
   region: "default/us/west"
   computeId: "compute-1"
   apiKey: "apiKey-1"
+  platform: "k8s"
+  namespace: "flame"
 
 servicePort:
   apiserver: "10100"

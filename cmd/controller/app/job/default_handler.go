@@ -19,21 +19,15 @@ package job
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
 	"sync"
 	"time"
 
-	"github.com/cbroglie/mustache"
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
-	"github.com/cisco-open/flame/cmd/controller/app/deployer"
 	"github.com/cisco-open/flame/cmd/controller/config"
 	"github.com/cisco-open/flame/pkg/openapi"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
-	"github.com/cisco-open/flame/pkg/util"
 )
 
 type DefaultHandler struct {
@@ -45,8 +39,6 @@ type DefaultHandler struct {
 	mu         *sync.Mutex
 	notifier   string
 	jobParams  config.JobParams
-	platform   string
-	namespace  string
 
 	jobSpec openapi.JobSpec
 
@@ -58,7 +50,6 @@ type DefaultHandler struct {
 	errCh            chan error
 	tskWatchCancelFn context.CancelFunc
 
-	dplyr deployer.Deployer
 	// isDone is set in case where nothing can be done by a handler
 	// isDone should be set only once as its buffer size is 1
 	isDone chan bool
@@ -71,7 +62,7 @@ type DefaultHandler struct {
 
 func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *EventQ,
 	jobQueues map[string]*EventQ, mu *sync.Mutex, notifier string, jobParams config.JobParams,
-	platform string, namespace string, bInsecure bool, bPlain bool) (*DefaultHandler, error) {
+	bInsecure bool, bPlain bool) (*DefaultHandler, error) {
 	// start task monitoring
 	tskEventCh, errCh, tskWatchCancelFn, err := dbService.MonitorTasks(jobId)
 	if err != nil {
@@ -87,8 +78,6 @@ func NewDefaultHandler(dbService database.DBService, jobId string, userEventQ *E
 		mu:         mu,
 		notifier:   notifier,
 		jobParams:  jobParams,
-		platform:   platform,
-		namespace:  namespace,
 
 		bInsecure: bInsecure,
 		bPlain:    bPlain,
@@ -197,17 +186,7 @@ func (h *DefaultHandler) doHandle(event *JobEvent) {
 func (h *DefaultHandler) cleanup() {
 	h.notifyDeploy(pbNotify.DeployEventType_REVOKE_RESOURCE)
 	zap.S().Infof("Invoking notifyDeploy - revoke resource - from cleanup()")
-
-	// 1. decommission compute resources if they are in use
-	if h.dplyr != nil {
-		if err := h.dplyr.Uninstall("job-" + h.jobId); err != nil {
-			zap.S().Warnf("failed to release resources for job %s: %v", h.jobId, err)
-		}
-	}
-
-	// 2.delete all the job resource specification files
-	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
-	_ = os.RemoveAll(deploymentChartPath)
+	// TODO use DeployResponse returned and verify that the deployment notification was acted upon correctly. Handle failures
 
 	h.tskWatchCancelFn()
 }
@@ -220,86 +199,7 @@ func (h *DefaultHandler) allocateComputes() error {
 	// Placeholder invocation for new deployer
 	h.notifyDeploy(pbNotify.DeployEventType_ADD_RESOURCE)
 	zap.S().Infof("Invoking notifyDeploy - add resource - from allocateComputes()")
-
-	deploymentChartPath := filepath.Join(deploymentDirPath, h.jobId)
-	targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
-	if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
-		errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
-		zap.S().Debugf(errMsg)
-
-		return fmt.Errorf(errMsg)
-	}
-
-	// Copy helm chart files to destination folder
-	for _, chartFile := range helmChartFiles {
-		srcFilePath := filepath.Join(jobTemplateDirPath, chartFile)
-		dstFilePath := filepath.Join(deploymentChartPath, chartFile)
-		err := util.CopyFile(srcFilePath, dstFilePath)
-		if err != nil {
-			errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
-			zap.S().Debugf(errMsg)
-
-			return fmt.Errorf(errMsg)
-		}
-	}
-
-	for _, taskInfo := range h.tasksInfo {
-		if taskInfo.Type == openapi.USER {
-			// don't attempt to provision compute resource for user-driven task
-			continue
-		}
-
-		context := map[string]string{
-			"imageLoc": h.jobParams.Image,
-			"taskId":   taskInfo.TaskId,
-			"taskKey":  taskInfo.Key,
-		}
-		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
-		if err != nil {
-			errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskInfo.TaskId, err)
-			zap.S().Debugf(errMsg)
-
-			return fmt.Errorf(errMsg)
-		}
-
-		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskInfo.TaskId)
-		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
-		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
-		if err != nil {
-			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskInfo.TaskId, err)
-			zap.S().Debugf(errMsg)
-
-			return fmt.Errorf(errMsg)
-		}
-	}
-
-	// TODO: when multiple clusters are supported,
-	//       set platform dynamically based on the target cluster type
-	dplyr, err := deployer.NewDeployer(h.platform)
-	if err != nil {
-		errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
-		zap.S().Debugf(errMsg)
-
-		return fmt.Errorf(errMsg)
-	}
-
-	err = dplyr.Initialize("", h.namespace)
-	if err != nil {
-		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
-		zap.S().Debugf(errMsg)
-
-		return fmt.Errorf(errMsg)
-	}
-
-	err = dplyr.Install("job-"+h.jobId, deploymentChartPath)
-	if err != nil {
-		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
-		zap.S().Debugf(errMsg)
-
-		return fmt.Errorf(errMsg)
-	}
-
-	h.dplyr = dplyr
+	// TODO use DeployResponse returned and verify that the deployment notification was acted upon correctly. Handle failures
 
 	return nil
 }
