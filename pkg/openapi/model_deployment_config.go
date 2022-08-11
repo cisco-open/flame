@@ -31,7 +31,8 @@ type DeploymentConfig struct {
 
 	ImageLoc string `json:"imageLoc"`
 
-	AgentKVs []map[string]string `json:"agentKVs"`
+	// Config for agents in the deployment
+	AgentKVs map[string]string `json:"agentKVs"`
 }
 
 // AssertDeploymentConfigRequired checks if the required fields are not zero-ed
