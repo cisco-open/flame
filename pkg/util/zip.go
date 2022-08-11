@@ -20,7 +20,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -52,7 +52,7 @@ func UnzipFile(file *os.File) ([]FileData, error) {
 			continue
 		}
 
-		data, err := ioutil.ReadAll(rc)
+		data, err := io.ReadAll(rc)
 		if err != nil {
 			rc.Close()
 			return nil, err

@@ -22,7 +22,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"os/exec"
@@ -232,7 +231,7 @@ func (t *taskHandler) getTask() ([]string, error) {
 	filePaths := make([]string, 0)
 	for fileName, data := range taskMap {
 		filePath := filepath.Join("/tmp", fileName)
-		err = ioutil.WriteFile(filePath, data, util.FilePerm0755)
+		err = os.WriteFile(filePath, data, util.FilePerm0755)
 		if err != nil {
 			zap.S().Warnf("Failed to save %s: %v\n", fileName, err)
 			return nil, err
@@ -296,7 +295,7 @@ func (t *taskHandler) prepareTask(filePaths []string) error {
 
 func (t *taskHandler) prepareConfig(configFilePath string) error {
 	// copy config file to work directory
-	input, err := ioutil.ReadFile(configFilePath)
+	input, err := os.ReadFile(configFilePath)
 	if err != nil {
 		return fmt.Errorf("failed to open config file %s: %v", configFilePath, err)
 	}
@@ -318,7 +317,7 @@ func (t *taskHandler) prepareConfig(configFilePath string) error {
 	}
 
 	dstFilePath := filepath.Join(workDir, util.TaskConfigFile)
-	err = ioutil.WriteFile(dstFilePath, input, util.FilePerm0644)
+	err = os.WriteFile(dstFilePath, input, util.FilePerm0644)
 	if err != nil {
 		return fmt.Errorf("failed to copy config file: %v", err)
 	}
@@ -336,7 +335,7 @@ func (t *taskHandler) prepareCode(fileDataList []util.FileData) error {
 		}
 
 		filePath := filepath.Join(dirPath, fileData.BaseName)
-		err = ioutil.WriteFile(filePath, []byte(fileData.Data), util.FilePerm0644)
+		err = os.WriteFile(filePath, []byte(fileData.Data), util.FilePerm0644)
 		if err != nil {
 			return fmt.Errorf("failed to unzip file %s: %v", filePath, err)
 		}

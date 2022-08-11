@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"mime"
 	"mime/multipart"
 	"net/http"
@@ -171,7 +170,7 @@ func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, err
 	defer resp.Body.Close()
 
 	//Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if ErrorNilCheck(GetFunctionName(HTTPPost), err) != nil {
 		return -1, nil, err
 	}
@@ -202,7 +201,7 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 	defer resp.Body.Close()
 
 	//Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
 		return -1, nil, err
 	}
@@ -232,7 +231,7 @@ func HTTPDelete(url string, msg interface{}, contentType string) (int, []byte, e
 	defer resp.Body.Close()
 
 	//Read the response body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if ErrorNilCheck(GetFunctionName(HTTPDelete), err) != nil {
 		return -1, nil, err
 	}
@@ -248,7 +247,7 @@ func HTTPGet(url string) (int, []byte, error) {
 	}
 	defer resp.Body.Close()
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if ErrorNilCheck(GetFunctionName(HTTPGet), err) != nil {
 		return -1, nil, err
 	}
@@ -274,7 +273,7 @@ func HTTPGetMultipart(url string) (int, map[string][]byte, error) {
 	result := make(map[string][]byte)
 	mr := multipart.NewReader(resp.Body, params["boundary"])
 	for part, err := mr.NextPart(); err == nil; part, err = mr.NextPart() {
-		data, err := ioutil.ReadAll(part)
+		data, err := io.ReadAll(part)
 		if err != nil {
 			return -1, nil, err
 		}

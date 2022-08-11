@@ -21,7 +21,6 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -287,7 +286,7 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 
 		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskId)
 		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
-		err = ioutil.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
+		err = os.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskId, err)
 			zap.S().Debugf(errMsg)

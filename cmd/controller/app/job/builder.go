@@ -19,8 +19,8 @@ package job
 import (
 	"container/list"
 	"fmt"
-	"io/ioutil"
 	"math"
+	"os"
 	"strings"
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
@@ -95,7 +95,7 @@ func (b *JobBuilder) setup() error {
 		return err
 	}
 
-	f, err := ioutil.TempFile("", util.ProjectName)
+	f, err := os.CreateTemp("", util.ProjectName)
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %v", err)
 	}

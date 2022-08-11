@@ -29,7 +29,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"mime/multipart"
 	"net/http"
 	"os"
@@ -128,7 +127,7 @@ func readFileHeaderToTempFile(fileHeader *multipart.FileHeader) (*os.File, error
 
 	defer formFile.Close()
 
-	fileBytes, err := ioutil.ReadAll(formFile)
+	fileBytes, err := io.ReadAll(formFile)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +137,7 @@ func readFileHeaderToTempFile(fileHeader *multipart.FileHeader) (*os.File, error
 	//                   in tempfile generation, thus causing
 	//                   "pattern contains path separator" error
 	// file, err := ioutil.TempFile("", fileHeader.Filename)
-	file, err := ioutil.TempFile("", "flame")
+	file, err := os.CreateTemp("", "flame")
 	if err != nil {
 		return nil, err
 	}
