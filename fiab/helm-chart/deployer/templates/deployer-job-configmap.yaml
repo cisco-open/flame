@@ -18,7 +18,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: {{ .Release.Name }}-controller-job-configmap
+  name: {{ .Release.Name }}-deployer-job-configmap
   namespace: {{ .Release.Namespace }}
 data:
   Chart.yaml: |
