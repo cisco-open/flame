@@ -19,7 +19,7 @@ package schema
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -37,7 +37,7 @@ type Params struct {
 
 func Create(params Params) error {
 	// read schema via conf file
-	jsonData, err := ioutil.ReadFile(params.SchemaPath)
+	jsonData, err := os.ReadFile(params.SchemaPath)
 	if err != nil {
 		return err
 	}
@@ -128,7 +128,7 @@ func GetMany(params Params) error {
 
 func Update(params Params) error {
 	// read schema via conf file
-	jsonData, err := ioutil.ReadFile(params.SchemaPath)
+	jsonData, err := os.ReadFile(params.SchemaPath)
 	if err != nil {
 		return err
 	}

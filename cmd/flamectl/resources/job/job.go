@@ -19,7 +19,6 @@ package job
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 
 	"github.com/olekukonko/tablewriter"
@@ -39,7 +38,7 @@ type Params struct {
 }
 
 func Create(params Params) error {
-	data, err := ioutil.ReadFile(params.JobFile)
+	data, err := os.ReadFile(params.JobFile)
 	if err != nil {
 		fmt.Printf("Failed to read file %s: %v\n", params.JobFile, err)
 		return nil
@@ -189,7 +188,7 @@ func GetStatus(params Params) error {
 }
 
 func Update(params Params) error {
-	data, err := ioutil.ReadFile(params.JobFile)
+	data, err := os.ReadFile(params.JobFile)
 	if err != nil {
 		fmt.Printf("Failed to read file %s: %v\n", params.JobFile, err)
 		return nil

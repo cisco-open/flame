@@ -19,7 +19,6 @@ package code
 import (
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -94,7 +93,7 @@ func Get(params Params) error {
 	}
 
 	fileName := params.DesignId + "_ver-" + params.CodeVer + ".zip"
-	err = ioutil.WriteFile(fileName, respBody, util.FilePerm0644)
+	err = os.WriteFile(fileName, respBody, util.FilePerm0644)
 	if err != nil {
 		fmt.Printf("Failed to save %s: %v\n", fileName, err)
 		return nil

@@ -19,7 +19,6 @@ package dataset
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 
@@ -38,7 +37,7 @@ type Params struct {
 }
 
 func Create(params Params) error {
-	data, err := ioutil.ReadFile(params.DatasetFile)
+	data, err := os.ReadFile(params.DatasetFile)
 	if err != nil {
 		fmt.Printf("Failed to read file %s: %v\n", params.DatasetFile, err)
 		return nil
