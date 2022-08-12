@@ -93,9 +93,9 @@ func (nc *notifyClient) sendDeployNotification(req *pbNotify.DeployEventRequest)
 	response, err := trClient.NotifyDeploy(context.Background(), req)
 
 	if err != nil {
-		errMsg := fmt.Sprintf("sendDeployNotification failed: %v", err)
+		errMsg := fmt.Sprintf("sendDeployNotification failed with response: %v, err: %v", response, err)
 		zap.S().Warn(errMsg)
-		return nil, fmt.Errorf(errMsg)
+		return response, fmt.Errorf(errMsg)
 	}
 
 	return response, nil

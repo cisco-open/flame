@@ -159,44 +159,64 @@ func (r *resourceHandler) do() {
 			break
 		}
 
-		r.dealWith(resp)
+		err = r.dealWith(resp)
+		if err != nil {
+			zap.S().Errorf("Failed to dealWith task: %v", err)
+		}
 	}
 
 	zap.S().Info("Disconnected from notifier")
 }
 
-func (r *resourceHandler) dealWith(in *pbNotify.DeployEvent) {
+func (r *resourceHandler) dealWith(in *pbNotify.DeployEvent) error {
 	switch in.GetType() {
 	case pbNotify.DeployEventType_ADD_RESOURCE:
-		r.addResource(in.JobId)
+		err := r.addResource(in.JobId)
+		if err != nil {
+			// TODO propagate the error back to the control plane
+			errMsg := fmt.Sprintf("deploy event addResource failed with err: %v", err)
+			zap.S().Errorf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
 
 	case pbNotify.DeployEventType_REVOKE_RESOURCE:
-		r.revokeResource(in.JobId)
+		err := r.revokeResource(in.JobId)
+		if err != nil {
+			// TODO propagate the error back to the control plane
+			errMsg := fmt.Sprintf("deploy event revokeResource failed with err: %v", err)
+			zap.S().Errorf(errMsg)
+			return fmt.Errorf(errMsg)
+		}
 
 	case pbNotify.DeployEventType_UNKNOWN_DEPLOYMENT_TYPE:
 		fallthrough
 	default:
-		zap.S().Errorf("Invalid message type: %s", in.GetType())
+		errMsg := fmt.Sprintf("invalid message type: %s", in.GetType())
+		zap.S().Errorf(errMsg)
+		return fmt.Errorf(errMsg)
 	}
+	return nil
 }
 
-func (r *resourceHandler) addResource(jobId string) {
+func (r *resourceHandler) addResource(jobId string) error {
 	zap.S().Infof("Received add resource request for job %s", jobId)
 
 	// Sending request to apiserver to get deployment config for specific jobId and computeId
 	deploymentConfig, err := r.getDeploymentConfig(jobId)
 	// TODO update deployment status to computeCollection in DB via restapi
 	if err != nil {
-		fmt.Printf("Failed to get deploymentConfig for job %s: %v\n", jobId, err)
+		zap.S().Errorf("Failed to get deploymentConfig for job %s: %v\n", jobId, err)
 	}
 	zap.S().Infof("Got deployment config from apiserver: %v", deploymentConfig)
 
 	// Deploy resources (agents) for the job based on the configuration
 	err = r.deployResources(deploymentConfig)
 	if err != nil {
-		fmt.Printf("Failed to deploy resources for job %s: %v\n", jobId, err)
+		zap.S().Errorf("Failed to deploy resources for job %s: %v\n", jobId, err)
+		return err
 	}
 	zap.S().Infof("Successfully added resources for compute %s and jobId %s", r.spec.ComputeId, jobId)
+	return nil
 }
 
 func (r *resourceHandler) revokeResource(jobId string) error {
@@ -206,6 +226,7 @@ func (r *resourceHandler) revokeResource(jobId string) error {
 	if r.dplyr != nil {
 		if err := r.dplyr.Uninstall("job-" + jobId + "-" + r.spec.ComputeId); err != nil {
 			zap.S().Warnf("failed to release resources for job %s: %v", jobId, err)
+			return err
 		}
 	}
 
@@ -245,7 +266,6 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 	targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
 	if err := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); err != nil {
 		errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", err)
-		zap.S().Debugf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
@@ -255,7 +275,6 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		dstFilePath := filepath.Join(deploymentChartPath, chartFile)
 		if err := util.CopyFile(srcFilePath, dstFilePath); err != nil {
 			errMsg := fmt.Sprintf("failed to copy a deployment chart file %s: %v", chartFile, err)
-			zap.S().Debugf(errMsg)
 			return fmt.Errorf(errMsg)
 		}
 	}
@@ -271,7 +290,6 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		rendered, err := mustache.RenderFile(jobTemplatePath, &context)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskId, err)
-			zap.S().Debugf(errMsg)
 			return fmt.Errorf(errMsg)
 		}
 
@@ -280,7 +298,6 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		err = os.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if err != nil {
 			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskId, err)
-			zap.S().Debugf(errMsg)
 			return fmt.Errorf(errMsg)
 		}
 	}
@@ -288,20 +305,17 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 	dplyr, err := deployer.NewDeployer(r.platform)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to obtain a job deployer: %v", err)
-		zap.S().Debugf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
 	if err = dplyr.Initialize("", r.namespace); err != nil {
 		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
-		zap.S().Debugf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
 	err = dplyr.Install("job-"+deploymentConfig.JobId+"-"+r.spec.ComputeId, deploymentChartPath)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to deploy tasks: %v", err)
-		zap.S().Debugf(errMsg)
 		return fmt.Errorf(errMsg)
 	}
 
