@@ -110,15 +110,22 @@ func (s *notificationServer) NotifyDeploy(ctx context.Context, in *pbNotify.Depl
 		FailedDeployers: failedDeployers,
 	}
 
+	raiseError := false
+
 	if len(in.ComputeIds) > 0 && len(failedDeployers) == len(in.ComputeIds) {
 		resp.Message = "Failed to issue deployment instructions for all deployers"
 		resp.Status = pbNotify.DeployResponse_ERROR
+		raiseError = true
 	} else if len(failedDeployers) > 0 && len(failedDeployers) < len(in.ComputeIds) {
 		resp.Message = "Issued deployment instructions for some deployers successfully"
 		resp.Status = pbNotify.DeployResponse_PARTIAL_SUCCESS
+		raiseError = true
 	}
 
 	zap.S().Info(resp.Message)
+	if raiseError {
+		return resp, fmt.Errorf(resp.Message)
+	}
 
 	return resp, nil
 }

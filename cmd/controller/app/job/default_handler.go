@@ -184,11 +184,13 @@ func (h *DefaultHandler) doHandle(event *JobEvent) {
 }
 
 func (h *DefaultHandler) cleanup() {
-	h.notifyDeploy(pbNotify.DeployEventType_REVOKE_RESOURCE)
-	zap.S().Infof("Invoking notifyDeploy - revoke resource - from cleanup()")
-	// TODO use DeployResponse returned and verify that the deployment notification was acted upon correctly. Handle failures
-
-	h.tskWatchCancelFn()
+	err := h.notifyDeploy(pbNotify.DeployEventType_REVOKE_RESOURCE)
+	zap.S().Infof("Invoked notifyDeploy - revoke resource for jobId %s", h.jobId)
+	if err != nil {
+		zap.S().Errorf("notifyDeploy could not notify all deployers to revoke resources, err: %v", err)
+	} else {
+		h.tskWatchCancelFn()
+	}
 }
 
 func (h *DefaultHandler) ChangeState(state JobHandlerState) {
@@ -196,11 +198,12 @@ func (h *DefaultHandler) ChangeState(state JobHandlerState) {
 }
 
 func (h *DefaultHandler) allocateComputes() error {
-	// Placeholder invocation for new deployer
-	h.notifyDeploy(pbNotify.DeployEventType_ADD_RESOURCE)
-	zap.S().Infof("Invoking notifyDeploy - add resource - from allocateComputes()")
-	// TODO use DeployResponse returned and verify that the deployment notification was acted upon correctly. Handle failures
-
+	err := h.notifyDeploy(pbNotify.DeployEventType_ADD_RESOURCE)
+	zap.S().Infof("Invoked notifyDeploy - add resource for jobId %s", h.jobId)
+	if err != nil {
+		zap.S().Errorf("notifyDeploy could not notify all deployers to allocate resources, err: %v", err)
+		return err
+	}
 	return nil
 }
 
@@ -251,7 +254,7 @@ func (h *DefaultHandler) notifyDeploy(evtType pbNotify.DeployEventType) error {
 
 	resp, err := newNotifyClient(h.notifier, h.bInsecure, h.bPlain).sendDeployNotification(req)
 	if err != nil {
-		return fmt.Errorf("failed to notify for deployment: %v", err)
+		return fmt.Errorf("failed to notify for deployment: %v, failed deployers: %v, status: %v", err, resp.FailedDeployers, resp.Status)
 	}
 
 	zap.S().Infof("response status from notifyDeploy = %s", resp.Status.String())
