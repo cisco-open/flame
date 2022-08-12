@@ -260,17 +260,8 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		}
 	}
 
-	for _, agentKV := range deploymentConfig.AgentKVs {
-		// the agentKV is a map but with just one key (taskId) and one value (taskKey)
-		// TODO fix the api spec to have a map with multiple key:value pairs
-		taskIds := make([]string, len(agentKV))
-		i := 0
-		for k := range agentKV {
-			taskIds[i] = k
-			i++
-		}
-		taskId := taskIds[0]
-		taskKey := agentKV[taskIds[0]]
+	for taskId := range deploymentConfig.AgentKVs {
+		taskKey := deploymentConfig.AgentKVs[taskId]
 
 		context := map[string]string{
 			"imageLoc": deploymentConfig.ImageLoc,

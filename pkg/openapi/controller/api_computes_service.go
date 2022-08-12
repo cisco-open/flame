@@ -126,11 +126,9 @@ func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId 
 	deploymentConfig.JobId = jobId
 	deploymentConfig.ImageLoc = imageLoc
 
-	agentKVs := []map[string]string{}
+	agentKVs := map[string]string{}
 	for _, task := range jobTasks {
-		agent := make(map[string]string)
-		agent[task.TaskId] = task.Key
-		agentKVs = append(agentKVs, agent)
+		agentKVs[task.TaskId] = task.Key
 	}
 	deploymentConfig.AgentKVs = agentKVs
 

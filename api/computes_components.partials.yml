@@ -77,9 +77,7 @@ DeploymentConfig:
     imageLoc:
       type: string
     agentKVs:
-      type: array
-      items:
-        $ref: '#/components/schemas/AgentKV'
+      $ref: '#/components/schemas/AgentKVs'
   required:
     - jobId
     - imageLoc
@@ -88,7 +86,7 @@ DeploymentConfig:
 ########################################
 # Config for agents in the deployment
 ########################################
-AgentKV:
+AgentKVs:
   description:  Config for agents in the deployment
   type: object
   additionalProperties:
