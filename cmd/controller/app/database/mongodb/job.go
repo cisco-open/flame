@@ -306,7 +306,7 @@ func (db *MongoService) GetTasksInfoGeneric(client string, jobId string, limit i
 		}
 	} else {
 		if client != "" {
-			filter = bson.M{util.DBFieldComputeId: client}
+			filter[util.DBFieldComputeId] = client
 		}
 	}
 	cursor, err := db.taskCollection.Find(context.TODO(), filter)
