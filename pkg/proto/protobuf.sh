@@ -22,7 +22,7 @@ go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@v1.2
 export PATH=$PATH:$HOME/go/bin
 
 case "$1" in
-    "notification"|"agent")
+    "agent"|"notification")
 	mkdir -p $1
 	protoc --go_out=$1 \
 	       --go_opt=paths=source_relative \
@@ -30,8 +30,19 @@ case "$1" in
 	       --go-grpc_opt=paths=source_relative \
 	       $1.proto
 	;;
+    "meta")
+	mkdir -p $1
+	protoc --go_out=$1 \
+	       --go_opt=paths=source_relative \
+	       --go-grpc_out=$1 \
+	       --go-grpc_opt=paths=source_relative \
+	       $1.proto
+	# To run the following command, grpcio-tools is needed.
+	# if it's not installed, run "pip install grpcio-tools"
+	python -m grpc_tools.protoc -I=./ --python_out=$1 --grpc_python_out=$1 $1.proto
+	;;
     *)
-	echo "usage: ./protobuf.sh [ notification | agent ]"
+	echo "usage: ./protobuf.sh [ agent | meta | notification ]"
 	exit 1
 	;;
 esac

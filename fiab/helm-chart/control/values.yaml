@@ -65,8 +65,10 @@ workerImageName: flame
 workerImageTag: latest
 
 broker:
-  sort: mqtt
-  host: flame-mosquitto
+  - sort: mqtt
+    host: flame-mosquitto
+  - sort: p2p
+    host: flame-metaserver:10104
 
 registry:
   sort: mlflow
@@ -109,6 +111,7 @@ servicePort:
   notifier: "10101"
   controller: "10102"
   agent: "10103"
+  metaserver: "10104"
   mqtt: "1883"
 
 replicas: 1

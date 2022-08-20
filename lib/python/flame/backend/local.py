@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
+"""Local backend."""
 
 import asyncio
 import uuid
@@ -28,9 +28,11 @@ UNIX_SOCKET_PATH_TEMPLATE = '/tmp/flame-{}.socket'
 
 
 class LocalBackend(AbstractBackend):
-    '''
-    LocalBackend only allows a singleton instance
-    '''
+    """LocalBackend class.
+
+    The local backend is obsolete. It will be removed in a future version.
+    """
+
     _instance = None
 
     _initialized = False

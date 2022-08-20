@@ -13,32 +13,50 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+"""Abstract backend."""
+
+from abc import ABC, abstractmethod
+
+from ..common.constants import CommType
 
 
-from abc import abstractmethod
+class AbstractBackend(ABC):
+    """AbstractBackend class."""
 
-
-class AbstractBackend:
     @abstractmethod
-    async def _setup_server(self):
+    def configure(self, broker: str, job_id: str, task_id: str):
+        """Configure the backend."""
+        pass
+
+    @abstractmethod
+    def eventq(self):
+        """Return a event queue object."""
+        pass
+
+    @abstractmethod
+    def loop(self):
+        """Return loop instance of asyncio."""
         pass
 
     @abstractmethod
     def uid(self):
+        """Return backend id."""
         pass
 
     @abstractmethod
-    def endpoint(self):
+    def join(self, channel) -> None:
+        """Join a channel."""
         pass
 
     @abstractmethod
-    def connect(self, end_id, endpoint):
+    def create_tx_task(self,
+                       channel_name: str,
+                       end_id: str,
+                       comm_type=CommType.UNICAST) -> bool:
+        """Create asyncio task for transmission."""
         pass
 
     @abstractmethod
-    def close(self):
-        pass
-
-    @abstractmethod
-    def configure(self, broker, job_id):
+    def attach_channel(self, channel):
+        """Attach a channel to backend."""
         pass

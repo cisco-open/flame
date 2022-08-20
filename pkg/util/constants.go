@@ -62,12 +62,14 @@ const (
 	NotifierGrpcPort      = 10101 // for notification and push
 	ControllerRestApiPort = 10102 // Controller REST API port
 	AgentGrpcPort         = 10103 // for flamelet - application
+	MetaServerPort        = 10104 // meta data update and retrieval (Experimental)
 
 	// Service names
 	Agent      = "flamelet"
 	ApiServer  = "apiserver"
 	Controller = "controller"
 	Notifier   = "notifier"
+	MetaServer = "metaserver"
 	Deployer   = "deployer"
 	CliTool    = "flamectl"
 
