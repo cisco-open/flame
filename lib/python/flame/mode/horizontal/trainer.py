@@ -21,7 +21,7 @@ import time
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks,  mlflow_runname)
+                            valid_frameworks, mlflow_runname)
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -32,6 +32,7 @@ logger = logging.getLogger(__name__)
 
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
+
 
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
@@ -94,6 +95,8 @@ class Trainer(Role, metaclass=ABCMeta):
             elif k == MessageType.ROUND:
                 self._round = v
 
+        logger.debug(f"work_done: {self._work_done}, round: {self._round}")
+
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
         if tag == TAG_UPLOAD:
@@ -114,7 +117,11 @@ class Trainer(Role, metaclass=ABCMeta):
         end = channel.one_end()
 
         self._update_weights()
-        channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
+        channel.send(
+            end, {
+                MessageType.WEIGHTS: self.weights,
+                MessageType.DATASET_SIZE: self.dataset_size
+            })
         logger.debug("sending weights done")
 
     def save_metrics(self):

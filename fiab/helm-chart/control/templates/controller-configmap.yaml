@@ -27,9 +27,7 @@ data:
     notifier: {{ .Values.frontDoorUrl.notifier }}:443
     jobParams:
       image: {{ .Values.workerImageName }}:{{ .Values.workerImageTag }}
-      brokers:
-        - sort: {{ .Values.broker.sort }}
-          host: {{ .Values.broker.host }}
+      brokers: {{ toYaml .Values.broker | nindent 8 }}
       registry:
         sort: {{ .Values.registry.sort }}
         uri: {{ .Values.registry.uri }}

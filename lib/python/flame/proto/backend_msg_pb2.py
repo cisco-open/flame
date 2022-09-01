@@ -28,28 +28,28 @@ from google.protobuf import symbol_database as _symbol_database
 
 _sym_db = _symbol_database.Default()
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(
-    b'\n\x11\x62\x61\x63kend_msg.proto\x12\x07\x62\x61\x63kend\"\x19\n\x07\x43onnect\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\"Q\n\x06Notify\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\x12\x14\n\x0c\x63hannel_name\x18\x02 \x01(\t\x12!\n\x04type\x18\x03 \x01(\x0e\x32\x13.backend.NotifyType\"Y\n\x04\x44\x61ta\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\x12\x14\n\x0c\x63hannel_name\x18\x02 \x01(\t\x12\r\n\x05seqno\x18\x03 \x01(\x05\x12\x0b\n\x03\x65om\x18\x04 \x01(\x08\x12\x0f\n\x07payload\x18\x05 \x01(\x0c*:\n\nNotifyType\x12\x17\n\x13UNKNOWN_NOTIFY_TYPE\x10\x00\x12\x08\n\x04JOIN\x10\x01\x12\t\n\x05LEAVE\x10\x02\x62\x06proto3'
-)
+
+
+
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x11\x62\x61\x63kend_msg.proto\x12\x07\x62\x61\x63kend\"\x1b\n\tBackendID\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\"Q\n\x06Notify\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\x12\x14\n\x0c\x63hannel_name\x18\x02 \x01(\t\x12!\n\x04type\x18\x03 \x01(\x0e\x32\x13.backend.NotifyType\"Y\n\x04\x44\x61ta\x12\x0e\n\x06\x65nd_id\x18\x01 \x01(\t\x12\x14\n\x0c\x63hannel_name\x18\x02 \x01(\t\x12\r\n\x05seqno\x18\x03 \x01(\x05\x12\x0b\n\x03\x65om\x18\x04 \x01(\x08\x12\x0f\n\x07payload\x18\x05 \x01(\x0c*C\n\nNotifyType\x12\x17\n\x13UNKNOWN_NOTIFY_TYPE\x10\x00\x12\x08\n\x04JOIN\x10\x01\x12\t\n\x05LEAVE\x10\x02\x12\x07\n\x03\x41\x43K\x10\x03\x32\xa8\x01\n\x0c\x42\x61\x63kendRoute\x12\x30\n\nnotify_end\x12\x0f.backend.Notify\x1a\x0f.backend.Notify\"\x00\x12\x32\n\tsend_data\x12\r.backend.Data\x1a\x12.backend.BackendID\"\x00(\x01\x12\x32\n\trecv_data\x12\x12.backend.BackendID\x1a\r.backend.Data\"\x00\x30\x01\x62\x06proto3')
 
 _NOTIFYTYPE = DESCRIPTOR.enum_types_by_name['NotifyType']
 NotifyType = enum_type_wrapper.EnumTypeWrapper(_NOTIFYTYPE)
 UNKNOWN_NOTIFY_TYPE = 0
 JOIN = 1
 LEAVE = 2
+ACK = 3
 
-_CONNECT = DESCRIPTOR.message_types_by_name['Connect']
+
+_BACKENDID = DESCRIPTOR.message_types_by_name['BackendID']
 _NOTIFY = DESCRIPTOR.message_types_by_name['Notify']
 _DATA = DESCRIPTOR.message_types_by_name['Data']
-Connect = _reflection.GeneratedProtocolMessageType(
-    'Connect',
-    (_message.Message, ),
-    {
-        'DESCRIPTOR': _CONNECT,
-        '__module__': 'backend_msg_pb2'
-        # @@protoc_insertion_point(class_scope:backend.Connect)
-    })
-_sym_db.RegisterMessage(Connect)
+BackendID = _reflection.GeneratedProtocolMessageType('BackendID', (_message.Message,), {
+  'DESCRIPTOR' : _BACKENDID,
+  '__module__' : 'backend_msg_pb2'
+  # @@protoc_insertion_point(class_scope:backend.BackendID)
+  })
+_sym_db.RegisterMessage(BackendID)
 
 Notify = _reflection.GeneratedProtocolMessageType('Notify', (_message.Message,), {
   'DESCRIPTOR' : _NOTIFY,
@@ -65,15 +65,18 @@ Data = _reflection.GeneratedProtocolMessageType('Data', (_message.Message,), {
   })
 _sym_db.RegisterMessage(Data)
 
+_BACKENDROUTE = DESCRIPTOR.services_by_name['BackendRoute']
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
-  _NOTIFYTYPE._serialized_start=231
-  _NOTIFYTYPE._serialized_end=289
-  _CONNECT._serialized_start=30
-  _CONNECT._serialized_end=55
-  _NOTIFY._serialized_start=57
-  _NOTIFY._serialized_end=138
-  _DATA._serialized_start=140
-  _DATA._serialized_end=229
+  _NOTIFYTYPE._serialized_start=233
+  _NOTIFYTYPE._serialized_end=300
+  _BACKENDID._serialized_start=30
+  _BACKENDID._serialized_end=57
+  _NOTIFY._serialized_start=59
+  _NOTIFY._serialized_end=140
+  _DATA._serialized_start=142
+  _DATA._serialized_end=231
+  _BACKENDROUTE._serialized_start=303
+  _BACKENDROUTE._serialized_end=471
 # @@protoc_insertion_point(module_scope)

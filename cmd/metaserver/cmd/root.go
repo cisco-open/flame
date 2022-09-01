@@ -14,38 +14,36 @@
 //
 // SPDX-License-Identifier: Apache-2.0
 
-syntax = "proto3";
+package cmd
 
-package backend;
+import (
+	"github.com/spf13/cobra"
 
-// route for backend
-service BackendRoute {
-  rpc notify_end(Notify) returns (Notify) {}
-  rpc send_data(stream Data) returns (BackendID) {}
-  rpc recv_data(BackendID) returns (stream Data) {}
+	"github.com/cisco-open/flame/cmd/metaserver/app"
+	"github.com/cisco-open/flame/pkg/util"
+)
+
+var rootCmd = &cobra.Command{
+	Use:   util.MetaServer,
+	Short: util.ProjectName + " " + util.MetaServer,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		flags := cmd.Flags()
+
+		port, err := flags.GetUint16("port")
+		if err != nil {
+			return err
+		}
+
+		app.Start(port)
+
+		return nil
+	},
 }
 
-enum NotifyType {
-  UNKNOWN_NOTIFY_TYPE = 0; // default
-  JOIN = 1;
-  LEAVE = 2;
-  ACK = 3; // simply acknowledge the receipt of notify message
+func init() {
+	rootCmd.Flags().Uint16P("port", "p", util.MetaServerPort, "service port")
 }
 
-message BackendID {
-  string end_id = 1;
-}
-
-message Notify {
-  string end_id = 1;
-  string channel_name = 2;
-  NotifyType type = 3;
-}
-
-message Data {
-  string end_id = 1;
-  string channel_name = 2;
-  int32 seqno =3;
-  bool eom = 4;
-  bytes payload = 5;
+func Execute() error {
+	return rootCmd.Execute()
 }

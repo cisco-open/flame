@@ -59,7 +59,7 @@ class MqttQoS(IntEnum):
 
 
 class MqttBackend(AbstractBackend):
-    """MqttBackend class. It only allows a singleton instance."""
+    """MqttBackend class."""
 
     def __init__(self):
         """Initialize an instance."""
