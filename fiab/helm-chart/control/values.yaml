@@ -55,7 +55,11 @@ minio:
   ingress:
     enabled: true
     ingressClassName: nginx
-    annotations: {}
+    annotations:
+      # In case there is 413 error,
+      # refer to https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-max-body-size
+      # set nginx.ingress.kubernetes.io/proxy-body-size to 0 to disable the limit
+      nginx.ingress.kubernetes.io/proxy-body-size: 512m
     hosts:
       - minio.flame.test
 
@@ -88,6 +92,10 @@ ingress:
   # So, fiab env disable tls; tls can be enabled with a legitimate cert
   annotationsMlflow:
     nginx.ingress.kubernetes.io/rewrite-target: /
+    # In case there is 413 error,
+    # refer to https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-max-body-size
+    # set nginx.ingress.kubernetes.io/proxy-body-size to 0 to disable the limit
+    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
 
 frontDoorUrl:
   apiserver: apiserver.flame.test
