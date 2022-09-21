@@ -16,6 +16,11 @@ Depending on Linux distributions, several package managers such as `apt`, `yum`,
 ```bash
 brew install go
 brew install golangci-lint
+```
+Then install pyenv (Note : For configuring the pyenv please follow the output of the pyenv init command)
+```bash
+brew install pyenv
+pyenv init
 pyenv install 3.9.6
 pyenv global 3.9.6
 pyenv version
@@ -27,6 +32,25 @@ The following shows how to install the above packages in Ubuntu.
 ```bash
 sudo apt install golang 
 sudo snap install golangci-lint
+```
+Then install pyenv
+```bash
+sudo apt-get update; sudo apt-get install make build-essential libssl-dev zlib1g-dev \
+libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+
+curl https://pyenv.run | bash
+
+# pyenv
+#Add the following entries into your ~/.bashrc or ~/.bash_profile file:
+export PATH="$HOME/.pyenv/bin:$PATH"
+eval "$(pyenv init --path)"
+eval "$(pyenv virtualenv-init -)"
+#restart the shell
+exec $SHELL
+#OR source the shell
+source ~/.bashrc  source ~/.bash_profile
+
 pyenv install 3.9.6
 pyenv global 3.9.6
 pyenv version
