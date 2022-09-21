@@ -37,6 +37,7 @@ TAG_AGGREGATE = 'aggregate'
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
 
+
 class MiddleAggregator(Role, metaclass=ABCMeta):
     """Middle level aggregator.
 
@@ -87,18 +88,21 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("[_fetch_weights] waiting for channel ends")
+        # this call waits for at least one peer to join this channel
+        channel.wait_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
-        dict = channel.recv(end)
-        for k, v in dict.items():
-            if k == MessageType.WEIGHTS:
-                self.weights = v
-            elif k == MessageType.EOT:
-                self._work_done = v
+        msg = channel.recv(end)
+
+        if MessageType.WEIGHTS in msg:
+            self.weights = msg[MessageType.WEIGHTS]
+
+        if MessageType.EOT in msg:
+            self._work_done = msg[MessageType.EOT]
+
+        if MessageType.ROUND in msg:
+            self._round = msg[MessageType.ROUND]
 
     def _distribute_weights(self, tag: str) -> None:
         channel = self.cm.get_by_tag(tag)
@@ -106,14 +110,15 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        while channel.empty():
-            logger.debug("no end found in the channel")
-            time.sleep(1)
+        # this call waits for at least one peer to join this channel
+        channel.wait_join()
 
-        # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round})
+            channel.send(end, {
+                MessageType.WEIGHTS: self.weights,
+                MessageType.ROUND: self._round
+            })
 
     def _aggregate_weights(self, tag: str) -> None:
         channel = self.cm.get_by_tag(tag)
@@ -122,18 +127,17 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         total = 0
         # receive local model parameters from trainers
-        for end in channel.ends():
-            dict = channel.recv(end)
-            if not dict:
-                logger.debug(f"No data received from {end}")
+        for end, msg in channel.recv_fifo(channel.ends()):
+            if not msg:
+                logger.debug(f"No data from {end}; skipping it")
                 continue
 
-            for k, v in dict.items():
-                if k == MessageType.WEIGHTS:
-                    weights = v
-                elif k == MessageType.DATASET_SIZE:
-                    count = v
-                    total += count
+            if MessageType.WEIGHTS in msg:
+                weights = msg[MessageType.WEIGHTS]
+
+            if MessageType.DATASET_SIZE in msg:
+                count = msg[MessageType.DATASET_SIZE]
+                total += count
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
@@ -159,20 +163,22 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             logger.debug(f"[_send_weights] channel not found with {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("[_send_weights] waiting for channel ends")
+        # this call waits for at least one peer to join this channel
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
 
-        channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.DATASET_SIZE: self.dataset_size})
+        channel.send(
+            end, {
+                MessageType.WEIGHTS: self.weights,
+                MessageType.DATASET_SIZE: self.dataset_size
+            })
         logger.debug("sending weights done")
 
-    def increment_round(self):
-        """Increment the round counter."""
-        logger.debug(f"Incrementing current round: {self._round}")
-        self._round += 1
+    def update_round(self):
+        """Update the round counter."""
+        logger.debug(f"Update current round: {self._round}")
 
         channel = self.cm.get_by_tag(self.dist_tag)
         if not channel:
@@ -212,7 +218,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
             task_eval = Tasklet(self.evaluate)
 
-            task_increment_round = Tasklet(self.increment_round)
+            task_update_round = Tasklet(self.update_round)
 
             task_end_of_training = Tasklet(self.inform_end_of_training)
 
@@ -220,7 +226,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         loop = Loop(loop_check_fn=lambda: self._work_done)
         task_internal_init >> task_load_data >> task_init >> loop(
             task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload
-            >> task_eval >> task_increment_round) >> task_end_of_training
+            >> task_eval >> task_update_round) >> task_end_of_training
 
     def run(self) -> None:
         """Run role."""

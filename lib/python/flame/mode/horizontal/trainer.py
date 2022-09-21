@@ -21,7 +21,7 @@ import time
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            valid_frameworks, mlflow_runname)
+                            mlflow_runname, valid_frameworks)
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -79,21 +79,22 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("[_fetch_weights] waiting for channel ends")
+        # this call waits for at least one peer joins this channel
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
-        dict = channel.recv(end)
-        for k, v in dict.items():
-            if k == MessageType.WEIGHTS:
-                self.weights = v
-                self._update_model()
-            elif k == MessageType.EOT:
-                self._work_done = v
-            elif k == MessageType.ROUND:
-                self._round = v
+        msg = channel.recv(end)
+
+        if MessageType.WEIGHTS in msg:
+            self.weights = msg[MessageType.WEIGHTS]
+            self._update_model()
+
+        if MessageType.EOT in msg:
+            self._work_done = msg[MessageType.EOT]
+
+        if MessageType.ROUND in msg:
+            self._round = msg[MessageType.ROUND]
 
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
@@ -109,9 +110,8 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"[_send_weights] channel not found with {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("[_send_weights] waiting for channel ends")
+        # this call waits for at least one peer to join this channel
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()

@@ -18,6 +18,7 @@
 import asyncio
 import atexit
 import logging
+import sys
 from typing import Optional
 
 from .backends import backend_provider
@@ -29,6 +30,25 @@ from .discovery_clients import discovery_client_provider
 from .selectors import selector_provider
 
 logger = logging.getLogger(__name__)
+
+
+def custom_excepthook(exc_type, exc_value, exc_traceback):
+    """Implement a custom exception hook.
+
+    NOTE: this custom version is implemented due to the following warning
+    message printed at the end of execution:
+    "Error in sys.excepthook:
+
+    Original exception was:"
+    This is caused by _inner() function in cleanup().
+    A root-cause is not identified. As a workaround, this custom hook is
+    implemented and set to sys.excepthook
+    """
+    logger.critical("Uncaught exception:",
+                    exc_info=(exc_type, exc_value, exc_traceback))
+
+
+sys.excepthook = custom_excepthook
 
 
 class ChannelManager(object):
@@ -176,17 +196,23 @@ class ChannelManager(object):
 
     def is_joined(self, name):
         """Check if node joined a channel or not."""
-        if name in self._channels:
-            return True
-        else:
-            return False
+        return True if name in self._channels else False
 
     def cleanup(self):
         """Clean up pending asyncio tasks."""
-        if self._backend:
-            for task in asyncio.all_tasks(self._backend.loop()):
+        for _, ch in self._channels.items():
+            ch.cleanup()
+
+        async def _inner():
+            for task in asyncio.all_tasks():
                 task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    logger.debug(f"successfully cancelled {task.get_name()}")
+
+        if self._backend:
+            _ = run_async(_inner(), self._backend.loop())
 
         for k, v in self._backends.items():
-            for task in asyncio.all_tasks(v.loop()):
-                task.cancel()
+            _ = run_async(_inner(), v.loop())

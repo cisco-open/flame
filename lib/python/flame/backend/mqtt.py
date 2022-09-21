@@ -20,7 +20,6 @@ import logging
 import time
 from collections import deque
 from enum import IntEnum
-from typing import Tuple
 
 import paho.mqtt.client as mqtt
 from google.protobuf.any_pb2 import Any
@@ -247,18 +246,14 @@ class MqttBackend(AbstractBackend):
             expiry = time.time() + MQTT_TIME_WAIT
             self._cleanup_waits[msg.end_id] = expiry
 
-        payload, fully_assembled = self.assemble_chunks(msg)
+        if msg.end_id not in self._msg_chunks:
+            channel = self._channels[msg.channel_name]
+            self._msg_chunks[msg.end_id] = ChunkStore(self._loop, channel)
 
-        channel = self._channels[msg.channel_name]
-
-        if fully_assembled:
-            logger.debug(f'fully assembled data size = {len(payload)}')
-            rxq = channel.get_rxq(msg.end_id)
-            if rxq is None:
-                logger.debug(f"rxq not found for {msg.end_id}")
-                return
-
-            await rxq.put(payload)
+        chunk_store = self._msg_chunks[msg.end_id]
+        if not chunk_store.assemble(msg) or chunk_store.eom:
+            # clean up if message is wrong or completely assembled
+            del self._msg_chunks[msg.end_id]
 
     async def _rx_task(self):
         self._rx_deque = deque()
@@ -314,24 +309,6 @@ class MqttBackend(AbstractBackend):
         self._rx_deque[idx].set_result(message)
         # add one extra future in the queue
         self._rx_deque.append(self._loop.create_future())
-
-    def assemble_chunks(self, msg: msg_pb2.Data) -> Tuple[bytes, bool]:
-        """Assemble message chunks to build a whole message."""
-        if msg.end_id not in self._msg_chunks:
-            self._msg_chunks[msg.end_id] = ChunkStore()
-
-        chunk_store = self._msg_chunks[msg.end_id]
-        if not chunk_store.assemble(msg):
-            # clean up wrong message
-            del self._msg_chunks[msg.end_id]
-            return b'', False
-
-        if chunk_store.eom:
-            data = chunk_store.data
-            del self._msg_chunks[msg.end_id]
-            return data, True
-        else:
-            return b'', False
 
     def subscribe(self, topic) -> None:
         """Subscribe to a topic."""

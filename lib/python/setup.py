@@ -19,7 +19,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='flame',
-    version='0.0.10',
+    version='0.0.11',
     author='Flame Maintainers',
     author_email='flame-github-owners@cisco.com',
     include_package_data=True,
@@ -32,6 +32,7 @@ setup(
     " to run ML workloads in the flame system",
     long_description=open('README.md').read(),
     install_requires=[
+        'aiostream',
         'boto3',
         'cloudpickle',
         'diskcache',
