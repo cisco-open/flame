@@ -27,6 +27,8 @@ UNIX_SOCKET_PATH = '/tmp/local_registry.socket'
 # default data folder
 DATA_FOLDER_PATH = '/flame/data'
 
+EMPTY_PAYLOAD = b''
+
 
 class BackendEvent(Enum):
     """Enum class for BackendEvent."""
