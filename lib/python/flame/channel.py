@@ -16,15 +16,19 @@
 """Channel."""
 
 import asyncio
-from typing import Union
+import logging
+from typing import Any, Tuple, Union
 
 import cloudpickle
+from aiostream import stream
 
-from .common.constants import CommType
+from .common.constants import EMPTY_PAYLOAD, CommType
 from .common.typing import Scalar
 from .common.util import run_async
 from .config import GROUPBY_DEFAULT_GROUP
 from .end import End
+
+logger = logging.getLogger(__name__)
 
 
 class Channel(object):
@@ -47,12 +51,15 @@ class Channel(object):
         self._other_role = other
         self._groupby = groupby
         self.properties = dict()
+        self.await_join_event = None
 
         # access _ends with caution.
         # in many cases, _ends must be accessed within a backend's loop
         self._ends: dict[str, End] = dict()
 
-        async def _setup_bcast_tx():
+        async def _setup():
+            self.await_join_event = asyncio.Event()
+
             self._bcast_queue = asyncio.Queue()
 
             # attach this channel to backend
@@ -61,7 +68,7 @@ class Channel(object):
             # create tx task for broadcast queue
             self._backend.create_tx_task(self._name, "", CommType.BROADCAST)
 
-        _, _ = run_async(_setup_bcast_tx(), self._backend.loop())
+        _, _ = run_async(_setup(), self._backend.loop())
 
     def job_id(self) -> str:
         """Return job id."""
@@ -101,7 +108,7 @@ class Channel(object):
     """
 
     def empty(self) -> bool:
-        """Return True/False on whether channels has ends or not."""
+        """Return True if channels has no end. Otherwise, return False."""
 
         async def inner() -> bool:
             return len(self._ends) == 0
@@ -165,26 +172,89 @@ class Channel(object):
                 return
 
             payload = cloudpickle.dumps(message)
+            logger.debug(f"length of payload = {len(payload)}")
             await self._ends[end_id].put(payload)
 
         _, status = run_async(_put(), self._backend.loop())
 
         return status
 
-    def recv(self, end_id):
+    def recv(self, end_id) -> Any:
         """Receive a message from an end in a blocking call fashion."""
+        logger.debug(f"will receive data from {end_id}")
 
         async def _get():
             if not self.has(end_id):
                 # can't receive message from end_id
                 return None
 
-            payload = await self._ends[end_id].get()
+            payload = None
+            try:
+                payload = await self._ends[end_id].get()
+            except KeyError:
+                return None
+
             return payload
 
         payload, status = run_async(_get(), self._backend.loop())
 
         return cloudpickle.loads(payload) if payload and status else None
+
+    def recv_fifo(self, end_ids: list[str]) -> Tuple[str, Any]:
+        """Receive a message per end from a list of ends.
+
+        The message arrival order among ends is not fixed.
+        Messages are yielded in a FIFO manner.
+        This method is not thread-safe.
+        """
+
+        async def _get(end_id) -> Tuple[str, Any]:
+            if not self.has(end_id):
+                # can't receive message from end_id
+                yield end_id, None
+
+            payload = None
+            try:
+                payload = await self._ends[end_id].get()
+            except KeyError:
+                yield end_id, None
+
+            yield end_id, payload
+
+        async def _streamer(tmpq):
+            runs = [_get(end_id) for end_id in end_ids]
+
+            merged = stream.merge(*runs)
+            async with merged.stream() as streamer:
+                async for result in streamer:
+                    await tmpq.put(result)
+
+        # a temporary aysncio queue to store messages in a FIFO manner.
+        # we define this varialbe to make sure it is visiable
+        # in both _inner1() and _inner2()
+        tmpq = None
+
+        async def _inner1():
+            nonlocal tmpq
+            # tmpq must be created in the _backend loop
+            tmpq = asyncio.Queue()
+            _ = asyncio.create_task(_streamer(tmpq))
+
+        async def _inner2():
+            return await tmpq.get()
+
+        # first, create an asyncio task to fetch messages and put a temp queue
+        # _inner1 works as if it is a non-blocking call
+        # because a task is created within it
+        _, _ = run_async(_inner1(), self._backend.loop())
+
+        # the _inner2() coroutine fetches a message from the temp queue
+        # we call this coroutine the number of end_ids by iterating end_ids
+        for _ in end_ids:
+            result, status = run_async(_inner2(), self._backend.loop())
+            (end_id, payload) = result
+            msg = cloudpickle.loads(payload) if payload and status else None
+            yield end_id, msg
 
     def peek(self, end_id):
         """Peek rxq of end_id and return data if queue is not empty."""
@@ -205,6 +275,16 @@ class Channel(object):
         """Join the channel."""
         self._backend.join(self)
 
+    def await_join(self):
+        """Wait for at least one peer joins a channel."""
+
+        async def _inner():
+            logger.debug("waiting for join")
+            await self.await_join_event.wait()
+            logger.debug("at least one peer joined")
+
+        _, _ = run_async(_inner(), self._backend.loop())
+
     def is_rxq_empty(self, end_id: str) -> bool:
         """Return true if rxq is empty; otherwise, false."""
         return self._ends[end_id].is_rxq_empty()
@@ -212,6 +292,28 @@ class Channel(object):
     def is_txq_empty(self, end_id: str) -> bool:
         """Return true if txq is empty; otherwise, false."""
         return self._ends[end_id].is_txq_empty()
+
+    def cleanup(self):
+        """Clean up resources allocated for the channel."""
+
+        async def _inner():
+            # we add this check because not all backends implement cleanup()
+            # TODO: once all backends implement cleanup(), remove this check
+            if not hasattr(self._backend, 'cleanup'):
+                return
+
+            # we use EMPTY_PAYLOAD as signal to finish tx tasks
+
+            # put EMPTY_PAYLOAD to broadcast queue
+            await self._bcast_queue.put(EMPTY_PAYLOAD)
+
+            for end_id, end in self._ends.items():
+                # put EMPTY_PAYLOAD to unicast queue for each end
+                await end.put(EMPTY_PAYLOAD)
+
+            await self._backend.cleanup()
+
+        _, _ = run_async(_inner(), self._backend.loop())
 
     """
     ### The following are asyncio methods of backend loop
@@ -228,6 +330,10 @@ class Channel(object):
         # create tx task in the backend for the channel
         self._backend.create_tx_task(self._name, end_id)
 
+        if not self.await_join_event.is_set():
+            # set the event true
+            self.await_join_event.set()
+
     async def remove(self, end_id):
         """Remove an end from the channel."""
         if not self.has(end_id):
@@ -237,7 +343,11 @@ class Channel(object):
         del self._ends[end_id]
 
         # put bogus data to unblock a get() call
-        await rxq.put(b'')
+        await rxq.put(EMPTY_PAYLOAD)
+
+        if len(self._ends) == 0:
+            # clear (or unset) the event
+            self.await_join_event.clear()
 
     def has(self, end_id: str) -> bool:
         """Check if an end is in the channel."""

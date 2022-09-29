@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 TAG_DISTRIBUTE = 'distribute'
 TAG_AGGREGATE = 'aggregate'
 
+
 class TopAggregator(Role, metaclass=ABCMeta):
     """Top level Aggregator implements an ML aggregation role."""
 
@@ -107,19 +108,18 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         total = 0
         # receive local model parameters from trainers
-        for end in channel.ends():
-            logger.debug(f"waiting to receive data from {end}")
-            dict = channel.recv(end)
-            if not dict:
-                logger.debug(f"No data received from {end}")
+        for end, msg in channel.recv_fifo(channel.ends()):
+            if not msg:
+                logger.debug(f"No data from {end}; skipping it")
                 continue
 
-            for k, v in dict.items():
-                if k == MessageType.WEIGHTS:
-                    weights = v
-                elif k == MessageType.DATASET_SIZE:
-                    count = v
-                    total += count
+            logger.debug(f"received data from {end}")
+            if MessageType.WEIGHTS in msg:
+                weights = msg[MessageType.WEIGHTS]
+
+            if MessageType.DATASET_SIZE in msg:
+                count = msg[MessageType.DATASET_SIZE]
+                total += count
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
@@ -153,9 +153,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        while channel.empty():
-            logger.debug("no end found in the channel")
-            time.sleep(1)
+        # this call waits for at least one peer to join this channel
+        channel.await_join()
 
         # before distributing weights, update it from global model
         self._update_weights()
@@ -163,7 +162,10 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # send out global model parameters to trainers
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round})
+            channel.send(end, {
+                MessageType.WEIGHTS: self.weights,
+                MessageType.ROUND: self._round
+            })
 
     def inform_end_of_training(self) -> None:
         """Inform all the trainers that the training is finished."""
