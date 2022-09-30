@@ -54,7 +54,14 @@ func (c *DesignCodesApiController) Routes() Routes {
 			c.CreateDesignCode,
 		},
 		{
-			"GetDesignCode",
+           "DeleteDesignCode",
+			strings.ToUpper("Delete"),
+			"/users/{user}/designs/{designId}/codes/{version}",
+			c.DeleteDesignCode,
+		},
+		{
+
+		    "GetDesignCode",
 			strings.ToUpper("Get"),
 			"/users/{user}/designs/{designId}/codes/{version}",
 			c.GetDesignCode,
@@ -97,7 +104,25 @@ func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *ht
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
+// DeleteDesignCode - Delete a zipped design code file owned by user
+func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params["user"]
+	
+	designIdParam := params["designId"]
+	
+	versionParam := params["version"]
+	
+	result, err := c.service.DeleteDesignCode(r.Context(), userParam, designIdParam, versionParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
 
+}
 // GetDesignCode - Get a zipped design code file owned by user
 func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
