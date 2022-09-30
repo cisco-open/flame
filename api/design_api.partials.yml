@@ -459,3 +459,49 @@
     summary: Update a design code
     tags:
       - designCodes
+  #------------------------------------#
+  # Delete Code Zip
+  #------------------------------------#
+  delete:
+    operationId: deleteDesignCode
+    summary: Delete code of a specified version from a given design
+    tags:
+      - designCodes
+    parameters:
+      - name: user
+        description: user name
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: version
+        description: version string
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      '200':
+        description: Deleted
+      '404':
+        description: Design id not found
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
