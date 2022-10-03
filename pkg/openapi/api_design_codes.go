@@ -54,6 +54,12 @@ func (c *DesignCodesApiController) Routes() Routes {
 			c.CreateDesignCode,
 		},
 		{
+			"DeleteDesignCode",
+			strings.ToUpper("Delete"),
+			"/users/{user}/designs/{designId}/codes/{version}",
+			c.DeleteDesignCode,
+		},
+		{
 			"GetDesignCode",
 			strings.ToUpper("Get"),
 			"/users/{user}/designs/{designId}/codes/{version}",
@@ -89,6 +95,25 @@ func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *ht
 		return
 	}
 	result, err := c.service.CreateDesignCode(r.Context(), user, designId, fileName, fileVer, fileData)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// DeleteDesignCode - Delete code of a specified version from a given design
+func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params["user"]
+
+	designIdParam := params["designId"]
+
+	versionParam := params["version"]
+
+	result, err := c.service.DeleteDesignCode(r.Context(), userParam, designIdParam, versionParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

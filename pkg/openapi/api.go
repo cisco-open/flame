@@ -62,6 +62,7 @@ type DatasetsApiRouter interface {
 // pass the data to a DesignCodesApiServicer to perform the required actions, then write the service results to the http response.
 type DesignCodesApiRouter interface {
 	CreateDesignCode(http.ResponseWriter, *http.Request)
+	DeleteDesignCode(http.ResponseWriter, *http.Request)
 	GetDesignCode(http.ResponseWriter, *http.Request)
 	UpdateDesignCode(http.ResponseWriter, *http.Request)
 }
@@ -136,6 +137,7 @@ type DatasetsApiServicer interface {
 // and updated with the logic required for the API.
 type DesignCodesApiServicer interface {
 	CreateDesignCode(context.Context, string, string, string, string, *os.File) (ImplResponse, error)
+	DeleteDesignCode(context.Context, string, string, string) (ImplResponse, error)
 	GetDesignCode(context.Context, string, string, string) (ImplResponse, error)
 	UpdateDesignCode(context.Context, string, string, string, string, string, *os.File) (ImplResponse, error)
 }
