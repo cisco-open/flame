@@ -9,7 +9,8 @@ The following tools and packages are needed as minimum:
 - golangci-lint
 - python 3.9+
 
-The following shows how to install the above packages in macOS environments.
+### macOS
+The following shows how to install the above packages in macOS environment.
 `brew` is a package management tool in macOS. To install `brew`, refer to [here](https://docs.brew.sh/Installation).
 Depending on Linux distributions, several package managers such as `apt`, `yum`, etc. can be used.
 
@@ -28,34 +29,53 @@ pyenv version
 eval "$(pyenv init -)"
 echo -e '\nif command -v pyenv 1>/dev/null 2>&1; then\n    eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
 ```
-The following shows how to install the above packages in Ubuntu.
+
+### Ubuntu 20.04
+The following shows how to install the above packages in Ubuntu 20.04.
+
+First, keep package list and their dependencies up to date.
 ```bash
-sudo apt install golang 
-sudo snap install golangci-lint
+sudo apt update
 ```
-Then install pyenv
+
+Install golang and and golangci-lint.
 ```bash
-sudo apt-get update; sudo apt-get install make build-essential libssl-dev zlib1g-dev \
-libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
-libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev libffi-dev liblzma-dev
+golang_file=go1.18.6.linux-amd64.tar.gz
+curl -LO https://go.dev/dl/$golang_file && tar -C $HOME -xzf $golang_file
+echo "PATH=\"\$HOME/go/bin:\$PATH\"" >> $HOME/.bashrc
+source $HOME/.bashrc
+
+curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.49.0
+golangci-lint --version
+```
+
+Then install pyenv with the following commands:
+```bash
+sudo apt install -y make build-essential libssl-dev zlib1g-dev \
+    libbz2-dev libreadline-dev libsqlite3-dev wget curl llvm \
+    libncursesw5-dev xz-utils tk-dev libxml2-dev libxmlsec1-dev \
+    libffi-dev liblzma-dev
 
 curl https://pyenv.run | bash
 
-# pyenv
-#Add the following entries into your ~/.bashrc or ~/.bash_profile file:
-export PATH="$HOME/.pyenv/bin:$PATH"
-eval "$(pyenv init --path)"
-eval "$(pyenv virtualenv-init -)"
-#restart the shell
-exec $SHELL
-#OR source the shell
-source ~/.bashrc  source ~/.bash_profile
+echo "" >> $HOME/.bashrc
+echo "PATH=\"\$HOME/.pyenv/bin:\$PATH\"" >> $HOME/.bashrc
+echo "eval \"\$(pyenv init --path)\"" >> $HOME/.bashrc
+echo "eval \"\$(pyenv virtualenv-init -)\"" >> $HOME/.bashrc
+source $HOME/.bashrc
+```
 
+Using `pyenv`, install python version 3.9.6.
+```bash
 pyenv install 3.9.6
 pyenv global 3.9.6
-pyenv version
-eval "$(pyenv init -)"
-echo -e '\nif command -v pyenv 1>/dev/null 2>&1; then\n    eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
+```
+To check the version, run `pyenv version` and `python --version`, an example output looks like the following:
+```bash
+vagrant@flame:~$ pyenv version
+3.9.6 (set by /home/vagrant/.pyenv/version)
+vagrant@flame:~$ python --version
+Python 3.9.6
 ```
 
 ## Development Setup
