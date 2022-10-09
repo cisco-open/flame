@@ -53,6 +53,7 @@ type DesignService interface {
 
 	CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error
 	GetDesignCode(userId string, designId string, version string) ([]byte, error)
+	DeleteDesignCode(userId string, designId string, version string) error
 }
 
 // JobService is an interface that defines a collection of APIs related to job
