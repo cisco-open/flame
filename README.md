@@ -20,3 +20,10 @@ For more details, refer to [here](docs/02-getting-started.md).
 ## Documentation
 
 A full document can be found [here](docs/README.md). The document will be updated on a regular basis.
+
+## Support
+
+We welcome feedback, questions, and issue reports.
+
+* Maintainers' email address: <flame-github-owners@cisco.com>
+* [GitHub Issues](https://github.com/cisco-open/flame/issues/new/choose)
