@@ -54,6 +54,7 @@ const (
 	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
 	GetDesignCodeEndPoint    = "GET_DESIGN_CODE"
 	UpdateDesignCodeEndPoint = "UPDATE_DESIGN_CODE"
+	DeleteDesignCodeEndPoint = "DELETE_DESIGN_CODE"
 
 	// Keys for job endpoints
 	CreateJobEndpoint       = "CREATE_JOB"
@@ -105,6 +106,7 @@ var URI = map[string]string{
 	CreateDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes",
 	GetDesignCodeEndPoint:    "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
 	UpdateDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
+	DeleteDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
 
 	// Job
 	CreateJobEndpoint:       "/users/{{.user}}/jobs",

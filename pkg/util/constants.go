@@ -43,6 +43,7 @@ const (
 	DBFieldUserId        = "userid"
 	DBFieldId            = "id"
 	DBFieldDesignId      = "designid"
+	DBFieldCodes         = "codes"
 	DBFieldSchemaId      = "schemaid"
 	DBFieldJobId         = "jobid"
 	DBFieldTaskId        = "taskid"

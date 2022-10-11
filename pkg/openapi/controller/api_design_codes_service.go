@@ -71,23 +71,14 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 // DeleteDesignCode - Delete a zipped design code file owned by user
 func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore
-	// to avoid overwriting this service implementation when updating open api generation.
+	zap.S().Debugf("Received DeleteDesignCode Delete request: %s | %s | %s", user, designId, version)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return openapi.Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return openapi.Response(404, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return openapi.Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return openapi.Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteDesignCode method not implemented")
+	err := s.dbService.DeleteDesignCode(user, designId, version)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, fmt.Errorf("failed to delete design code: %v", err)),
+			fmt.Errorf("failed to delete design code: %v", err)
+	}
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // GetDesignCode - Get a zipped design code file owned by user

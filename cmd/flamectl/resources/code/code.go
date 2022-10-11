@@ -112,3 +112,23 @@ func mustOpen(f string) *os.File {
 
 	return r
 }
+func Remove(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":     params.User,
+		"designId": params.DesignId,
+		"version":  params.CodeVer,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
+
+	statusCode, respBody, err := restapi.HTTPDelete(url, nil, "")
+	if err != nil || restapi.CheckStatusCode(statusCode) != nil {
+		fmt.Printf("Failed to delete %v code of version %s - statusCode: %d, error: %v, responsebody: %v\n",
+			params.CodePath, params.CodeVer, statusCode, err, string(respBody))
+		return nil
+	}
+
+	fmt.Printf("Deleted %s successfully\n", respBody)
+
+	return nil
+}

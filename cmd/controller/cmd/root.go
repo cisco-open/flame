@@ -53,7 +53,7 @@ var (
 
 			instance, err := app.NewController(cfg, bInsecure, bPlain)
 			if err != nil {
-				fmt.Printf("Failed to create a new controller instance\n")
+				fmt.Printf("Failed to create a new controller instance: %v\n", err)
 				return nil
 			}
 			instance.Start()
