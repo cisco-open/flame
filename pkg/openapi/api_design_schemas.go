@@ -53,6 +53,12 @@ func (c *DesignSchemasApiController) Routes() Routes {
 			c.CreateDesignSchema,
 		},
 		{
+			"DeleteDesignSchema",
+			strings.ToUpper("Delete"),
+			"/users/{user}/designs/{designId}/schemas/{version}",
+			c.DeleteDesignSchema,
+		},
+		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
 			"/users/{user}/designs/{designId}/schemas/{version}",
@@ -146,6 +152,25 @@ func (c *DesignSchemasApiController) UpdateDesignSchema(w http.ResponseWriter, r
 		return
 	}
 	result, err := c.service.UpdateDesignSchema(r.Context(), user, designId, version, *designSchema)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// DeleteDesignSchema - Delete a schema for a given design
+func (c *DesignSchemasApiController) DeleteDesignSchema(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	user := params["user"]
+
+	designId := params["designId"]
+
+	version := params["version"]
+
+	result, err := c.service.DeleteDesignSchema(r.Context(), user, designId, version)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

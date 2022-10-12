@@ -322,6 +322,54 @@
     tags:
       - designSchemas
 
+  #------------------------------------#
+  # Delete Design Schema
+  #------------------------------------#
+  delete:
+    operationId: deleteDesignSchema
+    parameters:
+      - name: user
+        description: user id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: designId
+        description: design id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: version
+        description: version string
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DesignSchema'
+    responses:
+      "200":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Delete a schema for a given design
+    tags:
+      - designSchemas
+
 /users/{user}/designs/{designId}/codes:
   #------------------------------------#
   # Upload Code Zip
