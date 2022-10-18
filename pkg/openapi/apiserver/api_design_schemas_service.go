@@ -27,7 +27,6 @@ package apiserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
@@ -171,21 +170,25 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 
 func (s *DesignSchemasApiService) DeleteDesignSchema(ctx context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore
-	// to avoid overwriting this service implementation when updating open api generation.
+	//create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+		"version":  version,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignSchemaEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return openapi.Response(200, nil),nil
+	// send Delete request
+	code, respBody, err := restapi.HTTPDelete(url, "", "application/json")
 
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return openapi.Response(404, nil),nil
+	// response to the user
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("delete design schema request failed:%v", err)
+	}
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return openapi.Response(401, nil),nil
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return openapi.Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteDesignCode method not implemented")
+	return openapi.Response(http.StatusOK, respBody), nil
 }

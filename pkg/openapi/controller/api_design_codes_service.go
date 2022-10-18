@@ -75,7 +75,7 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 
 	err := s.dbService.DeleteDesignCode(user, designId, version)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, fmt.Errorf("failed to delete design code: %v", err)),
+		return openapi.Response(http.StatusInternalServerError, nil),
 			fmt.Errorf("failed to delete design code: %v", err)
 	}
 	return openapi.Response(http.StatusOK, nil), nil

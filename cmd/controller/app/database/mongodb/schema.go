@@ -115,3 +115,21 @@ func (db *MongoService) UpdateDesignSchema(userId string, designId string, versi
 
 	return nil
 }
+
+// DeleteDesignSchema delete design schema for the given version and design Id
+func (db *MongoService) DeleteDesignSchema(userId string, designId string, version string) error {
+	zap.S().Debugf("delete design schema : %v, %v,%v", userId, designId, version)
+
+	updateRes, err := db.designCollection.UpdateOne(context.TODO(),
+		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId},
+		bson.M{"$pull": bson.M{util.DBFieldSchemas: bson.M{"version": version}}})
+	if err != nil {
+		return fmt.Errorf("failed to delete design schema deleted error: %v", err)
+	}
+	if updateRes.ModifiedCount == 0 {
+		return fmt.Errorf("failed to delete design schema, schema version %s not found. deleted schema count: %#v",
+			version, updateRes)
+	}
+	zap.S().Debugf("successfully deleted design schema: %#v", updateRes)
+	return nil
+}

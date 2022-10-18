@@ -158,3 +158,24 @@ func Update(params Params) error {
 
 	return nil
 }
+
+func Remove(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":     params.User,
+		"designId": params.DesignId,
+		"version":  params.Version,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignSchemaEndPoint, uriMap)
+
+	statusCode, responseBody, err := restapi.HTTPDelete(url, nil, "")
+	if err != nil || restapi.CheckStatusCode(statusCode) != nil {
+		fmt.Printf("Failed to delete schema of version %s - statusCode: %d, error: %v, responseBody: %v\n",
+			params.Version, statusCode, err, string(responseBody))
+		return nil
+	}
+
+	fmt.Println("Deleted schema successfully")
+
+	return nil
+}
