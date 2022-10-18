@@ -82,6 +82,7 @@ type DesignSchemasApiRouter interface {
 // pass the data to a DesignsApiServicer to perform the required actions, then write the service results to the http response.
 type DesignsApiRouter interface {
 	CreateDesign(http.ResponseWriter, *http.Request)
+	DeleteDesign(http.ResponseWriter, *http.Request)
 	GetDesign(http.ResponseWriter, *http.Request)
 	GetDesigns(http.ResponseWriter, *http.Request)
 }
@@ -160,6 +161,7 @@ type DesignSchemasApiServicer interface {
 // and updated with the logic required for the API.
 type DesignsApiServicer interface {
 	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
+	DeleteDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesigns(context.Context, string, int32) (ImplResponse, error)
 }

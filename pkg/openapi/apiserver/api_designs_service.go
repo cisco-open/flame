@@ -27,6 +27,7 @@ package apiserver
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -73,6 +74,25 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
+}
+
+// DeleteDesign - Delete design template
+func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	// TODO - update DeleteDesign with the required logic for this service method.
+
+	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
+	//return Response(200, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
+	//return Response(404, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
+	//return Response(401, nil),nil
+
+	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
+	//return Response(0, Error{}), nil
+
+	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteDesign method not implemented")
 }
 
 // GetDesign - Get design template information

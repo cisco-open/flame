@@ -53,6 +53,12 @@ func (c *DesignsApiController) Routes() Routes {
 			c.CreateDesign,
 		},
 		{
+			"DeleteDesign",
+			strings.ToUpper("Delete"),
+			"/users/{user}/designs/{designId}",
+			c.DeleteDesign,
+		},
+		{
 			"GetDesign",
 			strings.ToUpper("Get"),
 			"/users/{user}/designs/{designId}",
@@ -78,6 +84,23 @@ func (c *DesignsApiController) CreateDesign(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	result, err := c.service.CreateDesign(r.Context(), user, *designInfo)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		EncodeJSONResponse(err.Error(), &result.Code, w)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// DeleteDesign - Delete design template
+func (c *DesignsApiController) DeleteDesign(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params["user"]
+
+	designIdParam := params["designId"]
+
+	result, err := c.service.DeleteDesign(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		EncodeJSONResponse(err.Error(), &result.Code, w)

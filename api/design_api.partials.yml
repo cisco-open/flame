@@ -145,6 +145,44 @@
     summary: Get design template information
     tags:
       - designs
+#------------------------------------#
+# Delete Design via ID
+#------------------------------------#
+  delete:
+    operationId: deleteDesign
+    parameters:
+      - name: user
+        description: user id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      '200':
+        description: Deleted
+      '404':
+        description: Design id not found
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Delete design template
+    tags:
+      - designs
 
 /users/{user}/designs/{designId}/schemas:
   #------------------------------------#
