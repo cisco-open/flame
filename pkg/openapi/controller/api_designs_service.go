@@ -27,9 +27,10 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
+
+	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -69,21 +70,14 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 
 // DeleteDesign - Delete design template
 func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteDesign with the required logic for this service method.
+	zap.S().Debugf("Received DeleteDesign Delete request: %s | %s", user, designId)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return Response(404, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteDesign method not implemented")
+	err := s.dbService.DeleteDesign(user, designId)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil),
+			fmt.Errorf("failed to delete design: %v", err)
+	}
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // GetDesign - Get design template information

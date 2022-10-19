@@ -18,6 +18,7 @@ package mongodb
 
 import (
 	"context"
+	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.uber.org/zap"
@@ -38,6 +39,21 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 
 	zap.S().Debugf("New design for user: %s inserted with ID: %s", userId, design.Id)
 
+	return nil
+}
+func (db *MongoService) DeleteDesign(userId string, designId string) error {
+	zap.S().Debugf("delete design : %v, %v", userId, designId)
+
+	updateRes, err := db.designCollection.DeleteOne(context.TODO(),
+		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId})
+	if err != nil {
+		return fmt.Errorf("failed to delete design error: %v", err)
+	}
+	if updateRes.DeletedCount == 0 {
+		return fmt.Errorf("failed to delete design, design id %s not found."+
+			" deleted design count: %v", designId, updateRes)
+	}
+	zap.S().Debugf("successfully deleted design: %v", updateRes)
 	return nil
 }
 
