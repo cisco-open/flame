@@ -77,9 +77,9 @@ class Trainer(DistTrainer):
         if MessageType.WEIGHTS in msg:
             self.weights = msg[MessageType.WEIGHTS]
             self._update_model()
-        elif MessageType.EOT in msg:
+        if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
-        elif MessageType.ROUND in msg:
+        if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
         # once global weights were received, let's join ring channel

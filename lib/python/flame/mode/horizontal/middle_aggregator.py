@@ -89,7 +89,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             return
 
         # this call waits for at least one peer to join this channel
-        channel.wait_join()
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
@@ -111,7 +111,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             return
 
         # this call waits for at least one peer to join this channel
-        channel.wait_join()
+        channel.await_join()
 
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
