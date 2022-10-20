@@ -33,7 +33,7 @@
     ],
     "hyperparameters": {
         "batchSize": 32,
-        "learningRate": 0.01,
+        "learningRate": 0.001,
         "rounds": 5,
 		"epochs": 2
     },
@@ -46,12 +46,16 @@
 	"name": "mednist"
     },
     "registry": {
-	"sort": "mlflow",
-	"uri": "http://flame-mlflow:5000"
+	"sort": "dummy",
+	"uri": ""
     },
     "selector": {
-	"sort": "random",
-	"kwargs": {"k": 1}
+	"sort": "default",
+	"kwargs": {}
+    },
+    "optimizer": {
+    "sort": "fedavg",
+    "kwargs": {}
     },
     "maxRunTime": 300,
     "realm": "default",
