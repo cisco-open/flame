@@ -44,6 +44,7 @@ type DatasetService interface {
 type DesignService interface {
 	CreateDesign(userId string, info openapi.Design) error
 	GetDesign(userId string, designId string) (openapi.Design, error)
+	DeleteDesign(userId string, designId string) error
 	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)
 
 	CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error

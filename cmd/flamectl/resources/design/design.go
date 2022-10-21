@@ -61,6 +61,39 @@ func Create(params Params) error {
 	return nil
 }
 
+func Remove(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		"user":     params.User,
+		"designId": params.DesignId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignEndPoint, uriMap)
+
+	// send delete request
+	code, responseBody, err := restapi.HTTPDelete(url, nil, "")
+	if err != nil {
+		fmt.Printf("Failed to delete design %s - response code: %d, error: %v\n",
+			params.DesignId, code, err)
+		return nil
+	}
+	if restapi.CheckStatusCode(code) != nil {
+		fmt.Printf("response: %s\n", string(responseBody))
+		return nil
+	}
+
+	// format the output into prettyJson format
+	prettyJSON, err := util.FormatJSON(responseBody)
+	if err != nil {
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
+
+		fmt.Println(string(responseBody))
+	} else {
+		fmt.Println(string(prettyJSON))
+	}
+
+	return nil
+}
+
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{

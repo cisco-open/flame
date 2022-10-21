@@ -27,7 +27,6 @@ package apiserver
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -78,21 +77,26 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 
 // DeleteDesign - Delete design template
 func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	// TODO - update DeleteDesign with the required logic for this service method.
+	zap.S().Debugf("Design delete request received for user: %s | DesignId: %v", user, designId)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	// create controller request
+	uriMap := map[string]string{
+		"user":     user,
+		"designId": designId,
+	}
 
-	//TODO: Uncomment the next line to return response Response(404, {}) or use other options such as http.Ok ...
-	//return Response(404, nil),nil
+	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
+	// send delete request
+	code, resp, err := restapi.HTTPDelete(url, designId, "application/json")
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteDesign method not implemented")
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+	return openapi.Response(http.StatusOK, fmt.Sprintf("%s design deleted", designId)), nil
 }
 
 // GetDesign - Get design template information
