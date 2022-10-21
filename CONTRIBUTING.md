@@ -43,7 +43,24 @@ There is no strict coding style guideline, but some basic suggestions are:
 
 * Try to run `go fmt ./...` and `./lint.sh`
 * When go packages are imported in a file, packages are grouped into three categories: go standard packages, third party packages and project's own packages.
-Place a new line between each group of packages.
+Place a new line between each group of packages. An example:
+
+```go
+import (
+	"crypto/tls"
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"os"
+	"time"
+
+	"github.com/cenkalti/backoff/v4"
+	"go.uber.org/zap"
+
+	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/restapi"
+)
+```
 
 ## License
 By contributing, you agree that your contributions will be licensed under its Apache License, Version 2.
