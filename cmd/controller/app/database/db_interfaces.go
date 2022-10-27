@@ -51,6 +51,7 @@ type DesignService interface {
 	GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error)
 	GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error)
 	UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error
+	DeleteDesignSchema(userId string, designId string, version string) error
 
 	CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error
 	GetDesignCode(userId string, designId string, version string) ([]byte, error)

@@ -128,7 +128,7 @@ func Remove(params Params) error {
 		return nil
 	}
 
-	fmt.Printf("Deleted %s successfully\n", respBody)
+	fmt.Println("Deleted code successfully")
 
 	return nil
 }

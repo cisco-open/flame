@@ -50,6 +50,7 @@ const (
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
 	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
+	DeleteDesignSchemaEndPoint = "DELETE_DESIGN_SCHEMA"
 
 	// Keys for design code endpoints
 	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
@@ -103,6 +104,7 @@ var URI = map[string]string{
 	GetDesignSchemaEndPoint:    "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
 	GetDesignSchemasEndPoint:   "/users/{{.user}}/designs/{{.designId}}/schemas",
 	UpdateDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
+	DeleteDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
 
 	// Design Code
 	CreateDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes",
