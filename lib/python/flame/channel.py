@@ -275,15 +275,31 @@ class Channel(object):
         """Join the channel."""
         self._backend.join(self)
 
-    def await_join(self):
-        """Wait for at least one peer joins a channel."""
+    def await_join(self, timeout=None) -> bool:
+        """Wait for at least one peer joins a channel.
 
-        async def _inner():
+        If timeout value is set, it will wait until timeout occurs.
+        Returns a boolean value to indicate whether timeout occurred or not.
+
+        Parameters
+        ----------
+        timeout: a timeout value; default: None
+        """
+
+        async def _inner() -> bool:
+            """Return True if timeout occurs; otherwise False."""
             logger.debug("waiting for join")
-            await self.await_join_event.wait()
+            try:
+                await asyncio.wait_for(self.await_join_event.wait(), timeout)
+            except asyncio.TimeoutError:
+                logger.debug("timeout occurred")
+                return True
             logger.debug("at least one peer joined")
+            return False
 
-        _, _ = run_async(_inner(), self._backend.loop())
+        timeouted, _ = run_async(_inner(), self._backend.loop())
+        logger.debug(f"timeouted = {timeouted}")
+        return timeouted
 
     def is_rxq_empty(self, end_id: str) -> bool:
         """Return true if rxq is empty; otherwise, false."""

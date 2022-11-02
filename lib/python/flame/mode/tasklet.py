@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """flame tasklet."""
 
 from __future__ import annotations
@@ -21,6 +20,7 @@ from __future__ import annotations
 import logging
 from enum import Flag, auto
 from queue import Queue
+from typing import Callable
 
 from .composer import ComposerContext
 
@@ -38,10 +38,22 @@ class LoopIndicator(Flag):
 class Tasklet(object):
     """Tasklet is a class for defining a unit of work."""
 
-    def __init__(self, func, *args) -> None:
-        """Initialize the class."""
+    def __init__(self, func: Callable, *args, **kwargs) -> None:
+        """Initialize the class.
+
+        Parameters
+        ----------
+        func: a method that will be executed as a tasklet
+        *args: positional arguments for method func
+        **kwargs: keyword arguments for method func
+        """
+        if not callable(func):
+            raise TypeError(f"{func} is not callable")
+
         self.func = func
         self.args = args
+        self.kwargs = kwargs
+        self.cont_fn = None
         self.loop_check_fn = None
         self.composer = ComposerContext.get_composer()
         self.loop_starter = None
@@ -85,6 +97,10 @@ class Tasklet(object):
 
         return other
 
+    def set_continue_fn(self, cont_fn: Callable) -> None:
+        """Set continue function."""
+        self.cont_fn = cont_fn
+
     def get_composer(self):
         """Return composer object."""
         return self.composer
@@ -125,7 +141,7 @@ class Tasklet(object):
 
     def do(self) -> None:
         """Execute tasklet."""
-        self.func(*self.args)
+        self.func(*self.args, **self.kwargs)
 
     def is_loop_done(self) -> bool:
         """Return if loop is done."""
@@ -138,6 +154,13 @@ class Tasklet(object):
         """Return if the tasklet is the last one in a loop."""
         return self.loop_state & LoopIndicator.END
 
+    def is_continue(self) -> bool:
+        """Return True if continue condition is met and otherwise False."""
+        if not callable(self.cont_fn):
+            return False
+
+        return self.cont_fn()
+
 
 class Loop(object):
     """Loop class."""
@@ -149,6 +172,9 @@ class Loop(object):
         ----------
         loop_check_fn: a function object to check loop exit conditions
         """
+        if not callable(loop_check_fn):
+            raise TypeError(f"{loop_check_fn} is not callable")
+
         self.loop_check_fn = loop_check_fn
 
     def __call__(self, ender: Tasklet) -> Tasklet:
@@ -199,6 +225,7 @@ class Loop(object):
         tasklets_in_loop = composer.get_tasklets_in_loop(starter, ender)
         # for each tasklet in loop, loop_check_fn and loop_ender are updated
         for tasklet in tasklets_in_loop:
+            tasklet.loop_starter = starter
             tasklet.loop_check_fn = self.loop_check_fn
             tasklet.loop_ender = ender
 

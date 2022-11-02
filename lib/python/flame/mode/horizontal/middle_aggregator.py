@@ -37,6 +37,9 @@ TAG_AGGREGATE = 'aggregate'
 TAG_FETCH = 'fetch'
 TAG_UPLOAD = 'upload'
 
+# 60 second wait time until a trainer appears in a channel
+WAIT_TIME_FOR_TRAINER = 60
+
 
 class MiddleAggregator(Role, metaclass=ABCMeta):
     """Middle level aggregator.
@@ -111,7 +114,12 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             return
 
         # this call waits for at least one peer to join this channel
-        channel.await_join()
+        self.trainer_no_show = channel.await_join(WAIT_TIME_FOR_TRAINER)
+        if self.trainer_no_show:
+            logger.debug("channel await join timeouted")
+            # send dummy weights to unblock top aggregator
+            self._send_dummy_weights(TAG_UPLOAD)
+            return
 
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
@@ -137,13 +145,14 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
             if MessageType.DATASET_SIZE in msg:
                 count = msg[MessageType.DATASET_SIZE]
-                total += count
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
-            tres = TrainResult(weights, count)
-            # save training result from trainer in a disk cache
-            self.cache[end] = tres
+            if weights is not None and count > 0:
+                total += count
+                tres = TrainResult(weights, count)
+                # save training result from trainer in a disk cache
+                self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(self.cache, total)
@@ -175,6 +184,22 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
                 MessageType.DATASET_SIZE: self.dataset_size
             })
         logger.debug("sending weights done")
+
+    def _send_dummy_weights(self, tag: str) -> None:
+        channel = self.cm.get_by_tag(tag)
+        if not channel:
+            logger.debug(f"channel not found with {tag}")
+            return
+
+        # this call waits for at least one peer to join this channel
+        channel.await_join()
+
+        # one aggregator is sufficient
+        end = channel.one_end()
+
+        dummy_msg = {MessageType.WEIGHTS: None, MessageType.DATASET_SIZE: 0}
+        channel.send(end, dummy_msg)
+        logger.debug("sending dummy weights done")
 
     def update_round(self):
         """Update the round counter."""
@@ -209,6 +234,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             task_load_data = Tasklet(self.load_data)
 
             task_put_dist = Tasklet(self.put, TAG_DISTRIBUTE)
+            task_put_dist.set_continue_fn(cont_fn=lambda: self.trainer_no_show)
 
             task_put_upload = Tasklet(self.put, TAG_UPLOAD)
 

@@ -99,9 +99,15 @@ class Composer(object):
             # execute tasklet
             tasklet.do()
 
-            if tasklet.is_last_in_loop() and not tasklet.is_loop_done():
-                # we reached the last tasklet of a loop
-                # but the loop exit condition is not met
+            if tasklet.is_continue() or (tasklet.is_last_in_loop()
+                                         and not tasklet.is_loop_done()):
+                # we are here due to one of the following conditions:
+                #
+                # contition 1: tasklet's continue condition is met;
+                #              so, we skip the remaing tasklets in the loop
+                #              and go back to the start of the loop
+                # condition 2: we reached the last tasklet of a loop
+                #              but the loop exit condition is not met
                 start, end = tasklet.loop_starter, tasklet
                 tasklets_in_loop = self.get_tasklets_in_loop(start, end)
 
