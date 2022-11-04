@@ -119,11 +119,11 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
             if MessageType.DATASET_SIZE in msg:
                 count = msg[MessageType.DATASET_SIZE]
-                total += count
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
-            if weights is not None:
+            if weights is not None and count > 0:
+                total += count
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres

@@ -19,7 +19,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='flame',
-    version='0.0.11',
+    version='0.0.12',
     author='Flame Maintainers',
     author_email='flame-github-owners@cisco.com',
     include_package_data=True,
