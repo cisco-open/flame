@@ -86,6 +86,9 @@ func (deployer *K8sDeployer) Install(releaseName string, chartPath string) error
 	installObj.ReleaseName = releaseName
 	release, err := installObj.Run(chart, nil)
 	if err != nil {
+		if release != nil && release.Info != nil {
+			zap.S().Errorf("Release %s failed with status : %v", releaseName, release.Info.Status)
+		}
 		return err
 	}
 

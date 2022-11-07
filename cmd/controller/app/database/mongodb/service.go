@@ -25,16 +25,19 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/readpref"
 	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.uber.org/zap"
+
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
 	DatabaseName = "flame"
 
-	ComputeCollection = "t_compute"
-	DatasetCollection = "t_dataset"
-	DesignCollection  = "t_design"
-	JobCollection     = "t_job"
-	TaskCollection    = "t_task"
+	ComputeCollection    = "t_compute"
+	DatasetCollection    = "t_dataset"
+	DesignCollection     = "t_design"
+	JobCollection        = "t_job"
+	TaskCollection       = "t_task"
+	DeploymentCollection = "t_deployment"
 
 	orderAscend  int32 = 1
 	orderDescend int32 = -1
@@ -44,11 +47,12 @@ type MongoService struct {
 	client   *mongo.Client
 	database *mongo.Database
 
-	computeCollection *mongo.Collection
-	datasetCollection *mongo.Collection
-	designCollection  *mongo.Collection
-	jobCollection     *mongo.Collection
-	taskCollection    *mongo.Collection
+	computeCollection    *mongo.Collection
+	datasetCollection    *mongo.Collection
+	designCollection     *mongo.Collection
+	jobCollection        *mongo.Collection
+	taskCollection       *mongo.Collection
+	deploymentCollection *mongo.Collection
 }
 
 type uniqueIndexInfo struct {
@@ -91,31 +95,36 @@ func NewMongoService(uri string) (*MongoService, error) {
 
 	db := client.Database(DatabaseName)
 	mongoDB := &MongoService{
-		client:            client,
-		database:          db,
-		computeCollection: db.Collection(ComputeCollection),
-		datasetCollection: db.Collection(DatasetCollection),
-		designCollection:  db.Collection(DesignCollection),
-		jobCollection:     db.Collection(JobCollection),
-		taskCollection:    db.Collection(TaskCollection),
+		client:               client,
+		database:             db,
+		computeCollection:    db.Collection(ComputeCollection),
+		datasetCollection:    db.Collection(DatasetCollection),
+		designCollection:     db.Collection(DesignCollection),
+		jobCollection:        db.Collection(JobCollection),
+		taskCollection:       db.Collection(TaskCollection),
+		deploymentCollection: db.Collection(DeploymentCollection),
 	}
 
 	uiiList := []uniqueIndexInfo{
 		{
 			mongoDB.computeCollection,
-			map[string]int32{"computeid": orderAscend, "region": orderAscend},
+			map[string]int32{util.DBFieldComputeId: orderAscend, util.DBFieldComputeRegion: orderAscend},
 		},
 		{
 			mongoDB.datasetCollection,
-			map[string]int32{"userid": orderAscend, "url": orderAscend},
+			map[string]int32{util.DBFieldUserId: orderAscend, util.DBFieldURL: orderAscend},
 		},
 		{
 			mongoDB.designCollection,
-			map[string]int32{"userid": orderAscend, "id": orderAscend},
+			map[string]int32{util.DBFieldUserId: orderAscend, util.DBFieldId: orderAscend},
 		},
 		{
 			mongoDB.taskCollection,
-			map[string]int32{"jobid": orderAscend, "taskid": orderAscend},
+			map[string]int32{util.DBFieldJobId: orderAscend, util.DBFieldTaskId: orderAscend},
+		},
+		{
+			mongoDB.deploymentCollection,
+			map[string]int32{util.DBFieldComputeId: orderAscend, util.DBFieldJobId: orderAscend},
 		},
 	}
 	for _, uii := range uiiList {

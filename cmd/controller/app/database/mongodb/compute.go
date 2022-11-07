@@ -173,3 +173,32 @@ func (db *MongoService) GetComputeById(computeId string) (openapi.ComputeSpec, e
 	}
 	return currentDocument, nil
 }
+
+func (db *MongoService) UpdateDeploymentStatus(computeId string, jobId string, agentStatuses map[string]openapi.AgentState) error {
+	filter := bson.M{util.DBFieldJobId: jobId, util.DBFieldComputeId: computeId}
+	result := db.deploymentCollection.FindOne(context.TODO(), filter)
+	// update fields if document is already present
+	if result.Err() == nil {
+		result = db.deploymentCollection.FindOneAndUpdate(context.TODO(),
+			filter,
+			bson.M{"$set": bson.M{util.DBFieldAgentStatuses: agentStatuses}})
+		if err := result.Err(); err != nil {
+			err = ErrorCheck(err)
+			zap.S().Errorf("Failed to update new deployment status: %v", err)
+			return err
+		}
+	} else {
+		_, err := db.deploymentCollection.InsertOne(context.TODO(),
+			bson.M{util.DBFieldJobId: jobId,
+				util.DBFieldComputeId:     computeId,
+				util.DBFieldAgentStatuses: agentStatuses,
+			})
+		if err != nil {
+			err = ErrorCheck(err)
+			zap.S().Errorf("Failed to create new deployment status: %v", err)
+			return err
+		}
+	}
+	zap.S().Debugf("New deployment status for jobid: %s inserted", jobId)
+	return nil
+}

@@ -231,18 +231,14 @@ func (c *ComputesApiController) PutDeploymentStatus(w http.ResponseWriter, r *ht
 	jobIdParam := params["jobId"]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
-	deploymentStatusParam := DeploymentStatus{}
+	requestBodyParam := map[string]AgentState{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
-	if err := d.Decode(&deploymentStatusParam); err != nil {
+	if err := d.Decode(&requestBodyParam); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	if err := AssertDeploymentStatusRequired(deploymentStatusParam); err != nil {
-		c.errorHandler(w, r, err, nil)
-		return
-	}
-	result, err := c.service.PutDeploymentStatus(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam, deploymentStatusParam)
+	result, err := c.service.PutDeploymentStatus(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam, requestBodyParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
