@@ -91,4 +91,6 @@ type ComputeService interface {
 	RegisterCompute(openapi.ComputeSpec) (openapi.ComputeStatus, error)
 	GetComputeIdsByRegion(string) ([]string, error)
 	GetComputeById(string) (openapi.ComputeSpec, error)
+	// UpdateDeploymentStatus call replaces existing agent statuses with received statuses in collection.
+	UpdateDeploymentStatus(computeId string, jobId string, agentStatuses map[string]openapi.AgentState) error
 }

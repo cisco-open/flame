@@ -115,7 +115,7 @@ type ComputesApiServicer interface {
 	GetDeploymentConfig(context.Context, string, string, string) (ImplResponse, error)
 	GetDeploymentStatus(context.Context, string, string, string) (ImplResponse, error)
 	GetDeployments(context.Context, string, string) (ImplResponse, error)
-	PutDeploymentStatus(context.Context, string, string, string, DeploymentStatus) (ImplResponse, error)
+	PutDeploymentStatus(context.Context, string, string, string, map[string]AgentState) (ImplResponse, error)
 	RegisterCompute(context.Context, ComputeSpec) (ImplResponse, error)
 	UpdateCompute(context.Context, string, string, ComputeSpec) (ImplResponse, error)
 }

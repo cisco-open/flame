@@ -93,25 +93,9 @@ AgentKVs:
     type: string
 
 ########################################
-# Deployment status within a compute cluster
-########################################
-DeploymentStatus:
-  description: Deployment status within a compute cluster
-  type: object
-  properties:
-    jobId:
-      type: string
-    agentStatuses:
-      type: array
-      items: 
-        $ref: '#/components/schemas/AgentStatus'
-  required:
-    - jobId
-
-########################################
 # Status for an agent within a deployment
 ########################################
-AgentStatus:
+DeploymentStatus:
   description: Status for an agent within a deployment
   type: object
   additionalProperties:
@@ -122,6 +106,7 @@ AgentStatus:
 ########################################
 AgentState:
   enum:
-    - agentDeployed
-    - agentRevoked
-    - agentFailed
+    - agentDeploySuccess
+    - agentDeployFailed
+    - agentRevokeSuccess
+    - agentRevokeFailed

@@ -175,21 +175,26 @@ func (s *ComputesApiService) GetDeployments(ctx context.Context, computeId strin
 
 // PutDeploymentStatus - Add or update the deployment status for a job on a compute cluster
 func (s *ComputesApiService) PutDeploymentStatus(ctx context.Context, computeId string,
-	jobId string, xAPIKEY string, deploymentStatus openapi.DeploymentStatus) (openapi.ImplResponse, error) {
-	// TODO - update PutDeploymentStatus with the required logic for this service method.
-	// Add api_computes_service.go to the .openapi-generator-ignore to avoid overwriting
-	// this service implementation when updating open api generation.
+	jobId string, xAPIKEY string, requestBody map[string]openapi.AgentState) (openapi.ImplResponse, error) {
+	// create controller request
+	uriMap := map[string]string{
+		"computeId": computeId,
+		"jobId":     jobId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.PutDeploymentStatusEndpoint, uriMap)
+	code, resp, err := restapi.HTTPPut(url, requestBody, "application/json; charset=utf-8")
+	if err != nil {
+		zap.S().Errorf("failed to post deployment status to controller: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	if err = restapi.CheckStatusCode(code); err != nil {
+		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	}
+	zap.S().Infof("Successfully sent deployment status %v to controller for jobId %s and computeId %s",
+		requestBody, jobId, computeId)
 
-	//TODO: Uncomment the next line to return response Response(401, {}) or use other options such as http.Ok ...
-	//return Response(401, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("PutDeploymentStatus method not implemented")
+	return openapi.Response(http.StatusOK, string(resp)), nil
 }
 
 // RegisterCompute - Register a new compute cluster
