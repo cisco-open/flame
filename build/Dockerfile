@@ -17,9 +17,6 @@
 FROM golang:1.17.8-buster AS golang-build
 WORKDIR /src
 ENV CGO_ENABLED=0
-RUN --mount=target=. \
-    --mount=type=cache,target=/root/.cache/go-build \
-    go test -v ./...
 
 RUN --mount=target=. \
     --mount=type=cache,target=/root/.cache/go-build \
