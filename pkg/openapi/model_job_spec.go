@@ -37,23 +37,13 @@ type JobSpec struct {
 
 	CodeVersion string `json:"codeVersion"`
 
-	DataSpec DataSpec `json:"dataSpec,omitempty"`
-
-	Optimizer Optimizer `json:"optimizer,omitempty"`
-
-	Selector Selector `json:"selector,omitempty"`
-
 	Priority JobPriority `json:"priority,omitempty"`
-
-	Backend CommBackend `json:"backend,omitempty"`
 
 	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
-	BaseModel BaseModel `json:"baseModel,omitempty"`
+	DataSpec DataSpec `json:"dataSpec,omitempty"`
 
-	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
-
-	Dependencies []string `json:"dependencies,omitempty"`
+	ModelSpec ModelSpec `json:"modelSpec,omitempty"`
 }
 
 // AssertJobSpecRequired checks if the required fields are not zero-ed
@@ -72,13 +62,7 @@ func AssertJobSpecRequired(obj JobSpec) error {
 	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
 		return err
 	}
-	if err := AssertOptimizerRequired(obj.Optimizer); err != nil {
-		return err
-	}
-	if err := AssertSelectorRequired(obj.Selector); err != nil {
-		return err
-	}
-	if err := AssertBaseModelRequired(obj.BaseModel); err != nil {
+	if err := AssertModelSpecRequired(obj.ModelSpec); err != nil {
 		return err
 	}
 	return nil

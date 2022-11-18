@@ -118,14 +118,17 @@ func (b *JobBuilder) setup() error {
 
 	// reset datasets array
 	b.datasets = make([]openapi.DatasetInfo, 0)
-	// update datasets
-	for _, datasetId := range b.jobSpec.DataSpec.FromSystem {
-		datasetInfo, err := b.dbService.GetDatasetById(datasetId)
-		if err != nil {
-			return err
-		}
 
-		b.datasets = append(b.datasets, datasetInfo)
+	// update datasets
+	// TODO to be visited again during TAG expansion to ensure the dataset collection is done correctly
+	for _, datasetIdList := range b.jobSpec.DataSpec.FromSystem {
+		for _, datasetId := range datasetIdList {
+			datasetInfo, err := b.dbService.GetDatasetById(datasetId)
+			if err != nil {
+				return err
+			}
+			b.datasets = append(b.datasets, datasetInfo)
+		}
 	}
 
 	return nil
@@ -205,7 +208,7 @@ func (b *JobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemp
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
 	// 1. At least one data consumer role should be defined.
-	// 2. a role shouled be associated with a code.
+	// 2. a role should be associated with a code.
 	// 3. template should be connected.
 	// 4. when graph traversal starts at a data role template, the depth of groupby tag
 	//    should strictly decrease from one channel to another.
@@ -463,12 +466,15 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			}
 		}
 
-		for i, dataset := range datasets {
-			task := tmpl.Task
-			task.ComputeId = dataset.ComputeId
-			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
-			tasks = append(tasks, task)
-		}
+		//TODO: fix me -- no task will be generated because dataset doesn't have compute id and realm is an array.
+		//		to be fixed during TAG expansion update
+		//this will be fixed as part of TAG expansion PR
+		//for i, dataset := range datasets {
+		//	task := tmpl.Task
+		//	task.ComputeId = dataset.ComputeId
+		//	task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
+		//	tasks = append(tasks, task)
+		//}
 
 		return tasks
 	}

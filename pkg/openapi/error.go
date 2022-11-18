@@ -29,6 +29,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"go.uber.org/zap"
 )
 
 var (
@@ -75,4 +77,9 @@ func DefaultErrorHandler(w http.ResponseWriter, r *http.Request, err error, resu
 		// Handle all other errors
 		EncodeJSONResponse(err.Error(), &result.Code, w)
 	}
+}
+
+func ErrorResponse(code int, err error) (ImplResponse, error) {
+	zap.S().Debug(err)
+	return Response(code, nil), err
 }

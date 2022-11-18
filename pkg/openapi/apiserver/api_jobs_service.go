@@ -49,10 +49,49 @@ func NewJobsApiService() openapi.JobsApiServicer {
 	return &JobsApiService{}
 }
 
+func validateJobSpec(createJobRequest openapi.CreateJobRequest) (bool, error) {
+
+	if len(createJobRequest.DesignId) < 0 {
+		return false, ErrMissingDesignId
+	}
+
+	if len(createJobRequest.SchemaVersion) < 0 {
+		return false, ErrMissingSchema
+	}
+
+	if len(createJobRequest.CodeVersion) < 0 {
+		return false, ErrMissingCode
+	}
+
+	//validate data spec
+	dataSpec := openapi.DataSpec{}
+	err := util.ReadFileToStruct(createJobRequest.DataSpecPath, &dataSpec)
+	if err != nil {
+		return false, err
+	}
+
+	//validate model spec
+	modelSpec := openapi.ModelSpec{}
+	err = util.ReadFileToStruct(createJobRequest.DataSpecPath, &modelSpec)
+	if err != nil {
+		return false, err
+	}
+
+	return true, nil
+}
+
 // CreateJob - Create a new job specification
-func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
-	// TODO: validate the input
-	zap.S().Debugf("New job request received for user: %s | jobSpec: %v", user, jobSpec)
+func (s *JobsApiService) CreateJob(ctx context.Context, user string, createJobRequest openapi.CreateJobRequest) (openapi.ImplResponse, error) {
+	zap.S().Debugf("New job request received for user: %s | jobSpec: %v", user, createJobRequest)
+
+	//validate the input - to ensure dataSpecPath and ModelSpecPath are correctly provide
+	isValid, err := validateJobSpec(createJobRequest)
+
+	if !isValid {
+		errMsg := fmt.Sprintf("incorrect job specification provided: %v", err)
+		zap.S().Errorf(errMsg)
+		return openapi.Response(http.StatusBadRequest, nil), fmt.Errorf(errMsg)
+	}
 
 	// create controller request
 	uriMap := map[string]string{
@@ -61,7 +100,7 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
+	code, resp, err := restapi.HTTPPost(url, createJobRequest, "application/json")
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}

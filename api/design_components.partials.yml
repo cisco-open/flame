@@ -239,3 +239,11 @@ File:
     - fileName
     - fileVer
     - fileData
+
+#########################
+# Communication Backends
+#########################
+CommBackend:
+  enum:
+    - mqtt
+    - p2p

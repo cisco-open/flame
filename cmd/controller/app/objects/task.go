@@ -43,6 +43,7 @@ type JobIdName struct {
 	Name string `json:"name"`
 }
 
+// TODO move the model specs under one object to for future extension
 type JobConfig struct {
 	BackEnd  string            `json:"backend"`
 	Brokers  []config.Broker   `json:"brokers,omitempty"`
@@ -86,12 +87,14 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	// DesignId is a string suitable as job's name
 	cfg.Job.Name = jobSpec.DesignId
 	cfg.MaxRunTime = jobSpec.MaxRunTime
-	cfg.BaseModel = jobSpec.BaseModel
-	cfg.Hyperparameters = jobSpec.Hyperparameters
-	cfg.Optimizer = jobSpec.Optimizer
-	cfg.Selector = jobSpec.Selector
-	cfg.Dependencies = jobSpec.Dependencies
-	cfg.BackEnd = string(jobSpec.Backend)
+	cfg.BaseModel = jobSpec.ModelSpec.BaseModel
+	cfg.Hyperparameters = jobSpec.ModelSpec.Hyperparameters
+	cfg.Optimizer = jobSpec.ModelSpec.Optimizer
+	cfg.Selector = jobSpec.ModelSpec.Selector
+	cfg.Dependencies = jobSpec.ModelSpec.Dependencies
+	//TODO fixme: update it when channels info is updated in schema. For now hard-coding it to mqtt
+	//cfg.BackEnd = string(jobSpec.Backend)
+	cfg.BackEnd = "mqtt"
 	cfg.Brokers = brokers
 	cfg.Registry = registry
 	// Dataset url will be populated when datasets are handled

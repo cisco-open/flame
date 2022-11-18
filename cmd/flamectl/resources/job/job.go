@@ -45,8 +45,8 @@ func Create(params Params) error {
 	}
 
 	// encode the data
-	jobSpec := openapi.JobSpec{}
-	err = json.Unmarshal(data, &jobSpec)
+	createJobRequest := openapi.CreateJobRequest{}
+	err = json.Unmarshal(data, &createJobRequest)
 	if err != nil {
 		fmt.Printf("Failed to parse %s\n", params.JobFile)
 		return nil
@@ -59,7 +59,7 @@ func Create(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
+	code, resp, err := restapi.HTTPPost(url, createJobRequest, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
 		fmt.Printf("Failed to create a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
 		return nil

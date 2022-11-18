@@ -171,7 +171,7 @@ type DesignsApiServicer interface {
 // while the service implementation can ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobsApiServicer interface {
-	CreateJob(context.Context, string, JobSpec) (ImplResponse, error)
+	CreateJob(context.Context, string, CreateJobRequest) (ImplResponse, error)
 	DeleteJob(context.Context, string, string) (ImplResponse, error)
 	GetJob(context.Context, string, string) (ImplResponse, error)
 	GetJobStatus(context.Context, string, string) (ImplResponse, error)

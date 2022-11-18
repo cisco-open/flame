@@ -25,33 +25,32 @@
 
 package openapi
 
-// DatasetInfo - dataset meta information
-type DatasetInfo struct {
+type CreateJobRequest struct {
 	Id string `json:"id,omitempty"`
 
 	UserId string `json:"userId,omitempty"`
 
-	Name string `json:"name,omitempty"`
+	DesignId string `json:"designId"`
 
-	Description string `json:"description,omitempty"`
+	SchemaVersion string `json:"schemaVersion"`
 
-	Url string `json:"url"`
+	CodeVersion string `json:"codeVersion"`
 
-	DataFormat string `json:"dataFormat"`
+	Priority JobPriority `json:"priority,omitempty"`
 
-	Realm []string `json:"realm,omitempty"`
+	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
-	Keywords []string `json:"keywords,omitempty"`
+	DataSpecPath string `json:"dataSpecPath,omitempty"`
 
-	IsPublic bool `json:"isPublic,omitempty"`
+	ModelSpecPath string `json:"modelSpecPath,omitempty"`
 }
 
-// AssertDatasetInfoRequired checks if the required fields are not zero-ed
-func AssertDatasetInfoRequired(obj DatasetInfo) error {
+// AssertCreateJobRequestRequired checks if the required fields are not zero-ed
+func AssertCreateJobRequestRequired(obj CreateJobRequest) error {
 	elements := map[string]interface{}{
-		"url":        obj.Url,
-		"dataFormat": obj.DataFormat,
-		"realm":      obj.Realm,
+		"designId":      obj.DesignId,
+		"schemaVersion": obj.SchemaVersion,
+		"codeVersion":   obj.CodeVersion,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {
@@ -62,14 +61,14 @@ func AssertDatasetInfoRequired(obj DatasetInfo) error {
 	return nil
 }
 
-// AssertRecurseDatasetInfoRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of DatasetInfo (e.g. [][]DatasetInfo), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseDatasetInfoRequired(objSlice interface{}) error {
+// AssertRecurseCreateJobRequestRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of CreateJobRequest (e.g. [][]CreateJobRequest), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseCreateJobRequestRequired(objSlice interface{}) error {
 	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aDatasetInfo, ok := obj.(DatasetInfo)
+		aCreateJobRequest, ok := obj.(CreateJobRequest)
 		if !ok {
 			return ErrTypeAssertionError
 		}
-		return AssertDatasetInfoRequired(aDatasetInfo)
+		return AssertCreateJobRequestRequired(aCreateJobRequest)
 	})
 }

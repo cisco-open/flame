@@ -1,0 +1,9 @@
+{
+    "designId": "test_design",
+    "schemaVersion": "1",
+    "codeVersion": "1",
+    "priority": "low",
+    "maxRunTime": 1800,
+    "dataSpecPath": "/Users/hd/Acads/projects/fledge/workspace/flame/examples/local_testing/sample_job/datas_spec.json",
+    "modelSpecPath": "/Users/hd/Acads/projects/fledge/workspace/flame/examples/local_testing/sample_job/datas_spec.json"
+}

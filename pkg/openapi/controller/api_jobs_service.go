@@ -36,6 +36,7 @@ import (
 	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/cmd/controller/app/job"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
@@ -63,18 +64,40 @@ func NewJobsApiService(dbService database.DBService, jobEventQ *job.EventQ, jobB
 }
 
 // CreateJob - Create a new job specification
-func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec openapi.JobSpec) (openapi.ImplResponse, error) {
+func (s *JobsApiService) CreateJob(ctx context.Context, user string, createJobRequest openapi.CreateJobRequest) (openapi.ImplResponse, error) {
+	jobSpec := openapi.JobSpec{
+		Id:            createJobRequest.Id,
+		UserId:        createJobRequest.UserId,
+		DesignId:      createJobRequest.DesignId,
+		SchemaVersion: createJobRequest.SchemaVersion,
+		CodeVersion:   createJobRequest.CodeVersion,
+		Priority:      createJobRequest.Priority,
+		MaxRunTime:    createJobRequest.MaxRunTime,
+		DataSpec:      openapi.DataSpec{},
+		ModelSpec:     openapi.ModelSpec{},
+	}
+
+	err := util.ReadFileToStruct(createJobRequest.DataSpecPath, &jobSpec.DataSpec)
+	if err != nil {
+		//todo (remove me later) INFO: errMsgFunc is defined in all the controller files? Can easily move it as a utility function as shown in this PR
+		return openapi.ErrorResponse(http.StatusInternalServerError, err)
+	}
+
+	err = util.ReadFileToStruct(createJobRequest.DataSpecPath, &jobSpec.ModelSpec)
+	if err != nil {
+		return openapi.ErrorResponse(http.StatusInternalServerError, err)
+	}
+
 	jobStatus, err := s.dbService.CreateJob(user, jobSpec)
 	if err != nil {
 		errMsg := fmt.Errorf("failed to create a new job: %v", err)
-		return errMsgFunc(errMsg)
+		return openapi.ErrorResponse(http.StatusInternalServerError, errMsg)
 	}
 
 	dirty := false
 	rollbackFunc := func() {
 		err1 := s.dbService.DeleteTasks(jobStatus.Id, dirty)
 		err2 := s.dbService.DeleteJob(user, jobStatus.Id)
-
 		zap.S().Infof("delete tasks's error: %v; delete job's error: %v", err1, err2)
 	}
 
@@ -260,6 +283,7 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, tas
 
 func (s *JobsApiService) createTasks(user string, jobId string, dirty bool) error {
 	// Obtain job specification
+	//TODO: should avoid another DB request, would be good to pass the jobSpec as param
 	jobSpec, err := s.dbService.GetJob(user, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get a job spec for job %s: %v", jobId, err)
@@ -278,6 +302,7 @@ func (s *JobsApiService) createTasks(user string, jobId string, dirty bool) erro
 	return nil
 }
 
+// TODO: remove this function and use common function define in openapi/Error.go file ErrorResponse(...)
 func errMsgFunc(err error) (openapi.ImplResponse, error) {
 	zap.S().Debug(err)
 	return openapi.Response(http.StatusInternalServerError, nil), err

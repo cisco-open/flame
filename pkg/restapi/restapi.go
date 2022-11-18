@@ -141,7 +141,6 @@ var URI = map[string]string{
 }
 
 func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {
-	//https://stackoverflow.com/questions/29071212/implementing-dynamic-strings-in-golang
 	var t = template.Must(template.New("").Parse(skeleton))
 	buf := bytes.Buffer{}
 	err := t.Execute(&buf, inputMap)
@@ -149,6 +148,7 @@ func FromTemplate(skeleton string, inputMap map[string]string) (string, error) {
 		zap.S().Errorf("error creating a text from skeleton. %v", err)
 		return "", err
 	}
+
 	return buf.String(), nil
 }
 

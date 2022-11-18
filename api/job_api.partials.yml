@@ -36,7 +36,14 @@
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/JobSpec'
+            allOf:
+              - $ref: '#/components/schemas/BasicJobInfo'
+              - type: object
+                properties:
+                  dataSpecPath:
+                    type: string
+                  modelSpecPath:
+                    type: string
     responses:
       "201":
         description: Null response

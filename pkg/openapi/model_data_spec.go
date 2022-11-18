@@ -25,10 +25,11 @@
 
 package openapi
 
+// DataSpec - Dataset specification
 type DataSpec struct {
 	FromUser map[string]int32 `json:"fromUser,omitempty"`
 
-	FromSystem []string `json:"fromSystem,omitempty"`
+	FromSystem map[string][]string `json:"fromSystem,omitempty"`
 }
 
 // AssertDataSpecRequired checks if the required fields are not zero-ed
