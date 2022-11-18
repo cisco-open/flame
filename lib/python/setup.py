@@ -38,6 +38,6 @@ setup(
         'diskcache',
         'mlflow',
         'paho-mqtt',
-        'protobuf==3.19.4',
+        'protobuf==3.19.5',
     ],
 )
