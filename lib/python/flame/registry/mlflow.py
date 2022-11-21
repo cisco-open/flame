@@ -29,8 +29,12 @@ logger = logging.getLogger(__name__)
 
 # The following flavors are integrated with flame.
 module_to_flavor: dict[str, str] = {
-    "keras": "keras",
+    # keras module is replaced with tensorflow; hence, keras module is
+    # redirected to tensorflow module
+    # see https://github.com/mlflow/mlflow/blame/master/mlflow/keras.py#L3
+    "keras": "tensorflow",
     "sklearn": "sklearn",
+    "tensorflow": "tensorflow",
     "torch": "pytorch"
 }
 
@@ -90,10 +94,11 @@ class MLflowRegistryClient(AbstractRegistryClient):
             return
 
         mlflow.log_params(hyperparameters)
-    
+
     def save_artifact(self, local_path: str) -> None:
         """Save an artifact in a model registry."""
-        mlflow.log_artifact(local_path) # path could be a path to a file or a directory
+        # local_path can be a path to a file or a directory
+        mlflow.log_artifact(local_path)
 
     def cleanup(self) -> None:
         """
