@@ -17,5 +17,5 @@
 
 
 pushd ..
-DOCKER_BUILDKIT=1 docker build -f build/Dockerfile --tag flame .
+DOCKER_BUILDKIT=1 docker build -f build/Dockerfile --tag ciscoresearch/flame:dev .
 popd
