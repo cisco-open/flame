@@ -223,3 +223,14 @@ func PrettyJsonString(data []byte) (string, error) {
 
 	return prettyJSON.String(), nil
 }
+
+func ReadFileToStruct(filePath string, obj interface{}) error {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		zap.S().Errorf("error when opening file %s %v", filePath, err)
+		return err
+	}
+
+	// Now let's unmarshall the data into `payload`
+	return ByteToStruct(content, obj)
+}
