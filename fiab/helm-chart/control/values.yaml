@@ -63,9 +63,9 @@ minio:
     hosts:
       - minio.flame.test
 
-imageName: flame
+imageName: ciscoresearch/flame
 imageTag: latest
-workerImageName: flame
+workerImageName: ciscoresearch/flame
 workerImageTag: latest
 
 broker:

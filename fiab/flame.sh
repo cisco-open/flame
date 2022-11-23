@@ -47,7 +47,13 @@ function pre_start_stop_check {
 
 function start {
     # install the flame helm chart
-    helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/control/
+    exposedb=$1
+    tag=$2
+    if [ "$tag" == "" ]; then
+        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/control/
+    else
+        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/control/ --set imageTag=$2
+    fi
 
     # Wait until mongodb is up
     ready=false
@@ -68,7 +74,7 @@ function start {
     done
     echo "done"
 
-    if [ "$1" == "false" ]; then
+    if [ "$exposedb" == "false" ]; then
         return
     fi
 
@@ -206,21 +212,30 @@ function post_stop_cleanup {
 
 function main {
     exposedb=false
-    if [ "$2" == "--exposedb" ]; then
-        exposedb=true
-    fi
+    tag=""
+    verb=${@:$OPTIND:1}
+    shift;
 
-    if [ "$1" == "start" ]; then
+    for arg in "$@"; do
+        case "$arg" in
+    	"--expose-db") exposedb=true;;
+    	"--local-img") tag="dev";;
+    	*) echo "unknown option: $arg"; exit 1;;
+        esac
+    done
+
+
+    if [ "$verb" == "start" ]; then
         pre_start_stop_check
         local start_stop_check_res=$?
         if [ $start_stop_check_res == 1 ]; then
             init
-            start $exposedb
+            start $exposedb $tag
             post_start_config
         else
             echo "Exiting!"
         fi
-    elif [ "$1" == "stop" ]; then
+    elif [ "$verb" == "stop" ]; then
         pre_start_stop_check
         local start_stop_check_res=$?
         if [ $start_stop_check_res == 1 ]; then
@@ -230,7 +245,7 @@ function main {
             echo "Exiting!"
         fi
     else
-        echo "usage: ./flame.sh <start [--exposedb] | stop>"
+        echo "usage: ./flame.sh <start [--expose-db] [--local-img] | stop>"
     fi
 }
 
