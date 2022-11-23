@@ -39,9 +39,36 @@ type DatasetInfo struct {
 
 	DataFormat string `json:"dataFormat"`
 
-	Realm string `json:"realm"`
+	Realm []string `json:"realm,omitempty"`
 
-	ComputeId string `json:"computeId,omitempty"`
+	Keywords []string `json:"keywords,omitempty"`
 
 	IsPublic bool `json:"isPublic,omitempty"`
+}
+
+// AssertDatasetInfoRequired checks if the required fields are not zero-ed
+func AssertDatasetInfoRequired(obj DatasetInfo) error {
+	elements := map[string]interface{}{
+		"url":        obj.Url,
+		"dataFormat": obj.DataFormat,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	return nil
+}
+
+// AssertRecurseDatasetInfoRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of DatasetInfo (e.g. [][]DatasetInfo), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDatasetInfoRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aDatasetInfo, ok := obj.(DatasetInfo)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertDatasetInfoRequired(aDatasetInfo)
+	})
 }

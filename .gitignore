@@ -14,6 +14,7 @@
 build/bin
 build/*.log
 #build/scripts
+log/
 
 # Test binary, built with `go test -c`
 *.test

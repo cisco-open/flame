@@ -463,12 +463,15 @@ func (tmpl *taskTemplate) buildTasks(prevPeer string, templates map[string]*task
 			}
 		}
 
-		for i, dataset := range datasets {
-			task := tmpl.Task
-			task.ComputeId = dataset.ComputeId
-			task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
-			tasks = append(tasks, task)
-		}
+		//TODO: fix me -- no task will be generated because dataset doesn't have compute id and realm is an array.
+		//		to be fixed during TAG expansion update
+		//this will be fixed as part of TAG expansion PR
+		//for i, dataset := range datasets {
+		//	task := tmpl.Task
+		//	task.ComputeId = dataset.ComputeId
+		//	task.Configure(openapi.SYSTEM, util.RandString(taskKeyLen), dataset.Realm, dataset.Url, i)
+		//	tasks = append(tasks, task)
+		//}
 
 		return tasks
 	}

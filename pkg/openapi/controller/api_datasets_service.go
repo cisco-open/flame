@@ -30,14 +30,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"path"
-	"strings"
-
-	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/cmd/controller/app/database"
 	"github.com/cisco-open/flame/pkg/openapi"
-	"github.com/cisco-open/flame/pkg/util"
 )
 
 // DatasetsApiService is a service that implents the logic for the DatasetsApiServicer
@@ -55,34 +50,7 @@ func NewDatasetsApiService(dbService database.DBService) openapi.DatasetsApiServ
 }
 
 // CreateDataset - Create meta info for a new dataset.
-func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
-	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	// get datasetRealm field and identify if it is computeId _or_ region
-	datasetRealm := datasetInfo.Realm
-	datasetInfo.ComputeId = util.DefaultRealm
-	isRegion := strings.HasPrefix(datasetRealm, util.DefaultRealm+util.RealmSep)
-	// TODO enforce compute registration starting with defaultRealm by pre-pending region.
-
-	// Public dataset: 	The realm may not map correctly to a region or compute. For a valid datasetInfo.Realm, expansion will take place.
-	// 					If datasetInfo.Realm represents an invalid region, it is retained (for groupBy) and computeId will be defaultRealm.
-	// 					If datasetInfo.Realm represents an invalid computeId, an error is thrown. The assumption is that the user
-	// 					specified a computeId for some specific reason(s) and it may not be correct to re-assign it to another cluster.
-	// Private dataset: The realm must map to a correct region or registered compute. For a valid datasetInfo.Realm, expansion will take place.
-
-	if isRegion {
-		err := s.checkComputeForDatasetByRegion(datasetRealm, &datasetInfo)
-		if err != nil {
-			return openapi.Response(http.StatusInternalServerError, nil), err
-		}
-	} else {
-		err := s.checkComputeForDatasetByComputeId(datasetRealm, &datasetInfo)
-		if err != nil {
-			return openapi.Response(http.StatusInternalServerError, nil), err
-		}
-	}
-
-	zap.S().Infof("after checks for dataset creation, datasetInfo.Realm: %v and datasetInfo.computeId: %v",
-		datasetInfo.Realm, datasetInfo.ComputeId)
+func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string, datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
 	datasetId, err := s.dbService.CreateDataset(user, datasetInfo)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
@@ -142,6 +110,48 @@ func (s *DatasetsApiService) UpdateDataset(ctx context.Context, user string, dat
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDataset method not implemented")
 }
 
+/*
+TODO: Was used by the CreateDataset earlier function when we were passing computeID and Realm as part of the dataset.
+      As part of the new process dataset can be registered by anyone and the job creator will use datasetIDs during job submission.
+	  Code to be cleared after everything is merged and working.
+
+// CreateDataset - Create meta info for a new dataset.
+func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
+	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
+	// get datasetRealm field and identify if it is computeId _or_ region
+	datasetRealm := datasetInfo.Realm
+	datasetInfo.ComputeId = util.DefaultRealm
+	isRegion := strings.HasPrefix(datasetRealm, util.DefaultRealm+util.RealmSep)
+	// TODO enforce compute registration starting with defaultRealm by pre-pending region.
+
+	// Public dataset: 	The realm may not map correctly to a region or compute. For a valid datasetInfo.Realm, expansion will take place.
+	// 					If datasetInfo.Realm represents an invalid region, it is retained (for groupBy) and computeId will be defaultRealm.
+	// 					If datasetInfo.Realm represents an invalid computeId, an error is thrown. The assumption is that the user
+	// 					specified a computeId for some specific reason(s) and it may not be correct to re-assign it to another cluster.
+	// Private dataset: The realm must map to a correct region or registered compute. For a valid datasetInfo.Realm, expansion will take place.
+
+	if isRegion {
+		err := s.checkComputeForDatasetByRegion(datasetRealm, &datasetInfo)
+		if err != nil {
+			return openapi.Response(http.StatusInternalServerError, nil), err
+		}
+	} else {
+		err := s.checkComputeForDatasetByComputeId(datasetRealm, &datasetInfo)
+		if err != nil {
+			return openapi.Response(http.StatusInternalServerError, nil), err
+		}
+	}
+
+	zap.S().Infof("after checks for dataset creation, datasetInfo.Realm: %v and datasetInfo.computeId: %v",
+		datasetInfo.Realm, datasetInfo.ComputeId)
+	datasetId, err := s.dbService.CreateDataset(user, datasetInfo)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
+	}
+
+	return openapi.Response(http.StatusCreated, datasetId), nil
+}
+
 func (s *DatasetsApiService) checkComputeForDatasetByRegion(datasetRealm string, datasetInfo *openapi.DatasetInfo) error {
 	eligibleComputes, err := s.dbService.GetComputeIdsByRegion(datasetRealm)
 	if len(eligibleComputes) == 0 {
@@ -179,3 +189,4 @@ func (s *DatasetsApiService) checkComputeForDatasetByComputeId(datasetRealm stri
 	}
 	return nil
 }
+*/
