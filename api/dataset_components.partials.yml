@@ -34,28 +34,27 @@ DatasetInfo:
     dataFormat:
       type: string
     # realm dictates the boundary where data can be loaded and used for training.
-    # It is a pipe-separated (i.e., separated by character |) notation. Its concept is similar
-    # to domain name. An empty realm (i.e., "") means that the dataset can be loaded into
-    # a compute node anywhere in the world.
-    # The realm consists of public boundaries (e.g., us) and private boundaries (e.g., cisco).
-    # The public boundaries are pre-populated while the private boundaries can be defined
-    # and extended by each private boundary's admin.
-    # The public boundaries represent geographical locations whereas the private boundaries
-    # represent logical boundaries.
-    #
-    # The flame system maintain the mapping between the realm and a launcher (a program that
-    # helps launching an ML workload in a cluster or machine associated with the launcher).
+    # Each compute cluster (deployer) defines its own set of properties.
+    # One such property is realm, also called the geolocation. The realm property
+    # of dataset helps define the locations where this dataset can be deployed.
+    # It is an array of strings. An empty declaration means that dataset can be
+    # loaded into any compute node anywhere in the world. The system while deploying
+    # the agents associated with the job will use this property of the dataset to find the corresponding clusters.
     realm:
-      type: string
-    computeId:
-      type: string
+      type: array
+      items:
+        type: string
+    # Words and phrases used to describe the dataset which helps in finding the dataset.
+    keywords:
+      type: array
+      items:
+        type: string
     # if it is not public, the dataset meta info is filtered when search is done by other users
     isPublic:
       type: boolean
   required:
     - url
     - dataFormat
-    - realm
   example:
     id: "613157766667387296a5ada4"
     userId: ""
@@ -63,6 +62,6 @@ DatasetInfo:
     description: dataset containing handwritten digits
     url: https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz
     dataFormat: npy
-    realm: "us/west/org1/cluster1"
-    computeId: "cluster1"
+    realm: ["us", "us/east", "asia"]
+    keywords: ["digits", "restricted", "labeled"]
     isPublic: true
