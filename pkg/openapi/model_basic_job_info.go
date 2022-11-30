@@ -13,7 +13,6 @@
 // limitations under the License.
 //
 // SPDX-License-Identifier: Apache-2.0
-
 /*
  * Flame REST API
  *
@@ -25,8 +24,8 @@
 
 package openapi
 
-// JobSpec - Job specification
-type JobSpec struct {
+// BasicJobInfo - Basic Job specification
+type BasicJobInfo struct {
 	Id string `json:"id,omitempty"`
 
 	UserId string `json:"userId,omitempty"`
@@ -40,14 +39,10 @@ type JobSpec struct {
 	Priority JobPriority `json:"priority,omitempty"`
 
 	MaxRunTime int32 `json:"maxRunTime,omitempty"`
-
-	DataSpec DataSpec `json:"dataSpec,omitempty"`
-
-	ModelSpec ModelSpec `json:"modelSpec,omitempty"`
 }
 
-// AssertJobSpecRequired checks if the required fields are not zero-ed
-func AssertJobSpecRequired(obj JobSpec) error {
+// AssertBasicJobInfoRequired checks if the required fields are not zero-ed
+func AssertBasicJobInfoRequired(obj BasicJobInfo) error {
 	elements := map[string]interface{}{
 		"designId":      obj.DesignId,
 		"schemaVersion": obj.SchemaVersion,
@@ -59,23 +54,17 @@ func AssertJobSpecRequired(obj JobSpec) error {
 		}
 	}
 
-	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
-		return err
-	}
-	if err := AssertModelSpecRequired(obj.ModelSpec); err != nil {
-		return err
-	}
 	return nil
 }
 
-// AssertRecurseJobSpecRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of JobSpec (e.g. [][]JobSpec), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseJobSpecRequired(objSlice interface{}) error {
+// AssertRecurseBasicJobInfoRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of BasicJobInfo (e.g. [][]BasicJobInfo), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseBasicJobInfoRequired(objSlice interface{}) error {
 	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aJobSpec, ok := obj.(JobSpec)
+		aBasicJobInfo, ok := obj.(BasicJobInfo)
 		if !ok {
 			return ErrTypeAssertionError
 		}
-		return AssertJobSpecRequired(aJobSpec)
+		return AssertBasicJobInfoRequired(aBasicJobInfo)
 	})
 }
