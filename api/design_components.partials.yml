@@ -79,11 +79,14 @@ DesignSchema:
       type: array
       items:
         $ref: '#/components/schemas/Connector'
+    defaultBackend:
+      $ref: '#/components/schemas/CommBackend'
   required:
     - version
     - name
     - roles
     - channels
+    - defaultBackend
   example:
     - name: sample schema 1
       description: Sample schema to demostrate a TAG layout.
@@ -184,6 +187,8 @@ Channel:
           type: string
     isUnidirectional:
       type: boolean
+    backend:
+      $ref: '#/components/schemas/CommBackend'
   required:
     - name
     - pair
@@ -203,6 +208,14 @@ Channel:
         type: tag
         value: ["us", "eu"]
       isUnidirectional: false
+
+#########################
+# Communication Backends
+#########################
+CommBackend:
+  enum:
+    - mqtt
+    - p2p
 
 #########################
 # Connectors for channels

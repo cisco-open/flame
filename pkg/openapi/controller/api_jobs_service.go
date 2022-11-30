@@ -260,6 +260,7 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, tas
 
 func (s *JobsApiService) createTasks(user string, jobId string, dirty bool) error {
 	// Obtain job specification
+	// TODO avoid DB call, can pass it
 	jobSpec, err := s.dbService.GetJob(user, jobId)
 	if err != nil {
 		return fmt.Errorf("failed to get a job spec for job %s: %v", jobId, err)

@@ -169,6 +169,7 @@ func HTTPPost(url string, msg interface{}, contentType string) (int, []byte, err
 		return -1, nil, err
 	}
 
+	zap.S().Debugf("[POST] url: %s with payload: %v\n", url, string(postBody))
 	resp, err := http.Post(url, contentType, bytes.NewBuffer(postBody))
 	if ErrorNilCheck(GetFunctionName(HTTPPost), err) != nil {
 		return -1, nil, err
@@ -191,6 +192,7 @@ func HTTPPut(url string, msg interface{}, contentType string) (int, []byte, erro
 		return -1, nil, err
 	}
 
+	zap.S().Debugf("[PUT] url: %s with payload: %v\n", url, string(putBody))
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(putBody))
 	if ErrorNilCheck(GetFunctionName(HTTPPut), err) != nil {
 		return -1, nil, err

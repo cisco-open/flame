@@ -1,0 +1,9 @@
+{
+    "designId": "test_design",
+    "schemaVersion": "1",
+    "codeVersion": "2",
+    "priority": "low",
+    "maxRunTime": 1800,
+    "dataSpecFile": "datas_spec.json",
+    "modelSpecFile": "model_spec.json"
+}

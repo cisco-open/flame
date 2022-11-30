@@ -177,15 +177,17 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 
 		JobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
 
-		// check channels and set default group if channels don't have groupby attributes set
 		for i := range JobConfig.Channels {
-			if len(JobConfig.Channels[i].GroupBy.Value) > 0 {
-				continue
+			// check for channel's backend. If not present update it with default value
+			if len(JobConfig.Channels[i].Backend) < 0 {
+				JobConfig.Channels[i].Backend = b.schema.DefaultBackend
 			}
 
-			// since there is no groupby attribute, set default
-			JobConfig.Channels[i].GroupBy.Type = groupByTypeTag
-			JobConfig.Channels[i].GroupBy.Value = append(JobConfig.Channels[i].GroupBy.Value, defaultGroup)
+			// check channels and set default group if channel doesn't have groupBy attributes set
+			if len(JobConfig.Channels[i].GroupBy.Value) < 0 {
+				JobConfig.Channels[i].GroupBy.Type = groupByTypeTag
+				JobConfig.Channels[i].GroupBy.Value = append(JobConfig.Channels[i].GroupBy.Value, defaultGroup)
+			}
 		}
 
 		template.isDataConsumer = role.IsDataConsumer
@@ -207,7 +209,7 @@ func (b *JobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemp
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
 	// 1. At least one data consumer role should be defined.
-	// 2. a role shouled be associated with a code.
+	// 2. a role should be associated with a code.
 	// 3. template should be connected.
 	// 4. when graph traversal starts at a data role template, the depth of groupby tag
 	//    should strictly decrease from one channel to another.
