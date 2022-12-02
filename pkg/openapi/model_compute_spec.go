@@ -27,17 +27,30 @@ package openapi
 
 // ComputeSpec - Compute specification
 type ComputeSpec struct {
-	AdminId string `json:"adminId,omitempty"`
+	AdminId string `json:"adminId"`
 
-	Region string `json:"region,omitempty"`
-
-	ApiKey string `json:"apiKey,omitempty"`
+	ApiKey string `json:"apiKey"`
 
 	ComputeId string `json:"computeId,omitempty"`
+
+	Realm []string `json:"realm"`
+
+	Property map[string]interface{} `json:"property,omitempty"`
 }
 
 // AssertComputeSpecRequired checks if the required fields are not zero-ed
 func AssertComputeSpecRequired(obj ComputeSpec) error {
+	elements := map[string]interface{}{
+		"adminId": obj.AdminId,
+		"realm":   obj.Realm,
+		"apiKey":  obj.ApiKey,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
 	return nil
 }
 

@@ -17,7 +17,9 @@
 package cmd
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -28,103 +30,85 @@ import (
 )
 
 const (
-	argApiserver = "apiserver"
-	argNotifier  = "notifier"
-	argAdminId   = "adminid"
-	argRegion    = "region"
-	argComputeId = "computeid"
-	argApiKey    = "apikey"
-	argPlatform  = "platform"
-	argNamespace = "namespace"
-
+	argApiserver   = "apiserver"
+	argNotifier    = "notifier"
+	argConf        = "conf"
 	optionInsecure = "insecure"
 	optionPlain    = "plain"
 )
 
-var rootCmd = &cobra.Command{
-	Use:   util.Deployer,
-	Short: util.ProjectName + " Deployer",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		flags := cmd.Flags()
-
-		apiserver, err := flags.GetString(argApiserver)
-		if err != nil {
-			return err
-		}
-		if len(strings.Split(apiserver, ":")) != util.NumTokensInRestEndpoint {
-			return fmt.Errorf("incorrect format for apiserver endpoint: %s", apiserver)
-		}
-
-		notifier, err := flags.GetString(argNotifier)
-		if err != nil {
-			return err
-		}
-		if len(strings.Split(notifier, ":")) != util.NumTokensInEndpoint {
-			return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
-		}
-
-		adminId, err := flags.GetString(argAdminId)
-		if err != nil {
-			return err
-		}
-
-		region, err := flags.GetString(argRegion)
-		if err != nil {
-			return err
-		}
-
-		computeId, err := flags.GetString(argComputeId)
-		if err != nil {
-			return err
-		}
-
-		apikey, err := flags.GetString(argApiKey)
-		if err != nil {
-			return err
-		}
-
-		platform, err := flags.GetString(argPlatform)
-		if err != nil {
-			return err
-		}
-
-		namespace, err := flags.GetString(argNamespace)
-		if err != nil {
-			return err
-		}
-
-		bInsecure, _ := flags.GetBool(optionInsecure)
-		bPlain, _ := flags.GetBool(optionPlain)
-
-		if bInsecure && bPlain {
-			err = fmt.Errorf("options --%s and --%s are incompatible; enable one of them", optionInsecure, optionPlain)
-			return err
-		}
-
-		computeSpec := openapi.ComputeSpec{
-			AdminId:   adminId,
-			Region:    region,
-			ComputeId: computeId,
-			ApiKey:    apikey,
-		}
-
-		compute, err := app.NewCompute(apiserver, computeSpec, bInsecure, bPlain)
-		if err != nil {
-			return err
-		}
-
-		err = compute.RegisterNewCompute()
-		if err != nil {
-			err = fmt.Errorf("unable to register new compute with controller: %s", err)
-			return err
-		}
-
-		resoureHandler := app.NewResourceHandler(apiserver, notifier, computeSpec, platform, namespace, bInsecure, bPlain)
-		resoureHandler.Start()
-
-		select {}
-	},
+type DeployerRequest struct {
+	ComputeSpec openapi.ComputeSpec `json:"computeSpec"`
+	Platform    string              `json:"platform"`
+	Namespace   string              `json:"namespace"`
 }
+
+var (
+	confFile string
+
+	rootCmd = &cobra.Command{
+		Use:   util.Deployer,
+		Short: util.ProjectName + " Deployer",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			flags := cmd.Flags()
+
+			apiserver, err := flags.GetString(argApiserver)
+			if err != nil {
+				return err
+			}
+			if len(strings.Split(apiserver, ":")) != util.NumTokensInRestEndpoint {
+				return fmt.Errorf("incorrect format for apiserver endpoint: %s", apiserver)
+			}
+
+			notifier, err := flags.GetString(argNotifier)
+			if err != nil {
+				return err
+			}
+			if len(strings.Split(notifier, ":")) != util.NumTokensInEndpoint {
+				return fmt.Errorf("incorrect format for notifier endpoint: %s", notifier)
+			}
+
+			data, err := os.ReadFile(confFile)
+			if err != nil {
+				fmt.Printf("Failed to read deployer configuration file %s: %v\n", confFile, err)
+				return nil
+			}
+			fmt.Printf("deployer configuration %v\n", string(data))
+
+			// encode the data
+			deployerRequest := DeployerRequest{}
+			err = json.Unmarshal(data, &deployerRequest)
+			if err != nil {
+				fmt.Println("Failed to unmarshal the deployer configuration file")
+				return nil
+			}
+
+			bInsecure, _ := flags.GetBool(optionInsecure)
+			bPlain, _ := flags.GetBool(optionPlain)
+
+			if bInsecure && bPlain {
+				err = fmt.Errorf("options --%s and --%s are incompatible; enable one of them", optionInsecure, optionPlain)
+				return err
+			}
+
+			compute, err := app.NewCompute(apiserver, deployerRequest.ComputeSpec, bInsecure, bPlain)
+			if err != nil {
+				return err
+			}
+
+			err = compute.RegisterNewCompute()
+			if err != nil {
+				err = fmt.Errorf("unable to register new compute with controller: %s", err)
+				return err
+			}
+
+			resourceHandler := app.NewResourceHandler(apiserver, notifier, deployerRequest.ComputeSpec, deployerRequest.Platform, deployerRequest.Namespace, bInsecure, bPlain)
+			resourceHandler.Start()
+
+			select {}
+		},
+	}
+)
 
 func init() {
 	defaultApiServerEp := fmt.Sprintf("http://0.0.0.0:%d", util.ApiServerRestApiPort)
@@ -135,29 +119,8 @@ func init() {
 	rootCmd.Flags().StringP(argNotifier, "n", defaultNotifierEp, "Notifier endpoint")
 	rootCmd.MarkFlagRequired(argNotifier)
 
-	defaultAdminId := "admin"
-	rootCmd.Flags().StringP(argAdminId, "d", defaultAdminId, "unique admin id")
-	rootCmd.MarkFlagRequired(argAdminId)
-
-	defaultRegion := "region"
-	rootCmd.Flags().StringP(argRegion, "r", defaultRegion, "region name")
-	rootCmd.MarkFlagRequired(argRegion)
-
-	defaultComputeId := "compute"
-	rootCmd.Flags().StringP(argComputeId, "c", defaultComputeId, "unique compute id")
-	rootCmd.MarkFlagRequired(argComputeId)
-
-	defaultApiKey := "apiKey"
-	rootCmd.Flags().StringP(argApiKey, "k", defaultApiKey, "unique apikey")
-	rootCmd.MarkFlagRequired(argApiKey)
-
-	defaultPlatform := "k8s"
-	rootCmd.Flags().StringP(argPlatform, "p", defaultPlatform, "compute platform")
-	rootCmd.MarkFlagRequired(argPlatform)
-
-	defaultNamespace := "flame"
-	rootCmd.Flags().StringP(argNamespace, "s", defaultNamespace, "compute namespace")
-	rootCmd.MarkFlagRequired(argNamespace)
+	rootCmd.Flags().StringVar(&confFile, "config", "", "Deployer configuration file")
+	rootCmd.MarkFlagRequired(argConf)
 
 	rootCmd.PersistentFlags().Bool(optionInsecure, false, "Allow insecure connection")
 	rootCmd.PersistentFlags().Bool(optionPlain, false, "Allow unencrypted connection")

@@ -23,15 +23,25 @@ ComputeSpec:
   properties:
     adminId:
       type: string
-    region:
-      type: string
     apiKey:
       type: string
     computeId:
       type: string
+    realm:
+      type: array
+      items:
+        type: string
+    property:
+      type: object
+      additionalProperties:
+        type: string
+  required:
+    - adminId
+    - apiKey
+    - realm
   example:
     adminId: "admin-1"
-    region: "us-east"
+    realm: ["us-east", "us"]
     apiKey: "apikey-1"
     computeId: "compute-1"
 
