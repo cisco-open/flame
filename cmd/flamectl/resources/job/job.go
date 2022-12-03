@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -45,11 +46,12 @@ type CreateJobRequest struct {
 	CodeVersion   string              `json:"codeVersion"`
 	Priority      openapi.JobPriority `json:"priority,omitempty"`
 	MaxRunTime    int32               `json:"maxRunTime,omitempty"`
-	DataSpecPath  string              `json:"dataSpecPath,omitempty"`
-	ModelSpecPath string              `json:"modelSpecPath,omitempty"`
+	//dataSpecFile and modelSpecFile should be present in the same folder as job spec file.
+	DataSpecFile  string `json:"dataSpecFile,omitempty"`
+	ModelSpecFile string `json:"modelSpecFile,omitempty"`
 }
 
-func createJobSpec(data []byte) (bool, openapi.JobSpec) {
+func createJobSpec(data []byte, parentDir string) (bool, openapi.JobSpec) {
 	// encode the data
 	createJobRequest := CreateJobRequest{}
 	err := json.Unmarshal(data, &createJobRequest)
@@ -60,17 +62,17 @@ func createJobSpec(data []byte) (bool, openapi.JobSpec) {
 
 	//validate data spec
 	dataSpec := openapi.DataSpec{}
-	err = util.ReadFileToStruct(createJobRequest.DataSpecPath, &dataSpec)
+	err = util.ReadFileToStruct(filepath.Join(parentDir, createJobRequest.DataSpecFile), &dataSpec)
 	if err != nil {
-		fmt.Printf("Failed to parse dataSpec file %s\n", createJobRequest.DataSpecPath)
+		fmt.Printf("Failed to parse dataSpec file %s\n", createJobRequest.DataSpecFile)
 		return false, openapi.JobSpec{}
 	}
 
 	//validate model spec
 	modelSpec := openapi.ModelSpec{}
-	err = util.ReadFileToStruct(createJobRequest.ModelSpecPath, &modelSpec)
+	err = util.ReadFileToStruct(filepath.Join(parentDir, createJobRequest.ModelSpecFile), &modelSpec)
 	if err != nil {
-		fmt.Printf("Failed to parse modelSpec file %s\n", createJobRequest.ModelSpecPath)
+		fmt.Printf("Failed to parse modelSpec file %s\n", createJobRequest.ModelSpecFile)
 		return false, openapi.JobSpec{}
 	}
 
@@ -96,7 +98,7 @@ func Create(params Params) error {
 	}
 
 	//validate the input - to ensure dataSpecPath and ModelSpecPath are correctly provide
-	isValid, jobSpec := createJobSpec(data)
+	isValid, jobSpec := createJobSpec(data, filepath.Dir(params.JobFile))
 	if !isValid {
 		fmt.Printf("Incorrect job specification provided %s\n", params.JobFile)
 		return nil

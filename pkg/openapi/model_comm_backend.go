@@ -32,3 +32,20 @@ const (
 	MQTT CommBackend = "mqtt"
 	P2P  CommBackend = "p2p"
 )
+
+// AssertCommBackendRequired checks if the required fields are not zero-ed
+func AssertCommBackendRequired(obj CommBackend) error {
+	return nil
+}
+
+// AssertRecurseCommBackendRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of CommBackend (e.g. [][]CommBackend), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseCommBackendRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aCommBackend, ok := obj.(CommBackend)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertCommBackendRequired(aCommBackend)
+	})
+}

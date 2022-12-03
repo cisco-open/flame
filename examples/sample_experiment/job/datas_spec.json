@@ -1,0 +1,9 @@
+{
+    "fromUser": {
+        "default": 0
+    },
+    "fromSystem": {
+        "group1" : ["637d7a408d527e043797ea8e"],
+        "group2" : ["637583b873b8ba02591f97c9"]
+    }
+}
