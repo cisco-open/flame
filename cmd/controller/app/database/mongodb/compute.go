@@ -31,6 +31,8 @@ import (
 
 // RegisterCompute creates a new cluster compute specification and returns ComputeStatus
 func (db *MongoService) RegisterCompute(computeSpec openapi.ComputeSpec) (openapi.ComputeStatus, error) {
+	//TODO instead of doing a fineOne DB call, use insert API response to determine if the document is already present.
+
 	// First check if the compute was previously registered
 	filter := bson.M{util.DBFieldComputeId: computeSpec.ComputeId}
 	checkResult := db.computeCollection.FindOne(context.TODO(), filter)

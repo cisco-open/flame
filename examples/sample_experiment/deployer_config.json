@@ -1,0 +1,11 @@
+{
+  "computeSpec" : {
+    "adminId" : "local-admin",
+    "apiKey" : "apiKey1",
+    "computeId" : "compute1",
+    "realm" : ["us/east", "us"],
+    "property" : {}
+  },
+  "platform" : "k8s",
+  "namespace" : "local"
+}
