@@ -16,6 +16,6 @@ The fiab env is also tested under linux distributions such as Ubuntu, Amazon Lin
 ## Fiab installation guideline
 Follow one of the links below that matches operating system under consideration:
 
-* [Linux](03.A-fiab-linux.md)
-* [Amazon Linux with GPU](03.B-fiab-amzn-linux-gpu.md)
-* [MAC OS](03.C-fiab-mac.md)
+* [Ubuntu](03-a-ubuntu.md)
+* [Amazon Linux2 with GPU](03-b-amzn2-gpu.md)
+* [MAC OS](03-c-mac.md)
