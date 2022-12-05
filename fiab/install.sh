@@ -21,7 +21,8 @@ function macos_installation {
 }
 
 function ubuntu_installation {
-    echo "ubuntu: to be implemented"
+    source ./ubuntu.sh
+    install_ubuntu_prerequisites
 }
 
 function amzn2_installation {
