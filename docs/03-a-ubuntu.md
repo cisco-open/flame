@@ -1,7 +1,7 @@
 # Fiab installation in linux
 This guideline is mainly for Ubuntu in a x86 machine and steps can be followed for other linux distributions with their respective package managers.
 ## Prerequisites
-For linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`.
+For linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`. These tools can be installed either by running [automation script](../fiab/install.sh) with `ubuntu` as an argument or by manually running below steps.
 
 ### step 1: Installing minikube
 We install the latest minikube stable release on x86-64 Linux using binary downloaded from [here](https://minikube.sigs.k8s.io/docs/start/).
