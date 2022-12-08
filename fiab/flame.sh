@@ -212,7 +212,7 @@ function post_stop_cleanup {
         done
 
         # step 4: create patch file
-        echo "{\"data\": {\"Corefile\": $(jq -R -s < $tmp_file)}}" > $tmp_file
+        echo "{\"data\": {\"Corefile\": $(jq -R -s '.' < $tmp_file)}}" > $tmp_file
 
         # step 5: patch configmap of coredns with the updated dns entries
         kubectl patch configmap coredns \
