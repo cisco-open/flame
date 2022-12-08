@@ -1,6 +1,6 @@
-# Flame
+<p align="center"><img src="docs/images/logo.png" alt="flame logo" width="200"/></p>
 
-<img src="docs/images/logo.png" alt="flame logo" width="200"/>
+[![](https://img.shields.io/badge/Flame-Join%20Slack-brightgreen)](https://join.slack.com/t/flame-slack/shared_invite/zt-1l1o52uyf-8s7D2887~59BtHLFKhymVQ)
 
 Flame is a platform that enables developers to compose and deploy federated learning (FL) training workloads easily.
 The system is comprised of a service (control plane ) and a python library (data plane).
