@@ -54,6 +54,7 @@ function amzn2_installation {
     VERSION="v1.25.0"
     wget https://github.com/kubernetes-sigs/cri-tools/releases/download/$VERSION/crictl-$VERSION-linux-amd64.tar.gz
     sudo tar zxvf crictl-$VERSION-linux-amd64.tar.gz -C /usr/local/bin
+    sudo ln -s /usr/local/bin/crictl /usr/bin/crictl # create a symbolic link
     rm -f crictl-$VERSION-linux-amd64.tar.gz
 
     # install minikube
