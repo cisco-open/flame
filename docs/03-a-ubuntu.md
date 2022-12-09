@@ -2,6 +2,16 @@
 This guideline is mainly for Ubuntu in a x86 machine and steps can be followed for other linux distributions with their respective package managers.
 ## Prerequisites
 For linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`.
+These tools can be installed by either running an automation script or by running manual steps.
+
+To run an automation script, run the following commands:
+
+```bash
+cd fiab
+./install.sh ubuntu
+```
+
+Then, the following manual steps can be skipped; directly go to [starting minikube](#starting-minikube).
 
 ### step 1: Installing minikube
 We install the latest minikube stable release on x86-64 Linux using binary downloaded from [here](https://minikube.sigs.k8s.io/docs/start/).
@@ -22,7 +32,7 @@ sudo apt update
 sudo apt install -y jq
 ```
 ### step3: Install docker
-1. Update the apt package index and install packages to allow apt to use a repository over  HTTPS.                                             
+1. Update the apt package index and install packages to allow apt to use a repository over  HTTPS.
 ```bash
 sudo apt-get update
 sudo apt-get install \
