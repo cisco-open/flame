@@ -20,6 +20,17 @@ Thus, if dnscrypt-proxy or dnsmasq is installed in the system, see [here](#fixin
 
 Note that other drivers such as `virtualbox` are not tested.
 
+These tools can be installed by either running an automation script or by running manual steps.
+
+To run an automation script, run the following commands:
+
+  ```bash
+  cd fiab
+  ./install.sh macos
+  ```
+
+Then, the following manual steps can be skipped; directly go to [starting minikube](#starting-minikube).
+
 ### Step 1: Installing VM driver for minikube
 To install `hyperkit`,
 ```bash

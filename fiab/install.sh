@@ -17,7 +17,8 @@
 
 
 function macos_installation {
-    echo "macos: to be implemented"
+    source ./mac.sh
+    install_mac_prerequisites
 }
 
 function ubuntu_installation {
