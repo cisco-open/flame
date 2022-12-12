@@ -88,7 +88,10 @@ selfsigned certificate creation. Run the following command:
 ```
 
 
-## Building flame
+## (Optional) Building flame container image
+To simply use flame, skip this step and go to the [starting flame step](#starting-flame).
+Building flame container image is only needed if a developer makes changes in the source code and wants to test the local changes.
+
 A Docker daemon comes within the minikube VM. To build flame container image, set the environment variables with the following command.
 
 ```bash
