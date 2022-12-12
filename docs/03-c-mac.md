@@ -87,7 +87,10 @@ selfsigned certificate creation. Run the following command:
 ```
 
 
-## Building flame
+## (Optional) Building flame container image
+To simply use flame, skip this step and go to the [starting flame step](#starting-flame).
+Building flame container image is only needed if a developer makes changes in the source code and wants to test the local changes.
+
 A Docker daemon comes within the minikube VM. To build flame container image, set the environment variables with the following command.
 
 ```bash
@@ -127,7 +130,7 @@ k8s.gcr.io/pause                          3.5       ed210e3e4a5b   9 months ago 
 ```
 
 
-## Fixing docker build error
+### Fixing docker build error
 When `hyperkit` driver is in use, the `build-image.sh` command may fail with an error similar to the following:
 ```bash
 Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io on 192.168.64.1:53: read udp 192.168.64.6:48076->192.168.64.1:53: read: connection refused
