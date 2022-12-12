@@ -165,7 +165,12 @@ Channel:
         value:
           type: array
           items:
-            type: string
+            type: array
+            items:
+              type: string
+            # oneOf:
+              # - $ref: '#/components/schemas/GrpByValueString'
+              # - $ref: '#/components/schemas/GrpByValueArray'
           # code generation for oneOf is not working
           # https://github.com/OpenAPITools/openapi-generator/issues/8086
           # oneOf:
@@ -199,14 +204,14 @@ Channel:
       pair: ["trainer", "aggregator"]
       groupBy:
         type: tag
-        value: ["us", "eu"]
+        value: ["us", "eu", "asia"]
 
     - name: non-directionalExample
       description: An example to demostrate connection in one direction. Data is sent from aggregator to global aggregator but not the other way. isBidirectional flag allows you to define one way channels.
       pair: ["aggregator", "global-aggregator"]
       groupBy:
         type: tag
-        value: ["us", "eu"]
+        value: ["us", ["eu", "asia"]]
       isUnidirectional: false
 
 #########################

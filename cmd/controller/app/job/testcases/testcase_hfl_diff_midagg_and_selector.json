@@ -1,0 +1,127 @@
+{
+	"dataset": {
+		"fromUser": {
+		        "default": 0
+		    },
+		 "fromSystem": {
+		    	"trainer" : {
+		        	"group1" : ["637d7a408d527e043797ea8e","637d7a408d527e043797ea8e"],
+			        "group2" : ["637583b873b8ba02591f97c9","637d7a408d527e043797ea8e","637d7a408d527e043797ea8e"],
+			        "group3" : ["637d7a408d527e043797ea8e","637d7a408d527e043797ea8e", "637d7a408d527e043797ea8e","637d7a408d527e043797ea8e","637d7a408d527e043797ea8e"],
+			        "group4" : ["637d7a408d527e043797ecas","637d7a408d527e043797ea8e","637d7a408d527e043797ea8e"]
+		    	}
+		}
+	},
+
+	"schema": {
+		"name": "testschema",
+		"roles": [
+			{
+				"name": "trainer",
+				"description": "It consumes the data and trains local model",
+				"isDataConsumer": true
+			},
+			{
+				"name": "middle-aggregator-1",
+				"description": "It aggregates the updates from trainers"
+			},
+			{
+				"name": "middle-aggregator-2",
+				"description": "It aggregates the updates from trainers"
+			},
+			{
+				"name": "top-aggregator",
+				"description": "It aggregates the updates from middle-aggregator"
+			},
+			{
+				"name": "selector",
+				"description": "It registers trainers and inform middle-aggregator to selectively pick trainer"
+			}
+		],
+		"channels": [
+			{
+				"name": "param-channel-1",
+				"description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+				"pair": [ "trainer", "middle-aggregator-1"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["group1"],["group2"]]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "param-channel-2",
+				"description": "Model update is sent from trainer-2 to middle-aggregator-2 and vice-versa",
+				"pair": [ "trainer", "middle-aggregator-2"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["group3"], ["group4"]]
+				},
+				"funcTags": {}
+			},
+			{
+				"name" : "trainer-selector-channel",
+				"description" : "trainer registers with selector",
+				"pair" : [ "trainer" , "selector"],
+				"groupBy" : {
+					"type" : "tag",
+					"value": [ ["group1", "group2"], ["group3", "group4"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name" : "mid-aggregate-1-selector-channel",
+				"description" : "selector informs of trainers to go to",
+				"pair" : [ "middle-aggregator-1" , "selector"],
+				"groupBy" : {
+					"type" : "tag",
+					"value": [ ["group1", "group2"]]
+				},
+				"funcTags": {}
+			},
+			{
+				"name" : "mid-aggregate-2-selector-channel",
+				"description" : "selector informs of trainers to go to",
+				"pair" : [ "middle-aggregator-2" , "selector"],
+				"groupBy" : {
+					"type" : "tag",
+					"value": [ ["group3", "group4"]]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "global-channel-1",
+				"description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+				"pair": [ "top-aggregator", "middle-aggregator-1" ],
+				"groupBy": {
+					"type": "tag",
+					"value": [["default"]]
+				},
+				"funcTags": {},
+				"backend": "p2p"
+			},
+			{
+				"name": "global-channel-2",
+				"description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+				"pair": [ "top-aggregator", "middle-aggregator-2" ],
+				"groupBy": {
+					"type": "tag",
+					"value": [["default"]]
+				},
+				"funcTags": {},
+				"backend": "p2p"
+			}
+		],
+		"defaultBackend": "mqtt"
+	},
+
+	"jobSpec": {
+		"userId": "testUser",
+		"id": "12345",
+		"designId": "test_design",
+		"schemaVersion": "1",
+		"codeVersion": "1",
+		"priority": "low",
+		"maxRunTime": 1800
+	}
+}

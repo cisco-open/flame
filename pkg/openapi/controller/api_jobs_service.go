@@ -266,15 +266,16 @@ func (s *JobsApiService) createTasks(user string, jobId string, dirty bool) erro
 		return fmt.Errorf("failed to get a job spec for job %s: %v", jobId, err)
 	}
 
-	tasks, _, err := s.jobBuilder.GetTasks(&jobSpec)
+	_, _, err = s.jobBuilder.GetTasks(&jobSpec)
 	if err != nil {
 		return fmt.Errorf("failed to generate tasks for job %s: %v", jobId, err)
 	}
 
-	err = s.dbService.CreateTasks(tasks, dirty)
-	if err != nil {
-		return fmt.Errorf("failed to create tasks for job %s in database: %v", jobId, err)
-	}
+	//TODO fix me to create tasks from updated GetTasks function
+	//err = s.dbService.CreateTasks(tasks, dirty)
+	//if err != nil {
+	//	return fmt.Errorf("failed to create tasks for job %s in database: %v", jobId, err)
+	//}
 
 	return nil
 }

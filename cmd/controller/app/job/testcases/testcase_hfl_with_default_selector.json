@@ -1,0 +1,101 @@
+{
+	"dataset": {
+		"fromUser": {
+		        "default": 0
+		    },
+		 "fromSystem": {
+		    	"trainer" : {
+		        	"group1" : ["637d7a408d527e043797ea8e", "637d7a408d527e043797ehfe", "637d7a408d527e043797e5gd"],
+		        	"group2" : ["637583b873b8ba02591f97c9"]
+		    	}
+		}
+	},
+
+	"schema": {
+		"name": "testschema",
+		"roles": [
+			{
+				"name": "trainer",
+				"description": "It consumes the data and trains local model",
+				"isDataConsumer": true
+			},
+			{
+				"name": "middle-aggregator",
+				"description": "It aggregates the updates from trainers"
+			},
+			{
+				"name": "top-aggregator",
+				"description": "It aggregates the updates from middle-aggregator"
+			},
+			{
+				"name": "selector",
+				"description": "It registers trainers and inform middle-aggregator to selectively pick trainer"
+			}
+		],
+		"channels": [
+			{
+				"name": "param-channel",
+				"description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+				"pair": [ "trainer", "middle-aggregator"],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group1"], ["group2"]]
+				},
+				"funcTags": {
+					"trainer": ["fetch", "upload"],
+					"middle-aggregator": ["distribute", "aggregate"]
+				}
+			},
+			{
+				"name" : "trainer-selector-channel",
+				"description" : "trainer registers with selector",
+				"pair" : [ "trainer" , "selector"],
+				"groupBy" : {
+					"type" : "tag",
+					"value" : [["default"]]
+				},
+				"funcTags" : {
+				}
+			},
+			{
+				"name" : "mid-aggregate-selector-channel",
+				"description" : "selector informs of trainers to go to",
+				"pair" : [ "middle-aggregator" , "selector"],
+				"groupBy" : {
+					"type" : "tag",
+					"value" : [["default"]]
+				},
+				"funcTags" : {
+				}
+			},
+			{
+				"name": "global-channel",
+				"description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+				"pair": [
+					"top-aggregator",
+					"middle-aggregator"
+				],
+				"groupBy": {
+					"type": "tag",
+					"value": [["default"]]
+				},
+				"funcTags": {
+					"top-aggregator": ["distribute", "aggregate"],
+					"middle-aggregator": ["fetch", "upload"]
+				},
+				"backend": "p2p"
+			}
+		],
+		"defaultBackend": "mqtt"
+	},
+
+	"jobSpec": {
+		"userId": "testUser",
+		"id": "12345",
+		"designId": "test_design",
+		"schemaVersion": "1",
+		"codeVersion": "1",
+		"priority": "low",
+		"maxRunTime": 1800
+	}
+}

@@ -28,7 +28,7 @@ package openapi
 type ChannelGroupBy struct {
 	Type string `json:"type"`
 
-	Value []string `json:"value"`
+	Value [][]string `json:"value"`
 }
 
 // AssertChannelGroupByRequired checks if the required fields are not zero-ed

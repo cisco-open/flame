@@ -17,10 +17,14 @@
 package job
 
 import (
-	"strings"
+	"fmt"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 
 	"github.com/cisco-open/flame/cmd/controller/config"
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -28,243 +32,138 @@ import (
 )
 
 var (
-	testJobSpec = openapi.JobSpec{
-		UserId:          "testUser",
-		Id:              "12345",
-		DesignId:        "test",
-		SchemaVersion:   "1",
-		CodeVersion:     "1",
-		Backend:         "mqtt",
-		MaxRunTime:      300,
-		Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
-		Dependencies:    []string{"numpy >= 1.2.0"},
-	}
-
-	testSchema = openapi.DesignSchema{
-		Version: "1",
-		Roles: []openapi.Role{
-			{Name: "trainer", IsDataConsumer: true},
-			{Name: "aggregator"},
-			{Name: "gaggr"},
-		},
-		Channels: []openapi.Channel{
-			{
-				Name: "param-channel",
-				Pair: []string{"aggregator", "trainer"},
-				GroupBy: openapi.ChannelGroupBy{
-					Type: "tag",
-					Value: []string{
-						composeGroup(defaultGroup, "uk"),
-						composeGroup(defaultGroup, "us"),
-					},
-				},
-			},
-			{
-				Name: "global-channel",
-				Pair: []string{"gaggr", "aggregator"},
-			},
-		},
-	}
-
-	testRoleCode = map[string][]byte{
-		"trainer":    []byte("some code1"),
-		"aggregator": []byte("some code2"),
-		"gaggr":      []byte("some code3"),
-	}
-
-	testDatasets = []openapi.DatasetInfo{
-		{Url: "https://someurl1.com", Realm: composeGroup(defaultGroup, "us", "west")},
-		{Url: "https://someurl2.com", Realm: composeGroup(defaultGroup, "uk")},
-	}
-
-	testSchemaWithTwoDataConsumers = openapi.DesignSchema{
-		Version: "1",
-		Roles: []openapi.Role{
-			{Name: "trainer1", IsDataConsumer: true},
-			{Name: "trainer2", IsDataConsumer: true},
-			{Name: "aggregator1"},
-			{Name: "aggregator2"},
-		},
-		Channels: []openapi.Channel{
-			{
-				Name: "channel1",
-				Pair: []string{"aggregator1", "trainer1"},
-				GroupBy: openapi.ChannelGroupBy{
-					Type: "tag",
-					Value: []string{
-						composeGroup(defaultGroup, "uk"),
-						composeGroup(defaultGroup, "us"),
-					},
-				},
-			},
-			{
-				Name: "channel2",
-				Pair: []string{"aggregator2", "trainer2"},
-				GroupBy: openapi.ChannelGroupBy{
-					Type: "tag",
-					Value: []string{
-						composeGroup(defaultGroup, "uk"),
-						composeGroup(defaultGroup, "us"),
-					},
-				},
-			},
-			{
-				Name: "global-channel",
-				Pair: []string{"aggregator1", "aggregator2"},
-			},
-		},
-	}
-
-	testRoleCodeWithTwoDataConsumers = map[string][]byte{
-		"trainer1":    []byte("some code1"),
-		"trainer2":    []byte("some code2"),
-		"aggregator1": []byte("some code3"),
-		"aggregator2": []byte("some code4"),
-	}
+	testCaseDir = "./testcases/"
 )
 
-func composeGroup(tokens ...string) string {
-	return strings.Join(tokens, util.RealmSep)
+// TODO maybe use JobBuilder directly?
+type TestData struct {
+	Dataset openapi.DataSpec     `json:"dataset"`
+	Schema  openapi.DesignSchema `json:"schema"`
+	JobSpec openapi.JobSpec      `json:"jobSpec"`
+	Code    map[string][]byte    `json:"code"`
 }
 
-func TestGetTaskTemplates(t *testing.T) {
-	builder := NewJobBuilder(nil, config.JobParams{})
-	assert.NotNil(t, builder)
-	builder.jobSpec = &testJobSpec
-
-	builder.schema = testSchema
-	builder.datasets = testDatasets
-	builder.roleCode = testRoleCode
-
-	dataRoles, templates := builder.getTaskTemplates()
-	assert.NotNil(t, dataRoles)
-	assert.Len(t, dataRoles, 1)
-	assert.Equal(t, "trainer", dataRoles[0])
-	assert.NotNil(t, templates)
-	assert.Len(t, templates, 3)
+type TestCases struct {
+	Filename       string
+	TemplatesCount int
+	IsTestEnable   bool
 }
 
-func TestPreCheck(t *testing.T) {
-	builder := NewJobBuilder(nil, config.JobParams{})
-	assert.NotNil(t, builder)
-	builder.jobSpec = &testJobSpec
-
-	builder.schema = testSchema
-	builder.datasets = testDatasets
-
-	dataRoles, templates := builder.getTaskTemplates()
-	err := builder.preCheck(dataRoles, templates)
-	assert.NotNil(t, err)
-	assert.Equal(t, "no code found for role trainer", err.Error())
-
-	// set role code
-	builder.roleCode = testRoleCode
-	err = builder.preCheck(dataRoles, templates)
-	assert.Nil(t, err)
+var testCases = [...]TestCases{
+	{
+		Filename:       "testcase_hfl.json",
+		TemplatesCount: 3,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_connected_trainers.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_connected_trainers_in_grps.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_default_selector.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_distributed_selector.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_monitoring.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_selector_coordinator.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_with_selector_and_monitor.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_diff_midagg.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_diff_midagg_and_selector.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
+	{
+		Filename:       "testcase_hfl_uneven_depth.json",
+		TemplatesCount: -1,
+		IsTestEnable:   true,
+	},
 }
 
-func TestIsTemplatesConnected(t *testing.T) {
-	builder := NewJobBuilder(nil, config.JobParams{})
-	assert.NotNil(t, builder)
-	builder.jobSpec = &testJobSpec
-
-	builder.schema = testSchema
-	builder.datasets = testDatasets
-	builder.roleCode = testRoleCode
-
-	_, templates := builder.getTaskTemplates()
-	isConnected := builder.isTemplatesConnected(templates)
-	assert.True(t, isConnected)
-
-	savedPair := builder.schema.Channels[0].Pair
-	// disconnect one channel
-	builder.schema.Channels[0].Pair = []string{}
-
-	_, templates = builder.getTaskTemplates()
-	isConnected = builder.isTemplatesConnected(templates)
-	assert.False(t, isConnected)
-	// restore connection
-	builder.schema.Channels[0].Pair = savedPair
-}
-
-func TestIsConverging(t *testing.T) {
-	builder := NewJobBuilder(nil, config.JobParams{})
-	assert.NotNil(t, builder)
-	builder.jobSpec = &testJobSpec
-
-	// success case
-	builder.schema = testSchema
-	builder.datasets = testDatasets
-	builder.roleCode = testRoleCode
-	dataRoles, templates := builder.getTaskTemplates()
-	res := builder.isConverging(dataRoles, templates)
-	assert.True(t, res)
-
-	// failure case
-	testSchema.Channels[1].GroupBy.Type = "tag"
-	testSchema.Channels[1].GroupBy.Value = []string{
-		composeGroup(defaultGroup, "uk"),
-		composeGroup(defaultGroup, "us"),
-	}
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.False(t, res)
-	// reset the changes
-	testSchema.Channels[1].GroupBy.Type = ""
-	testSchema.Channels[1].GroupBy.Value = nil
-
-	// success case
-	builder.schema = testSchemaWithTwoDataConsumers
-	builder.datasets = testDatasets
-	builder.roleCode = testRoleCodeWithTwoDataConsumers
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.True(t, res)
-
-	// failure case
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = "tag"
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{
-		composeGroup(defaultGroup, "uk"),
-		composeGroup(defaultGroup, "us"),
-	}
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.False(t, res)
-	// reset the changes
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = ""
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = nil
-}
-
-func TestWalk(t *testing.T) {
-	builder := NewJobBuilder(nil, config.JobParams{})
-	builder.jobSpec = &testJobSpec
-
-	builder.schema = testSchema
-	builder.datasets = testDatasets
-	builder.roleCode = testRoleCode
-
-	backupVal := make([]string, len(builder.schema.Channels[0].GroupBy.Value))
-	builder.schema.Channels[0].GroupBy.Value = append(builder.schema.Channels[0].GroupBy.Value, defaultGroup)
-	testCases := map[int]map[string]int32{
-		6: make(map[string]int32),
-		8: {defaultGroup: 2},
+// loadData loads the data for the given test case present in the testcases directory.
+func loadData(file string) (TestData, error) {
+	testcase := TestData{}
+	err := util.ReadFileToStruct(filepath.Join(testCaseDir, file), &testcase)
+	if err != nil {
+		// use https://jsonlint.com/ to validate the JSON if needed
+		fmt.Printf("Error reading the file %v\n", err)
+		return testcase, err
 	}
 
-	for numTasks, userDatasetKV := range testCases {
-		dataRoles, templates := builder.getTaskTemplates()
-		assert.NotNil(t, dataRoles)
-		assert.Len(t, dataRoles, 1)
-		assert.Equal(t, "trainer", dataRoles[0])
-		assert.NotNil(t, templates)
-		assert.Len(t, templates, 3)
-
-		// trainer is data role
-		tmpl := templates["trainer"]
-		tasks, err := tmpl.walk("", templates, builder.datasets, userDatasetKV)
-		assert.Nil(t, err)
-		assert.Len(t, tasks, numTasks)
+	testcase.JobSpec.DataSpec = testcase.Dataset
+	testcase.Code = make(map[string][]byte)
+	for _, role := range testcase.Schema.Roles {
+		testcase.Code[role.Name] = []byte("role code")
 	}
+	return testcase, nil
+}
 
-	// reset the change
-	builder.schema.Channels[0].GroupBy.Value = backupVal
+// only for local testing
+func updateZapLogger() {
+	zapConfig := zap.NewDevelopmentConfig()
+	//custom
+	// comment during local testing to display the called name and log level
+	zapConfig.EncoderConfig.LevelKey = zapcore.OmitKey
+	zapConfig.EncoderConfig.CallerKey = zapcore.OmitKey
+	zapConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+		enc.AppendString(t.Format("15:04"))
+	}
+	zapConfig.OutputPaths = []string{"stdout"}
+	logger, err := zapConfig.Build()
+	if err != nil {
+		fmt.Printf("Can't build logger: %v", err)
+	}
+	defer logger.Sync()
+	zap.ReplaceGlobals(logger)
+}
+
+func TestBuild(t *testing.T) {
+	updateZapLogger()
+	for _, tt := range testCases {
+		testName := fmt.Sprintf("testFile %s", tt.Filename)
+		if tt.IsTestEnable {
+			t.Run(testName, func(t *testing.T) {
+				builder := NewJobBuilder(nil, config.JobParams{})
+				assert.NotNil(t, builder)
+
+				tcData, err := loadData(tt.Filename)
+				if err != nil {
+					assert.Nil(t, err)
+				}
+				builder.jobSpec = &tcData.JobSpec
+				builder.schema = tcData.Schema
+				builder.roleCode = tcData.Code
+
+				_, err = builder.build()
+				assert.Nil(t, err)
+			})
+		}
+	}
 }

@@ -1,0 +1,103 @@
+{
+	"dataset": {
+		"fromUser": {
+		        "default": 0
+		    },
+		 "fromSystem": {
+		    	"trainer" : {
+		        	"group1" : ["637d7a408d527e043797ea8e", "637d7a408d527e043797ehfe", "637d7a408d527e043797e5gd"],
+		        	"group2" : ["637583b873b8ba02591f97c9"]
+		    	}
+		}
+	},
+
+	"schema": {
+		"name": "testschema",
+		"roles": [
+			{
+				"name": "trainer",
+				"description": "It consumes the data and trains local model",
+				"isDataConsumer": true
+			},
+			{
+				"name": "middle-aggregator-1",
+				"description": "It aggregates the updates from trainers"
+			},
+			{
+				"name": "middle-aggregator-2",
+				"description": "It aggregates the updates from trainers"
+			},
+			{
+				"name": "top-aggregator",
+				"description": "It aggregates the updates from middle-aggregator"
+			}
+		],
+		"channels": [
+			{
+				"name": "param-channel-1",
+				"description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+				"pair": [ "trainer", "middle-aggregator-1"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["group1"]]
+				},
+				"funcTags": {
+					"trainer": ["fetch", "upload"],
+					"middle-aggregator": ["distribute", "aggregate"]
+				}
+			},
+			{
+				"name": "param-channel-2",
+				"description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+				"pair": [ "trainer", "middle-aggregator-2"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["group2"]]
+				},
+				"funcTags": {
+					"trainer": ["fetch", "upload"],
+					"middle-aggregator": ["distribute", "aggregate"]
+				}
+			},
+			{
+				"name": "global-channel-1",
+				"description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+				"pair": [ "top-aggregator","middle-aggregator-1"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["default"]]
+				},
+				"funcTags": {
+					"top-aggregator": ["distribute", "aggregate"],
+					"middle-aggregator": ["fetch", "upload"]
+				},
+				"backend": "p2p"
+			},
+			{
+				"name": "global-channel-2",
+				"description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+				"pair": [ "top-aggregator", "middle-aggregator-2"],
+				"groupBy": {
+					"type": "tag",
+					"value": [["default"]]
+				},
+				"funcTags": {
+					"top-aggregator": ["distribute", "aggregate"],
+					"middle-aggregator": ["fetch", "upload"]
+				},
+				"backend": "p2p"
+			}
+		],
+		"defaultBackend": "mqtt"
+	},
+
+	"jobSpec": {
+		"userId": "testUser",
+		"id": "12345",
+		"designId": "test_design",
+		"schemaVersion": "1",
+		"codeVersion": "1",
+		"priority": "low",
+		"maxRunTime": 1800
+	}
+}

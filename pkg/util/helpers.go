@@ -112,7 +112,7 @@ func FormatJSON(data []byte) ([]byte, error) {
 	return data, nil
 }
 
-// Marshal JSON to escape HTML characters like <, > while printing
+// JSONMarshal Marshal JSON to escape HTML characters like <, > while printing
 func JSONMarshal(t interface{}) ([]byte, error) {
 	buffer := &bytes.Buffer{}
 	encoder := json.NewEncoder(buffer)

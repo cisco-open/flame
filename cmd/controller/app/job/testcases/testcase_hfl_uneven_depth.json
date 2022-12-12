@@ -1,0 +1,106 @@
+{
+	"dataset": {
+		"fromUser": {
+		        "default": 0
+		    },
+		 "fromSystem": {
+		    	"trainer" : {
+		        	"group1" : ["637d7a408d527e043797ea8e", "637d7a408d527e043797ehfe", "637d7a408d527e043797e5gd"],
+			        "group2" : ["637583b873b8ba02591f97c9"],
+			        "group3" : ["637d7a408d527e043797ea8e", "637d7a408d527e043797ehfe", "637d7a408d527e043797e5gd"],
+			        "group4" : ["637583b873b8ba02591f97c9"],
+			        "group5" : ["637d7a408d527e043797ea8e", "637d7a408d527e043797ehfe", "637d7a408d527e043797e5gd"],
+			        "group6" : ["637583b873b8ba02591f97c9"]
+		    	}
+		}
+	},
+
+	"schema": {
+		"name": "testschema",
+		"roles": [
+			{
+				"name": "trainer",
+				"isDataConsumer": true
+			},
+			{
+				"name": "aggregator-1"
+			},
+			{
+				"name": "aggregator-2"
+			},
+			{
+				"name": "aggregator-3"
+			},
+			{
+				"name": "top-aggregator"
+			}
+		],
+		"channels": [
+			{
+				"name": "param-channel",
+				"pair": [ "trainer", "aggregator-1"],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group1"], ["group2"], ["group3"], ["group4"], ["group5"], ["group6"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "agg-2-channel",
+				"pair": [ "aggregator-1", "aggregator-2" ],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group1", "group2"] , ["group4", "group5", "group6"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "agg-3-channel-1",
+				"pair": [ "aggregator-3", "aggregator-2" ],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group1", "group2"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "agg-3-channel-2",
+				"pair": [ "aggregator-3", "aggregator-1" ],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group3"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "global-channel-2",
+				"pair": [ "top-aggregator", "aggregator-2"],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["group4", "group5", "group6"] ]
+				},
+				"funcTags": {}
+			},
+			{
+				"name": "global-channel-1",
+				"pair": [ "top-aggregator", "aggregator-3"],
+				"groupBy": {
+					"type": "tag",
+					"value": [ ["default"] ]
+				},
+				"funcTags": {}
+			}
+		],
+		"defaultBackend": "mqtt"
+	},
+
+	"jobSpec": {
+		"userId": "testUser",
+		"id": "12345",
+		"designId": "test_design",
+		"schemaVersion": "1",
+		"codeVersion": "1",
+		"priority": "low",
+		"maxRunTime": 1800
+	}
+}

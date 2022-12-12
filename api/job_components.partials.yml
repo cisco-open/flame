@@ -82,17 +82,25 @@ DataSpec:
     fromSystem:
       type: object
       additionalProperties:
-        type: array
-        items:
-          type: string
+        type: object
+        additionalProperties:
+          type: array
+          items:
+            type: string
   example:
     fromUser:
       default: 1 # there is one user-fed dataset under default realm
       uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
       us/foo: 3 # there are three user-fed datasets under us/foo realm
     fromSystem: {
-      "group1" : ["61609290fa724deafdb2a4fa"], # id of dataset registered in the flame system
-      "group2" : ["61609290fa724deafdbx35wc", "61609290fa724deafdb2aadfb"]
+      "trainerRole1" : {
+        "group1": [ "datasetId1" ], # id of dataset registered in the flame system
+        "group2": [ "datasetId2", "datasetId3" ]
+      },
+      "trainerRole2": {
+        "group1": [ "datasetId4", "datasetId5" ],
+        "group2": [ "datasetId9" ]
+      },
     }
 
 ########################################
