@@ -39,8 +39,13 @@ function pre_start_stop_check {
 }
 
 function start {
+    tag=$1
     # install the flame helm chart
-    helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/deployer/
+    if [ "$tag" == "" ]; then
+        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/deployer/
+    else
+        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/deployer/ --set imageTag="$tag"
+    fi
 
     echo "done"
 }
@@ -66,15 +71,26 @@ function stop {
 }
 
 function main {
-    if [ "$1" == "start" ]; then
+    tag=""
+    verb=${@:$OPTIND:1}
+    shift;
+
+    for arg in "$@"; do
+        case "$arg" in
+    	"--local-img") tag="dev";;
+    	*) echo "unknown option: $arg"; exit 1;;
+        esac
+    done
+
+    if [ "$verb" == "start" ]; then
         pre_start_stop_check
         local start_stop_check_res=$?
         if [ $start_stop_check_res == 1 ]; then
-            start
+            start $tag
         else
             echo "Exiting!"
         fi
-    elif [ "$1" == "stop" ]; then
+    elif [ "$verb" == "stop" ]; then
         pre_start_stop_check
         local start_stop_check_res=$?
         if [ $start_stop_check_res == 1 ]; then

@@ -21,7 +21,7 @@ minio:
       secretKey: flame123
       policy: readwrite
 
-imageName: flame
+imageName: ciscoresearch/flame
 imageTag: latest
 
 frontDoorUrl:
