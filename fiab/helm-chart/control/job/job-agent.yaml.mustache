@@ -51,4 +51,15 @@ spec:
             - name: AWS_SECRET_ACCESS_KEY
               value: {{ .Values.secretAccessKey }}
       restartPolicy: Never
+
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            preference:
+              matchExpressions:
+              - key: "nvidia.com/gpu.count"
+                operator: Gt
+                values:
+                - "0"
 <%={{ }}=%>

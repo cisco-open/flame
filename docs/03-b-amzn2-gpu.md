@@ -66,7 +66,7 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 
 # install helm
-HELM_VERSION=v3.10.2-linux-amd64
+HELM_VERSION=v3.10.2
 curl -LO https://get.helm.sh/helm-$HELM_VERSION-linux-amd64.tar.gz
 tar -zxvf helm-$HELM_VERSION-linux-amd64.tar.gz
 sudo mv linux-amd64/helm /usr/local/bin/helm
@@ -125,7 +125,52 @@ An output should look similar to:
 }
 ```
 
-### Step 3: Configuring addons
+### Step 3: Install NVIDIA'S GPU feature discovery resources
+More details are found [here](https://github.com/NVIDIA/gpu-feature-discovery).
+
+Deploy Node Feature Discovery (NFD) as a daemonset.
+```bash
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/gpu-feature-discovery/v0.7.0/deployments/static/nfd.yaml
+```
+
+Deploy NVIDIA GPU Feature Discovery (GFD) as a daemonset.
+```bash
+kubectl apply -f https://raw.githubusercontent.com/NVIDIA/gpu-feature-discovery/v0.7.0/deployments/static/gpu-feature-discovery-daemonset.yaml
+```
+
+```bash
+kubectl get nodes -o yaml
+```
+The above command will output something similar to the following:
+```console
+apiVersion: v1
+items:
+- apiVersion: v1
+  kind: Node
+  metadata:
+    ...
+    labels:
+      ...
+      nvidia.com/cuda.driver.major: "470"
+      nvidia.com/cuda.driver.minor: "57"
+      nvidia.com/cuda.driver.rev: "02"
+      nvidia.com/cuda.runtime.major: "11"
+      nvidia.com/cuda.runtime.minor: "4"
+      nvidia.com/gfd.timestamp: "1672792567"
+      nvidia.com/gpu.compute.major: "3"
+      nvidia.com/gpu.compute.minor: "7"
+      nvidia.com/gpu.count: "1"
+      nvidia.com/gpu.family: kepler
+      nvidia.com/gpu.machine: HVM-domU
+      nvidia.com/gpu.memory: "11441"
+      nvidia.com/gpu.product: Tesla-K80
+      nvidia.com/gpu.replicas: "1"
+      nvidia.com/mig.capable: "false"
+      ...
+...
+```
+
+### Step 4: Configuring addons
 Next, `ingress` and `ingress-dns` addons need to be installed with the following command:
 ```bash
 sudo minikube addons enable ingress
