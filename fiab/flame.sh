@@ -50,9 +50,12 @@ function start {
     exposedb=$1
     tag=$2
     if [ "$tag" == "" ]; then
-        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/control/
+        helm install --create-namespace --namespace $RELEASE_NAME \
+	     $RELEASE_NAME helm-chart/control/
     else
-        helm install --create-namespace --namespace $RELEASE_NAME $RELEASE_NAME helm-chart/control/ --set imageTag=$2
+        helm install --create-namespace --namespace $RELEASE_NAME \
+	     --set imageTag=$2,workerImageTag=$2 \
+	     $RELEASE_NAME helm-chart/control/
     fi
 
     # Wait until mongodb is up
