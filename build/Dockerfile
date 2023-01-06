@@ -27,7 +27,10 @@ WORKDIR /src
 COPY ./lib/python /src
 RUN python3 setup.py bdist_wheel && cp dist/flame-*.whl /tmp/
 
-FROM myungjinlee/mlpack:cpu
+# available image tags: pytorch-cpu, tensorflow-cpu, allinone-cpu
+#                       pytorch-cuda11.3, tensorflow-cuda11.3, allinone-cuda11.3
+# note: allinone-cuda11.3 is the largest image
+FROM ciscoresearch/mlpack:allinone-cuda11.3
 COPY --from=golang-build /flame/* /usr/bin/
 
 # Install flame python library
