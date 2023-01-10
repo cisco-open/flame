@@ -61,19 +61,13 @@ sudo usermod -aG docker $USER && newgrp docker
 ```
 
 ## Starting minikube
-Run the following command to start minikube.
-```bash
-minikube start
-```
-The default resource allocation is 2 CPU, 4GB memory and 20GB disk.
+When minikube is instantiated, the default resource allocation is 2 CPU, 4GB memory and 20GB disk.
 In order to change these parameters, use `--cpus`, `--memory` and `--disk-size` respectively.
-For example,
+The recommended resource allocation is 4 CPUs, 4GB of memory and 100GB of disk space.
 ```bash
 minikube start --cpus 4 --memory 4096m --disk-size 100gb
 ```
 When `docker` driver is in use, run ```minikube config set driver docker``` to make docker driver default. These changes will take effect upon a minikube delete and then a minikube start.
-
-We recommend a disk space of 100GB to allow sufficient disk space to store the flame container images and other images in the minikube VM.
 
 Next, `ingress` and `ingress-dns` addons need to be installed with the following command:
 ```bash
@@ -178,6 +172,13 @@ flame-notifier-cf4854cd9-g27wj      1/1     Running   0              7m5s
 postgres-7fd96c847c-6qdpv           1/1     Running   0              7m5s
 ```
 
+If the above output shows `ErrImagePull` or `ImagePullBackOff` as status, it may be because minikube's image pull step got timed out.
+Such an issue occurs because container images are large or the Internet connection is slow.
+The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
+A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:latest`) before deploying pods.
+Identifying the required image can be done by running a `kubectl describe` command
+(e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`); the command's output will show details about the pod, including image name and its tag.
+
 As a way to test a successful configuration of routing and dns, test with the following commands:
 ```bash
 ping -c 1 apiserver.flame.test
@@ -219,9 +220,9 @@ To terminate the fiab environment, run the following:
 minikube delete
 ```
 
-## Running a test ML job
-In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
-
 **Note**: By executing the above command, any downloaded or locally-built images are also deleted together when the VM is deleted.
 Unless a fresh minikube instance is needed, simply stopping the minikube (i.e., `minikube stop`) instance would be useful
 to save time for development and testing.
+
+## Running a test ML job
+In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
