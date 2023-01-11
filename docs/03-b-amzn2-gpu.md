@@ -245,9 +245,17 @@ flame-notifier-cf4854cd9-g27wj      1/1     Running   0              7m5s
 postgres-7fd96c847c-6qdpv           1/1     Running   0              7m5s
 ```
 
+If the above output shows `ErrImagePull` or `ImagePullBackOff` as status, it may be because minikube's image pull step got timed out.
+Such an issue occurs because container images are large or the Internet connection is slow.
+The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
+A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:latest`) before deploying pods.
+Identifying the required image can be done by running a `kubectl describe` command
+(e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`); the command's output will show details about the pod, including image name and its tag.
+
 In amazon ec2, `flame.test` domain needs to be added to Route 53 with the minikube IP address,
 which can be obtained by running `minikube ip`. Without route 53 configuration, the following
 ping test will fail.
+
 As a way to test a successful configuration of routing and dns, test with the following commands:
 ```bash
 ping -c 1 apiserver.flame.test
@@ -289,9 +297,9 @@ To terminate the fiab environment, run the following:
 sudo minikube delete
 ```
 
-## Running a test ML job
-In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
-
 **Note**: By executing the above command, any downloaded or locally-built images are also deleted together when the VM is deleted.
 Unless a fresh minikube instance is needed, simply stopping the minikube (i.e., `sudo minikube stop`) instance would be useful
 to save time for development and testing.
+
+## Running a test ML job
+In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
