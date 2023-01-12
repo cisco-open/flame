@@ -1,11 +1,17 @@
 # Examples
 
-This section currently presents one example: FL training for MNIST. More examples will follow in the future, and you will find the instruction under the README file of their particular folder.
+This section showcases one example: FL training for MNIST. More examples are found under examples folder below the top level folder (i.e.,`flame`).
+You will find the instructions in the README.md file of each example folder.
 
 ## MNIST
 
 Here we go over how to run MNIST example with [fiab](03-fiab.md) environment.
-If `flamectl` command is not found, please refer to [fiab](03-fiab.md).
+The MNIST example is under `flame/examples/mnist`.
+We assume that the current work directory is `flame`.
+Change the working directory to mnist by executing the following:
+```bash
+cd examples/mnist
+```
 
 ### Caution
 Note: all the components in the fiab environment uses a selfsigned certificate.
@@ -17,6 +23,8 @@ $ flamectl create design mnist
 Failed to create a new design - code: -1, error: Post "https://apiserver.flame.test/foo/designs": x509: certificate signed by unknown authority
 ```
 Note that `--insecure` flag should be used with caution and shouldn't be used in production.
+
+If you get an error saying that `flamectl not found`, please refer to [here](03-c-mac.md#Building-flamectl).
 
 ### Step 1: create a design
 ```bash

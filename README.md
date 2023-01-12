@@ -9,13 +9,34 @@ And the library is also responsible for executing FL workloads.
 With extensibility of its library, Flame can support various experimentations and use cases.
 
 ## Getting started
-This repo contains a dev/test environment in a single machine on top of minikube.
+The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
+One should first set up a development environemnt.
+For more details, refer to [here](docs/02-getting-started.md).
+
+Then, users can use a dev/test environment in a single machine on top of minikube.
 The detailed instructions are found [here](docs/03-fiab.md).
 
-## Development setup
-
-The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
-For more details, refer to [here](docs/02-getting-started.md).
+This repo has the following directory structure:
+```
+flame
+ ├── CODE_OF_CONDUCT.md
+ ├── CONTRIBUTING.md
+ ├── LICENSE
+ ├── Makefile -> build/Makefile
+ ├── README.md
+ ├── api (specification of REST API for flame apiserver)
+ ├── build (configuration files for building flame binaries and container image)
+ ├── cmd (source files for flame control plane)
+ ├── docs (document folder)
+ ├── examples (example folder)
+ ├── fiab (dev/test env in a single box)
+ ├── go.mod
+ ├── go.sum
+ ├── lib (python library for core flame data plane)
+ ├── lint.sh
+ ├── pkg (go packages for cmd)
+ └── scripts (utility scripts)
+```
 
 ## Documentation
 
