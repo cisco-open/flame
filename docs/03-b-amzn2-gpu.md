@@ -224,6 +224,20 @@ Run the following command:
 The above command ensures that the latest official flame image from docker hub is used.
 To use a locally developed image, add `--local-img ` in the above command.
 
+**Note**: The following error may occur during the start.
+```console
+Error: INSTALLATION FAILED: failed post-install: timed out waiting for the condition
+```
+This issue may be because container images are large or the Internet connection is slow.
+The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
+The latest minikube still doesn't contain the patched component (cri-dockerd 0.2.6).
+A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:latest`).
+The command `kubectl get pods -n flame` gives a list of pods and their status.
+The pods with `ErrImagePull` or `ImagePullBackOff` status are ones that might be affected by the issue.
+Identifying the required image can be done by running a `kubectl describe` command
+(e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`);
+the command's output will show details about the pod, including image name and its tag.
+
 ## Validating deployment
 To check deployment status, run the following command:
 ```bash
@@ -245,13 +259,6 @@ flame-notifier-cf4854cd9-g27wj      1/1     Running   0              7m5s
 postgres-7fd96c847c-6qdpv           1/1     Running   0              7m5s
 ```
 
-If the above output shows `ErrImagePull` or `ImagePullBackOff` as status, it may be because minikube's image pull step got timed out.
-Such an issue occurs because container images are large or the Internet connection is slow.
-The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
-A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:latest`) before deploying pods.
-Identifying the required image can be done by running a `kubectl describe` command
-(e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`); the command's output will show details about the pod, including image name and its tag.
-
 In amazon ec2, `flame.test` domain needs to be added to Route 53 with the minikube IP address,
 which can be obtained by running `minikube ip`. Without route 53 configuration, the following
 ping test will fail.
@@ -266,6 +273,7 @@ These ping commands should run successfully without any error. As another altern
 That should return a mlflow's web page.
 
 ## Stopping flame
+Once using flame is done, one can stop flame by running the following command:
 ```bash
 ./flame.sh stop
 ```
@@ -286,10 +294,13 @@ The following command creates `config.yaml` under `$HOME/.flame`.
 ```bash
 ./build-config.sh
 ```
-The flame CLI tool, `flamectl` uses the configuration file to interact with the flame system.
-In order to build, `flamectl`, run `make install` from the level folder (i.e., `flame`).
+
+## Building flamectl
+The flame CLI tool, `flamectl` uses the configuration file (`config.yaml`) to interact with the flame system.
+In order to build `flamectl`, run `make install` from the level folder (i.e., `flame`).
 This command compiles source code and installs `flamectl` binary as well as other binaries into `$HOME/.flame/bin`.
-You may want to add `export PATH="$HOME/.flame/bin:$PATH"` to your shell config (e.g., `~/.zshrc`, `~/.bashrc`) and then restart your terminal.
+You may want to add `export PATH="$HOME/.flame/bin:$PATH"` to your shell config (e.g., `~/.zshrc`, `~/.bashrc`) and then reload your shell config (e.g., `source ~/.bashrc`).
+The examples in [here](04-examples.md) assume that `flamectl` is in `$HOME/.flame/bin` and the path (`$HOME/.flame/bin`) is exported.
 
 ## Cleanup
 To terminate the fiab environment, run the following:
