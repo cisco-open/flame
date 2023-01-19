@@ -3,7 +3,7 @@
     "backend": "mqtt",
     "brokers": [
         {
-            "host": "flame-mosquitto",
+            "host": "broker.hivemq.com",
             "sort": "mqtt"
         }
     ],
@@ -27,7 +27,7 @@
             }
         }
     ],
-    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dataset": "https://raw.github.com/GaoxiangLuo/flame-datasets/main/site1.npz",
     "dependencies": [
         "numpy >= 1.2.0"
     ],
