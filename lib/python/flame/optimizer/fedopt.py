@@ -48,7 +48,7 @@ class FedOPT(FedAvg):
         if ml_framework_in_use == MLFramework.PYTORCH:
             self.adapt_fn = self._adapt_pytorch
         elif ml_framework_in_use == MLFramework.TENSORFLOW:
-            self.adapt_fn = self._adapt_tesnorflow
+            self.adapt_fn = self._adapt_tensorflow
         else:
             raise NotImplementedError(
                 "supported ml framework not found; "
@@ -96,7 +96,18 @@ class FedOPT(FedAvg):
 
         self.current_weights = OrderedDict({k: self.current_weights[k] + self.eta * self.m_t[k] / (torch.sqrt(self.v_t[k]) + self.tau) for k in self.current_weights.keys()})
 
-    def _adapt_tesnorflow(self, average, current):
+    def _adapt_tensorflow(self, average, current):
+        import tensorflow as tf
         logger.debug("calling _adapt_tensorflow")
-        # TODO: Implement Tensorflow Version
-        raise NotImplementedError("Tensorflow implementation not yet implemented")
+        
+        self.d_t = [average[idx]-current[idx] for idx in range(len(average))]
+
+        if self.m_t is None:
+            self.m_t = [tf.zeros_like(self.d_t[idx]) for idx in range(len(self.d_t))]
+        self.m_t = [self.beta_1 * self.m_t[idx] + (1 - self.beta_1) * self.d_t[idx] for idx in range(len(self.m_t))]
+
+        if self.v_t is None:
+            self.v_t = [tf.zeros_like(self.d_t[idx]) for idx in range(len(self.d_t))]
+        self._delta_v_tensorflow()
+            
+        self.current_weights = [self.current_weights[idx] + self.eta * self.m_t[idx] / (tf.sqrt(self.v_t[idx]) + self.tau) for idx in range(len(self.current_weights))]

@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 
 class FedYogi(FedOPT):
     """FedYogi class."""
+    logger.debug("Initializing fedyogi")
 
     def __init__(self, beta_1=0.9, beta_2=0.99, eta=1e-2, tau=1e-3):
         """Initialize FedYogi instance."""
@@ -36,5 +37,6 @@ class FedYogi(FedOPT):
         return
 
     def _delta_v_tensorflow(self):
-        # TODO: tensorflow implementation
-        raise NotImplementedError("Tensorflow implementation not yet implemented")
+        import tensorflow as tf
+        self.v_t = [self.v_t[idx] - (1 - self.beta_2) * self.d_t[idx]**2 * tf.sign(self.v_t[idx] - self.d_t[idx]**2) for idx in range(len(self.v_t))]
+        return
