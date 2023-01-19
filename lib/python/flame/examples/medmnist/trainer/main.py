@@ -18,14 +18,14 @@
 
 import logging
 from flame.common.util import install_packages
-install_packages(['scikit-learn', 'medmnist'])
+install_packages(['scikit-learn'])
 
 from flame.config import Config
 from flame.mode.horizontal.trainer import Trainer
 import torch
 import torchvision
-import medmnist
-from medmnist import INFO
+import numpy as np
+from PIL import Image
 from sklearn.metrics import accuracy_score
 
 logger = logging.getLogger(__name__)
@@ -55,6 +55,40 @@ class CNN(torch.nn.Module):
         x = self.fc(x)
         return x
 
+class PathMNISTDataset(torch.utils.data.Dataset):
+    def __init__(self, split, transform=None, as_rgb=False):
+        npz_file = np.load("pathmnist.npz")
+        self.split = split
+        self.transform = transform
+        self.as_rgb = as_rgb
+
+        if self.split == 'train':
+            self.imgs = npz_file['train_images']
+            self.labels = npz_file['train_labels']
+        elif self.split == 'val':
+            self.imgs = npz_file['val_images']
+            self.labels = npz_file['val_labels']
+        elif self.split == 'test':
+            self.imgs = npz_file['test_images']
+            self.labels = npz_file['test_labels']
+        else:
+            raise ValueError
+
+    def __len__(self):
+        return self.imgs.shape[0]
+
+    def __getitem__(self, index):
+        img, target = self.imgs[index], self.labels[index].astype(int)
+        img = Image.fromarray(img)
+
+        if self.as_rgb:
+            img = img.convert('RGB')
+
+        if self.transform is not None:
+            img = self.transform(img)
+
+        return img, target
+
 class PyTorchMedMNistTrainer(Trainer):
     """PyTorch MedMNist Trainer"""
 
@@ -70,6 +104,8 @@ class PyTorchMedMNistTrainer(Trainer):
 
         self.epochs = self.config.hyperparameters['epochs']
         self.batch_size = self.config.hyperparameters['batchSize']
+        self._round = 1
+        self._rounds = self.config.hyperparameters['rounds']
 
     def initialize(self) -> None:
         """Initialize role."""
@@ -86,15 +122,16 @@ class PyTorchMedMNistTrainer(Trainer):
         "MedMNIST Classification Decathlon: A Lightweight AutoML Benchmark for Medical Image Analysis".
         Dataset Repo: https://github.com/MedMNIST/MedMNIST
         """
-        info = INFO["pathmnist"]
-        DataClass = getattr(medmnist, info['python_class'])
+
+        self._download()
  
         data_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
             torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
         ])
-        train_dataset = DataClass(split='train', transform=data_transform, download=True)
-        val_dataset = DataClass(split='val', transform=data_transform, download=True)
+
+        train_dataset = PathMNISTDataset(split='train', transform=data_transform)
+        val_dataset = PathMNISTDataset(split='val', transform=data_transform)
 
         self.train_loader = torch.utils.data.DataLoader(
             train_dataset, 
@@ -115,6 +152,11 @@ class PyTorchMedMNistTrainer(Trainer):
 
         self.dataset_size = len(train_dataset)
 
+    def _download(self) -> None:
+        import requests
+        r = requests.get(self.config.dataset, allow_redirects=True)
+        open('pathmnist.npz', 'wb').write(r.content)
+
     def train(self) -> None:
         """Train a model."""
         self.model.load_state_dict(self.weights)
@@ -134,7 +176,7 @@ class PyTorchMedMNistTrainer(Trainer):
 
             train_loss = sum(loss_lst) / len(loss_lst)
             self.update_metrics({"Train Loss": train_loss})
-            logger.info(f"Epoch: {epoch+1}, Train Loss: {train_loss}")
+            # logger.info(f"Epoch: {epoch+1}, Train Loss: {train_loss}")
 
     def evaluate(self) -> None:
         """Evaluate a model."""
@@ -156,9 +198,11 @@ class PyTorchMedMNistTrainer(Trainer):
         val_acc = accuracy_score(labels, labels_pred)
 
         val_loss = sum(loss_lst) / len(loss_lst)
-        self.update_metrics({"Val Loss": val_loss, "Val Accuracy": val_acc})
+        self.update_metrics({"Val Loss": val_loss, "Val Accuracy": val_acc, "Testset Size": self.dataset_size})
         logger.info(f"Test Loss: {val_loss}")
         logger.info(f"Test Accuracy: {val_acc}")
+        logger.info(f"Testset Size: {self.dataset_size}")
+            
 
 if __name__ == "__main__":
     import argparse
@@ -173,4 +217,3 @@ if __name__ == "__main__":
     t = PyTorchMedMNistTrainer(config)
     t.compose()
     t.run()
-        
