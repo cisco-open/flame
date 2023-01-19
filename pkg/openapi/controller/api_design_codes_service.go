@@ -28,7 +28,6 @@ package controller
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"os"
 
@@ -62,7 +61,7 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 
 	err := s.dbService.CreateDesignCode(user, designId, fileName, fileVer, fileData)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new code: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -75,8 +74,7 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 
 	err := s.dbService.DeleteDesignCode(user, designId, version)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil),
-			fmt.Errorf("failed to delete design code: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 	return openapi.Response(http.StatusOK, nil), nil
 }
@@ -88,7 +86,7 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 
 	fileData, err := s.dbService.GetDesignCode(user, designId, version)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design code: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusOK, fileData), nil

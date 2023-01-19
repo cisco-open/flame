@@ -59,14 +59,16 @@ func Create(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
+	code, body, err := restapi.HTTPPost(url, jobSpec, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to create a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to create a job - code: %d; %s\n", code, msg)
 		return nil
 	}
 
 	jobStatus := openapi.JobStatus{}
-	err = json.Unmarshal(resp, &jobStatus)
+	err = json.Unmarshal(body, &jobStatus)
 	if err != nil {
 		fmt.Printf("WARNING: Failed to parse resp message: %v", err)
 		return nil
@@ -87,9 +89,11 @@ func Get(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobEndPoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
+	code, body, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to Get job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to Get job - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -97,22 +101,22 @@ func Get(params Params) error {
 
 	// convert the response into list of struct
 	jobSpec := openapi.JobSpec{}
-	err = json.Unmarshal(resp, &jobSpec)
+	err = json.Unmarshal(body, &jobSpec)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal get job: %v\n", err)
 		return nil
 	}
 
-	respJson, err := util.JSONMarshal(jobSpec)
+	bodyJson, err := util.JSONMarshal(jobSpec)
 	if err != nil {
 		fmt.Printf("WARNING: error while marshaling json: %v\n\n", err)
-		fmt.Println(string(resp))
+		fmt.Println(string(body))
 	}
 
-	prettyJSON, err := util.FormatJSON(respJson)
+	prettyJSON, err := util.FormatJSON(bodyJson)
 	if err != nil {
 		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
-		fmt.Println(string(resp))
+		fmt.Println(string(body))
 	} else {
 		fmt.Println(string(prettyJSON))
 	}
@@ -128,15 +132,17 @@ func GetMany(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobsEndPoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
+	code, body, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to retrieve jobs' status - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to retrieve jobs' status - code: %d; %s\n", code, msg)
 		return nil
 	}
 
 	// convert the response into list of struct
 	infoList := []openapi.JobStatus{}
-	err = json.Unmarshal(resp, &infoList)
+	err = json.Unmarshal(body, &infoList)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal job status: %v\n", err)
 		return nil
@@ -162,9 +168,11 @@ func GetStatus(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobStatusEndPoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
+	code, body, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to Get job status - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to Get job status - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -172,7 +180,7 @@ func GetStatus(params Params) error {
 
 	// convert the response into list of struct
 	jobStatus := openapi.JobStatus{}
-	err = json.Unmarshal(resp, &jobStatus)
+	err = json.Unmarshal(body, &jobStatus)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal get job status: %v\n", err)
 		return nil
@@ -210,9 +218,11 @@ func Update(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobEndPoint, uriMap)
 
 	// send put request
-	code, resp, err := restapi.HTTPPut(url, jobSpec, "application/json")
+	code, body, err := restapi.HTTPPut(url, jobSpec, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to update a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to update a job - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -233,9 +243,11 @@ func Remove(params Params) error {
 		Id: params.JobId,
 	}
 
-	code, resp, err := restapi.HTTPDelete(url, jobStatus, "application/json")
+	code, body, err := restapi.HTTPDelete(url, jobStatus, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to delete a job - code: %d, error: %v, msg: %s\n", code, err, string(resp))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to delete a job - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -257,9 +269,11 @@ func Start(params Params) error {
 		State: openapi.STARTING,
 	}
 
-	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	code, body, err := restapi.HTTPPut(url, jobStatus, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to start a job - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to start a job - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -281,9 +295,11 @@ func Stop(params Params) error {
 		State: openapi.STOPPING,
 	}
 
-	code, _, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	code, body, err := restapi.HTTPPut(url, jobStatus, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to stop a job - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to stop a job - code: %d; %s\n", code, msg)
 		return nil
 	}
 

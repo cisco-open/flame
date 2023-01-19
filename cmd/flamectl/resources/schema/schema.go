@@ -57,13 +57,15 @@ func Create(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
 	// send post request
-	code, _, err := restapi.HTTPPost(url, schema, "application/json")
+	code, responseBody, err := restapi.HTTPPost(url, schema, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to create a new schema - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to create a new schema - code: %d; %s\n", code, msg)
 		return nil
 	}
 
-	fmt.Printf("Schema created successfully for design %s\n", params.DesignId)
+	fmt.Printf("Schema created successfully for design '%s'\n", params.DesignId)
 
 	return nil
 }
@@ -80,8 +82,10 @@ func Get(params Params) error {
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to get a design schema of version %s for design %s - code: %d, error: %v\n",
-			params.Version, params.DesignId, code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to get a schema of version '%s' for design '%s' - code: %d; %s\n",
+			params.Version, params.DesignId, code, msg)
 		return nil
 	}
 
@@ -109,7 +113,9 @@ func GetMany(params Params) error {
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to get design schemas for design %s - code: %d, error: %v\n", params.DesignId, code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to get design schemas for design '%s' - code: %d; %s\n", params.DesignId, code, msg)
 		return nil
 	}
 
@@ -148,13 +154,15 @@ func Update(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
-	code, _, err := restapi.HTTPPut(url, schema, "application/json")
+	code, responseBody, err := restapi.HTTPPut(url, schema, "application/json")
 	if err != nil && restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("error while updating a schema version %s - code: %d, error: %v\n", params.Version, code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to update schema version '%s' - code: %d; %s\n", params.Version, code, msg)
 		return nil
 	}
 
-	fmt.Printf("Updated schema version %s successfully for design %s\n", params.Version, params.DesignId)
+	fmt.Printf("Updated schema version '%s' successfully for design %s\n", params.Version, params.DesignId)
 
 	return nil
 }
@@ -170,12 +178,14 @@ func Remove(params Params) error {
 
 	statusCode, responseBody, err := restapi.HTTPDelete(url, nil, "")
 	if err != nil || restapi.CheckStatusCode(statusCode) != nil {
-		fmt.Printf("Failed to delete schema of version %s - statusCode: %d, error: %v, responseBody: %v\n",
-			params.Version, statusCode, err, string(responseBody))
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to delete schema of version '%s' - code: %d; %s\n",
+			params.Version, statusCode, msg)
 		return nil
 	}
 
-	fmt.Println("Deleted schema successfully")
+	fmt.Printf("Deleted schema version '%s' successfully\n", params.Version)
 
 	return nil
 }

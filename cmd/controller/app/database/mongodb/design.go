@@ -41,19 +41,22 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 
 	return nil
 }
+
 func (db *MongoService) DeleteDesign(userId string, designId string) error {
-	zap.S().Debugf("delete design : %v, %v", userId, designId)
+	zap.S().Debugf("Delete design : %v, %v", userId, designId)
 
 	updateRes, err := db.designCollection.DeleteOne(context.TODO(),
 		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId})
 	if err != nil {
 		return fmt.Errorf("failed to delete design error: %v", err)
 	}
+
 	if updateRes.DeletedCount == 0 {
-		return fmt.Errorf("failed to delete design, design id %s not found."+
-			" deleted design count: %v", designId, updateRes)
+		return fmt.Errorf("design id %s not found", designId)
 	}
-	zap.S().Debugf("successfully deleted design: %v", updateRes)
+
+	zap.S().Debugf("Successfully deleted design: %v", updateRes)
+
 	return nil
 }
 
@@ -67,10 +70,12 @@ func (db *MongoService) GetDesign(userId string, designId string) (openapi.Desig
 	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&design)
 	if err != nil {
 		err = ErrorCheck(err)
-		zap.S().Errorf("Failed to fetch design template information: %v", err)
+		zap.S().Errorf("Failed to fetch design template for %s: %v", designId, err)
+
+		return design, err
 	}
 
-	return design, err
+	return design, nil
 }
 
 // GetDesigns get a lists of all the designs created by the user
@@ -82,7 +87,7 @@ func (db *MongoService) GetDesigns(userId string, limit int32) ([]openapi.Design
 	cursor, err := db.designCollection.Find(context.TODO(), filter)
 	if err != nil {
 		err = ErrorCheck(err)
-		zap.S().Errorf("error while getting list of designs. %v", err)
+		zap.S().Errorf("Error while getting list of designs. %v", err)
 		return nil, err
 	}
 

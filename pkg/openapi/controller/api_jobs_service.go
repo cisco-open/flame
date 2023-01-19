@@ -195,8 +195,7 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 	//       continuously (modify the job spec and) try UpdateJob call
 	err := s.dbService.UpdateJob(user, jobId, jobSpec)
 	if err != nil {
-		errMsg := fmt.Errorf("failed to create a new job: %v", err)
-		return errMsgFunc(errMsg)
+		return errMsgFunc(err)
 	}
 
 	dirty := true

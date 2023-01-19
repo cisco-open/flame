@@ -58,14 +58,16 @@ func Create(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, datasetInfo, "application/json")
+	code, body, err := restapi.HTTPPost(url, datasetInfo, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to create a dataset - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to create a dataset - code: %d; %s\n", code, msg)
 		return nil
 	}
 
 	var datasetId string
-	err = json.Unmarshal(resp, &datasetId)
+	err = json.Unmarshal(body, &datasetId)
 	if err != nil {
 		fmt.Printf("WARNING: Failed to parse resp message: %v", err)
 		return nil
@@ -97,15 +99,17 @@ func GetMany(params Params, flagAll bool) error {
 	url := restapi.CreateURL(params.Endpoint, endpoint, uriMap)
 
 	// send get request
-	code, responseBody, err := restapi.HTTPGet(url)
+	code, body, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to get datasets - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to get datasets - code: %d; %s\n", code, msg)
 		return nil
 	}
 
 	// convert the response into list of struct
 	infoList := []openapi.DatasetInfo{}
-	err = json.Unmarshal(responseBody, &infoList)
+	err = json.Unmarshal(body, &infoList)
 	if err != nil {
 		fmt.Printf("Failed to unmarshal dataset info: %v\n", err)
 		return nil

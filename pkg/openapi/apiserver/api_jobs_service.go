@@ -61,18 +61,15 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateJobEndpoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, jobSpec, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPPost(url, jobSpec, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	// everything went well and response is a job id
 	jobStatus := openapi.JobStatus{}
-	err = util.ByteToStruct(resp, &jobStatus)
+	err = util.ByteToStruct(body, &jobStatus)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to construct response message: %v", err)
 		zap.S().Errorf(errMsg)
@@ -94,14 +91,12 @@ func (s *JobsApiService) DeleteJob(ctx context.Context, user string, jobId strin
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteJobEndPoint, uriMap)
 
 	// send put request
-	code, resp, err := restapi.HTTPDelete(url, jobId, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
+	code, body, err := restapi.HTTPDelete(url, jobId, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
-	}
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
@@ -117,17 +112,14 @@ func (s *JobsApiService) GetJob(ctx context.Context, user string, jobId string) 
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobEndPoint, uriMap)
 
 	// send get request
-	code, resp, err := restapi.HTTPGet(url)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	jobSpec := openapi.JobSpec{}
-	err = util.ByteToStruct(resp, &jobSpec)
+	err = util.ByteToStruct(body, &jobSpec)
 
 	return openapi.Response(http.StatusOK, jobSpec), err
 }
@@ -144,17 +136,14 @@ func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId st
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobStatusEndPoint, uriMap)
 
 	// send get request
-	code, resp, err := restapi.HTTPGet(url)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	jobStatus := openapi.JobStatus{}
-	err = util.ByteToStruct(resp, &jobStatus)
+	err = util.ByteToStruct(body, &jobStatus)
 
 	return openapi.Response(http.StatusOK, jobStatus), err
 }
@@ -171,17 +160,14 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsEndPoint, uriMap)
 
 	// send get request
-	code, resp, err := restapi.HTTPGet(url)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	jobStatusList := []openapi.JobStatus{}
-	err = util.ByteToStruct(resp, &jobStatusList)
+	err = util.ByteToStruct(body, &jobStatusList)
 
 	return openapi.Response(http.StatusOK, jobStatusList), err
 }
@@ -220,17 +206,14 @@ func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId str
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskInfoEndpoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, err), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	taskInfo := openapi.TaskInfo{}
-	err = util.ByteToStruct(resp, &taskInfo)
+	err = util.ByteToStruct(body, &taskInfo)
 
 	return openapi.Response(http.StatusOK, taskInfo), err
 }
@@ -244,17 +227,14 @@ func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId st
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, err), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	taskInfoList := []openapi.TaskInfo{}
-	err = util.ByteToStruct(resp, &taskInfoList)
+	err = util.ByteToStruct(body, &taskInfoList)
 
 	return openapi.Response(http.StatusOK, taskInfoList), err
 }
@@ -272,16 +252,13 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobEndPoint, uriMap)
 
 	// send put request
-	code, resp, err := restapi.HTTPPut(url, jobSpec, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
+	code, body, err := restapi.HTTPPut(url, jobSpec, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	return openapi.Response(http.StatusOK, nil), err
+	return openapi.Response(http.StatusOK, nil), nil
 }
 
 // UpdateJobStatus - Update the status of a job
@@ -297,13 +274,10 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
 	// send put request
-	code, resp, err := restapi.HTTPPut(url, jobStatus, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPPut(url, jobStatus, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil
@@ -322,13 +296,10 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, tas
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateTaskStatusEndPoint, uriMap)
 
 	// send put request
-	code, resp, err := restapi.HTTPPut(url, taskStatus, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPPut(url, taskStatus, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil

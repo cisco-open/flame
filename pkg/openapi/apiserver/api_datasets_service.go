@@ -28,7 +28,6 @@ package apiserver
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"strconv"
 
@@ -63,18 +62,13 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDatasetEndPoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, datasetInfo, "application/json")
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPPost(url, datasetInfo, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	return openapi.Response(http.StatusCreated, string(resp)), nil
+	return openapi.Response(http.StatusCreated, string(body)), nil
 }
 
 // GetAllDatasets - Get the meta info on all the datasets
@@ -86,18 +80,14 @@ func (s *DatasetsApiService) GetAllDatasets(ctx context.Context, limit int32) (o
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetAllDatasetsEndPoint, uriMap)
 
-	code, resp, err := restapi.HTTPGet(url)
-
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	var datasetInfoList []openapi.DatasetInfo
-	err = util.ByteToStruct(resp, &datasetInfoList)
+	err = util.ByteToStruct(body, &datasetInfoList)
 
 	return openapi.Response(http.StatusOK, datasetInfoList), err
 }
@@ -130,19 +120,14 @@ func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDatasetsEndPoint, uriMap)
 
 	//send get request
-	code, resp, err := restapi.HTTPGet(url)
-
-	//response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	var datasetInfoList []openapi.DatasetInfo
-	err = util.ByteToStruct(resp, &datasetInfoList)
+	err = util.ByteToStruct(body, &datasetInfoList)
 
 	return openapi.Response(http.StatusOK, datasetInfoList), err
 }
