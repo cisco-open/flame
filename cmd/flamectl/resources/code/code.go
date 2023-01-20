@@ -17,6 +17,7 @@
 package code
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -62,17 +63,23 @@ func Create(params Params) error {
 	// send post request
 	resp, err := http.Post(url, writer.FormDataContentType(), buf)
 	if err != nil {
-		fmt.Printf("Failed to create a code: %v\n", err)
+		var msg string
+		body, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to create a code: %s\n", msg)
 		return nil
 	}
 	defer resp.Body.Close()
 
 	if err != nil || restapi.CheckStatusCode(resp.StatusCode) != nil {
-		fmt.Printf("Failed to create a code - code: %d, error: %v\n", resp.StatusCode, err)
+		var msg string
+		body, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to create a code - code: %d; %s\n", resp.StatusCode, msg)
 		return nil
 	}
 
-	fmt.Printf("Code created successfully for design %s\n", params.DesignId)
+	fmt.Printf("Code created successfully for design '%s'\n", params.DesignId)
 
 	return nil
 }
@@ -86,14 +93,16 @@ func Get(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
-	code, respBody, err := restapi.HTTPGet(url)
+	code, body, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to retrieve a code of version %s - code: %d, error: %v\n", params.CodeVer, code, err)
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to retrieve a code of version '%s' - code: %d; %s\n", params.CodeVer, code, msg)
 		return nil
 	}
 
 	fileName := params.DesignId + "_ver-" + params.CodeVer + ".zip"
-	err = os.WriteFile(fileName, respBody, util.FilePerm0644)
+	err = os.WriteFile(fileName, body, util.FilePerm0644)
 	if err != nil {
 		fmt.Printf("Failed to save %s: %v\n", fileName, err)
 		return nil
@@ -112,6 +121,7 @@ func mustOpen(f string) *os.File {
 
 	return r
 }
+
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
@@ -121,14 +131,15 @@ func Remove(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 
-	statusCode, respBody, err := restapi.HTTPDelete(url, nil, "")
+	statusCode, body, err := restapi.HTTPDelete(url, nil, "")
 	if err != nil || restapi.CheckStatusCode(statusCode) != nil {
-		fmt.Printf("Failed to delete %v code of version %s - statusCode: %d, error: %v, responsebody: %v\n",
-			params.CodePath, params.CodeVer, statusCode, err, string(respBody))
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to delete code version '%s' - code: %d; %s\n", params.CodeVer, statusCode, msg)
 		return nil
 	}
 
-	fmt.Println("Deleted code successfully")
+	fmt.Printf("Deleted code version '%s' successfully\n", params.CodeVer)
 
 	return nil
 }

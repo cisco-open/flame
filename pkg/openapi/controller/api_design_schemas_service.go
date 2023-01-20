@@ -27,7 +27,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -55,7 +54,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	err := s.dbService.CreateDesignSchema(user, designId, designSchema)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("insert design schema details request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -66,7 +65,7 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 	version string) (openapi.ImplResponse, error) {
 	info, err := s.dbService.GetDesignSchema(user, designId, version)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 	return openapi.Response(http.StatusOK, info), nil
 }
@@ -75,7 +74,7 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
 	info, err := s.dbService.GetDesignSchemas(user, designId)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 	return openapi.Response(http.StatusOK, info), nil
 }
@@ -85,7 +84,7 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	err := s.dbService.UpdateDesignSchema(user, designId, version, designSchema)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("schema update request failed")
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusOK, nil), nil
@@ -97,7 +96,7 @@ func (s *DesignSchemasApiService) DeleteDesignSchema(ctx context.Context, user s
 
 	err := s.dbService.DeleteDesignSchema(user, designId, version)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to delete design schema: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 	return openapi.Response(http.StatusOK, nil), nil
 }

@@ -127,8 +127,7 @@ func (db *MongoService) DeleteDesignSchema(userId string, designId string, versi
 		return fmt.Errorf("failed to delete design schema deleted error: %v", err)
 	}
 	if updateRes.ModifiedCount == 0 {
-		return fmt.Errorf("failed to delete design schema, schema version %s not found. deleted schema count: %#v",
-			version, updateRes)
+		return fmt.Errorf("schema version %s not found", version)
 	}
 	zap.S().Debugf("successfully deleted design schema: %#v", updateRes)
 	return nil

@@ -61,15 +61,10 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignEndPoint, uriMap)
 
 	// send post request
-	code, resp, err := restapi.HTTPPost(url, designInfo, "application/json")
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPPost(url, designInfo, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -88,14 +83,12 @@ func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, desig
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignEndPoint, uriMap)
 
 	// send delete request
-	code, resp, err := restapi.HTTPDelete(url, designId, "application/json")
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
+	code, body, err := restapi.HTTPDelete(url, designId, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
-	}
 	return openapi.Response(http.StatusOK, fmt.Sprintf("%s design deleted", designId)), nil
 }
 
@@ -112,19 +105,14 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignEndPoint, uriMap)
 
 	//send get request
-	code, resp, err := restapi.HTTPGet(url)
-
-	//response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	design := openapi.Design{}
-	err = util.ByteToStruct(resp, &design)
+	err = util.ByteToStruct(body, &design)
 
 	return openapi.Response(http.StatusOK, design), err
 }
@@ -143,19 +131,14 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignsEndPoint, uriMap)
 
 	//send get request
-	code, resp, err := restapi.HTTPGet(url)
-
-	//response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("%s", string(resp))
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), fmt.Errorf("%s", string(resp))
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	designInfoList := []openapi.DesignInfo{}
-	err = util.ByteToStruct(resp, &designInfoList)
+	err = util.ByteToStruct(body, &designInfoList)
 
 	return openapi.Response(http.StatusOK, designInfoList), err
 }

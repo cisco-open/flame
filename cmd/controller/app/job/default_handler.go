@@ -110,7 +110,10 @@ func (h *DefaultHandler) Do() {
 
 	jobSpec, err := h.dbService.GetJobById(h.jobId)
 	if err != nil {
+		event := <-h.userEventQ.GetJobEventBuffer()
+		event.ErrCh <- fmt.Errorf("failed to fetch job specification: %v", err)
 		zap.S().Errorf("Failed to fetch job specification: %v", err)
+
 		return
 	}
 	h.jobSpec = jobSpec

@@ -51,13 +51,15 @@ func Create(params Params) error {
 	}
 
 	// send post request
-	code, _, err := restapi.HTTPPost(url, postBody, "application/json")
+	code, responseBody, err := restapi.HTTPPost(url, postBody, "application/json")
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to create a new design - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to create a new design - code: %d; %s\n", code, msg)
 		return nil
 	}
 
-	fmt.Println("New design created successfully")
+	fmt.Printf("New design '%s' created successfully\n", params.DesignId)
 	return nil
 }
 
@@ -71,25 +73,24 @@ func Remove(params Params) error {
 
 	// send delete request
 	code, responseBody, err := restapi.HTTPDelete(url, nil, "")
+
 	if err != nil {
-		fmt.Printf("Failed to delete design %s - response code: %d, error: %v\n",
-			params.DesignId, code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+
+		fmt.Printf("Failed to delete design '%s' - code: %d; %s\n",
+			params.DesignId, code, msg)
 		return nil
 	}
+
 	if restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("response: %s\n", string(responseBody))
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to delete design '%s': %s\n", params.DesignId, msg)
 		return nil
 	}
 
-	// format the output into prettyJson format
-	prettyJSON, err := util.FormatJSON(responseBody)
-	if err != nil {
-		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
-
-		fmt.Println(string(responseBody))
-	} else {
-		fmt.Println(string(prettyJSON))
-	}
+	fmt.Printf("Design '%s' deleted successfully\n", params.DesignId)
 
 	return nil
 }
@@ -105,8 +106,9 @@ func Get(params Params) error {
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to retrieve design %s - code: %d, error: %v\n", params.DesignId, code, err)
-		fmt.Printf("response: %s", string(responseBody))
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to retrieve design '%s' - code: %d; %s\n", params.DesignId, code, msg)
 
 		return nil
 	}
@@ -135,7 +137,9 @@ func GetMany(params Params) error {
 	// send get request
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		fmt.Printf("Failed to get design templates - code: %d, error: %v\n", code, err)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to get design templates - code: %d; %s\n", code, msg)
 		return nil
 	}
 

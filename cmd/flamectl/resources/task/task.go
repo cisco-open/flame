@@ -48,9 +48,9 @@ func Get(params Params) error {
 
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		var errMsg error
-		_ = util.ByteToStruct(responseBody, &errMsg)
-		fmt.Printf("Failed to retrieve task info - code: %d, error: %v, msg: %v\n", code, err, errMsg)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to retrieve task info - code: %d; %s\n", code, msg)
 		return nil
 	}
 
@@ -76,9 +76,9 @@ func GetMany(params Params) error {
 
 	code, responseBody, err := restapi.HTTPGet(url)
 	if err != nil || restapi.CheckStatusCode(code) != nil {
-		var errMsg error
-		_ = util.ByteToStruct(responseBody, &errMsg)
-		fmt.Printf("Failed to retrieve tasks info - code: %d, error: %v, msg: %v\n", code, err, errMsg)
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to retrieve tasks info - code: %d; %s\n", code, msg)
 		return nil
 	}
 

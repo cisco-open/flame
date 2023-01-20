@@ -27,7 +27,6 @@ package controller
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -62,7 +61,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 
 	err := s.dbService.CreateDesign(user, d)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new design: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -74,9 +73,9 @@ func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, desig
 
 	err := s.dbService.DeleteDesign(user, designId)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil),
-			fmt.Errorf("failed to delete design: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
+
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
@@ -84,7 +83,7 @@ func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, desig
 func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
 	info, err := s.dbService.GetDesign(user, designId)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get design: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusOK, info), nil
@@ -94,7 +93,7 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit int32) (openapi.ImplResponse, error) {
 	designList, err := s.dbService.GetDesigns(user, limit)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get list of designs: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusOK, designList), nil

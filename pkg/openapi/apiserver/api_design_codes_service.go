@@ -27,6 +27,7 @@ package apiserver
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -82,13 +83,19 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 	// send post request
 	resp, err := http.Post(url, writer.FormDataContentType(), buf)
 	if err != nil {
-		respErr := fmt.Errorf("create new code request failed: %v", err)
+		var msg string
+		body, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(body, &msg)
+		respErr := fmt.Errorf("create new code request failed: %s", msg)
 		return openapi.Response(http.StatusInternalServerError, nil), respErr
 	}
 	defer resp.Body.Close()
 
 	if err = restapi.CheckStatusCode(resp.StatusCode); err != nil {
-		return openapi.Response(resp.StatusCode, nil), err
+		var msg string
+		body, _ := io.ReadAll(resp.Body)
+		_ = json.Unmarshal(body, &msg)
+		return openapi.Response(resp.StatusCode, nil), fmt.Errorf("%s", msg)
 	}
 
 	return openapi.Response(http.StatusCreated, nil), nil
@@ -106,18 +113,13 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 
 	// send Delete request
-	code, respBody, err := restapi.HTTPDelete(url, "", "application/json")
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("delete design code request failed:%v", err)
+	code, body, err := restapi.HTTPDelete(url, "", "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
-	}
-
-	return openapi.Response(http.StatusOK, respBody), nil
+	return openapi.Response(http.StatusOK, body), nil
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
@@ -134,18 +136,13 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
 	// send get request
-	code, respBody, err := restapi.HTTPGet(url)
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design code request failed")
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
-	}
-
-	return openapi.Response(http.StatusOK, respBody), nil
+	return openapi.Response(http.StatusOK, body), nil
 }
 
 // UpdateDesignCode - Update a design code

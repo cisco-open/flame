@@ -85,7 +85,7 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 		datasetInfo.Realm, datasetInfo.ComputeId)
 	datasetId, err := s.dbService.CreateDataset(user, datasetInfo)
 	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to create new dataset: %v", err)
+		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
 
 	return openapi.Response(http.StatusCreated, datasetId), nil

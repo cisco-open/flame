@@ -202,8 +202,9 @@ func (db *MongoService) GetDesignCode(userId string, designId string, fileVer st
 
 	return util.ZipFile(updatedDoc.DataSet)
 }
+
 func (db *MongoService) DeleteDesignCode(userId string, designId string, version string) error {
-	zap.S().Debugf("delete design code 1: %v, %v,%v", userId, designId, version)
+	zap.S().Debugf("delete design code: %v, %v,%v", userId, designId, version)
 
 	if version == latestVersion {
 		version = db.GetLatestDesignCodeVersion(userId, designId)
@@ -212,12 +213,13 @@ func (db *MongoService) DeleteDesignCode(userId string, designId string, version
 		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId},
 		bson.M{"$pull": bson.M{util.DBFieldCodes: bson.M{"version": version}}})
 	if err != nil {
-		return fmt.Errorf("failed to delete design code deleted code error: %v", err)
+		return fmt.Errorf("failed to delete design code: %v", err)
 	}
 	if updateRes.ModifiedCount == 0 {
-		return fmt.Errorf("failed to delete design code, code version %s not found. deleted code count: %#v",
-			version, updateRes)
+		return fmt.Errorf("code version '%s' not found", version)
 	}
+
 	zap.S().Debugf("successfully deleted design code: %#v", updateRes)
+
 	return nil
 }

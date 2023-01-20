@@ -27,7 +27,6 @@ package apiserver
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 
 	"go.uber.org/zap"
@@ -62,16 +61,10 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
 	//send get request
-	code, resp, err := restapi.HTTPPost(url, designSchema, "application/json")
-	zap.S().Debugf("code: %d, resp: %s", code, string(resp))
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("error while updating/inserting design schema")
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+	code, body, err := restapi.HTTPPost(url, designSchema, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	return openapi.Response(http.StatusCreated, nil), err
@@ -92,21 +85,16 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemaEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
-	}
+	schema := openapi.DesignSchema{}
+	err = util.ByteToStruct(body, &schema)
 
-	resp := openapi.DesignSchema{}
-	err = util.ByteToStruct(responseBody, &resp)
-
-	return openapi.Response(http.StatusOK, resp), err
+	return openapi.Response(http.StatusOK, schema), err
 }
 
 // GetDesignSchemas - Get all design schemas in a design
@@ -122,21 +110,16 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemasEndPoint, uriMap)
 
 	//send get request
-	code, responseBody, err := restapi.HTTPGet(url)
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("get design schema details request failed")
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
-	}
+	var schemas []openapi.DesignSchema
+	err = util.ByteToStruct(body, &schemas)
 
-	var resp []openapi.DesignSchema
-	err = util.ByteToStruct(responseBody, &resp)
-
-	return openapi.Response(http.StatusOK, resp), err
+	return openapi.Response(http.StatusOK, schemas), err
 }
 
 // UpdateDesignSchema - Update a schema for a given design
@@ -153,16 +136,10 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
 	//send put request
-	code, resp, err := restapi.HTTPPut(url, designSchema, "application/json")
-	zap.S().Debugf("code: %d, resp: %s", code, string(resp))
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("error while updating design schema")
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
+	code, body, err := restapi.HTTPPut(url, designSchema, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
 	return openapi.Response(http.StatusOK, nil), err
@@ -179,16 +156,11 @@ func (s *DesignSchemasApiService) DeleteDesignSchema(ctx context.Context, user s
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignSchemaEndPoint, uriMap)
 
 	// send Delete request
-	code, respBody, err := restapi.HTTPDelete(url, "", "application/json")
-
-	// response to the user
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("delete design schema request failed:%v", err)
+	code, body, err := restapi.HTTPDelete(url, "", "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
 	}
 
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return openapi.Response(code, nil), err
-	}
-
-	return openapi.Response(http.StatusOK, respBody), nil
+	return openapi.Response(http.StatusOK, body), nil
 }
