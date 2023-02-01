@@ -90,6 +90,9 @@ class OptimizerType(Enum):
     FEDADAGRAD = 2  # FedAdaGrad
     FEDADAM = 3  # FedAdam
     FEDYOGI = 4  # FedYogi
+    # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
+    # https://arxiv.org/pdf/2111.04877.pdf
+    FEDBUFF = 5
 
 
 class SelectorType(Enum):
@@ -97,6 +100,7 @@ class SelectorType(Enum):
 
     DEFAULT = 1  # default
     RANDOM = 2  # random
+    FEDBUFF = 3  # fedbuff
 
 
 REALM_SEPARATOR = '/'

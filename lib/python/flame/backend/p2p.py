@@ -363,7 +363,7 @@ class PointToPointBackend(AbstractBackend):
                 break
 
             end_ids = list(channel._ends.keys())
-            logger.debug(f"end ids for bcast = {end_ids}")
+            logger.debug(f"end ids for {channel.name()} bcast = {end_ids}")
             for end_id in end_ids:
                 try:
                     await self.send_chunks(end_id, channel.name(), data)
@@ -373,6 +373,8 @@ class PointToPointBackend(AbstractBackend):
 
                     await self._cleanup_end(end_id)
             txq.task_done()
+
+        logger.debug(f"broadcast task for {channel.name()} terminated")
 
     async def _unicast_task(self, channel, end_id):
         txq = channel.get_txq(end_id)

@@ -16,8 +16,8 @@
 """horizontal FL trainer."""
 
 import logging
-import time
 
+from ...channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
@@ -83,7 +83,7 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_RECV)
         msg = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
@@ -114,13 +114,14 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_SEND)
 
         self._update_weights()
         channel.send(
             end, {
                 MessageType.WEIGHTS: self.weights,
-                MessageType.DATASET_SIZE: self.dataset_size
+                MessageType.DATASET_SIZE: self.dataset_size,
+                MessageType.MODEL_VERSION: self._round
             })
         logger.debug("sending weights done")
 

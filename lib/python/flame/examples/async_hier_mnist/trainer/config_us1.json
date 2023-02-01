@@ -1,0 +1,78 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa743",
+    "backend": "p2p",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default/us/west/org1",
+                    "default/uk/london/org2"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "middle-aggregator",
+                "trainer"
+            ],
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5,
+        "//": "aggGoal is aggregation goal for fedbuff",
+        "aggGoal": 1
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job" : {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
+    },
+    "selector": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "//": "c: concurrency level",
+            "c": 2
+        }
+    },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default/us/west/org1/machine1",
+    "role": "trainer"
+}

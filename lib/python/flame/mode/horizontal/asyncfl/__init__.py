@@ -1,4 +1,4 @@
-# Copyright 2022 Cisco Systems, Inc. and its affiliates
+# Copyright 2023 Cisco Systems, Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,22 +13,3 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""optimizer abstract class."""
-
-from abc import ABC, abstractmethod
-from typing import Union
-
-from diskcache import Cache
-
-
-class AbstractOptimizer(ABC):
-    """Abstract base class for optimizer implementation."""
-
-    @abstractmethod
-    def do(self,
-           cache: Cache,
-           *,
-           base_weights=None,
-           total: int = 0,
-           version: int = 0) -> Union[list, dict]:
-        """Abstract method to conduct optimization."""

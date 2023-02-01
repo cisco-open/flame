@@ -1,4 +1,4 @@
-# Copyright 2022 Cisco Systems, Inc. and its affiliates
+# Copyright 2023 Cisco Systems, Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,91 +13,62 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""honrizontal FL middle level aggregator."""
+"""Asynchronous honrizontal FL middle level aggregator."""
 
 import logging
 import time
 
-from diskcache import Cache
-
-from ...channel_manager import ChannelManager
-from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...optimizer.train_result import TrainResult
-from ...optimizers import optimizer_provider
-from ...plugin import PluginManager
-from ..composer import Composer
-from ..message import MessageType
-from ..role import Role
-from ..tasklet import Loop, Tasklet
+from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
+from ....optimizer.train_result import TrainResult
+from ...composer import Composer
+from ...message import MessageType
+from ...tasklet import Loop, Tasklet
+from ..middle_aggregator import (TAG_AGGREGATE, TAG_DISTRIBUTE, TAG_FETCH,
+                                 TAG_UPLOAD)
+from ..middle_aggregator import MiddleAggregator as SyncMidAgg
 
 logger = logging.getLogger(__name__)
-
-TAG_DISTRIBUTE = 'distribute'
-TAG_AGGREGATE = 'aggregate'
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
 
 # 60 second wait time until a trainer appears in a channel
 WAIT_TIME_FOR_TRAINER = 60
 
 
-class MiddleAggregator(Role, metaclass=ABCMeta):
-    """Middle level aggregator.
+class MiddleAggregator(SyncMidAgg):
+    """Asynchronous middle level aggregator.
 
     It acts as a proxy between top level aggregator and trainer.
     """
 
-    @abstract_attribute
-    def config(self):
-        """Abstract attribute for config object."""
-
     def internal_init(self) -> None:
         """Initialize internal state for role."""
-        # global variable for plugin manager
-        self.plugin_manager = PluginManager()
+        super().internal_init()
 
-        self.cm = ChannelManager()
-        self.cm(self.config)
-        self.cm.join_all()
+        self._agg_goal_cnt = 0
+        self._agg_goal_weights = None
+        self._agg_goal = 0
+        if 'aggGoal' in self.config.hyperparameters:
+            self._agg_goal = self.config.hyperparameters['aggGoal']
 
-        self.optimizer = optimizer_provider.get(self.config.optimizer.sort,
-                                                **self.config.optimizer.kwargs)
+    def _reset_agg_goal_variables(self):
+        logger.debug("reset agg goal variables")
+        # reset agg goal count
+        self._agg_goal_cnt = 0
 
-        self._round = 1
-        self._work_done = False
-
-        self.cache = Cache()
-        self.dataset_size = 0
-
-        # save distribute tag in an instance variable
-        self.dist_tag = TAG_DISTRIBUTE
-
-    def get(self, tag: str) -> None:
-        """Get data from remote role(s)."""
-        if tag == TAG_FETCH:
-            self._fetch_weights(tag)
-        if tag == TAG_AGGREGATE:
-            self._aggregate_weights(tag)
-
-    def put(self, tag: str) -> None:
-        """Set data to remote role(s)."""
-        if tag == TAG_UPLOAD:
-            self._send_weights(tag)
-        if tag == TAG_DISTRIBUTE:
-            self._distribute_weights(tag)
+        # reset agg goal weights
+        self._agg_goal_weights = None
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
+            logger.debug(f"channel not found with tag {tag}")
             return
 
         # this call waits for at least one peer to join this channel
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_RECV)
         msg = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
@@ -123,67 +94,95 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             self._send_dummy_weights(TAG_UPLOAD)
             return
 
-        for end in channel.ends():
+        for end in channel.ends(VAL_CH_STATE_SEND):
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {
-                MessageType.WEIGHTS: self.weights,
-                MessageType.ROUND: self._round
-            })
+            channel.send(
+                end, {
+                    MessageType.WEIGHTS: self.weights,
+                    MessageType.ROUND: self._round,
+                    MessageType.MODEL_VERSION: self._round
+                })
 
     def _aggregate_weights(self, tag: str) -> None:
+        """Aggregate local model weights asynchronously.
+
+        This method is overriden from one in synchronous middle aggregator
+        (..middle_aggregator).
+        """
         channel = self.cm.get_by_tag(tag)
         if not channel:
             return
 
-        total = 0
-        # receive local model parameters from trainers
-        for end, msg in channel.recv_fifo(channel.ends()):
-            if not msg:
-                logger.debug(f"No data from {end}; skipping it")
-                continue
+        if self._agg_goal_weights is None:
+            logger.debug(f"type of weights: {type(self.weights)}")
+            self._agg_goal_weights = self.weights.copy()
 
-            if MessageType.WEIGHTS in msg:
-                weights = msg[MessageType.WEIGHTS]
+        # receive local model parameters from a trainer who arrives first
+        end, msg = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
+        if not msg:
+            logger.debug(f"No data from {end}; skipping it")
+            return
 
-            if MessageType.DATASET_SIZE in msg:
-                count = msg[MessageType.DATASET_SIZE]
+        logger.debug(f"received data from {end}")
 
-            logger.debug(f"{end}'s parameters trained with {count} samples")
+        if MessageType.WEIGHTS in msg:
+            weights = msg[MessageType.WEIGHTS]
 
-            if weights is not None and count > 0:
-                total += count
-                tres = TrainResult(weights, count)
-                # save training result from trainer in a disk cache
-                self.cache[end] = tres
+        if MessageType.DATASET_SIZE in msg:
+            count = msg[MessageType.DATASET_SIZE]
 
-        # optimizer conducts optimization (in this case, aggregation)
-        global_weights = self.optimizer.do(self.cache, total=total)
-        if global_weights is None:
+        if MessageType.MODEL_VERSION in msg:
+            version = msg[MessageType.MODEL_VERSION]
+
+        logger.debug(f"{end}'s parameters trained with {count} samples")
+
+        if weights is not None and count > 0:
+            tres = TrainResult(weights, count, version)
+            # save training result from trainer in a disk cache
+            self.cache[end] = tres
+
+            self._agg_goal_weights = self.optimizer.do(
+                self.cache,
+                base_weights=self._agg_goal_weights,
+                total=count,
+                version=self._round)
+            # increment agg goal count
+            self._agg_goal_cnt += 1
+
+        if self._agg_goal_cnt < self._agg_goal:
+            # didn't reach the aggregation goal; return
+            logger.debug("didn't reach agg goal")
+            logger.debug(
+                f" current: {self._agg_goal_cnt}; agg goal: {self._agg_goal}")
+            return
+
+        if self._agg_goal_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
             return
 
         # set global weights
-        self.weights = global_weights
-        self.dataset_size = total
+        self.weights = self._agg_goal_weights
+
+        self.dataset_size = count
 
     def _send_weights(self, tag: str) -> None:
         logger.debug("calling _send_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_send_weights] channel not found with {tag}")
+            logger.debug(f"channel not found with {tag}")
             return
 
         # this call waits for at least one peer to join this channel
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
-
+        end = channel.one_end(VAL_CH_STATE_SEND)
         channel.send(
             end, {
                 MessageType.WEIGHTS: self.weights,
-                MessageType.DATASET_SIZE: self.dataset_size
+                MessageType.DATASET_SIZE: self.dataset_size,
+                MessageType.MODEL_VERSION: self._round
             })
         logger.debug("sending weights done")
 
@@ -197,34 +196,11 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_SEND)
 
         dummy_msg = {MessageType.WEIGHTS: None, MessageType.DATASET_SIZE: 0}
         channel.send(end, dummy_msg)
         logger.debug("sending dummy weights done")
-
-    def update_round(self):
-        """Update the round counter."""
-        logger.debug(f"Update current round: {self._round}")
-
-        channel = self.cm.get_by_tag(self.dist_tag)
-        if not channel:
-            logger.debug(f"channel not found for tag {self.dist_tag}")
-            return
-
-        # set necessary properties to help channel decide how to select ends
-        channel.set_property("round", self._round)
-
-    def inform_end_of_training(self) -> None:
-        """Inform all the trainers that the training is finished."""
-        logger.debug("inform end of training")
-
-        channel = self.cm.get_by_tag(self.dist_tag)
-        if not channel:
-            logger.debug(f"channel not found for tag {self.dist_tag}")
-            return
-
-        channel.broadcast({MessageType.EOT: self._work_done})
 
     def compose(self) -> None:
         """Compose role with tasklets."""
@@ -236,6 +212,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             task_init = Tasklet(self.initialize)
 
             task_load_data = Tasklet(self.load_data)
+
+            task_reset_agg_goal_vars = Tasklet(self._reset_agg_goal_variables)
 
             task_put_dist = Tasklet(self.put, TAG_DISTRIBUTE)
             task_put_dist.set_continue_fn(cont_fn=lambda: self.trainer_no_show)
@@ -254,13 +232,16 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
-        task_internal_init >> task_load_data >> task_init >> loop(
-            task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload
-            >> task_eval >> task_update_round) >> task_end_of_training
 
-    def run(self) -> None:
-        """Run role."""
-        self.composer.run()
+        # create a loop object for asyncfl to manage concurrency as well as
+        # aggregation goal
+        asyncfl_loop = Loop(
+            loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
+
+        task_internal_init >> task_load_data >> task_init >> loop(
+            task_get_fetch >> task_reset_agg_goal_vars >> asyncfl_loop(
+                task_put_dist >> task_get_aggr) >> task_put_upload >> task_eval
+            >> task_update_round) >> task_end_of_training
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
