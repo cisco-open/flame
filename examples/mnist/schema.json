@@ -1,36 +1,52 @@
 {
     "name": "A simple example schema v1.0.0",
-    "description": "a sample schema to demostrate a TAG layout",
+    "description": "a sample schema to demonstrate a TAG layout",
     "roles": [
-	{
-	    "name": "trainer",
-	    "description": "It consumes the data and trains local model",
-	    "isDataConsumer": true
-	},
-	{
-	    "name": "aggregator",
-	    "description": "It aggregates the updates from trainers",
-	    "replica": 1
-	}
+        {
+            "name": "trainer",
+            "description": "It consumes the data and trains local model",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "default/us"
+                }
+            ]
+        },
+        {
+            "name": "aggregator",
+            "description": "It aggregates the updates from trainers",
+            "replica": 1,
+            "groupAssociation": [
+                {
+                    "param-channel": "default/us"
+                }
+            ]
+        }
     ],
     "channels": [
-	{
-	    "name": "param-channel",
-	    "description": "Model update is sent from trainer to aggregator and vice-versa",
-	    "pair": [
-		"trainer",
-		"aggregator"
-	    ],
-	    "groupBy": {
-		"type": "tag",
-		"value": [
-		    "default/us"
-		]
-	    },
-	    "funcTags": {
-		"trainer": ["fetch", "upload"],
-		"aggregator": ["distribute", "aggregate"]
-	    }
-	}
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default/us"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ],
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        }
     ]
 }
