@@ -171,19 +171,19 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 
 	for _, role := range b.schema.Roles {
 		template := &taskTemplate{}
-		JobConfig := &template.JobConfig
+		jobConfig := &template.JobConfig
 
-		JobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
+		jobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
 
-		// check channels and set default group if channels don't have groupby attributes set
-		for i := range JobConfig.Channels {
-			if len(JobConfig.Channels[i].GroupBy.Value) > 0 {
+		// check channels and set default group if channels don't have groupBy attributes set
+		for i := range jobConfig.Channels {
+			if len(jobConfig.Channels[i].GroupBy.Value) > 0 {
 				continue
 			}
 
-			// since there is no groupby attribute, set default
-			JobConfig.Channels[i].GroupBy.Type = groupByTypeTag
-			JobConfig.Channels[i].GroupBy.Value = append(JobConfig.Channels[i].GroupBy.Value, defaultGroup)
+			// since there is no groupBy attribute, set default
+			jobConfig.Channels[i].GroupBy.Type = groupByTypeTag
+			jobConfig.Channels[i].GroupBy.Value = append(jobConfig.Channels[i].GroupBy.Value, defaultGroup)
 		}
 
 		template.isDataConsumer = role.IsDataConsumer
@@ -192,7 +192,7 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		}
 		template.ZippedCode = b.roleCode[role.Name]
 		template.Role = role.Name
-		template.JobId = JobConfig.Job.Id
+		template.JobId = jobConfig.Job.Id
 
 		templates[role.Name] = template
 	}
@@ -205,9 +205,9 @@ func (b *JobBuilder) preCheck(dataRoles []string, templates map[string]*taskTemp
 	// This function will evolve as more invariants are defined
 	// Before processing templates, the following invariants should be met:
 	// 1. At least one data consumer role should be defined.
-	// 2. a role shouled be associated with a code.
+	// 2. a role should be associated with a code.
 	// 3. template should be connected.
-	// 4. when graph traversal starts at a data role template, the depth of groupby tag
+	// 4. when graph traversal starts at a data role template, the depth of groupBy tag
 	//    should strictly decrease from one channel to another.
 	// 5. two different data roles cannot be connected directly.
 

@@ -50,6 +50,7 @@ type JobConfig struct {
 	Job      JobIdName         `json:"job"`
 	Role     string            `json:"role"`
 	Realm    string            `json:"realm"`
+	Groups   map[string]string `json:"groups"`
 	Channels []openapi.Channel `json:"channels"`
 
 	MaxRunTime      int32                  `json:"maxRunTime,omitempty"`
@@ -101,6 +102,22 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	// Realm will be updated when datasets are handled
 	cfg.Realm = ""
 	cfg.Channels = cfg.extractChannels(role.Name, channels)
+
+	// configure the groups of the job based on the groups associated with the assigned role
+	cfg.Groups = cfg.extractGroups(role.GroupAssociation)
+}
+
+// extractGroups - extracts the associated groups that a given role has of a particular job
+func (cfg *JobConfig) extractGroups(groupAssociation []map[string]string) map[string]string {
+	groups := make(map[string]string)
+
+	for _, ag := range groupAssociation {
+		for key, value := range ag {
+			groups[key] = value
+		}
+	}
+
+	return groups
 }
 
 func (cfg *JobConfig) extractChannels(role string, channels []openapi.Channel) []openapi.Channel {
