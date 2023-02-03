@@ -36,7 +36,7 @@ class FedAvg(AbstractOptimizer):
         if ml_framework_in_use == MLFramework.PYTORCH:
             self.aggregate_fn = self._aggregate_pytorch
         elif ml_framework_in_use == MLFramework.TENSORFLOW:
-            self.aggregate_fn = self._aggregate_tesnorflow
+            self.aggregate_fn = self._aggregate_tensorflow
         else:
             raise NotImplementedError(
                 "supported ml framework not found; "
@@ -74,7 +74,7 @@ class FedAvg(AbstractOptimizer):
             for k, v in tres.weights.items():
                 self.agg_weights[k] += v * rate
 
-    def _aggregate_tesnorflow(self, tres, rate):
+    def _aggregate_tensorflow(self, tres, rate):
         logger.debug("calling _aggregate_tensorflow")
 
         if self.agg_weights is None:
