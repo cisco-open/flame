@@ -212,6 +212,7 @@ class PointToPointBackend(AbstractBackend):
                 ch_name=channel.name(),
                 me=channel.my_role(),
                 other=channel.other_role(),
+                group=channel.groupby(),
                 endpoint=self._backend,
             )
 

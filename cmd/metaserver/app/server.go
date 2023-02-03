@@ -86,7 +86,7 @@ func (s *metaServer) RegisterMetaInfo(ctx context.Context, in *pbMeta.MetaInfo) 
 		Status:    pbMeta.MetaResponse_SUCCESS,
 		Endpoints: make([]string, 0),
 	}
-	endpoints := j.search(in.ChName, in.Other)
+	endpoints := j.search(in.ChName, in.Other, in.Group)
 	for endpoint := range endpoints {
 		resp.Endpoints = append(resp.Endpoints, endpoint)
 	}
@@ -116,7 +116,7 @@ func (s *metaServer) setupEndpointTimeout(in *pbMeta.MetaInfo) error {
 		return fmt.Errorf("job id %s not found", in.JobId)
 	}
 
-	endpoints := j.search(in.ChName, in.Me)
+	endpoints := j.search(in.ChName, in.Me, in.Group)
 	if endpoints == nil {
 		return fmt.Errorf("no endpoint found for  role %s", in.Me)
 	}

@@ -313,11 +313,6 @@ class Channel(object):
         """Clean up resources allocated for the channel."""
 
         async def _inner():
-            # we add this check because not all backends implement cleanup()
-            # TODO: once all backends implement cleanup(), remove this check
-            if not hasattr(self._backend, 'cleanup'):
-                return
-
             # we use EMPTY_PAYLOAD as signal to finish tx tasks
 
             # put EMPTY_PAYLOAD to broadcast queue
@@ -326,8 +321,6 @@ class Channel(object):
             for end_id, end in self._ends.items():
                 # put EMPTY_PAYLOAD to unicast queue for each end
                 await end.put(EMPTY_PAYLOAD)
-
-            await self._backend.cleanup()
 
         _, _ = run_async(_inner(), self._backend.loop())
 
