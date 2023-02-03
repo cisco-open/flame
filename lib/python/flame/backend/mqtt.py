@@ -26,8 +26,8 @@ from google.protobuf.any_pb2 import Any
 from paho.mqtt.client import MQTTv5
 
 from ..channel import Channel
-from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, MQTT_TOPIC_PREFIX,
-                                BackendEvent, CommType)
+from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, EMPTY_PAYLOAD,
+                                MQTT_TOPIC_PREFIX, BackendEvent, CommType)
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
@@ -418,6 +418,11 @@ class MqttBackend(AbstractBackend):
 
         while True:
             data = await txq.get()
+            if data == EMPTY_PAYLOAD:
+                txq.task_done()
+                logger.debug("task got an empty msg from queue")
+                break
+
             self.send_chunks(topic, channel.name(), data)
             txq.task_done()
 
@@ -457,6 +462,10 @@ class MqttBackend(AbstractBackend):
             logger.debug(f"retval from loop = {retval}")
 
         logger.debug(f'sending chunk {seqno} to {topic} is done')
+
+    async def cleanup(self):
+        """Clean up resources in backend."""
+        pass
 
 
 class AsyncioHelper:

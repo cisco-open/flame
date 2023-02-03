@@ -32,15 +32,15 @@ class MetaRouteStub(object):
             channel: A grpc.Channel.
         """
         self.RegisterMetaInfo = channel.unary_unary(
-            '/grpcMeta.MetaRoute/RegisterMetaInfo',
-            request_serializer=meta__pb2.MetaInfo.SerializeToString,
-            response_deserializer=meta__pb2.MetaResponse.FromString,
-        )
+                '/grpcMeta.MetaRoute/RegisterMetaInfo',
+                request_serializer=meta__pb2.MetaInfo.SerializeToString,
+                response_deserializer=meta__pb2.MetaResponse.FromString,
+                )
         self.HeartBeat = channel.unary_unary(
-            '/grpcMeta.MetaRoute/HeartBeat',
-            request_serializer=meta__pb2.MetaInfo.SerializeToString,
-            response_deserializer=meta__pb2.MetaResponse.FromString,
-        )
+                '/grpcMeta.MetaRoute/HeartBeat',
+                request_serializer=meta__pb2.MetaInfo.SerializeToString,
+                response_deserializer=meta__pb2.MetaResponse.FromString,
+                )
 
 
 class MetaRouteServicer(object):
