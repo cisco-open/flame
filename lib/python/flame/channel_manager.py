@@ -204,6 +204,10 @@ class ChannelManager(object):
             ch.cleanup()
 
         async def _inner(backend):
+            # TODO: need better mechanism to wait tx completion
+            # as a temporary measure, sleep 5 seconds
+            await asyncio.sleep(5)
+
             # clean up backend
             await backend.cleanup()
 

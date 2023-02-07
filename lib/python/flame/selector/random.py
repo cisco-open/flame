@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """RandomSelector class."""
 
 import logging
@@ -57,7 +56,7 @@ class RandomSelector(AbstractSelector):
 
         if len(self.selected_ends) == 0 or round > self.round:
             logger.debug(f"let's select {k} ends for new round {round}")
-            self.selected_ends = random.sample(ends.keys(), k)
+            self.selected_ends = set(random.sample(list(ends), k))
             self.round = round
 
         logger.debug(f"selected ends: {self.selected_ends}")

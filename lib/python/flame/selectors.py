@@ -13,12 +13,12 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """selector provider class."""
 
 from .config import SelectorType
 from .object_factory import ObjectFactory
 from .selector.default import DefaultSelector
+from .selector.fedbuff import FedBuffSelector
 from .selector.random import RandomSelector
 
 
@@ -33,3 +33,4 @@ class SelectorProvider(ObjectFactory):
 selector_provider = SelectorProvider()
 selector_provider.register(SelectorType.DEFAULT, DefaultSelector)
 selector_provider.register(SelectorType.RANDOM, RandomSelector)
+selector_provider.register(SelectorType.FEDBUFF, FedBuffSelector)

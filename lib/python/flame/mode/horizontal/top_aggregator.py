@@ -129,7 +129,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
-        global_weights = self.optimizer.do(self.cache, total)
+        global_weights = self.optimizer.do(self.cache, total=total)
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
@@ -175,6 +175,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             return
 
         channel.broadcast({MessageType.EOT: self._work_done})
+        logger.debug("done broadcasting end-of-training")
 
     def run_analysis(self):
         """Run analysis plugins and update results to metrics."""
@@ -208,6 +209,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found for tag {self.dist_tag}")
             return
 
+        logger.debug(f"Incremented round to {self._round}")
         # set necessary properties to help channel decide how to select ends
         channel.set_property("round", self._round)
 

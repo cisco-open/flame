@@ -60,6 +60,16 @@ class Tasklet(object):
         self.loop_ender = None
         self.loop_state = LoopIndicator.NONE
 
+    def __str__(self):
+        """Return tasklet details."""
+        starter = self.loop_starter.func.__name__ if self.loop_starter else ""
+        ender = self.loop_ender.func.__name__ if self.loop_ender else ""
+
+        return f"func: {self.func.__name__}" + \
+            f"\nloop_state: {self.loop_state}" + \
+            f"\nloop_starter: {starter}" + \
+            f"\nloop_ender: {ender}"
+
     def __rshift__(self, other: Tasklet) -> Tasklet:
         """Set up connection."""
         if self not in self.composer.chain:
@@ -68,16 +78,16 @@ class Tasklet(object):
         if other not in self.composer.chain:
             self.composer.chain[other] = set()
 
-        # case 1: t1 >> loop(t2 >> t3)
-        # if t1 is self, t3 is other; t3.loop_starter is t2
-        if other.loop_starter and other.loop_starter not in self.composer.chain:
-            self.composer.chain[other.loop_starter] = set()
-
         if self not in self.composer.reverse_chain:
             self.composer.reverse_chain[self] = set()
 
         if other not in self.composer.reverse_chain:
             self.composer.reverse_chain[other] = set()
+
+        # case 1: t1 >> loop(t2 >> t3)
+        # if t1 is self, t3 is other; t3.loop_starter is t2
+        if other.loop_starter and other.loop_starter not in self.composer.chain:
+            self.composer.chain[other.loop_starter] = set()
 
         # same as case 1
         if other.loop_starter and other.loop_starter not in self.composer.reverse_chain:
@@ -86,13 +96,9 @@ class Tasklet(object):
         if other.loop_state & LoopIndicator.END:
             # same as case 1
             self.composer.chain[self].add(other.loop_starter)
-        else:
-            self.composer.chain[self].add(other)
-
-        if other.loop_state & LoopIndicator.END:
-            # same as case 1
             self.composer.reverse_chain[other.loop_starter].add(self)
         else:
+            self.composer.chain[self].add(other)
             self.composer.reverse_chain[other].add(self)
 
         return other
@@ -193,7 +199,7 @@ class Loop(object):
         -------
         ender: last tasklet in a loop
         """
-        # composer is univercially shared across tasklets
+        # composer is universally shared across tasklets
         # let's get it from ender
         composer = ender.get_composer()
 
@@ -225,6 +231,12 @@ class Loop(object):
         tasklets_in_loop = composer.get_tasklets_in_loop(starter, ender)
         # for each tasklet in loop, loop_check_fn and loop_ender are updated
         for tasklet in tasklets_in_loop:
+            if tasklet.loop_starter and tasklet.loop_ender:
+                # if both loop_starter and loop_ender are already set,
+                # they are set for an inner loop
+                # so, don't update loop_starter and loop_ender in that case
+                continue
+
             tasklet.loop_starter = starter
             tasklet.loop_check_fn = self.loop_check_fn
             tasklet.loop_ender = ender

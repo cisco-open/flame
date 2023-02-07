@@ -28,6 +28,11 @@ class MessageType(Enum):
 
     # a digest of all the workers in distributed learning
     MEMBER_DIGEST = 5
-    RING_WEIGHTS = 6 # global model weights in distributed learning
-    NEW_TRAINER = 7 # sending message for the arrival of a new trainer
-    IS_COMMITTER = 8 # is a trainer responsible to send weights to a new trainer in distributed learning
+    RING_WEIGHTS = 6  # global model weights in distributed learning
+    NEW_TRAINER = 7  # sending message for the arrival of a new trainer
+
+    # a variable to indicate that a trainer is responsible to send weights
+    # to a new trainer joining a distributed learning job
+    IS_COMMITTER = 8
+
+    MODEL_VERSION = 9  # model version used; an non-negative integer

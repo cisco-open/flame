@@ -26,7 +26,6 @@ logger = logging.getLogger(__name__)
 class Composer(object):
     """Composer enables composition of tasklets."""
 
-    #
     def __init__(self) -> None:
         """Initialize the class."""
         # maintain tasklet chains
@@ -132,6 +131,32 @@ class Composer(object):
                 if child not in visited:
                     visited.add(child)
                     q.put(child)
+
+        logger.debug("end of run")
+
+    def print(self):
+        """Print the chain of tasklets.
+
+        This function is for debugging.
+        """
+        tasklet = next(iter(self.chain))
+        # get the first tasklet in the chain
+        root = tasklet.get_root()
+
+        # traverse tasklets and print tasklet details
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            tasklet = q.get()
+
+            print("-----")
+            print(tasklet)
+
+            # put unvisited children of a selected tasklet
+            for child in self.chain[tasklet]:
+                q.put(child)
+        print("=====")
+        print("done with printing chain")
 
 
 class ComposerContext(object):
