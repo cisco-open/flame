@@ -17,6 +17,7 @@
 
 import logging
 import time
+from copy import deepcopy
 
 from diskcache import Cache
 
@@ -157,7 +158,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
                 self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
-        global_weights = self.optimizer.do(self.cache, total=total)
+        global_weights = self.optimizer.do(deepcopy(self.weights),
+                                           self.cache,
+                                           total=total)
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
