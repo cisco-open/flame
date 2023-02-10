@@ -24,7 +24,7 @@ import torch.nn as nn
 import torch.optim as optim
 from flame.common.constants import DATA_FOLDER_PATH
 from flame.common.util import install_packages
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.mode.horizontal.trainer import Trainer
 
 install_packages(['scikit-learn'])
@@ -69,8 +69,8 @@ class PyTorchAdultTrainer(Trainer):
         self.device = None
         self.train_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size
 
     def initialize(self) -> None:
         """Initialize role."""
@@ -149,7 +149,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     t = PyTorchAdultTrainer(config)
     t.compose()

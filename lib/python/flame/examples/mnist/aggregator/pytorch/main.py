@@ -24,7 +24,7 @@ import logging
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.dataset import Dataset
 from flame.mode.horizontal.top_aggregator import TopAggregator
 from torchvision import datasets, transforms
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     a = PyTorchMnistAggregator(config)
     a.compose()

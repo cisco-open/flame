@@ -18,7 +18,7 @@
 
 import logging
 
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.dataset import Dataset # Not sure why we need this.
 from flame.mode.horizontal.top_aggregator import TopAggregator
 import torch
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     a = PyTorchMedMNistAggregator(config)
     a.compose()

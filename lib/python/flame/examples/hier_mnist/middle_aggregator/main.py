@@ -17,7 +17,7 @@
 
 import logging
 
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.mode.horizontal.middle_aggregator import MiddleAggregator
 # the following needs to be imported to let the flame know
 # this aggregator works on tensorflow model
@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     a = KerasMnistMiddleAggregator(config)
     a.compose()
