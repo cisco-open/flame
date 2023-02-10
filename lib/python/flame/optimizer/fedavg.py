@@ -15,10 +15,10 @@
 # SPDX-License-Identifier: Apache-2.0
 """Federated Averaging optimizer."""
 import logging
-from typing import Union
 
 from diskcache import Cache
 
+from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use,
                            valid_frameworks)
 from .abstract import AbstractOptimizer
@@ -44,16 +44,27 @@ class FedAvg(AbstractOptimizer):
                 f"supported frameworks are: {valid_frameworks}")
 
     def do(self,
+           base_weights: ModelWeights,
            cache: Cache,
            *,
-           base_weights=None,
            total: int = 0,
-           version: int = 0) -> Union[list, dict]:
+           version: int = 0) -> ModelWeights:
         """Do aggregates models of trainers.
 
-        Return: aggregated model
+        Parameters
+        ----------
+        base_weights: weights to be used as base
+        cache: a container that includes a list of weights for aggregation
+        total: a number of data samples used to train weights in cache
+        version: a version number of base weights
+
+        Returns
+        -------
+        aggregated model: type is either list (tensorflow) or dict (pytorch)
         """
         logger.debug("calling fedavg")
+
+        assert (base_weights is not None)
 
         # reset global weights before aggregation
         self.agg_weights = base_weights
@@ -74,17 +85,11 @@ class FedAvg(AbstractOptimizer):
     def _aggregate_pytorch(self, tres, rate):
         logger.debug("calling _aggregate_pytorch")
 
-        if self.agg_weights is None:
-            self.agg_weights = {k: v * rate for k, v in tres.weights.items()}
-        else:
-            for k, v in tres.weights.items():
-                self.agg_weights[k] += v * rate
+        for k, v in tres.weights.items():
+            self.agg_weights[k] += v * rate
 
     def _aggregate_tensorflow(self, tres, rate):
         logger.debug("calling _aggregate_tensorflow")
 
-        if self.agg_weights is None:
-            self.agg_weights = [weight * rate for weight in tres.weights]
-        else:
-            for idx in range(len(tres.weights)):
-                self.agg_weights[idx] += tres.weights[idx] * rate
+        for idx in range(len(tres.weights)):
+            self.agg_weights[idx] += tres.weights[idx] * rate

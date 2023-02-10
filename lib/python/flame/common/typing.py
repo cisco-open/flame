@@ -13,7 +13,6 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """Definitions on Types."""
 
 from typing import Union
@@ -21,3 +20,6 @@ from typing import Union
 Scalar = Union[bool, bytes, float, int, str]
 
 Metrics = dict[str, Scalar]
+
+# list for tensorflow, dict for pytorach
+ModelWeights = Union[list, dict]

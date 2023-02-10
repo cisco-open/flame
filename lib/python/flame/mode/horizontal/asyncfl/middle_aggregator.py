@@ -17,8 +17,12 @@
 
 import logging
 import time
+from copy import deepcopy
 
 from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
+from ....common.util import (MLFramework, delta_weights_pytorch,
+                             delta_weights_tensorflow, get_ml_framework_in_use,
+                             valid_frameworks)
 from ....optimizer.train_result import TrainResult
 from ...composer import Composer
 from ...message import MessageType
@@ -48,6 +52,18 @@ class MiddleAggregator(SyncMidAgg):
         self._agg_goal = 0
         if 'aggGoal' in self.config.hyperparameters:
             self._agg_goal = self.config.hyperparameters['aggGoal']
+
+        self.framework = get_ml_framework_in_use()
+        if self.framework == MLFramework.UNKNOWN:
+            raise NotImplementedError(
+                "supported ml framework not found; "
+                f"supported frameworks are: {valid_frameworks}")
+
+        if self.framework == MLFramework.PYTORCH:
+            self._delta_weights_fn = delta_weights_pytorch
+
+        elif self.framework == MLFramework.TENSORFLOW:
+            self._delta_weights_fn = delta_weights_tensorflow
 
     def _reset_agg_goal_variables(self):
         logger.debug("reset agg goal variables")
@@ -115,7 +131,7 @@ class MiddleAggregator(SyncMidAgg):
 
         if self._agg_goal_weights is None:
             logger.debug(f"type of weights: {type(self.weights)}")
-            self._agg_goal_weights = self.weights.copy()
+            self._agg_goal_weights = deepcopy(self.weights)
 
         # receive local model parameters from a trainer who arrives first
         end, msg = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
@@ -141,11 +157,10 @@ class MiddleAggregator(SyncMidAgg):
             # save training result from trainer in a disk cache
             self.cache[end] = tres
 
-            self._agg_goal_weights = self.optimizer.do(
-                self.cache,
-                base_weights=self._agg_goal_weights,
-                total=count,
-                version=self._round)
+            self._agg_goal_weights = self.optimizer.do(self._agg_goal_weights,
+                                                       self.cache,
+                                                       total=count,
+                                                       version=self._round)
             # increment agg goal count
             self._agg_goal_cnt += 1
 
@@ -160,6 +175,9 @@ class MiddleAggregator(SyncMidAgg):
             logger.debug("failed model aggregation")
             time.sleep(1)
             return
+
+        # save global weights before updating it
+        self.prev_weights = self.weights
 
         # set global weights
         self.weights = self._agg_goal_weights
@@ -178,9 +196,12 @@ class MiddleAggregator(SyncMidAgg):
 
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_SEND)
+
+        delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
+
         channel.send(
             end, {
-                MessageType.WEIGHTS: self.weights,
+                MessageType.WEIGHTS: delta_weights,
                 MessageType.DATASET_SIZE: self.dataset_size,
                 MessageType.MODEL_VERSION: self._round
             })
@@ -198,7 +219,11 @@ class MiddleAggregator(SyncMidAgg):
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_SEND)
 
-        dummy_msg = {MessageType.WEIGHTS: None, MessageType.DATASET_SIZE: 0}
+        dummy_msg = {
+            MessageType.WEIGHTS: None,
+            MessageType.DATASET_SIZE: 0,
+            MessageType.MODEL_VERSION: self._round
+        }
         channel.send(end, dummy_msg)
         logger.debug("sending dummy weights done")
 

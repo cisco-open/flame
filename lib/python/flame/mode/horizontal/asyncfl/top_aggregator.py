@@ -17,6 +17,7 @@
 
 import logging
 import time
+from copy import deepcopy
 
 from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ....optimizer.train_result import TrainResult
@@ -62,7 +63,7 @@ class TopAggregator(SyncTopAgg):
 
         if self._agg_goal_weights is None:
             logger.debug(f"type of weights: {type(self.weights)}")
-            self._agg_goal_weights = self.weights.copy()
+            self._agg_goal_weights = deepcopy(self.weights)
 
         # receive local model parameters from a trainer who arrives first
         end, msg = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
@@ -73,14 +74,6 @@ class TopAggregator(SyncTopAgg):
         logger.debug(f"received data from {end}")
 
         if MessageType.WEIGHTS in msg:
-            # TODO: client should send delta instead of whole weights;
-            #       in the current implementation without detla transmission,
-            #       fedbuff algorithm's loss function diverages.
-            #       This needs code refactoring optimizer as well as
-            #       trainer code across all different mode, which involves
-            #       extensive testing of other code.
-            #       The whole change should be done separately to avoid
-            #       too many changes.
             weights = msg[MessageType.WEIGHTS]
 
         if MessageType.DATASET_SIZE in msg:
@@ -96,11 +89,10 @@ class TopAggregator(SyncTopAgg):
             # save training result from trainer in a disk cache
             self.cache[end] = tres
 
-            self._agg_goal_weights = self.optimizer.do(
-                self.cache,
-                base_weights=self._agg_goal_weights,
-                total=count,
-                version=self._round)
+            self._agg_goal_weights = self.optimizer.do(self._agg_goal_weights,
+                                                       self.cache,
+                                                       total=count,
+                                                       version=self._round)
             # increment agg goal count
             self._agg_goal_cnt += 1
 

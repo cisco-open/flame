@@ -19,10 +19,10 @@ https://arxiv.org/abs/2003.00295"""
 import logging
 from abc import abstractmethod
 from collections import OrderedDict
-from typing import Union
 
 from diskcache import Cache
 
+from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use,
                            valid_frameworks)
 from .fedavg import FedAvg
@@ -56,19 +56,28 @@ class FedOPT(FedAvg):
                 f"supported frameworks are: {valid_frameworks}")
 
     def do(self,
+           base_weights: ModelWeights,
            cache: Cache,
            *,
-           base_weights=None,
            total: int = 0,
-           version: int = 0) -> Union[list, dict]:
+           version: int = 0) -> ModelWeights:
         """Do aggregates models of trainers.
 
-        Return: aggregated model
+        Parameters
+        ----------
+        base_weights: weights to be used as base
+        cache: a container that includes a list of weights for aggregation
+        total: a number of data samples used to train weights in cache
+        version: a version number of base weights
+
+        Returns
+        -------
+        aggregated model: type is either list (tensorflow) or dict (pytorch)
         """
         logger.debug("calling fedopt")
 
-        self.agg_weights = super().do(cache,
-                                      base_weights=base_weights,
+        self.agg_weights = super().do(base_weights,
+                                      cache,
                                       total=total,
                                       version=version)
         if self.agg_weights is None:

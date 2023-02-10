@@ -18,10 +18,12 @@
 # import hashlib
 import logging
 from collections import OrderedDict
+from copy import deepcopy
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (MLFramework, get_ml_framework_in_use,
+from ...common.util import (MLFramework, delta_weights_pytorch,
+                            delta_weights_tensorflow, get_ml_framework_in_use,
                             mlflow_runname, valid_frameworks)
 from ...registries import registry_provider
 from ..composer import Composer
@@ -53,7 +55,6 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def internal_init(self) -> None:
         """Initialize internal state for role."""
-
         self.registry_client = registry_provider.get(self.config.registry.sort)
         # initialize registry client
         self.registry_client(self.config.registry.uri, self.config.job.job_id)
@@ -61,8 +62,7 @@ class Trainer(Role, metaclass=ABCMeta):
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
-                base_model.name, base_model.version
-            )
+                base_model.name, base_model.version)
         self.ring_weights = None  # latest model weights from ring all-reduce
 
         self.registry_client.setup_run(mlflow_runname(self.config))
@@ -80,20 +80,21 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}"
-            )
+                f"supported frameworks are: {valid_frameworks}")
 
         if self.framework == MLFramework.PYTORCH:
             self._scale_down_weights_fn = self._scale_down_weights_pytorch
             self._get_send_chunk_fn = self._get_send_chunk_pytorch
             self._allreduce_fn = self._allreduce_pytorch
             self._allgather_fn = self._allgather_pytorch
+            self._delta_weights_fn = delta_weights_pytorch
 
         elif self.framework == MLFramework.TENSORFLOW:
             self._scale_down_weights_fn = self._scale_down_weights_tensorflow
             self._get_send_chunk_fn = self._get_send_chunk_tensorflow
             self._allreduce_fn = self._allreduce_tensorflow
             self._allgather_fn = self._allgather_tensorflow
+            self._delta_weights_fn = delta_weights_tensorflow
 
     def _ring_allreduce(self, tag: str) -> None:
         if tag != TAG_RING_ALLREDUCE:
@@ -420,6 +421,9 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def _update_weights(self):
         """Save weights from model."""
+        # save weights before updating it
+        self.prev_weights = deepcopy(self.weights)
+
         if self.framework == MLFramework.PYTORCH:
             self.weights = self.model.state_dict()
         elif self.framework == MLFramework.TENSORFLOW:
@@ -484,8 +488,7 @@ class Trainer(Role, metaclass=ABCMeta):
             loop = Loop(loop_check_fn=lambda: self._work_done)
             task_init_cm >> task_internal_init >> task_load_data >> task_init >> loop(
                 task_train >> task_allreduce >> task_eval >> task_save_metrics
-                >> task_increment_round
-            ) >> task_save_params >> task_save_model
+                >> task_increment_round) >> task_save_params >> task_save_model
 
     def run(self) -> None:
         """Run role."""

@@ -16,9 +16,10 @@
 """optimizer abstract class."""
 
 from abc import ABC, abstractmethod
-from typing import Union
 
 from diskcache import Cache
+
+from ..common.typing import ModelWeights
 
 
 class AbstractOptimizer(ABC):
@@ -26,9 +27,9 @@ class AbstractOptimizer(ABC):
 
     @abstractmethod
     def do(self,
+           base_weights: ModelWeights,
            cache: Cache,
            *,
-           base_weights=None,
            total: int = 0,
-           version: int = 0) -> Union[list, dict]:
+           version: int = 0) -> ModelWeights:
         """Abstract method to conduct optimization."""
