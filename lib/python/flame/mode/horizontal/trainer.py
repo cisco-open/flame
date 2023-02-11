@@ -23,6 +23,7 @@ from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, delta_weights_pytorch,
                             delta_weights_tensorflow, get_ml_framework_in_use,
                             mlflow_runname, valid_frameworks)
+from ...optimizers import optimizer_provider
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -58,6 +59,11 @@ class Trainer(Role, metaclass=ABCMeta):
 
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
+
+        # needed for trainer-side optimization algorithms such as fedprox
+        temp_opt = optimizer_provider.get(self.config.optimizer.sort,
+                                                **self.config.optimizer.kwargs)
+        self.regularizer = temp_opt.regularizer
 
         self._round = 1
         self._work_done = False

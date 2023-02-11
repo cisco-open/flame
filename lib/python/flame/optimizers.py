@@ -21,6 +21,7 @@ from .optimizer.fedadagrad import FedAdaGrad
 from .optimizer.fedadam import FedAdam
 from .optimizer.fedavg import FedAvg
 from .optimizer.fedbuff import FedBuff
+from .optimizer.fedprox import FedProx
 from .optimizer.fedyogi import FedYogi
 
 
@@ -38,3 +39,4 @@ optimizer_provider.register(OptimizerType.FEDADAGRAD, FedAdaGrad)
 optimizer_provider.register(OptimizerType.FEDADAM, FedAdam)
 optimizer_provider.register(OptimizerType.FEDYOGI, FedYogi)
 optimizer_provider.register(OptimizerType.FEDBUFF, FedBuff)
+optimizer_provider.register(OptimizerType.FEDPROX, FedProx)

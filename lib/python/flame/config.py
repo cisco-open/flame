@@ -93,6 +93,7 @@ class OptimizerType(Enum):
     # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
     # https://arxiv.org/pdf/2111.04877.pdf
     FEDBUFF = 5
+    FEDPROX = 6 # FedProx
 
 
 class SelectorType(Enum):

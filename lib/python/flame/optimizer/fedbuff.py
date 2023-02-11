@@ -30,6 +30,7 @@ from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use,
                            valid_frameworks)
 from .abstract import AbstractOptimizer
+from .regularizer.default import Regularizer
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +51,8 @@ class FedBuff(AbstractOptimizer):
             raise NotImplementedError(
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
+        
+        self.regularizer = Regularizer()
 
     def do(self,
            base_weights: ModelWeights,
