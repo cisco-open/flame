@@ -1,10 +1,14 @@
 {
     "taskid": "405f9fc483cf4df68a2409257b5fad7d3c580370",
-    "backend": "mqtt",
+    "backend": "p2p",
     "brokers": [
         {
-            "host": "flame-mosquitto",
+            "host": "localhost",
             "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
         }
     ],
     "channels": [
@@ -79,20 +83,28 @@
     "role": "trainer",
     "channelConfigs": {
         "param-channel": {
-            "backend": "mqtt",
+            "backend": "p2p",
             "brokers": [
                 {
-                    "host": "flame-mosquitto2",
+                    "host": "localhost",
                     "sort": "mqtt"
+                },
+                {
+                    "host": "localhost:10104",
+                    "sort": "p2p"
                 }
             ]
         },
         "global-channel": {
-            "backend": "mqtt",
+            "backend": "p2p",
             "brokers": [
                 {
-                    "host": "flame-mosquitto",
+                    "host": "localhost",
                     "sort": "mqtt"
+                },
+                {
+                    "host": "localhost:10104",
+                    "sort": "p2p"
                 }
             ]
         }
