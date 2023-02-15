@@ -96,7 +96,18 @@ class FedBuff(AbstractOptimizer):
         logger.debug("calling _aggregate_pytorch")
 
         for k, v in tres.weights.items():
-            self.agg_weights[k] += v * rate
+            tmp = v * rate
+            # tmp.dtype is always float32 or double as rate is float
+            # if v.dtype is integer (int32 or int64), there is type mismatch
+            # this leads to the following error when self.agg_weights[k] += tmp:
+            #   RuntimeError: result type Float can't be cast to the desired
+            #   output type Long
+            # To handle this issue, we typecast tmp to the original type of v
+            #
+            # TODO: this may need to be revisited
+            tmp = tmp.to(dtype=v.dtype) if tmp.dtype != v.dtype else tmp
+
+            self.agg_weights[k] += tmp
 
     def _aggregate_tesnorflow(self, tres, rate):
         logger.debug("calling _aggregate_tensorflow")
