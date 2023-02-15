@@ -32,19 +32,41 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
-// A DesignCodesApiController binds http requests to an api service and writes the service results to the http response
+// DesignCodesApiController binds http requests to an api service and writes the service results to the http response
 type DesignCodesApiController struct {
-	service DesignCodesApiServicer
+	service      DesignCodesApiServicer
+	errorHandler ErrorHandler
+}
+
+// DesignCodesApiOption for how the controller is set up.
+type DesignCodesApiOption func(*DesignCodesApiController)
+
+// WithDesignCodesApiErrorHandler inject ErrorHandler into controller
+func WithDesignCodesApiErrorHandler(h ErrorHandler) DesignCodesApiOption {
+	return func(c *DesignCodesApiController) {
+		c.errorHandler = h
+	}
 }
 
 // NewDesignCodesApiController creates a default api controller
-func NewDesignCodesApiController(s DesignCodesApiServicer) Router {
-	return &DesignCodesApiController{service: s}
+func NewDesignCodesApiController(s DesignCodesApiServicer, opts ...DesignCodesApiOption) Router {
+	controller := &DesignCodesApiController{
+		service:      s,
+		errorHandler: DefaultErrorHandler,
+	}
+
+	for _, opt := range opts {
+		opt(controller)
+	}
+
+	return controller
 }
 
-// Routes returns all of the api route for the DesignCodesApiController
+// Routes returns all the api routes for the DesignCodesApiController
 func (c *DesignCodesApiController) Routes() Routes {
 	return Routes{
 		{
@@ -78,26 +100,26 @@ func (c *DesignCodesApiController) Routes() Routes {
 func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *http.Request) {
 	var maxMemory int64 = 32 << 20 // 32MB
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designId := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
-	fileName := r.FormValue("fileName")
-	fileVer := r.FormValue("fileVer")
+	fileNameParam := r.FormValue("fileName")
+	fileVerParam := r.FormValue("fileVer")
 
-	fileData, err := ReadFormFileToTempFile(r, "fileData")
+	fileDataParam, err := ReadFormFileToTempFile(r, "fileData")
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.CreateDesignCode(r.Context(), user, designId, fileName, fileVer, fileData)
+	result, err := c.service.CreateDesignCode(r.Context(), userParam, designIdParam, fileNameParam, fileVerParam, fileDataParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -107,16 +129,16 @@ func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *ht
 // DeleteDesignCode - Delete code of a specified version from a given design
 func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designIdParam := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
 	versionParam := params["version"]
 
 	result, err := c.service.DeleteDesignCode(r.Context(), userParam, designIdParam, versionParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -126,21 +148,18 @@ func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *ht
 // GetDesignCode - Get a zipped design code file owned by user
 func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designId := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
-	version := params["version"]
+	versionParam := params["version"]
 
-	result, err := c.service.GetDesignCode(r.Context(), user, designId, version)
+	result, err := c.service.GetDesignCode(r.Context(), userParam, designIdParam, versionParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
-
-	// If no error, encode the body and the result code
-	// EncodeJSONResponse(result.Body, &result.Code, w)
 
 	// Note by Myungjin: EncodeJSONResponse can't handle binary file transfer
 	//                   Use ServeContent instead.
@@ -151,28 +170,28 @@ func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.
 func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *http.Request) {
 	var maxMemory int64 = 32 << 20 // 32MB
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designId := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
-	version := params["version"]
+	versionParam := params["version"]
 
-	fileName := r.FormValue("fileName")
-	fileVer := r.FormValue("fileVer")
+	fileNameParam := r.FormValue("fileName")
+	fileVerParam := r.FormValue("fileVer")
 
-	fileData, err := ReadFormFileToTempFile(r, "fileData")
+	fileDataParam, err := ReadFormFileToTempFile(r, "fileData")
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateDesignCode(r.Context(), user, designId, version, fileName, fileVer, fileData)
+	result, err := c.service.UpdateDesignCode(r.Context(), userParam, designIdParam, versionParam, fileNameParam, fileVerParam, fileDataParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code

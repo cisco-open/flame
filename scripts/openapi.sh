@@ -33,8 +33,12 @@ echo "Generating Specification for configuration file :" $conf_file
 
 conf_path=${conf_dir}/${conf_file}
 openapi-generator generate -i ${conf_path} -g go-server \
-		  --additional-properties=sourceFolder=openapi
+		  --additional-properties=sourceFolder=openapi,outputAsLibrary=true
 
-rm -rf  .openapi-generator .openapi-generator-ignore  main.go Dockerfile README.md go.mod api
+./addlicense.sh
+
+go fmt ./...
+
+rm -rf  .openapi-generator .openapi-generator-ignore README.md api
 
 rm -f ${conf_path}

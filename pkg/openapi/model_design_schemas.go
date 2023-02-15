@@ -29,3 +29,34 @@ package openapi
 type DesignSchemas struct {
 	Schemas []DesignSchema `json:"schemas"`
 }
+
+// AssertDesignSchemasRequired checks if the required fields are not zero-ed
+func AssertDesignSchemasRequired(obj DesignSchemas) error {
+	elements := map[string]interface{}{
+		"schemas": obj.Schemas,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	for _, el := range obj.Schemas {
+		if err := AssertDesignSchemaRequired(el); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AssertRecurseDesignSchemasRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of DesignSchemas (e.g. [][]DesignSchemas), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDesignSchemasRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aDesignSchemas, ok := obj.(DesignSchemas)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertDesignSchemasRequired(aDesignSchemas)
+	})
+}

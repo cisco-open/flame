@@ -34,11 +34,12 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
 
-// DatasetsApiService is a service that implents the logic for the DatasetsApiServicer
+// DatasetsApiService is a service that implements the logic for the DatasetsApiServicer
 // This service should implement the business logic for every endpoint for the DatasetsApi API.
 // Include any external packages or services that will be required by this service.
 type DatasetsApiService struct {
@@ -57,7 +58,7 @@ func (s *DatasetsApiService) CreateDataset(ctx context.Context, user string,
 
 	// create controller request
 	uriMap := map[string]string{
-		"user": user,
+		constants.ParamUser: user,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDatasetEndPoint, uriMap)
 
@@ -76,7 +77,7 @@ func (s *DatasetsApiService) GetAllDatasets(ctx context.Context, limit int32) (o
 	zap.S().Debugf("get list of open datasets for limit: %d", limit)
 
 	uriMap := map[string]string{
-		"limit": strconv.Itoa(int(limit)),
+		constants.ParamLimit: strconv.Itoa(int(limit)),
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetAllDatasetsEndPoint, uriMap)
 
@@ -114,8 +115,8 @@ func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit
 	//create controller request
 	//construct URL
 	uriMap := map[string]string{
-		"user":  user,
-		"limit": strconv.Itoa(int(limit)),
+		constants.ParamUser:  user,
+		constants.ParamLimit: strconv.Itoa(int(limit)),
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDatasetsEndPoint, uriMap)
 

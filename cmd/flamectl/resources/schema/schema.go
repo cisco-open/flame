@@ -23,6 +23,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -51,8 +52,8 @@ func Create(params Params) error {
 
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
@@ -73,9 +74,9 @@ func Create(params Params) error {
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
-		"version":  params.Version,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+		constants.ParamVersion:  params.Version,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignSchemaEndPoint, uriMap)
 
@@ -105,8 +106,8 @@ func Get(params Params) error {
 func GetMany(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignSchemasEndPoint, uriMap)
 
@@ -148,9 +149,9 @@ func Update(params Params) error {
 
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
-		"version":  params.Version,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+		constants.ParamVersion:  params.Version,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
@@ -170,9 +171,9 @@ func Update(params Params) error {
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
-		"version":  params.Version,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+		constants.ParamVersion:  params.Version,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignSchemaEndPoint, uriMap)
 

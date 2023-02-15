@@ -35,6 +35,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/deployer/app/deployer"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
@@ -271,8 +272,8 @@ func (r *resourceHandler) postDeploymentStatus(jobId string, taskStatuses map[st
 		taskStatuses, r.spec.ComputeId, jobId)
 	// construct url
 	uriMap := map[string]string{
-		"computeId": r.spec.ComputeId,
-		"jobId":     jobId,
+		constants.ParamComputeID: r.spec.ComputeId,
+		constants.ParamJobID:     jobId,
 	}
 	url := restapi.CreateURL(r.apiserverEp, restapi.PutDeploymentStatusEndpoint, uriMap)
 
@@ -288,8 +289,8 @@ func (r *resourceHandler) getDeploymentConfig(jobId string) (openapi.DeploymentC
 	zap.S().Infof("Sending request to apiserver / controller to get deployment config")
 	// construct url
 	uriMap := map[string]string{
-		"computeId": r.spec.ComputeId,
-		"jobId":     jobId,
+		constants.ParamComputeID: r.spec.ComputeId,
+		constants.ParamJobID:     jobId,
 	}
 	url := restapi.CreateURL(r.apiserverEp, restapi.GetDeploymentConfigEndpoint, uriMap)
 	code, respBody, err := restapi.HTTPGet(url)
@@ -346,9 +347,9 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		taskKey := deploymentConfig.AgentKVs[taskId]
 
 		ctx := map[string]string{
-			"imageLoc": deploymentConfig.ImageLoc,
-			"taskId":   taskId,
-			"taskKey":  taskKey,
+			"imageLoc":            deploymentConfig.ImageLoc,
+			constants.ParamTaskID: taskId,
+			"taskKey":             taskKey,
 		}
 		rendered, renderErr := mustache.RenderFile(jobTemplatePath, &ctx)
 		if renderErr != nil {

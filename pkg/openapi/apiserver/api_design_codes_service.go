@@ -38,10 +38,11 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 )
 
-// DesignCodesApiService is a service that implents the logic for the DesignCodesApiServicer
+// DesignCodesApiService is a service that implements the logic for the DesignCodesApiServicer
 // This service should implement the business logic for every endpoint for the DesignCodesApi API.
 // Include any external packages or services that will be required by this service.
 type DesignCodesApiService struct {
@@ -61,8 +62,8 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 	defer fileData.Close()
 
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignCodeEndPoint, uriMap)
 
@@ -106,9 +107,9 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 	version string) (openapi.ImplResponse, error) {
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
-		"version":  version,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 
@@ -129,9 +130,9 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
-		"version":  version,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignCodeEndPoint, uriMap)
 

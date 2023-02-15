@@ -26,9 +26,9 @@
 package openapi
 
 type BaseModel struct {
-	Name string `json:"name"`
+	Name string `json:"name,omitempty"`
 
-	Version int32 `json:"version"`
+	Version int32 `json:"version,omitempty"`
 }
 
 // AssertBaseModelRequired checks if the required fields are not zero-ed

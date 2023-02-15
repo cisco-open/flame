@@ -35,6 +35,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -112,8 +113,8 @@ func (s *ComputesApiService) GetDeploymentConfig(ctx context.Context, computeId 
 
 	// create controller request
 	uriMap := map[string]string{
-		"computeId": computeId,
-		"jobId":     jobId,
+		constants.ParamComputeID: computeId,
+		constants.ParamJobID:     jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDeploymentConfigEndpoint, uriMap)
 
@@ -178,8 +179,8 @@ func (s *ComputesApiService) PutDeploymentStatus(ctx context.Context, computeId 
 	jobId string, xAPIKEY string, requestBody map[string]openapi.AgentState) (openapi.ImplResponse, error) {
 	// create controller request
 	uriMap := map[string]string{
-		"computeId": computeId,
-		"jobId":     jobId,
+		constants.ParamComputeID: computeId,
+		constants.ParamJobID:     jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.PutDeploymentStatusEndpoint, uriMap)
 	code, resp, err := restapi.HTTPPut(url, requestBody, "application/json; charset=utf-8")

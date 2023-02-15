@@ -33,6 +33,8 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
 // JobsApiController binds http requests to an api service and writes the service results to the http response
@@ -65,7 +67,7 @@ func NewJobsApiController(s JobsApiServicer, opts ...JobsApiOption) Router {
 	return controller
 }
 
-// Routes returns all of the api route for the JobsApiController
+// Routes returns all the api routes for the JobsApiController
 func (c *JobsApiController) Routes() Routes {
 	return Routes{
 		{
@@ -140,7 +142,7 @@ func (c *JobsApiController) Routes() Routes {
 // CreateJob - Create a new job specification
 func (c *JobsApiController) CreateJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
 	jobSpecParam := JobSpec{}
 	d := json.NewDecoder(r.Body)
@@ -166,9 +168,9 @@ func (c *JobsApiController) CreateJob(w http.ResponseWriter, r *http.Request) {
 // DeleteJob - Delete job specification
 func (c *JobsApiController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	result, err := c.service.DeleteJob(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
@@ -183,9 +185,9 @@ func (c *JobsApiController) DeleteJob(w http.ResponseWriter, r *http.Request) {
 // GetJob - Get a job specification
 func (c *JobsApiController) GetJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	result, err := c.service.GetJob(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
@@ -200,9 +202,9 @@ func (c *JobsApiController) GetJob(w http.ResponseWriter, r *http.Request) {
 // GetJobStatus - Get job status of a given jobId
 func (c *JobsApiController) GetJobStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	result, err := c.service.GetJobStatus(r.Context(), userParam, jobIdParam)
 	// If an error occurred, encode the error with the status code
@@ -218,9 +220,9 @@ func (c *JobsApiController) GetJobStatus(w http.ResponseWriter, r *http.Request)
 func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	limitParam, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get(constants.ParamLimit), false)
 	if err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
@@ -239,11 +241,11 @@ func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
-	taskIdParam := params["taskId"]
+	taskIdParam := params[constants.ParamTaskID]
 
-	keyParam := query.Get("key")
+	keyParam := query.Get(constants.ParamKey)
 	result, err := c.service.GetTask(r.Context(), jobIdParam, taskIdParam, keyParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
@@ -299,11 +301,11 @@ func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 // GetTaskInfo - Get the info of a task in a job
 func (c *JobsApiController) GetTaskInfo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
-	taskIdParam := params["taskId"]
+	taskIdParam := params[constants.ParamTaskID]
 
 	result, err := c.service.GetTaskInfo(r.Context(), userParam, jobIdParam, taskIdParam)
 	// If an error occurred, encode the error with the status code
@@ -319,11 +321,11 @@ func (c *JobsApiController) GetTaskInfo(w http.ResponseWriter, r *http.Request) 
 func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
-	limitParam, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get(constants.ParamLimit), false)
 	if err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
@@ -341,21 +343,24 @@ func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request)
 // UpdateJob - Update a job specification
 func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
 
-	jobIdParam := params["jobId"]
+	userParam := params[constants.ParamUser]
+	jobIdParam := params[constants.ParamJobID]
 
 	jobSpecParam := JobSpec{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
+
 	if err := d.Decode(&jobSpecParam); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
+
 	if err := AssertJobSpecRequired(jobSpecParam); err != nil {
 		c.errorHandler(w, r, err, nil)
 		return
 	}
+
 	result, err := c.service.UpdateJob(r.Context(), userParam, jobIdParam, jobSpecParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
@@ -369,9 +374,9 @@ func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 // UpdateJobStatus - Update the status of a job
 func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	jobStatusParam := JobStatus{}
 	d := json.NewDecoder(r.Body)
@@ -397,9 +402,9 @@ func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Reque
 // UpdateTaskStatus - Update the status of a task
 func (c *JobsApiController) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
-	taskIdParam := params["taskId"]
+	taskIdParam := params[constants.ParamTaskID]
 
 	taskStatusParam := TaskStatus{}
 	d := json.NewDecoder(r.Body)
