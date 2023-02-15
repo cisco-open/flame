@@ -34,7 +34,6 @@ var (
 		DesignId:        "test",
 		SchemaVersion:   "1",
 		CodeVersion:     "1",
-		Backend:         "mqtt",
 		MaxRunTime:      300,
 		Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
 		Dependencies:    []string{"numpy >= 1.2.0"},

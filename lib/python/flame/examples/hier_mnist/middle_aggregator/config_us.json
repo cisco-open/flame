@@ -1,15 +1,16 @@
 {
     "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa744",
-    "backend": "mqtt",
     "brokers": [
         {
             "host": "flame-mosquitto",
             "sort": "mqtt"
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [
@@ -28,6 +29,7 @@
         },
 		{
             "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [

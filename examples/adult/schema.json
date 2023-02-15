@@ -23,10 +23,12 @@
             ]
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "name": "param-channel",
             "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "backend": "mqtt",
             "pair": [
                 "trainer",
                 "aggregator"

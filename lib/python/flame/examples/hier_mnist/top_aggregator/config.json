@@ -1,15 +1,16 @@
 {
     "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
-    "backend": "mqtt",
     "brokers": [
         {
             "host": "flame-mosquitto",
             "sort": "mqtt"
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [
@@ -21,9 +22,15 @@
                 "top-aggregator",
                 "middle-aggregator"
             ],
-	        "funcTags": {
-                "top-aggregator": ["distribute", "aggregate"],
-                "middle-aggregator": ["fetch", "upload"]
+            "funcTags": {
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ]
             }
         }
     ],
@@ -37,20 +44,20 @@
         "rounds": 5
     },
     "baseModel": {
-	"name": "",
-	"version": 1
+        "name": "",
+        "version": 1
     },
-    "job" : {
-	"id": "622a358619ab59012eabeefb",
-	"name": "mnist"
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
     },
     "registry": {
-	"sort": "mlflow",
-	"uri": "http://flame-mlflow:5000"
+        "sort": "mlflow",
+        "uri": "http://flame-mlflow:5000"
     },
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "maxRunTime": 300,
     "realm": "",

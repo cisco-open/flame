@@ -39,8 +39,6 @@ JobSpec:
       $ref: '#/components/schemas/Selector'
     priority:
       $ref: '#/components/schemas/JobPriority'
-    backend:
-      $ref: '#/components/schemas/CommBackend'
     maxRunTime:
       type: integer
       format: int32
@@ -67,7 +65,6 @@ JobSpec:
       kwargs:
         k: 10
     prority: "low"
-    backend: "mqtt"
     maxRunTime: 600
     baseModel:
         name: mnist-624d9fc43395791
@@ -78,16 +75,14 @@ JobSpec:
     dependencies:
       - numpy >= 1.2.0
 
+#########################
+# Job Priority
+#########################
 JobPriority:
   enum:
     - low
     - medium
     - high
-
-CommBackend:
-  enum:
-    - mqtt
-    - p2p
 
 ########################################
 # Base Model

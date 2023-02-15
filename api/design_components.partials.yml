@@ -79,11 +79,14 @@ DesignSchema:
       type: array
       items:
         $ref: '#/components/schemas/Connector'
+    defaultBackend:
+      $ref: '#/components/schemas/CommBackend'
   required:
     - version
     - name
     - roles
     - channels
+    - defaultBackend
   example:
     - name: sample schema 1
       description: Sample schema to demostrate a TAG layout.
@@ -97,10 +100,12 @@ DesignSchema:
         - name: global_aggregator
           description: It is responsible to aggregate the updates from all the aggregators and make a generic model.
           replica: 2
-      channel:
+      defaultBackend: mqtt
+      channels:
         - name: trainer-agg-channel
           description: Model update is sent from trainer to aggregator and vice-versa.
           pair: ["trainer", "aggregator"]
+          backend: p2p
           groupBy:
             type: tag
             value: ["us", "eu"]
@@ -199,6 +204,8 @@ Channel:
           type: string
     isUnidirectional:
       type: boolean
+    backend:
+      $ref: '#/components/schemas/CommBackend'
   required:
     - name
     - pair
@@ -207,6 +214,7 @@ Channel:
     - name: directionalExample
       description: An example to demostrate bi-directional channel creation. Data is sent from trainer to aggregator and vice-versa.
       pair: ["trainer", "aggregator"]
+      backend: p2p
       groupBy:
         type: tag
         value: ["us", "eu"]
@@ -218,6 +226,15 @@ Channel:
         type: tag
         value: ["us", "eu"]
       isUnidirectional: false
+      backend: mqtt
+
+#########################
+# Communication Backends
+#########################
+CommBackend:
+  enum:
+    - mqtt
+    - p2p
 
 #########################
 # Connectors for channels

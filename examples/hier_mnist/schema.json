@@ -34,10 +34,12 @@
             ]
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "name": "param-channel",
             "description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+            "backend": "mqtt",
             "pair": [
                 "trainer",
                 "middle-aggregator"
@@ -63,6 +65,7 @@
         {
             "name": "global-channel",
             "description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+            "backend": "mqtt",
             "pair": [
                 "top-aggregator",
                 "middle-aggregator"

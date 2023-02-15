@@ -13,9 +13,11 @@
             ]
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "description": "Model update is sent from a trainer to another trainer",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [

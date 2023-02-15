@@ -44,15 +44,14 @@ type JobIdName struct {
 }
 
 type JobConfig struct {
-	BackEnd  string            `json:"backend"`
-	Brokers  []config.Broker   `json:"brokers,omitempty"`
-	Registry config.Registry   `json:"registry,omitempty"`
-	Job      JobIdName         `json:"job"`
-	Role     string            `json:"role"`
-	Realm    string            `json:"realm"`
-	Groups   map[string]string `json:"groups"`
-	Channels []openapi.Channel `json:"channels"`
-
+	Brokers         []config.Broker        `json:"brokers,omitempty"`
+	Registry        config.Registry        `json:"registry,omitempty"`
+	Job             JobIdName              `json:"job"`
+	Role            string                 `json:"role"`
+	Realm           string                 `json:"realm"`
+	Groups          map[string]string      `json:"groups"`
+	Channels        []openapi.Channel      `json:"channels"`
+	DefaultBackend  openapi.CommBackend    `json:"defaultBackend"`
 	MaxRunTime      int32                  `json:"maxRunTime,omitempty"`
 	BaseModel       openapi.BaseModel      `json:"baseModel,omitempty"`
 	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
@@ -92,7 +91,6 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	cfg.Optimizer = jobSpec.Optimizer
 	cfg.Selector = jobSpec.Selector
 	cfg.Dependencies = jobSpec.Dependencies
-	cfg.BackEnd = string(jobSpec.Backend)
 	cfg.Brokers = brokers
 	cfg.Registry = registry
 	// Dataset url will be populated when datasets are handled
@@ -131,25 +129,3 @@ func (cfg *JobConfig) extractChannels(role string, channels []openapi.Channel) [
 
 	return exChannels
 }
-
-/*
-// For debugging purpose during development
-func (jc JobConfig) Print() {
-	zap.S().Debug("---")
-	zap.S().Debugf("backend: %s\n", jc.BackEnd)
-	zap.S().Debugf("broker: %s\n", jc.Broker)
-	zap.S().Debugf("JobId: %s\n", jc.JobId)
-	zap.S().Debugf("Role: %s\n", jc.Role)
-	zap.S().Debugf("Realm: %s\n", jc.Realm)
-	for i, channel := range jc.Channels {
-		zap.S().Debugf("\t[%d] channel: %v\n", i, channel)
-	}
-
-	zap.S().Debugf("MaxRunTime: %d\n", jc.MaxRunTime)
-	zap.S().Debugf("BaseModelId: %s\n", jc.BaseModelId)
-	zap.S().Debugf("Hyperparameters: %v\n", jc.Hyperparameters)
-	zap.S().Debugf("Dependencies: %v\n", jc.Dependencies)
-	zap.S().Debugf("DatasetUrl: %s\n", jc.DatasetUrl)
-	zap.S().Debug("")
-}
-*/

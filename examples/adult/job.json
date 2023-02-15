@@ -9,10 +9,7 @@
         "fromSystem": []
     },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 1800,
-
     "baseModel": {
         "name": "",
         "version": 0
@@ -20,7 +17,7 @@
     "hyperparameters": {
         "rounds": 5
     },
-    "dependencies" : [
+    "dependencies": [
         "numpy >= 1.2.0"
     ],
     "selector": {

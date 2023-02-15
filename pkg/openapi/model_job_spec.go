@@ -45,8 +45,6 @@ type JobSpec struct {
 
 	Priority JobPriority `json:"priority,omitempty"`
 
-	Backend CommBackend `json:"backend,omitempty"`
-
 	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
 	BaseModel BaseModel `json:"baseModel,omitempty"`

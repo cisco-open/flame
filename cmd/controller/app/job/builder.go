@@ -173,17 +173,23 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		template := &taskTemplate{}
 		jobConfig := &template.JobConfig
 
+		// set the default communication protocol
+		jobConfig.DefaultBackend = b.schema.DefaultBackend
+
 		jobConfig.Configure(b.jobSpec, b.jobParams.Brokers, b.jobParams.Registry, role, b.schema.Channels)
 
-		// check channels and set default group if channels don't have groupBy attributes set
+		// check channels and set default group if channels don't have groupby attributes set
 		for i := range jobConfig.Channels {
-			if len(jobConfig.Channels[i].GroupBy.Value) > 0 {
-				continue
+			// check for channel's backend. If not present update it with default value
+			if len(jobConfig.Channels[i].Backend) == 0 {
+				jobConfig.Channels[i].Backend = b.schema.DefaultBackend
 			}
 
-			// since there is no groupBy attribute, set default
-			jobConfig.Channels[i].GroupBy.Type = groupByTypeTag
-			jobConfig.Channels[i].GroupBy.Value = append(jobConfig.Channels[i].GroupBy.Value, defaultGroup)
+			if len(jobConfig.Channels[i].GroupBy.Value) == 0 {
+				// check channels and set default group if channel doesn't have groupBy attributes set
+				jobConfig.Channels[i].GroupBy.Type = groupByTypeTag
+				jobConfig.Channels[i].GroupBy.Value = append(jobConfig.Channels[i].GroupBy.Value, defaultGroup)
+			}
 		}
 
 		template.isDataConsumer = role.IsDataConsumer

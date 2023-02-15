@@ -1,15 +1,16 @@
 {
     "taskid": "405f9fc483cf4df68a2409257b5fad7d3c580370",
-    "backend": "mqtt",
     "brokers": [
         {
             "host": "flame-mosquitto",
             "sort": "mqtt"
         }
     ],
+    "defaultBackend": "mqtt",
     "channels": [
         {
             "description": "Model update is sent from a trainer to another trainer",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [
@@ -22,12 +23,15 @@
                 "trainer",
                 "trainer"
             ],
-	    "funcTags": {
-                "trainer": ["ring_allreduce"]
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
             }
         },
         {
             "description": "Model update is sent from a trainer to an aggregator",
+            "backend": "mqtt",
             "groupBy": {
                 "type": "tag",
                 "value": [
@@ -39,9 +43,15 @@
                 "trainer",
                 "aggregator"
             ],
-	    "funcTags": {
-                "trainer": ["fetch", "upload"],
-                "aggregator": ["distribute", "aggregate"]
+            "funcTags": {
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ],
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
             }
         }
     ],
@@ -55,20 +65,20 @@
         "rounds": 5
     },
     "baseModel": {
-	    "name": "",
-	    "version": 1
+        "name": "",
+        "version": 1
     },
-    "job" : {
-	    "id": "622a358619ab59012eabeefc",
-	    "name": "hybrid_mnist"
+    "job": {
+        "id": "622a358619ab59012eabeefc",
+        "name": "hybrid_mnist"
     },
     "registry": {
-	    "sort": "dummy",
-	    "uri": ""
+        "sort": "dummy",
+        "uri": ""
     },
     "selector": {
-	    "sort": "default",
-	    "kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "optimizer": {
         "sort": "fedavg",

@@ -13,10 +13,7 @@
         ]
     },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 1800,
-
     "baseModel": {
         "name": "",
         "version": 0
@@ -26,7 +23,7 @@
         "batchSize": 32,
         "learningRate": 0.01
     },
-    "dependencies" : [
+    "dependencies": [
         "numpy >= 1.2.0"
     ],
     "selector": {
