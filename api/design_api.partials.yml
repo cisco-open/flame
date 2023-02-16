@@ -167,6 +167,13 @@
         schema:
           type: string
         style: simple
+      - in: header
+        name: X-API-KEY
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
     responses:
       '200':
         description: Deleted
@@ -390,11 +397,6 @@
         style: simple
         explode: false
         required: true
-    requestBody:
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/DesignSchema'
     responses:
       "200":
         description: Null response

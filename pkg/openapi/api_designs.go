@@ -31,19 +31,41 @@ import (
 	"strings"
 
 	"github.com/gorilla/mux"
+
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
-// A DesignsApiController binds http requests to an api service and writes the service results to the http response
+// DesignsApiController binds http requests to an api service and writes the service results to the http response
 type DesignsApiController struct {
-	service DesignsApiServicer
+	service      DesignsApiServicer
+	errorHandler ErrorHandler
+}
+
+// DesignsApiOption for how the controller is set up.
+type DesignsApiOption func(*DesignsApiController)
+
+// WithDesignsApiErrorHandler inject ErrorHandler into controller
+func WithDesignsApiErrorHandler(h ErrorHandler) DesignsApiOption {
+	return func(c *DesignsApiController) {
+		c.errorHandler = h
+	}
 }
 
 // NewDesignsApiController creates a default api controller
-func NewDesignsApiController(s DesignsApiServicer) Router {
-	return &DesignsApiController{service: s}
+func NewDesignsApiController(s DesignsApiServicer, opts ...DesignsApiOption) Router {
+	controller := &DesignsApiController{
+		service:      s,
+		errorHandler: DefaultErrorHandler,
+	}
+
+	for _, opt := range opts {
+		opt(controller)
+	}
+
+	return controller
 }
 
-// Routes returns all of the api route for the DesignsApiController
+// Routes returns all the api routes for the DesignsApiController
 func (c *DesignsApiController) Routes() Routes {
 	return Routes{
 		{
@@ -76,17 +98,23 @@ func (c *DesignsApiController) Routes() Routes {
 // CreateDesign - Create a new design template.
 func (c *DesignsApiController) CreateDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designInfo := &DesignInfo{}
-	if err := json.NewDecoder(r.Body).Decode(&designInfo); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	designInfoParam := DesignInfo{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&designInfoParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.CreateDesign(r.Context(), user, *designInfo)
+	if err := AssertDesignInfoRequired(designInfoParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.CreateDesign(r.Context(), userParam, designInfoParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -96,14 +124,14 @@ func (c *DesignsApiController) CreateDesign(w http.ResponseWriter, r *http.Reque
 // DeleteDesign - Delete design template
 func (c *DesignsApiController) DeleteDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	userParam := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designIdParam := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
 	result, err := c.service.DeleteDesign(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -113,14 +141,14 @@ func (c *DesignsApiController) DeleteDesign(w http.ResponseWriter, r *http.Reque
 // GetDesign - Get design template information
 func (c *DesignsApiController) GetDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	designId := params["designId"]
+	designIdParam := params[constants.ParamDesignID]
 
-	result, err := c.service.GetDesign(r.Context(), user, designId)
+	result, err := c.service.GetDesign(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -131,17 +159,17 @@ func (c *DesignsApiController) GetDesign(w http.ResponseWriter, r *http.Request)
 func (c *DesignsApiController) GetDesigns(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	limit, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get(constants.ParamLimit), false)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.GetDesigns(r.Context(), user, limit)
+	result, err := c.service.GetDesigns(r.Context(), userParam, limitParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
