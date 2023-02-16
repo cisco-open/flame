@@ -20,6 +20,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources/design"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
 var getDesignCmd = &cobra.Command{
@@ -51,7 +52,7 @@ var getDesignsCmd = &cobra.Command{
 
 		flags := cmd.Flags()
 
-		limit, err := flags.GetString("limit")
+		limit, err := flags.GetString(constants.ParamLimit)
 		if err != nil {
 			return err
 		}
@@ -66,7 +67,7 @@ var getDesignsCmd = &cobra.Command{
 }
 
 func init() {
-	getDesignsCmd.Flags().StringP("limit", "l", "100", "List of all the designs by this user")
+	getDesignsCmd.Flags().StringP(constants.ParamLimit, "l", "100", "List of all the designs by this user")
 
 	getCmd.AddCommand(getDesignCmd, getDesignsCmd)
 }

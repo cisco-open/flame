@@ -33,3 +33,20 @@ const (
 	MEDIUM JobPriority = "medium"
 	HIGH   JobPriority = "high"
 )
+
+// AssertJobPriorityRequired checks if the required fields are not zero-ed
+func AssertJobPriorityRequired(obj JobPriority) error {
+	return nil
+}
+
+// AssertRecurseJobPriorityRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of JobPriority (e.g. [][]JobPriority), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseJobPriorityRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aJobPriority, ok := obj.(JobPriority)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertJobPriorityRequired(aJobPriority)
+	})
+}

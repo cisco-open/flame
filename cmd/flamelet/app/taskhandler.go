@@ -36,6 +36,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
@@ -215,9 +216,9 @@ func (t *taskHandler) startJob(jobId string) {
 func (t *taskHandler) getTask() ([]string, error) {
 	// construct URL
 	uriMap := map[string]string{
-		"jobId":  t.jobId,
-		"taskId": t.taskId,
-		"key":    t.taskKey,
+		constants.ParamJobID:  t.jobId,
+		constants.ParamTaskID: t.taskId,
+		constants.ParamKey:    t.taskKey,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.GetTaskEndpoint, uriMap)
 
@@ -473,8 +474,8 @@ func (t *taskHandler) updateTaskStatus(state openapi.JobState, log string) {
 
 	// construct URL
 	uriMap := map[string]string{
-		"jobId":  t.jobId,
-		"taskId": t.taskId,
+		constants.ParamJobID:  t.jobId,
+		constants.ParamTaskID: t.taskId,
 	}
 	url := restapi.CreateURL(t.apiserverEp, restapi.UpdateTaskStatusEndPoint, uriMap)
 

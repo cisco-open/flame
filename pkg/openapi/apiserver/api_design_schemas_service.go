@@ -32,11 +32,12 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
 
-// DesignSchemasApiService is a service that implents the logic for the DesignSchemasApiServicer
+// DesignSchemasApiService is a service that implements the logic for the DesignSchemasApiServicer
 // This service should implement the business logic for every endpoint for the DesignSchemasApi API.
 // Include any external packages or services that will be required by this service.
 type DesignSchemasApiService struct {
@@ -48,15 +49,15 @@ func NewDesignSchemasApiService() openapi.DesignSchemasApiServicer {
 }
 
 // CreateDesignSchema - Update a design schema
-func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user string, designId string,
+func (s *DesignSchemasApiService) CreateDesignSchema(_ context.Context, user string, designId string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Create design schema request received for designId: %v", designId)
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignSchemaEndPoint, uriMap)
 
@@ -71,16 +72,16 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user string, designId string,
+func (s *DesignSchemasApiService) GetDesignSchema(_ context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Get design schema details for user: %s | designId: %s | version: %s", user, designId, version)
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
-		"version":  version,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemaEndPoint, uriMap)
 
@@ -98,14 +99,14 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 }
 
 // GetDesignSchemas - Get all design schemas in a design
-func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+func (s *DesignSchemasApiService) GetDesignSchemas(_ context.Context, user string, designId string) (openapi.ImplResponse, error) {
 	//TODO input validation
 	zap.S().Debugf("Get design schema details for user: %s | designId: %s", user, designId)
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignSchemasEndPoint, uriMap)
 
@@ -123,15 +124,15 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 }
 
 // UpdateDesignSchema - Update a schema for a given design
-func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, version string,
+func (s *DesignSchemasApiService) UpdateDesignSchema(_ context.Context, user string, designId string, version string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	zap.S().Debugf("Update design schema request received for designId: %v", designId)
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
-		"version":  version,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateDesignSchemaEndPoint, uriMap)
 
@@ -145,13 +146,14 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 	return openapi.Response(http.StatusOK, nil), err
 }
 
-func (s *DesignSchemasApiService) DeleteDesignSchema(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
+func (s *DesignSchemasApiService) DeleteDesignSchema(_ context.Context, user string, designId string, version string) (
+	openapi.ImplResponse, error,
+) {
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
-		"version":  version,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignSchemaEndPoint, uriMap)
 
