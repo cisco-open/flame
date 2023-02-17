@@ -4,9 +4,6 @@ This directory contains a few sample examples to explore functionality and workf
 
 The examples here can be executed within [fiab](../fiab/README.md) environment.
 
-## Setup
-`config.yaml` is a configuration file for local fiab environment. Place it in `$HOME/.flame` folder.
-
 ## CLI tool: flamectl
 To interact with the flame system, there is a command line (CLI) tool called `flamectl`.
 
