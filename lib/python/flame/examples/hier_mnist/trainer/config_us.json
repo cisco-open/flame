@@ -12,23 +12,29 @@
         }
     ],
     "channels": [
-		{
+        {
             "description": "Model update is sent from mid aggregator to trainer and vice-versa",
             "groupBy": {
                 "type": "tag",
                 "value": [
-		    "default/us/west/org1",
-		    "default/uk/london/org2"
-		]
+                    "default/us/west/org1",
+                    "default/uk/london/org2"
+                ]
             },
             "name": "param-channel",
             "pair": [
                 "middle-aggregator",
                 "trainer"
             ],
-	        "funcTags": {
-                "middle-aggregator": ["distribute", "aggregate"],
-                "trainer": ["fetch", "upload"]
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
             }
         }
     ],
@@ -42,12 +48,12 @@
         "rounds": 5
     },
     "baseModel": {
-	"name": "",
-	"version": 1
+        "name": "",
+        "version": 1
     },
-    "job" : {
-	"id": "622a358619ab59012eabeefb",
-	"name": "mnist"
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
     },
     "registry": {
 	"sort": "dummy",
