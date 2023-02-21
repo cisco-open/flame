@@ -41,4 +41,14 @@ setup(
         'protobuf==3.19.5',
         'grpcio==1.51.1',
     ],
+    extras_require={
+        'dev': [
+            'pre-commit',
+            'black',
+            'flake8',
+            'bandit',
+            'mypy',
+            'isort',
+        ],
+    },
 )
