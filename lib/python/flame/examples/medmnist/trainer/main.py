@@ -20,7 +20,7 @@ import logging
 from flame.common.util import install_packages
 install_packages(['scikit-learn'])
 
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.mode.horizontal.trainer import Trainer
 import torch
 import torchvision
@@ -102,10 +102,10 @@ class PyTorchMedMNistTrainer(Trainer):
         self.train_loader = None
         self.val_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size
         self._round = 1
-        self._rounds = self.config.hyperparameters['rounds']
+        self._rounds = self.config.hyperparameters.rounds
 
     def initialize(self) -> None:
         """Initialize role."""
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     t = PyTorchMedMNistTrainer(config)
     t.compose()

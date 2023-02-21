@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
-from flame.config import Config
+from flame.config import Config, load_config
 from flame.mode.distributed.trainer import Trainer
 from torchvision import datasets, transforms
 
@@ -75,10 +75,8 @@ class PyTorchMnistTrainer(Trainer):
         self.device = None
         self.train_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = 16
-        if 'batchSize' in self.config.hyperparameters:
-            self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size or 16
 
     def initialize(self) -> None:
         """Initialize role."""
@@ -147,7 +145,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = Config(args.config)
+    config = load_config(args.config)
 
     t = PyTorchMnistTrainer(config)
     t.compose()
