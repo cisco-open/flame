@@ -30,6 +30,7 @@ from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
+from ...config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
     """
 
     @abstract_attribute
-    def config(self):
+    def config(self) -> Config:
         """Abstract attribute for config object."""
 
     def internal_init(self) -> None:

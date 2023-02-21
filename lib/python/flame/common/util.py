@@ -115,7 +115,7 @@ def install_package(package: str) -> bool:
 def mlflow_runname(config: Config) -> str:
     groupby_value = ""
     for v in config.channels.values():
-        for val in v.groupby.value:
+        for val in v.group_by.value:
             if val in config.realm:
                 groupby_value = groupby_value + val + "-"
 

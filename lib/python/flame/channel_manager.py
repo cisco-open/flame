@@ -101,7 +101,7 @@ class ChannelManager(object):
             coro = self._backend_eventq_task(q)
             _ = asyncio.create_task(coro)
 
-        if self._config.channelConfigs is None:
+        if not self._config.channel_configs.backends:
             self._backend = backend_provider.get(self._config.backend)
             broker = self._config.brokers.sort_to_host[self._config.backend]
             self._backend.configure(broker, self._job_id, self._task_id)
@@ -109,8 +109,8 @@ class ChannelManager(object):
             return
 
         # if there are per-channel configs
-        for k, v in self._config.channelConfigs.backends.items():
-            channel_brokers = self._config.channelConfigs.channel_brokers
+        for k, v in self._config.channel_configs.backends.items():
+            channel_brokers = self._config.channel_configs.channel_brokers
             broker = channel_brokers[k].sort_to_host[v]
             backend = backend_provider.get(v)
             backend.configure(broker, self._job_id, self._task_id)
@@ -145,7 +145,7 @@ class ChannelManager(object):
             me = channel_config.pair[1]
             other = channel_config.pair[0]
 
-        groupby = channel_config.groupby.groupable_value(self._config.realm)
+        groupby = channel_config.group_by.groupable_value(self._config.realm)
 
         selector = selector_provider.get(self._config.selector.sort,
                                          **self._config.selector.kwargs)
