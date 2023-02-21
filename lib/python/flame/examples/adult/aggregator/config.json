@@ -34,6 +34,7 @@
         }
     ],
     "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [],
     "hyperparameters": {
         "batchSize": 32,
         "rounds": 5

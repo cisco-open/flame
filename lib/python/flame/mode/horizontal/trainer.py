@@ -27,6 +27,7 @@ from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
+from ...config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +39,7 @@ class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
 
     @abstract_attribute
-    def config(self):
+    def config(self) -> Config:
         """Abstract attribute for config object."""
 
     @abstract_attribute
