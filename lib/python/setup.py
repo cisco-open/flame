@@ -40,4 +40,14 @@ setup(
         'paho-mqtt',
         'protobuf==3.19.5',
     ],
+    extras_require={
+        'dev': [
+            'pre-commit',
+            'black',
+            'flake8',
+            'bandit',
+            'mypy',
+            'isort',
+        ],
+    },
 )
