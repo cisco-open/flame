@@ -1,32 +1,26 @@
-echo "Running: minikube stop"
+set -x;
+
 minikube stop
 
-echo "Running: minikube delete"
-minikube delete
+minikube start --driver=hyperkit --cpus=6 --memory=6g --disk-size 100gb --kubernetes-version=v1.23.8 --alsologtostderr -v=7
 
-echo "Running: minikube start --cpus=6 --memory=6g --disk-size 100gb"
-minikube start --cpus=6 --memory=6g --disk-size 100gb
+minikube ssh "echo 'cat << EOF >  /var/lib/boot2docker/bootlocal.sh
+echo "DNS=8.8.8.8" >> /etc/systemd/resolved.conf
+systemctl restart systemd-resolved
+EOF
+chmod 755 /var/lib/boot2docker/bootlocal.sh' > commands.sh && chmod +x commands.sh"
 
-echo "Running: minikube ssh \"sudo systemctl stop systemd-resolved\""
-minikube ssh "sudo systemctl stop systemd-resolved"
-
-echo "Running: minikube ssh \"sudo systemctl disable systemd-resolved\""
-minikube ssh "sudo systemctl disable systemd-resolved"
-
-echo "Running: minikube ssh \"printf 'nameserver 8.8.8.8\nsearch .\n' | sudo tee /etc/resolv.conf\""
-minikube ssh "printf 'nameserver 8.8.8.8\nsearch .\n' | sudo tee /etc/resolv.conf"
-
-echo "Running: minikube addons enable ingress --alsologtostderr -v=7"
+minikube ssh "sudo su root < commands.sh"
+minikube stop && minikube start
 minikube addons enable ingress --alsologtostderr -v=7
-
-echo "Running: minikube addons enable ingress-dns"
 minikube addons enable ingress-dns
 
-echo "Running: eval $(minikube docker-env)"
-eval $(minikube docker-env)
-
-echo "Running: ../fiab/setup-cert-manager.sh"
 ../fiab/setup-cert-manager.sh
 
-echo "Running: ../fiab/build-image.sh"
+eval $(minikube docker-env)
+
 ../fiab/build-image.sh 
+
+afplay /System/Library/Sounds/Glass.aiff
+
+set +x;
