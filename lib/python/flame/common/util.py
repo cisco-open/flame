@@ -72,6 +72,9 @@ def get_ml_framework_in_use():
 
     return ml_framework_in_use
 
+def get_params_detached_pytorch(model):
+    """Return copy of parameters of pytorch model disconnected from graph."""
+    return [param.detach().clone() for param in model.parameters()]
 
 @contextmanager
 def background_thread_loop():
