@@ -64,6 +64,7 @@ class Trainer(Role, metaclass=ABCMeta):
             self.model = self.registry_client.load_model(
                 base_model.name, base_model.version)
         self.ring_weights = None  # latest model weights from ring all-reduce
+        self.weights = None
 
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
