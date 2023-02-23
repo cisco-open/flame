@@ -19,11 +19,26 @@ package main
 import (
 	"os"
 
+	"github.com/samber/do"
+	"go.uber.org/zap"
+
 	"github.com/cisco-open/flame/cmd/flamectl/cmd"
+	"github.com/cisco-open/flame/cmd/flamectl/di"
 )
 
 func main() {
-	if err := cmd.Execute(); err != nil {
+	// Initialize the Dependency Injection container
+	container := di.Container()
+
+	// Get the logger instance
+	logger := do.MustInvoke[*zap.Logger](container)
+
+	// Get the list of commands to execute and execute them
+	commands := do.MustInvoke[cmd.ICmd](container)
+
+	if err := commands.Execute(); err != nil {
+		// If an error occurs, log it and exit with a status code of 1
+		logger.Error("error executing command", zap.Error(err))
 		os.Exit(1)
 	}
 }

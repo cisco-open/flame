@@ -91,6 +91,7 @@ func (c *Controller) Start() {
 func (c *Controller) serveRestApi() {
 	// Setting up REST API Server
 	zap.S().Infof("Staring controller... | Port: %s", c.restPort)
+	zap.S().Info("I'm in haha ... ")
 
 	apiRouters := []openapi.Router{
 		openapi.NewDatasetsApiController(controller.NewDatasetsApiService(c.dbService)),

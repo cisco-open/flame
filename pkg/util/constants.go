@@ -75,7 +75,6 @@ const (
 	Notifier   = "notifier"
 	MetaServer = "metaserver"
 	Deployer   = "deployer"
-	CliTool    = "flamectl"
 
 	// file permission
 	FilePerm0644 = 0644

@@ -39,6 +39,7 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 
 	zap.S().Debugf("New design for user: %s inserted with ID: %s", userId, design.Id)
 
+	zap.S().Info("new design created by me :D")
 	return nil
 }
 
