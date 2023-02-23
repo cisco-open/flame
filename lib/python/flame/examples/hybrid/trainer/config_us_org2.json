@@ -1,6 +1,6 @@
 {
     "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
-    "backend": "p2p",
+    "backend": "mqtt",
     "brokers": [
         {
             "host": "localhost",
@@ -96,7 +96,8 @@
             ]
         },
         "global-channel": {
-            "backend": "p2p",
+            "//": "bug: due to https://github.com/grpc/grpc/issues/25364, more than one p2p (grpc) backend can be used",
+            "backend": "mqtt",
             "brokers": [
                 {
                     "host": "localhost",
