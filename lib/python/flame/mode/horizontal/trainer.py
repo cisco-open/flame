@@ -22,8 +22,10 @@ from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, delta_weights_pytorch,
                             delta_weights_tensorflow, get_ml_framework_in_use,
-                            mlflow_runname, valid_frameworks)
+                            mlflow_runname, valid_frameworks,
+                            weights_to_device, weights_to_model_device)
 from ...optimizers import optimizer_provider
+from ...common.constants import DeviceType
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -42,7 +44,11 @@ class Trainer(Role, metaclass=ABCMeta):
     @abstract_attribute
     def config(self):
         """Abstract attribute for config object."""
-
+    
+    @abstract_attribute
+    def model(self):
+        """Abstract attribute for model object."""
+    
     @abstract_attribute
     def dataset_size(self):
         """Abstract attribute for size of dataset used to train."""
@@ -100,7 +106,7 @@ class Trainer(Role, metaclass=ABCMeta):
         msg = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
-            self.weights = msg[MessageType.WEIGHTS]
+            self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
         if MessageType.EOT in msg:
@@ -134,7 +140,7 @@ class Trainer(Role, metaclass=ABCMeta):
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
         msg = {
-            MessageType.WEIGHTS: delta_weights,
+            MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.MODEL_VERSION: self._round
         }

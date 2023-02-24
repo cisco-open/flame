@@ -27,6 +27,7 @@ from pip._internal.cli.main import main as pipmain
 
 from ..config import Config
 from .typing import ModelWeights
+from .constants import DeviceType
 
 PYTORCH = 'torch'
 TENSORFLOW = 'tensorflow'
@@ -137,3 +138,39 @@ def delta_weights_tensorflow(a: ModelWeights,
         return None
 
     return [x - y for (x, y) in zip(a, b)]
+
+
+def get_pytorch_device(dtype: DeviceType):
+    import torch
+    if dtype == DeviceType.CPU:
+        device_name = "cpu"
+    elif dtype == DeviceType.GPU:
+        device_name = "cuda"
+    else:
+        raise TypeError(f"Device type {dtype} is not supported.")
+    
+    return torch.device(device_name)
+
+def weights_to_device(weights, dtype: DeviceType):
+    """Send model weights to device type dtype."""
+    
+    framework = get_ml_framework_in_use()
+    if framework == MLFramework.TENSORFLOW:
+        return weights
+    elif framework == MLFramework.PYTORCH:
+        torch_device = get_pytorch_device(dtype)
+        return {name: weights[name].to(torch_device) for name in weights}
+    
+    return None
+
+def weights_to_model_device(weights, model):
+    """Send model weights to same device as model"""
+    framework = get_ml_framework_in_use()
+    if framework == MLFramework.TENSORFLOW:
+        return weights
+    elif framework == MLFramework.PYTORCH:
+        # make assumption all tensors are on same device
+        torch_device = next(model.parameters()).device
+        return {name: weights[name].to(torch_device) for name in weights}
+    
+    return None
