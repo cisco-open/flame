@@ -30,6 +30,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/gorilla/mux"
 )
 
@@ -63,7 +64,7 @@ func NewComputesApiController(s ComputesApiServicer, opts ...ComputesApiOption) 
 	return controller
 }
 
-// Routes returns all of the api route for the ComputesApiController
+// Routes returns all the api routes for the ComputesApiController
 func (c *ComputesApiController) Routes() Routes {
 	return Routes{
 		{
@@ -126,7 +127,7 @@ func (c *ComputesApiController) Routes() Routes {
 // DeleteCompute - Delete compute cluster specification
 func (c *ComputesApiController) DeleteCompute(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.DeleteCompute(r.Context(), computeIdParam, xAPIKEYParam)
@@ -142,7 +143,7 @@ func (c *ComputesApiController) DeleteCompute(w http.ResponseWriter, r *http.Req
 // GetComputeConfig - Get configuration for a compute cluster
 func (c *ComputesApiController) GetComputeConfig(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.GetComputeConfig(r.Context(), computeIdParam, xAPIKEYParam)
@@ -158,7 +159,7 @@ func (c *ComputesApiController) GetComputeConfig(w http.ResponseWriter, r *http.
 // GetComputeStatus - Get status of a given compute cluster
 func (c *ComputesApiController) GetComputeStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.GetComputeStatus(r.Context(), computeIdParam, xAPIKEYParam)
@@ -174,9 +175,9 @@ func (c *ComputesApiController) GetComputeStatus(w http.ResponseWriter, r *http.
 // GetDeploymentConfig - Get the deployment config for a job for a compute cluster
 func (c *ComputesApiController) GetDeploymentConfig(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.GetDeploymentConfig(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam)
@@ -192,9 +193,9 @@ func (c *ComputesApiController) GetDeploymentConfig(w http.ResponseWriter, r *ht
 // GetDeploymentStatus - Get the deployment status for a job on a compute cluster
 func (c *ComputesApiController) GetDeploymentStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.GetDeploymentStatus(r.Context(), computeIdParam, jobIdParam, xAPIKEYParam)
@@ -210,7 +211,7 @@ func (c *ComputesApiController) GetDeploymentStatus(w http.ResponseWriter, r *ht
 // GetDeployments - Get all deployments within a compute cluster
 func (c *ComputesApiController) GetDeployments(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.GetDeployments(r.Context(), computeIdParam, xAPIKEYParam)
@@ -226,9 +227,9 @@ func (c *ComputesApiController) GetDeployments(w http.ResponseWriter, r *http.Re
 // PutDeploymentStatus - Add or update the deployment status for a job on a compute cluster
 func (c *ComputesApiController) PutDeploymentStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
-	jobIdParam := params["jobId"]
+	jobIdParam := params[constants.ParamJobID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	requestBodyParam := map[string]AgentState{}
@@ -274,7 +275,7 @@ func (c *ComputesApiController) RegisterCompute(w http.ResponseWriter, r *http.R
 // UpdateCompute - Update a compute cluster's specification
 func (c *ComputesApiController) UpdateCompute(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	computeIdParam := params["computeId"]
+	computeIdParam := params[constants.ParamComputeID]
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	computeSpecParam := ComputeSpec{}

@@ -32,3 +32,30 @@ type Connector struct {
 
 	Connection map[string]interface{} `json:"connection"`
 }
+
+// AssertConnectorRequired checks if the required fields are not zero-ed
+func AssertConnectorRequired(obj Connector) error {
+	elements := map[string]interface{}{
+		"name":       obj.Name,
+		"connection": obj.Connection,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	return nil
+}
+
+// AssertRecurseConnectorRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of Connector (e.g. [][]Connector), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseConnectorRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aConnector, ok := obj.(Connector)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertConnectorRequired(aConnector)
+	})
+}

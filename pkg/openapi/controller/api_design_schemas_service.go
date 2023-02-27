@@ -50,7 +50,7 @@ func NewDesignSchemasApiService(dbService database.DBService) openapi.DesignSche
 }
 
 // CreateDesignSchema - Update a design schema
-func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user string, designId string,
+func (s *DesignSchemasApiService) CreateDesignSchema(_ context.Context, user string, designId string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	err := s.dbService.CreateDesignSchema(user, designId, designSchema)
 	if err != nil {
@@ -61,7 +61,7 @@ func (s *DesignSchemasApiService) CreateDesignSchema(ctx context.Context, user s
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user string, designId string,
+func (s *DesignSchemasApiService) GetDesignSchema(_ context.Context, user string, designId string,
 	version string) (openapi.ImplResponse, error) {
 	info, err := s.dbService.GetDesignSchema(user, designId, version)
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *DesignSchemasApiService) GetDesignSchema(ctx context.Context, user stri
 }
 
 // GetDesignSchemas - Get all design schemas in a design
-func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+func (s *DesignSchemasApiService) GetDesignSchemas(_ context.Context, user string, designId string) (openapi.ImplResponse, error) {
 	info, err := s.dbService.GetDesignSchemas(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
@@ -80,7 +80,7 @@ func (s *DesignSchemasApiService) GetDesignSchemas(ctx context.Context, user str
 }
 
 // UpdateDesignSchema - Update a schema for a given design
-func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user string, designId string, version string,
+func (s *DesignSchemasApiService) UpdateDesignSchema(_ context.Context, user string, designId string, version string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	err := s.dbService.UpdateDesignSchema(user, designId, version, designSchema)
 	if err != nil {
@@ -90,8 +90,9 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(ctx context.Context, user s
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
-func (s *DesignSchemasApiService) DeleteDesignSchema(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
+func (s *DesignSchemasApiService) DeleteDesignSchema(_ context.Context, user string, designId string, version string) (
+	openapi.ImplResponse, error,
+) {
 	zap.S().Debugf("Received DeleteDesignSchema Delete request: %s | %s | %s", user, designId, version)
 
 	err := s.dbService.DeleteDesignSchema(user, designId, version)

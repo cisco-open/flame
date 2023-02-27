@@ -39,3 +39,33 @@ type Channel struct {
 
 	IsUnidirectional bool `json:"isUnidirectional,omitempty"`
 }
+
+// AssertChannelRequired checks if the required fields are not zero-ed
+func AssertChannelRequired(obj Channel) error {
+	elements := map[string]interface{}{
+		"name": obj.Name,
+		"pair": obj.Pair,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	if err := AssertChannelGroupByRequired(obj.GroupBy); err != nil {
+		return err
+	}
+	return nil
+}
+
+// AssertRecurseChannelRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of Channel (e.g. [][]Channel), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseChannelRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aChannel, ok := obj.(Channel)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertChannelRequired(aChannel)
+	})
+}

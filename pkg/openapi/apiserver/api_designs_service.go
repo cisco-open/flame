@@ -34,11 +34,12 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
 
-// DesignsApiService is a service that implents the logic for the DesignsApiServicer
+// DesignsApiService is a service that implements the logic for the DesignsApiServicer
 // This service should implement the business logic for every endpoint for the DesignsApi API.
 // Include any external packages or services that will be required by this service.
 type DesignsApiService struct {
@@ -56,7 +57,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 
 	// create controller request
 	uriMap := map[string]string{
-		"user": user,
+		constants.ParamUser: user,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateDesignEndPoint, uriMap)
 
@@ -76,8 +77,8 @@ func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, desig
 
 	// create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
 	}
 
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignEndPoint, uriMap)
@@ -99,8 +100,8 @@ func (s *DesignsApiService) GetDesign(ctx context.Context, user string, designId
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":     user,
-		"designId": designId,
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignEndPoint, uriMap)
 
@@ -125,8 +126,8 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 	//create controller request
 	//construct URL
 	uriMap := map[string]string{
-		"user":  user,
-		"limit": strconv.Itoa(int(limit)),
+		constants.ParamUser:  user,
+		constants.ParamLimit: strconv.Itoa(int(limit)),
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignsEndPoint, uriMap)
 

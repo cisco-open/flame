@@ -27,6 +27,8 @@ package openapi
 
 import (
 	"time"
+
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
 // ComputeStatus - Cluster compute status
@@ -43,8 +45,8 @@ type ComputeStatus struct {
 // AssertComputeStatusRequired checks if the required fields are not zero-ed
 func AssertComputeStatusRequired(obj ComputeStatus) error {
 	elements := map[string]interface{}{
-		"computeId": obj.ComputeId,
-		"state":     obj.State,
+		constants.ParamComputeID: obj.ComputeId,
+		constants.ParamState:     obj.State,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

@@ -39,3 +39,20 @@ const (
 	TERMINATED JobState = "terminated"
 	COMPLETED  JobState = "completed"
 )
+
+// AssertJobStateRequired checks if the required fields are not zero-ed
+func AssertJobStateRequired(obj JobState) error {
+	return nil
+}
+
+// AssertRecurseJobStateRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of JobState (e.g. [][]JobState), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseJobStateRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aJobState, ok := obj.(JobState)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertJobStateRequired(aJobState)
+	})
+}
