@@ -60,7 +60,8 @@ class FedOPT(FedAvg):
            cache: Cache,
            *,
            total: int = 0,
-           version: int = 0) -> ModelWeights:
+           version: int = 0,
+           **kwargs) -> ModelWeights:
         """Do aggregates models of trainers.
 
         Parameters

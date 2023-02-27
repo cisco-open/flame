@@ -31,5 +31,6 @@ class AbstractOptimizer(ABC):
            cache: Cache,
            *,
            total: int = 0,
-           version: int = 0) -> ModelWeights:
+           version: int = 0,
+           **kwargs) -> ModelWeights:
         """Abstract method to conduct optimization."""
