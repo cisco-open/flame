@@ -110,22 +110,26 @@ function post_start_config {
 
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
 	os_id=$(grep '^ID=' /etc/os-release | sed 's/"//g' | cut -d= -f2)
-	case $os_id in
-	    "amzn")
-		echo "set flame.test domain with $minikube_ip in route 53"
-		;;
-	    *)
-		subnet=$(ip a show | grep br- | grep inet | awk '{print $2}')
-		resolver_file=/etc/systemd/network/minikube.network
-		echo "[Match]" | sudo tee $resolver_file > /dev/null
-		echo "Name=br*" | sudo tee -a $resolver_file > /dev/null
-		echo "[Network]" | sudo tee -a $resolver_file > /dev/null
-		echo "Address=$subnet" | sudo tee -a $resolver_file > /dev/null
-		echo "DNS=$minikube_ip" | sudo tee -a $resolver_file > /dev/null
-		echo "Domains=~flame.test" | sudo tee -a $resolver_file > /dev/null
-		sudo systemctl restart systemd-networkd
-		;;
-	esac
+        case $os_id in
+            "amzn")
+                echo "set flame.test domain with $minikube_ip in route 53"
+                ;;
+            *)
+                IFS=. read -r oc1 oc2 oc3 oc4 <<< $minikube_ip
+                subnet=$(ip a show | grep $oc1.$oc2.$oc3 | awk '{print $2}')
+                device=$(ip a show | grep -B 2 $oc1.$oc2.$oc3 | head -n 1 | cut -d':' -f 2)
+                device=${device## }
+
+                resolver_file=/etc/systemd/network/minikube.network
+                echo "[Match]" | sudo tee $resolver_file > /dev/null
+                echo "Name=$device" | sudo tee -a $resolver_file > /dev/null
+                echo "[Network]" | sudo tee -a $resolver_file > /dev/null
+                echo "Address=$subnet" | sudo tee -a $resolver_file > /dev/null
+                echo "DNS=$minikube_ip" | sudo tee -a $resolver_file > /dev/null
+                echo "Domains=~flame.test" | sudo tee -a $resolver_file > /dev/null
+                sudo systemctl restart systemd-networkd
+                ;;
+        esac
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         resolver_file=/etc/resolver/flame-test
         echo "domain flame.test" | sudo tee $resolver_file > /dev/null
@@ -184,17 +188,17 @@ function post_stop_cleanup {
     minikube_ip=$(minikube ip)
 
     if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-	os_id=$(grep '^ID=' /etc/os-release | sed 's/"//g' | cut -d= -f2)
-	case $os_id in
-	    "amzn")
-		echo "remove flame.test domain from route 53"
-		;;
-	    *)
-		resolver_file=/etc/systemd/network/minikube.network
-		sudo rm -f $resolver_file
-		sudo systemctl restart systemd-networkd
-		;;
-	esac
+        os_id=$(grep '^ID=' /etc/os-release | sed 's/"//g' | cut -d= -f2)
+        case $os_id in
+            "amzn")
+                echo "remove flame.test domain from route 53"
+                ;;
+            *)
+                resolver_file=/etc/systemd/network/minikube.network
+                sudo rm -f $resolver_file
+                sudo systemctl restart systemd-networkd
+                ;;
+        esac
     elif [[ "$OSTYPE" == "darwin"* ]]; then
         resolver_file=/etc/resolver/flame-test
         sudo rm -f $resolver_file

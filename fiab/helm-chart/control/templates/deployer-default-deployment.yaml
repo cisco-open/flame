@@ -32,22 +32,6 @@ spec:
     spec:
       containers:
         - args:
-          - --apiserver
-          - "https://{{ .Values.frontDoorUrl.apiserver }}:443"
-          - --notifier
-          - "{{ .Values.frontDoorUrl.notifier }}:443"
-          - --adminid
-          - {{ .Values.deployerDefault.adminId }}
-          - --region
-          - {{ .Values.deployerDefault.region }}
-          - --computeid
-          - {{ .Values.deployerDefault.computeId }}
-          - --apikey
-          - {{ .Values.deployerDefault.apiKey }}
-          - --platform
-          - {{ .Values.deployerDefault.platform }}
-          - --namespace
-          - {{ .Values.deployerDefault.namespace }}
           {{ if .Values.insecure }}
           - "--insecure"
           {{ end }}
@@ -56,11 +40,19 @@ spec:
           imagePullPolicy: IfNotPresent
           name: {{ .Release.Name }}-deployer-default
           volumeMounts:
-            - mountPath: /flame/template
+            - mountPath: /etc/flame/deployer.yaml
+              name: config-volume
+              subPath: deployer.yaml
+
+            - mountPath: {{ .Values.deployer.jobTemplate.folder }}
               name: job-template-volume
-      
+
       serviceAccountName: deployer
       volumes:
+        - name: config-volume
+          configMap:
+            name: {{ .Release.Name }}-deployer-configmap
+
         - name: job-template-volume
           configMap:
             name: {{ .Release.Name }}-deployer-job-configmap
