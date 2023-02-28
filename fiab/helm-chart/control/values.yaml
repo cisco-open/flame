@@ -106,13 +106,19 @@ mlflow:
   s3EndpointUrl: http://minio.flame.test
   servicePort: "5000"
 
-deployerDefault:
+deployer:
   adminId: "admin-1"
   region: "default/us"
   computeId: "default"
   apiKey: "apiKey-default"
   platform: "k8s"
   namespace: "flame"
+  jobTemplate:
+    folder: /flame/template
+    # to use a different template file, put the file in the "job" folder
+    # use its file name as the value of key "file".
+    # also, update the name in the templates/deployer-job-configmap.yaml
+    file: job-agent.yaml.mustache
 
 servicePort:
   apiserver: "10100"

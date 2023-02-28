@@ -25,7 +25,7 @@ class Regularizer:
     def __init__(self):
         """Initialize Regularizer instance."""
         pass
-    
+
     def get_term(self, **kwargs):
         """No regularizer term for dummy regularizer."""
         return 0.0

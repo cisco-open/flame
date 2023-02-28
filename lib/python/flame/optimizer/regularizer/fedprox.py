@@ -15,7 +15,8 @@
 # SPDX-License-Identifier: Apache-2.0
 """FedProx Regularizer."""
 import logging
-from .regularizer import Regularizer
+
+from .default import Regularizer
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +28,13 @@ class FedProxRegularizer(Regularizer):
         """Initialize FedProxRegularizer instance."""
         super().__init__()
         self.mu = mu
-    
+
     def get_term(self, **kwargs):
-        """Calculate proximal term for client-side regularization"""
+        """Calculate proximal term for client-side regularization."""
         import torch
         w = kwargs['w']
         w_t = kwargs['w_t']
         norm_sq = 0.0
         for loc_param, glob_param in zip(w, w_t):
-            norm_sq += torch.sum(torch.pow(loc_param-glob_param, 2))
-        return (self.mu/2) * norm_sq
+            norm_sq += torch.sum(torch.pow(loc_param - glob_param, 2))
+        return (self.mu / 2) * norm_sq
