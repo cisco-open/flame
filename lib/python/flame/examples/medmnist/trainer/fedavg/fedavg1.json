@@ -1,0 +1,63 @@
+{
+    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580370",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "broker.hivemq.com",
+            "sort": "mqtt"
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+	    "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "https://raw.github.com/GaoxiangLuo/flame-datasets/main/site1.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.001,
+        "rounds": 10,
+		"epochs": 2
+    },
+    "baseModel": {
+	"name": "",
+	"version": 1
+    },
+    "job" : {
+	"id": "622a358619ab59012eabeefb",
+	"name": "mednist"
+    },
+    "registry": {
+	"sort": "dummy",
+	"uri": ""
+    },
+    "selector": {
+	"sort": "default",
+	"kwargs": {}
+    },
+    "optimizer": {
+    "sort": "fedavg",
+    "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default",
+    "role": "trainer"
+}

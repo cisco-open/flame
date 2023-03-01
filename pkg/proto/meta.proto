@@ -30,7 +30,8 @@ message MetaInfo {
   string ch_name = 2;
   string me = 3;
   string other = 4;
-  string endpoint = 5;
+  string group = 5;
+  string endpoint = 6;
 }
 
 message MetaResponse {

@@ -41,7 +41,7 @@ class DefaultSelector(AbstractSelector):
 
         if len(self.selected_ends) == 0 or round > self.round:
             logger.debug(f"let's select the whole ends for new round {round}")
-            self.selected_ends = list(ends.keys())
+            self.selected_ends = set(ends.keys())
             self.round = round
 
         logger.debug(f"selected ends: {self.selected_ends}")

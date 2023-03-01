@@ -32,13 +32,19 @@ mlflow:
   s3EndpointUrl: http://minio.flame.test    # TODO: fix s3 access id and key issue
   servicePort: "5000"
 
-deployerCompute1:
+deployer:
   adminId: "admin-2"
   region: "default/us/west"
   computeId: "compute-1"
   apiKey: "apiKey-1"
   platform: "k8s"
   namespace: "flame"
+  jobTemplate:
+    folder: /flame/template
+    # to use a different template file, put the file in the "job" folder
+    # use its file name as the value of key "file".
+    # also, update the name in the templates/deployer-job-configmap.yaml
+    file: job-agent.yaml.mustache
 
 servicePort:
   agent: "10103"

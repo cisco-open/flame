@@ -21,11 +21,12 @@ import sys
 from contextlib import contextmanager
 from enum import Enum
 from threading import Thread
-from typing import List
+from typing import List, Union
 
 from pip._internal.cli.main import main as pipmain
 
 from ..config import Config
+from .typing import ModelWeights
 
 PYTORCH = 'torch'
 TENSORFLOW = 'tensorflow'
@@ -71,6 +72,9 @@ def get_ml_framework_in_use():
 
     return ml_framework_in_use
 
+def get_params_detached_pytorch(model):
+    """Return copy of parameters of pytorch model disconnected from graph."""
+    return [param.detach().clone() for param in model.parameters()]
 
 @contextmanager
 def background_thread_loop():
@@ -115,3 +119,21 @@ def mlflow_runname(config: Config) -> str:
                 groupby_value = groupby_value + val + "-"
 
     return config.role + '-' + groupby_value + config.task_id[:8]
+
+
+def delta_weights_pytorch(a: ModelWeights,
+                          b: ModelWeights) -> Union[ModelWeights, None]:
+    """Return delta weights for pytorch model weights."""
+    if a is None or b is None:
+        return None
+
+    return {x: a[x] - b[y] for (x, y) in zip(a, b)}
+
+
+def delta_weights_tensorflow(a: ModelWeights,
+                             b: ModelWeights) -> Union[ModelWeights, None]:
+    """Return delta weights for tensorflow model weights."""
+    if a is None or b is None:
+        return None
+
+    return [x - y for (x, y) in zip(a, b)]

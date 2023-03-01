@@ -53,6 +53,10 @@ class OptimizerType(str, Enum):
     FEDADAGRAD = "fedadagrad"
     FEDADAM = "fedadam"
     FEDYOGI = "fedyogi"
+    # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
+    # https://arxiv.org/pdf/2111.04877.pdf
+    FEDBUFF = "fedbuff"
+    FEDPROX = "fedprox" # FedProx
 
     DEFAULT = FEDAVG
 
@@ -62,6 +66,7 @@ class SelectorType(str, Enum):
 
     DEFAULT = "default"
     RANDOM = "random"
+    FEDBUFF = "fedbuff"
 
 
 class Job(FlameSchema):
@@ -77,8 +82,6 @@ class Registry(FlameSchema):
 class Selector(FlameSchema):
     sort: SelectorType = Field(default=SelectorType.DEFAULT)
     kwargs: dict = Field(default={})
-
-
 class Optimizer(FlameSchema):
     sort: OptimizerType = Field(default=OptimizerType.DEFAULT)
     kwargs: dict = Field(default={})
@@ -218,7 +221,7 @@ def load_config(filename: str) -> Config:
         "base_model": raw_config.get("baseModel", None),
         "dependencies": raw_config.get("dependencies", None),
     }
-    
+
     return Config(**config_data)
 
 

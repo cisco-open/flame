@@ -13,16 +13,23 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
 """optimizer abstract class."""
 
 from abc import ABC, abstractmethod
+
+from diskcache import Cache
+
+from ..common.typing import ModelWeights
 
 
 class AbstractOptimizer(ABC):
     """Abstract base class for optimizer implementation."""
 
     @abstractmethod
-    def do(self) -> None:
+    def do(self,
+           base_weights: ModelWeights,
+           cache: Cache,
+           *,
+           total: int = 0,
+           version: int = 0) -> ModelWeights:
         """Abstract method to conduct optimization."""

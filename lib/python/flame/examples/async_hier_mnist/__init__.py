@@ -1,4 +1,4 @@
-# Copyright 2022 Cisco Systems, Inc. and its affiliates
+# Copyright 2023 Cisco Systems, Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,29 +13,3 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-# source: https://docs.armory.io/docs/armory-admin/manual-service-account/
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: Role
-metadata:
-  name: controller-role
-  namespace: flame
-rules:
-- apiGroups: ["*"]
-  resources: ["*"]
-  verbs: ["*"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: RoleBinding
-metadata:
-  name: controller-rolebinding
-  namespace: flame
-roleRef:
-  apiGroup: rbac.authorization.k8s.io
-  kind: Role
-  name: controller-role
-subjects:
-- namespace: flame
-  kind: ServiceAccount
-  name: controller

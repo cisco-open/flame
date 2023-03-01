@@ -35,5 +35,5 @@ class FedAdam(FedOPT):
         return
 
     def _delta_v_tensorflow(self):
-        # TODO: tensorflow implementation
-        raise NotImplementedError("Tensorflow implementation not yet implemented")
+        self.v_t = [self.beta_2 * self.v_t[idx] + (1 - self.beta_2) * self.d_t[idx]**2 for idx in range(len(self.v_t))]
+        return

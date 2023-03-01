@@ -34,6 +34,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/cisco-open/flame/cmd/deployer/app/deployer"
+	"github.com/cisco-open/flame/cmd/deployer/config"
 	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/cisco-open/flame/pkg/openapi/constants"
 	pbNotify "github.com/cisco-open/flame/pkg/proto/notification"
@@ -42,13 +43,9 @@ import (
 )
 
 const (
-	deploymentDirPath     = "/" + util.ProjectName + "/deployment"
 	deploymentTemplateDir = "templates"
 
-	jobTemplateDirPath      = "/" + util.ProjectName + "/template"
-	jobDeploymentFilePrefix = "job-agent"
-	jobTemplatePath         = jobTemplateDirPath + "/" + jobDeploymentFilePrefix + ".yaml.mustache"
-	k8sShortLabelLength     = 12
+	k8sShortLabelLength = 12
 )
 
 var (
@@ -64,13 +61,17 @@ type resourceHandler struct {
 	namespace string
 	dplyr     deployer.Deployer
 
+	// variables for job templates
+	jobTemplateDirPath string
+	jobTemplatePath    string
+	deploymentDirPath  string
+
 	stream pbNotify.DeployEventRoute_GetDeployEventClient
 
 	grpcDialOpt grpc.DialOption
 }
 
-func NewResourceHandler(apiserverEp string, notifierEp string, computeSpec openapi.ComputeSpec,
-	platform string, namespace string, bInsecure bool, bPlain bool) *resourceHandler {
+func NewResourceHandler(cfg *config.Config, computeSpec openapi.ComputeSpec, bInsecure bool, bPlain bool) *resourceHandler {
 	var grpcDialOpt grpc.DialOption
 
 	if bPlain {
@@ -86,20 +87,27 @@ func NewResourceHandler(apiserverEp string, notifierEp string, computeSpec opena
 		grpcDialOpt = grpc.WithTransportCredentials(credentials.NewTLS(tlsCfg))
 	}
 
-	dplyr, err := deployer.NewDeployer(platform)
+	dplyr, err := deployer.NewDeployer(cfg.Platform)
 	if err != nil {
 		zap.S().Errorf("failed to obtain a job deployer: %v", err)
 		return nil
 	}
 
+	parentDir := filepath.Dir(cfg.JobTemplate.Folder)
+	deploymentDirPath := filepath.Join(parentDir, "deployment")
+
 	rHandler := &resourceHandler{
-		apiserverEp: apiserverEp,
-		notifierEp:  notifierEp,
+		apiserverEp: cfg.Apiserver,
+		notifierEp:  cfg.Notifier,
 		spec:        computeSpec,
 
-		platform:  platform,
-		namespace: namespace,
+		platform:  cfg.Platform,
+		namespace: cfg.Namespace,
 		dplyr:     dplyr,
+
+		jobTemplateDirPath: cfg.JobTemplate.Folder,
+		jobTemplatePath:    filepath.Join(cfg.JobTemplate.Folder, cfg.JobTemplate.File),
+		deploymentDirPath:  deploymentDirPath,
 
 		grpcDialOpt: grpcDialOpt,
 	}
@@ -250,7 +258,7 @@ func (r *resourceHandler) revokeResource(jobId string) (err error) {
 			}
 			taskStatuses[taskId] = openapi.AGENT_REVOKE_SUCCESS
 			// 2.delete all the task resource specification files
-			deploymentChartPath := filepath.Join(deploymentDirPath, jobId, taskId)
+			deploymentChartPath := filepath.Join(r.deploymentDirPath, jobId, taskId)
 			removeErr := os.RemoveAll(deploymentChartPath)
 			if removeErr != nil {
 				zap.S().Errorf("Errors occurred deleting specification files: %v", removeErr)
@@ -324,11 +332,14 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
 		return fmt.Errorf(errMsg)
 	}
+
 	agentStatuses := map[string]openapi.AgentState{}
 	defer r.postDeploymentStatus(deploymentConfig.JobId, agentStatuses)
+
 	for taskId := range deploymentConfig.AgentKVs {
-		deploymentChartPath := filepath.Join(deploymentDirPath, deploymentConfig.JobId, taskId)
+		deploymentChartPath := filepath.Join(r.deploymentDirPath, deploymentConfig.JobId, taskId)
 		targetTemplateDirPath := filepath.Join(deploymentChartPath, deploymentTemplateDir)
+
 		if makeErr := os.MkdirAll(targetTemplateDirPath, util.FilePerm0644); makeErr != nil {
 			errMsg := fmt.Sprintf("failed to create a deployment template folder: %v", makeErr)
 			err = fmt.Errorf("%v; %v", err, errMsg)
@@ -337,21 +348,20 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		}
 
 		// Copy helm chart files to destination folder
-		copyErr := copyHelmCharts(helmChartFiles, jobTemplateDirPath, deploymentChartPath)
+		copyErr := copyHelmCharts(helmChartFiles, r.jobTemplateDirPath, deploymentChartPath)
 		if copyErr != nil {
 			err = fmt.Errorf("%v; %v", err, copyErr)
 			agentStatuses[taskId] = openapi.AGENT_DEPLOY_FAILED
 			continue
 		}
 
-		taskKey := deploymentConfig.AgentKVs[taskId]
-
 		ctx := map[string]string{
-			"imageLoc":            deploymentConfig.ImageLoc,
+			"imageLoc": deploymentConfig.ImageLoc,
 			constants.ParamTaskID: taskId,
-			"taskKey":             taskKey,
+			"taskKey":  deploymentConfig.AgentKVs[taskId],
 		}
-		rendered, renderErr := mustache.RenderFile(jobTemplatePath, &ctx)
+
+		rendered, renderErr := mustache.RenderFile(r.jobTemplatePath, &ctx)
 		if renderErr != nil {
 			errMsg := fmt.Sprintf("failed to render a template for task %s: %v", taskId, renderErr)
 			err = fmt.Errorf("%v; %v", err, errMsg)
@@ -359,8 +369,9 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 			continue
 		}
 
-		deploymentFileName := fmt.Sprintf("%s-%s.yaml", jobDeploymentFilePrefix, taskId)
+		deploymentFileName := fmt.Sprintf("task-%s.yaml", taskId)
 		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)
+
 		writeErr := os.WriteFile(deploymentFilePath, []byte(rendered), util.FilePerm0644)
 		if writeErr != nil {
 			errMsg := fmt.Sprintf("failed to write a job rosource spec %s: %v", taskId, writeErr)
@@ -368,6 +379,7 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 			agentStatuses[taskId] = openapi.AGENT_DEPLOY_FAILED
 			continue
 		}
+
 		//using short id of task as label name does not support more than 35 characters
 		installErr := r.dplyr.Install("job-"+deploymentConfig.JobId+"-"+taskId[:k8sShortLabelLength], deploymentChartPath)
 		if installErr != nil {
@@ -376,6 +388,7 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 			agentStatuses[taskId] = openapi.AGENT_DEPLOY_FAILED
 			continue
 		}
+
 		agentStatuses[taskId] = openapi.AGENT_DEPLOY_SUCCESS
 	}
 

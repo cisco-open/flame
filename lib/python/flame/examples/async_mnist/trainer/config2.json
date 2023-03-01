@@ -1,0 +1,71 @@
+{
+    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580371",
+    "backend": "p2p",
+    "brokers": [
+        {
+            "host": "broker.hivemq.com",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5,
+        "//": "aggGoal is irrelevant since it's a trainer",
+        "aggGoal": 2
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job" : {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "//": "c: concurrency (this irrelevant since it's traner)",
+            "c": 4
+        }
+    },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default/us/west",
+    "role": "trainer"
+}

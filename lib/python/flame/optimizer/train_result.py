@@ -13,15 +13,14 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
-
-"""A class that contains train result."""
+"""A class that contains train result and its meta data."""
 
 
 class TrainResult(object):
     """TrainResult class."""
 
-    def __init__(self, weights=None, count=0):
+    def __init__(self, weights=None, count=0, version=0):
         """Initialize."""
         self.weights = weights
         self.count = count
+        self.version = version
