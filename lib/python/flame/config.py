@@ -230,7 +230,7 @@ def transform_config(raw_config: dict) -> dict:
         "dependencies": raw_config.get("dependencies", None),
     }
 
-    return Config(**config_data)
+    return config_data
 
 
 def transform_channel(raw_channel_config: dict):
