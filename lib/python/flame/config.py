@@ -16,8 +16,8 @@
 """Config parser."""
 
 from enum import Enum
-from pydantic import Field
 import typing as t
+from pydantic import Field
 from pydantic import BaseModel as pydBaseModel
 import json
 
@@ -56,8 +56,8 @@ class OptimizerType(str, Enum):
     # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
     # https://arxiv.org/pdf/2111.04877.pdf
     FEDBUFF = "fedbuff"
-    FEDPROX = "fedprox"
-    
+    FEDPROX = "fedprox" # FedProx
+
     DEFAULT = FEDAVG
 
 
@@ -83,7 +83,7 @@ class Selector(FlameSchema):
     sort: SelectorType = Field(default=SelectorType.DEFAULT)
     kwargs: dict = Field(default={})
 
-
+    
 class Optimizer(FlameSchema):
     sort: OptimizerType = Field(default=OptimizerType.DEFAULT)
     kwargs: dict = Field(default={})
@@ -99,6 +99,7 @@ class Hyperparameters(FlameSchema):
     learning_rate: t.Optional[float] = Field(alias="learningRate")
     rounds: int
     epochs: int
+    aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
 
 
 class Groups(FlameSchema):
@@ -150,6 +151,12 @@ class ChannelConfigs(FlameSchema):
 
 
 class Config(FlameSchema):
+    def __init__(self, config_path: str):
+        raw_config = read_config(config_path)
+        transformed_config = transform_config(raw_config)
+
+        super().__init__(**transformed_config)
+
     role: str
     realm: str
     task: t.Optional[str] = Field(default="local")
@@ -176,8 +183,7 @@ def read_config(filename: str) -> dict:
         return json.loads(f.read())
 
 
-def load_config(filename: str) -> Config:
-    raw_config = read_config(filename)
+def transform_config(raw_config: dict) -> dict:
     config_data = {
         "role": raw_config["role"],
         "realm": raw_config["realm"],
@@ -223,8 +229,8 @@ def load_config(filename: str) -> Config:
         "base_model": raw_config.get("baseModel", None),
         "dependencies": raw_config.get("dependencies", None),
     }
-    
-    return Config(**config_data)
+
+    return config_data
 
 
 def transform_channel(raw_channel_config: dict):

@@ -19,7 +19,7 @@ import logging
 
 import torch
 import torch.nn as nn
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.mode.horizontal.top_aggregator import TopAggregator
 
 logger = logging.getLogger(__name__)
@@ -88,7 +88,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = Config(args.config)
 
     t = PyTorchAdultAggregator(config)
     t.compose()
