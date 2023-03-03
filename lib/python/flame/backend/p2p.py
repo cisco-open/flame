@@ -30,6 +30,7 @@ from ..proto import backend_msg_pb2 as msg_pb2
 from ..proto import backend_msg_pb2_grpc as msg_pb2_grpc
 from ..proto import meta_pb2, meta_pb2_grpc
 from .abstract import AbstractBackend
+from .chunk_manager import ChunkManager
 from .chunk_store import ChunkStore
 
 logger = logging.getLogger(__name__)
@@ -106,7 +107,6 @@ class PointToPointBackend(AbstractBackend):
         self._id = None
         self._channels = None
         self._broker = None
-        self._msg_chunks = None
         if self._initialized:
             return
 
@@ -120,6 +120,9 @@ class PointToPointBackend(AbstractBackend):
 
         with background_thread_loop() as loop:
             self._loop = loop
+
+        # initialize a chunk manager
+        self.chunk_mgr = ChunkManager(self._loop)
 
         async def _init_loop_stuff():
             self._eventq = asyncio.Queue()
@@ -153,8 +156,6 @@ class PointToPointBackend(AbstractBackend):
 
     def configure(self, broker: str, job_id: str, task_id: str):
         """Configure the backend."""
-        self._msg_chunks: dict[str, ChunkStore] = {}
-
         self._broker = broker
         self._job_id = job_id
         self._id = task_id
@@ -323,14 +324,8 @@ class PointToPointBackend(AbstractBackend):
             logger.debug('message sent to self; do nothing')
             return
 
-        if msg.end_id not in self._msg_chunks:
-            channel = self._channels[msg.channel_name]
-            self._msg_chunks[msg.end_id] = ChunkStore(self._loop, channel)
-
-        chunk_store = self._msg_chunks[msg.end_id]
-        if not chunk_store.assemble(msg) or chunk_store.eom:
-            # clean up if message is wrong or completely assembled
-            del self._msg_chunks[msg.end_id]
+        channel = self._channels[msg.channel_name]
+        self.chunk_mgr.handle(msg, channel)
 
     async def _tx_task(self, channel, end_id, comm_type: CommType):
         """Conducts data transmission in a loop.

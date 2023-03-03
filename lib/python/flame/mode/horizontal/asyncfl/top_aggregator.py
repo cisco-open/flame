@@ -21,6 +21,8 @@ from copy import deepcopy
 
 from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ....optimizer.train_result import TrainResult
+from ....common.util import (weights_to_device, weights_to_model_device)
+from ....common.constants import DeviceType
 from ...composer import Composer
 from ...message import MessageType
 from ...tasklet import Loop, Tasklet
@@ -74,7 +76,7 @@ class TopAggregator(SyncTopAgg):
         logger.debug(f"received data from {end}")
 
         if MessageType.WEIGHTS in msg:
-            weights = msg[MessageType.WEIGHTS]
+            weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
         if MessageType.DATASET_SIZE in msg:
             count = msg[MessageType.DATASET_SIZE]
@@ -139,7 +141,7 @@ class TopAggregator(SyncTopAgg):
             # we use _round to indicate a model version
             channel.send(
                 end, {
-                    MessageType.WEIGHTS: self.weights,
+                    MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
                     MessageType.ROUND: self._round,
                     MessageType.MODEL_VERSION: self._round
                 })
