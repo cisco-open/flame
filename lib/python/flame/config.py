@@ -15,11 +15,12 @@
 # SPDX-License-Identifier: Apache-2.0
 """Config parser."""
 
-from enum import Enum
-import typing as t
-from pydantic import Field
-from pydantic import BaseModel as pydBaseModel
 import json
+import typing as t
+from enum import Enum
+
+from pydantic import BaseModel as pydBaseModel
+from pydantic import Field
 
 
 class FlameSchema(pydBaseModel):
@@ -56,7 +57,7 @@ class OptimizerType(str, Enum):
     # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
     # https://arxiv.org/pdf/2111.04877.pdf
     FEDBUFF = "fedbuff"
-    FEDPROX = "fedprox" # FedProx
+    FEDPROX = "fedprox"  # FedProx
 
     DEFAULT = FEDAVG
 
@@ -90,8 +91,8 @@ class Optimizer(FlameSchema):
 
 
 class BaseModel(FlameSchema):
-    name: str
-    version: int
+    name: str = Field(default="")
+    version: int = Field(default=0)
 
 
 class Hyperparameters(FlameSchema):
@@ -124,9 +125,9 @@ class GroupBy(FlameSchema):
         for entry in self.value:
             # check if an entry is a prefix of realm in a '/'-separated
             # fashion; if so, then return the matching entry
-            if realm.startswith(entry) and (
-                len(realm) == len(entry) or realm[len(entry)] == REALM_SEPARATOR
-            ):
+            if realm.startswith(entry) and (len(realm) == len(entry)
+                                            or realm[len(entry)]
+                                            == REALM_SEPARATOR):
                 return entry
 
         return GROUPBY_DEFAULT_GROUP
@@ -141,7 +142,7 @@ class Channel(FlameSchema):
     pair: list[str] = Field(min_length=2)
     is_bidirectional: t.Optional[bool] = Field(default=True)
     group_by: t.Optional[GroupBy] = Field(default=GroupBy())
-    func_tags: dict = Field(default={}, alias="funcTags")
+    func_tags: dict = Field(default={}, alias="func_tags")
     description: t.Optional[str]
 
 
@@ -151,6 +152,7 @@ class ChannelConfigs(FlameSchema):
 
 
 class Config(FlameSchema):
+
     def __init__(self, config_path: str):
         raw_config = read_config(config_path)
         transformed_config = transform_config(raw_config)
@@ -196,10 +198,12 @@ def transform_config(raw_config: dict) -> dict:
             "task": raw_config["task"],
         }
 
-    channels, func_tag_map = transform_channels(
-        config_data["role"], raw_config["channels"]
-    )
-    config_data = config_data | {"channels": channels, "func_tag_map": func_tag_map}
+    channels, func_tag_map = transform_channels(config_data["role"],
+                                                raw_config["channels"])
+    config_data = config_data | {
+        "channels": channels,
+        "func_tag_map": func_tag_map
+    }
 
     hyperparameters = transform_hyperparameters(raw_config["hyperparameters"])
     config_data = config_data | {"hyperparameters": hyperparameters}
@@ -217,10 +221,12 @@ def transform_config(raw_config: dict) -> dict:
         config_data = config_data | {"optimizer": raw_config.get("optimizer")}
 
     backends, channel_brokers = transform_channel_configs(
-        raw_config.get("channelConfigs", {})
-    )
+        raw_config.get("channelConfigs", {}))
     config_data = config_data | {
-        "channel_configs": {"backends": backends, "channel_brokers": channel_brokers}
+        "channel_configs": {
+            "backends": backends,
+            "channel_brokers": channel_brokers
+        }
     }
 
     config_data = config_data | {
@@ -237,7 +243,10 @@ def transform_channel(raw_channel_config: dict):
     name = raw_channel_config["name"]
     pair = raw_channel_config["pair"]
     is_bidirectional = raw_channel_config.get("isBidirectional", True)
-    group_by = {"type": "", "value": []} | raw_channel_config.get("groupBy", {})
+    group_by = {
+        "type": "",
+        "value": []
+    } | raw_channel_config.get("groupBy", {})
     func_tags = raw_channel_config.get("funcTags", {})
     description = raw_channel_config.get("description", "")
 

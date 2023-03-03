@@ -13,11 +13,11 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MedMNIST FedProx trainer for PyTorch Using Proximal Term."""
 
 import logging
 from flame.common.util import install_packages
+
 install_packages(['scikit-learn'])
 
 from flame.common.util import get_params_detached_pytorch
@@ -29,8 +29,8 @@ import numpy as np
 from PIL import Image
 from sklearn.metrics import accuracy_score
 
-
 logger = logging.getLogger(__name__)
+
 
 class CNN(torch.nn.Module):
     """CNN Class"""
@@ -41,14 +41,11 @@ class CNN(torch.nn.Module):
         self.num_classes = num_classes
         self.features = torch.nn.Sequential(
             torch.nn.Conv2d(3, 6, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(6),
-            torch.nn.ReLU(),
+            torch.nn.BatchNorm2d(6), torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=2, stride=2),
             torch.nn.Conv2d(6, 16, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(16),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+            torch.nn.BatchNorm2d(16), torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
         self.fc = torch.nn.Linear(16 * 7 * 7, num_classes)
 
     def forward(self, x):
@@ -57,7 +54,9 @@ class CNN(torch.nn.Module):
         x = self.fc(x)
         return x
 
+
 class PathMNISTDataset(torch.utils.data.Dataset):
+
     def __init__(self, split, transform=None, as_rgb=False):
         npz_file = np.load("pathmnist.npz")
         self.split = split
@@ -91,6 +90,7 @@ class PathMNISTDataset(torch.utils.data.Dataset):
 
         return img, target
 
+
 class PyTorchMedMNistTrainer(Trainer):
     """PyTorch MedMNist Trainer"""
 
@@ -104,10 +104,10 @@ class PyTorchMedMNistTrainer(Trainer):
         self.train_loader = None
         self.val_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size
         self._round = 1
-        self._rounds = self.config.hyperparameters['rounds']
+        self._rounds = self.config.hyperparameters.rounds
 
     def initialize(self) -> None:
         """Initialize role."""

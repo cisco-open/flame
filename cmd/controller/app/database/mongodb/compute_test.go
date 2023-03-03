@@ -34,9 +34,8 @@ func TestMongoService_UpdateDeploymentStatus(t *testing.T) {
 			deploymentCollection: mt.Coll,
 		}
 		mt.AddMockResponses(mtest.CreateSuccessResponse(), mtest.CreateCursorResponse(1, "flame.deployment", mtest.FirstBatch, bson.D{}))
-		err := db.UpdateDeploymentStatus("test jobid","test compute id",
-			map[string]openapi.AgentState{"test task id": openapi.AGENT_DEPLOY_SUCCESS,
-		})
+		err := db.UpdateDeploymentStatus("test jobid", "test compute id",
+			map[string]openapi.AgentState{"test task id": openapi.AGENT_DEPLOY_SUCCESS})
 		assert.Nil(t, err)
 	})
 	mt.Run("status update failure", func(mt *mtest.T) {

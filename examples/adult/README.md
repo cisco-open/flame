@@ -1,4 +1,7 @@
-## Census income dataset example
+## Census income dataset example (DEPRECATED)
+
+**Note: This example is made under Flame's non-orchestration mode, which will be deprecated in the future release.
+Reach out to us if this example is in need under the orchestration mode, a fully-automated mode in Flame.**
 
 In this example, we will use a census income dataset (see [here](https://archive-beta.ics.uci.edu/ml/datasets/adult) for more details)
 and build a simple model to predict whether the income is >50K or not.
