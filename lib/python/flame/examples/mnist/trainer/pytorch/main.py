@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.mode.horizontal.trainer import Trainer
 
 
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     parser.add_argument('config', nargs='?', default="./config.json")
 
     args = parser.parse_args()
-    config = load_config(args.config)
+    config = Config(args.config)
 
     t = PyTorchMnistTrainer(config)
     t.compose()
