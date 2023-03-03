@@ -20,7 +20,7 @@ import logging
 from flame.common.util import install_packages
 install_packages(['scikit-learn'])
 
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.mode.horizontal.trainer import Trainer
 import torch
 import torchvision
@@ -212,7 +212,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = Config(args.config)
 
     t = PyTorchMedMNistTrainer(config)
     t.compose()

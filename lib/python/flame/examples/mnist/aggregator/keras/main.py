@@ -17,7 +17,7 @@
 
 import logging
 
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.dataset import Dataset
 from flame.mode.horizontal.top_aggregator import TopAggregator
 from tensorflow import keras
@@ -82,7 +82,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = Config(args.config)
 
     a = KerasMnistAggregator(config)
     a.compose()
