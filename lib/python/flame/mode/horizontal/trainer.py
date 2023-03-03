@@ -16,12 +16,14 @@
 """horizontal FL trainer."""
 
 import logging
-import time
 
+from ...channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (MLFramework, get_ml_framework_in_use,
+from ...common.util import (MLFramework, delta_weights_pytorch,
+                            delta_weights_tensorflow, get_ml_framework_in_use,
                             mlflow_runname, valid_frameworks)
+from ...optimizers import optimizer_provider
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -59,6 +61,11 @@ class Trainer(Role, metaclass=ABCMeta):
         self.registry_client.setup_run(mlflow_runname(self.config))
         self.metrics = dict()
 
+        # needed for trainer-side optimization algorithms such as fedprox
+        temp_opt = optimizer_provider.get(self.config.optimizer.sort,
+                                                **self.config.optimizer.kwargs)
+        self.regularizer = temp_opt.regularizer
+
         self._round = 1
         self._work_done = False
 
@@ -67,6 +74,12 @@ class Trainer(Role, metaclass=ABCMeta):
             raise NotImplementedError(
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
+
+        if self.framework == MLFramework.PYTORCH:
+            self._delta_weights_fn = delta_weights_pytorch
+
+        elif self.framework == MLFramework.TENSORFLOW:
+            self._delta_weights_fn = delta_weights_tensorflow
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -84,7 +97,7 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_RECV)
         msg = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
@@ -115,14 +128,18 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.await_join()
 
         # one aggregator is sufficient
-        end = channel.one_end()
+        end = channel.one_end(VAL_CH_STATE_SEND)
 
         self._update_weights()
-        channel.send(
-            end, {
-                MessageType.WEIGHTS: self.weights,
-                MessageType.DATASET_SIZE: self.dataset_size
-            })
+
+        delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
+
+        msg = {
+            MessageType.WEIGHTS: delta_weights,
+            MessageType.DATASET_SIZE: self.dataset_size,
+            MessageType.MODEL_VERSION: self._round
+        }
+        channel.send(end, msg)
         logger.debug("sending weights done")
 
     def save_metrics(self):
@@ -143,6 +160,9 @@ class Trainer(Role, metaclass=ABCMeta):
             self.model.set_weights(self.weights)
 
     def _update_weights(self):
+        # save weights before updating it
+        self.prev_weights = self.weights
+
         if self.framework == MLFramework.PYTORCH:
             self.weights = self.model.state_dict()
         elif self.framework == MLFramework.TENSORFLOW:

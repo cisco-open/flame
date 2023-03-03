@@ -1,0 +1,73 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "backend": "p2p",
+    "brokers": [
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 10,
+        "//": "aggGoal is aggregation goal for fedbuff",
+        "aggGoal": 2
+    },
+    "baseModel": {
+        "name": "",
+        "version": 2
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "//": "c: concurrency level",
+            "c": 4
+        }
+    },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default",
+    "role": "aggregator"
+}

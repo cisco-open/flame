@@ -17,6 +17,7 @@
 
 import logging
 import time
+from copy import deepcopy
 
 from diskcache import Cache
 
@@ -70,6 +71,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         self.cache = Cache()
         self.dataset_size = 0
 
+        # save distribute tag in an instance variable
+        self.dist_tag = TAG_DISTRIBUTE
+
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
         if tag == TAG_FETCH:
@@ -82,7 +86,6 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         if tag == TAG_UPLOAD:
             self._send_weights(tag)
         if tag == TAG_DISTRIBUTE:
-            self.dist_tag = tag
             self._distribute_weights(tag)
 
     def _fetch_weights(self, tag: str) -> None:
@@ -156,7 +159,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
                 self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
-        global_weights = self.optimizer.do(self.cache, total)
+        global_weights = self.optimizer.do(deepcopy(self.weights),
+                                           self.cache,
+                                           total=total)
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
@@ -216,6 +221,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
     def inform_end_of_training(self) -> None:
         """Inform all the trainers that the training is finished."""
+        logger.debug("inform end of training")
+
         channel = self.cm.get_by_tag(self.dist_tag)
         if not channel:
             logger.debug(f"channel not found for tag {self.dist_tag}")

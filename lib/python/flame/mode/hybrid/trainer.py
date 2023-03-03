@@ -67,18 +67,20 @@ class Trainer(DistTrainer):
             logger.debug(f"channel not found with tag {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("waiting for channel ends")
+        # this call waits for at least one peer joins this channel
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
         msg = channel.recv(end)
+
         if MessageType.WEIGHTS in msg:
             self.weights = msg[MessageType.WEIGHTS]
             self._update_model()
+
         if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
+
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
@@ -99,9 +101,8 @@ class Trainer(DistTrainer):
             logger.debug(f"channel not found with {tag}")
             return
 
-        while channel.empty():
-            time.sleep(1)
-            logger.debug("waiting for channel ends")
+        # this call waits for at least one peer to join this channel
+        channel.await_join()
 
         # one aggregator is sufficient
         end = channel.one_end()
@@ -131,7 +132,13 @@ class Trainer(DistTrainer):
             logger.debug("sending dummy weights")
             weights, size = None, 0
 
-        msg = {MessageType.WEIGHTS: weights, MessageType.DATASET_SIZE: size}
+        delta_weights = self._delta_weights_fn(weights, self.prev_weights)
+
+        msg = {
+            MessageType.WEIGHTS: delta_weights,
+            MessageType.DATASET_SIZE: size,
+            MessageType.MODEL_VERSION: self._round
+        }
         channel.send(end, msg)
 
     def compose(self) -> None:

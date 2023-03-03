@@ -83,7 +83,7 @@ class Selector(FlameSchema):
     sort: SelectorType = Field(default=SelectorType.DEFAULT)
     kwargs: dict = Field(default={})
 
-    
+
 class Optimizer(FlameSchema):
     sort: OptimizerType = Field(default=OptimizerType.DEFAULT)
     kwargs: dict = Field(default={})

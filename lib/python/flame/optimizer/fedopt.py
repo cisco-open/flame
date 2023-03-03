@@ -13,21 +13,22 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
+"""FedOPT optimizer.
 
-"""FedOPT optimizer"""
-"""https://arxiv.org/abs/2003.00295"""
-from abc import abstractmethod
+https://arxiv.org/abs/2003.00295"""
 import logging
+from abc import abstractmethod
+from collections import OrderedDict
 
 from diskcache import Cache
 
-from .fedavg import FedAvg
+from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use,
                            valid_frameworks)
-
-from collections import OrderedDict
+from .fedavg import FedAvg
 
 logger = logging.getLogger(__name__)
+
 
 class FedOPT(FedAvg):
     """FedOPT class."""
@@ -48,20 +49,37 @@ class FedOPT(FedAvg):
         if ml_framework_in_use == MLFramework.PYTORCH:
             self.adapt_fn = self._adapt_pytorch
         elif ml_framework_in_use == MLFramework.TENSORFLOW:
-            self.adapt_fn = self._adapt_tesnorflow
+            self.adapt_fn = self._adapt_tensorflow
         else:
             raise NotImplementedError(
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
 
-    def do(self, cache: Cache, total: int):
+    def do(self,
+           base_weights: ModelWeights,
+           cache: Cache,
+           *,
+           total: int = 0,
+           version: int = 0) -> ModelWeights:
         """Do aggregates models of trainers.
 
-        Return: aggregated model
+        Parameters
+        ----------
+        base_weights: weights to be used as base
+        cache: a container that includes a list of weights for aggregation
+        total: a number of data samples used to train weights in cache
+        version: a version number of base weights
+
+        Returns
+        -------
+        aggregated model: type is either list (tensorflow) or dict (pytorch)
         """
         logger.debug("calling fedopt")
 
-        self.agg_weights = super().do(cache, total)
+        self.agg_weights = super().do(base_weights,
+                                      cache,
+                                      total=total,
+                                      version=version)
         if self.agg_weights is None:
             return self.current_weights
 
@@ -87,16 +105,51 @@ class FedOPT(FedAvg):
         self.d_t = {k: average[k] - current[k] for k in average.keys()}
 
         if self.m_t is None:
-            self.m_t = {k: torch.zeros_like(self.d_t[k]) for k in self.d_t.keys()}
-        self.m_t = {k: self.beta_1 * self.m_t[k] + (1 - self.beta_1) * self.d_t[k] for k in self.m_t.keys()}
+            self.m_t = {
+                k: torch.zeros_like(self.d_t[k])
+                for k in self.d_t.keys()
+            }
+        self.m_t = {
+            k: self.beta_1 * self.m_t[k] + (1 - self.beta_1) * self.d_t[k]
+            for k in self.m_t.keys()
+        }
 
         if self.v_t is None:
-            self.v_t = {k: torch.zeros_like(self.d_t[k]) for k in self.d_t.keys()}
+            self.v_t = {
+                k: torch.zeros_like(self.d_t[k])
+                for k in self.d_t.keys()
+            }
         self._delta_v_pytorch()
 
-        self.current_weights = OrderedDict({k: self.current_weights[k] + self.eta * self.m_t[k] / (torch.sqrt(self.v_t[k]) + self.tau) for k in self.current_weights.keys()})
+        self.current_weights = OrderedDict({
+            k: self.current_weights[k] + self.eta * self.m_t[k] /
+            (torch.sqrt(self.v_t[k]) + self.tau)
+            for k in self.current_weights.keys()
+        })
 
-    def _adapt_tesnorflow(self, average, current):
+    def _adapt_tensorflow(self, average, current):
+        import tensorflow as tf
         logger.debug("calling _adapt_tensorflow")
-        # TODO: Implement Tensorflow Version
-        raise NotImplementedError("Tensorflow implementation not yet implemented")
+
+        self.d_t = [average[idx] - current[idx] for idx in range(len(average))]
+
+        if self.m_t is None:
+            self.m_t = [
+                tf.zeros_like(self.d_t[idx]) for idx in range(len(self.d_t))
+            ]
+        self.m_t = [
+            self.beta_1 * self.m_t[idx] + (1 - self.beta_1) * self.d_t[idx]
+            for idx in range(len(self.m_t))
+        ]
+
+        if self.v_t is None:
+            self.v_t = [
+                tf.zeros_like(self.d_t[idx]) for idx in range(len(self.d_t))
+            ]
+        self._delta_v_tensorflow()
+
+        self.current_weights = [
+            self.current_weights[idx] + self.eta * self.m_t[idx] /
+            (tf.sqrt(self.v_t[idx]) + self.tau)
+            for idx in range(len(self.current_weights))
+        ]

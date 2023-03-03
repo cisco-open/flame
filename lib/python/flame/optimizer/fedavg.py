@@ -18,9 +18,11 @@ import logging
 
 from diskcache import Cache
 
+from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use,
                            valid_frameworks)
 from .abstract import AbstractOptimizer
+from .regularizer.default import Regularizer
 
 logger = logging.getLogger(__name__)
 
@@ -36,21 +38,39 @@ class FedAvg(AbstractOptimizer):
         if ml_framework_in_use == MLFramework.PYTORCH:
             self.aggregate_fn = self._aggregate_pytorch
         elif ml_framework_in_use == MLFramework.TENSORFLOW:
-            self.aggregate_fn = self._aggregate_tesnorflow
+            self.aggregate_fn = self._aggregate_tensorflow
         else:
             raise NotImplementedError(
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
+        
+        self.regularizer = Regularizer()
 
-    def do(self, cache: Cache, total: int):
+    def do(self,
+           base_weights: ModelWeights,
+           cache: Cache,
+           *,
+           total: int = 0,
+           version: int = 0) -> ModelWeights:
         """Do aggregates models of trainers.
 
-        Return: aggregated model
+        Parameters
+        ----------
+        base_weights: weights to be used as base
+        cache: a container that includes a list of weights for aggregation
+        total: a number of data samples used to train weights in cache
+        version: a version number of base weights
+
+        Returns
+        -------
+        aggregated model: type is either list (tensorflow) or dict (pytorch)
         """
         logger.debug("calling fedavg")
 
+        assert (base_weights is not None)
+
         # reset global weights before aggregation
-        self.agg_weights = None
+        self.agg_weights = base_weights
 
         if len(cache) == 0 or total == 0:
             return None
@@ -68,17 +88,22 @@ class FedAvg(AbstractOptimizer):
     def _aggregate_pytorch(self, tres, rate):
         logger.debug("calling _aggregate_pytorch")
 
-        if self.agg_weights is None:
-            self.agg_weights = {k: v * rate for k, v in tres.weights.items()}
-        else:
-            for k, v in tres.weights.items():
-                self.agg_weights[k] += v * rate
+        for k, v in tres.weights.items():
+            tmp = v * rate
+            # tmp.dtype is always float32 or double as rate is float
+            # if v.dtype is integer (int32 or int64), there is type mismatch
+            # this leads to the following error when self.agg_weights[k] += tmp:
+            #   RuntimeError: result type Float can't be cast to the desired
+            #   output type Long
+            # To handle this issue, we typecast tmp to the original type of v
+            #
+            # TODO: this may need to be revisited
+            tmp = tmp.to(dtype=v.dtype) if tmp.dtype != v.dtype else tmp
 
-    def _aggregate_tesnorflow(self, tres, rate):
+            self.agg_weights[k] += tmp
+
+    def _aggregate_tensorflow(self, tres, rate):
         logger.debug("calling _aggregate_tensorflow")
 
-        if self.agg_weights is None:
-            self.agg_weights = [weight * rate for weight in tres.weights]
-        else:
-            for idx in range(len(tres.weights)):
-                self.agg_weights[idx] += tres.weights[idx] * rate
+        for idx in range(len(tres.weights)):
+            self.agg_weights[idx] += tres.weights[idx] * rate

@@ -1,11 +1,15 @@
 {
     "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
-    "backend": "mqtt",
+    "backend": "p2p",
     "brokers": [
         {
-            "host": "broker.hivemq.com",
+            "host": "localhost",
             "sort": "mqtt"
-        }
+        },
+	{
+	    "host": "localhost:10104",
+	    "sort": "p2p"
+	}
     ],
     "channels": [
         {
@@ -40,7 +44,7 @@
     "hyperparameters": {
         "batchSize": 32,
         "learningRate": 0.01,
-        "rounds": 5
+        "rounds": 20
     },
     "baseModel": {
         "name": "",

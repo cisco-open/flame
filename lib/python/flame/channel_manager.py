@@ -203,7 +203,14 @@ class ChannelManager(object):
         for _, ch in self._channels.items():
             ch.cleanup()
 
-        async def _inner():
+        async def _inner(backend):
+            # TODO: need better mechanism to wait tx completion
+            # as a temporary measure, sleep 5 seconds
+            await asyncio.sleep(5)
+
+            # clean up backend
+            await backend.cleanup()
+
             for task in asyncio.all_tasks():
                 task.cancel()
                 try:
@@ -211,8 +218,10 @@ class ChannelManager(object):
                 except asyncio.CancelledError:
                     logger.debug(f"successfully cancelled {task.get_name()}")
 
+            logger.debug("done with cleaning up asyncio tasks")
+
         if self._backend:
-            _ = run_async(_inner(), self._backend.loop())
+            _ = run_async(_inner(self._backend), self._backend.loop())
 
         for k, v in self._backends.items():
-            _ = run_async(_inner(), v.loop())
+            _ = run_async(_inner(v), v.loop())

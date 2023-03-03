@@ -33,68 +33,96 @@ type job struct {
 }
 
 type channel struct {
-	roles map[string]*metaInfo
+	roles map[string]*role
 }
 
-type metaInfo struct {
+type role struct {
+	groups map[string]*endInfo
+}
+
+type endInfo struct {
 	endpoints map[string]chan bool
 }
 
 func (j *job) register(mi *pbMeta.MetaInfo) error {
 	ch, ok := j.channels[mi.ChName]
 	if !ok {
-		ch = &channel{roles: make(map[string]*metaInfo)}
+		ch = &channel{roles: make(map[string]*role)}
 		j.channels[mi.ChName] = ch
 	}
 
-	if err := ch.register(mi.Me, mi.Endpoint); err != nil {
+	if err := ch.register(mi); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (j *job) search(chName string, role string) map[string]chan bool {
+func (j *job) search(chName string, roleName string, groupName string) map[string]chan bool {
 	ch, ok := j.channels[chName]
 	if !ok {
 		return nil
 	}
 
-	mi := ch.search(role)
-
-	if mi == nil {
-		return nil
-	}
-
-	return mi.endpoints
+	return ch.search(roleName, groupName)
 }
 
-func (ch *channel) register(role string, endpoint string) error {
-	mi, ok := ch.roles[role]
+func (ch *channel) register(mi *pbMeta.MetaInfo) error {
+	myRole, ok := ch.roles[mi.Me]
 	if !ok {
-		mi = &metaInfo{endpoints: make(map[string]chan bool)}
-		ch.roles[role] = mi
+		myRole = &role{groups: make(map[string]*endInfo)}
+		ch.roles[mi.Me] = myRole
 	}
 
-	_, ok = mi.endpoints[endpoint]
-	if ok {
-		zap.S().Infof("endpoint %s already registered", endpoint)
-		return nil
+	if err := myRole.register(mi); err != nil {
+		return err
 	}
-
-	// registering for the first time, set heart beat channel nil
-	mi.endpoints[endpoint] = nil
-
-	zap.S().Infof("done calling ch.register() for endpoint %s", endpoint)
 
 	return nil
 }
 
-func (ch *channel) search(role string) *metaInfo {
-	mi, ok := ch.roles[role]
+func (ch *channel) search(roleName string, groupName string) map[string]chan bool {
+	r, ok := ch.roles[roleName]
 	if !ok {
 		return nil
 	}
 
-	return mi
+	return r.search(groupName)
+}
+
+func (r *role) register(mi *pbMeta.MetaInfo) error {
+	ei, ok := r.groups[mi.Group]
+	if !ok {
+		ei = &endInfo{endpoints: make(map[string]chan bool)}
+		r.groups[mi.Group] = ei
+	}
+
+	ei.register(mi)
+
+	return nil
+}
+
+func (r *role) search(groupName string) map[string]chan bool {
+	ei, ok := r.groups[groupName]
+	if !ok {
+		return nil
+	}
+
+	return ei.search()
+}
+
+func (ei *endInfo) register(mi *pbMeta.MetaInfo) {
+	_, ok := ei.endpoints[mi.Endpoint]
+	if ok {
+		zap.S().Infof("endpoint %s already registered", mi.Endpoint)
+	}
+
+	// registering for the first time, set heart beat channel nil
+	ei.endpoints[mi.Endpoint] = nil
+
+	zap.S().Infof("done calling ch.register() for endpoint %s", mi.Endpoint)
+}
+
+func (ei *endInfo) search() map[string]chan bool {
+	return ei.endpoints
 }
