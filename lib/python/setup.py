@@ -41,6 +41,7 @@ setup(
         'protobuf==3.19.5',
         'grpcio==1.51.1',
         'pydantic',
+        'grpcio==1.51.1',
     ],
     extras_require={
         'dev': [
