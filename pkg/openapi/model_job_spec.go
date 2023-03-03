@@ -25,6 +25,8 @@
 
 package openapi
 
+import "github.com/cisco-open/flame/pkg/openapi/constants"
+
 // JobSpec - Job specification
 type JobSpec struct {
 	Id string `json:"id,omitempty"`
@@ -59,9 +61,9 @@ type JobSpec struct {
 // AssertJobSpecRequired checks if the required fields are not zero-ed
 func AssertJobSpecRequired(obj JobSpec) error {
 	elements := map[string]interface{}{
-		"designId":      obj.DesignId,
-		"schemaVersion": obj.SchemaVersion,
-		"codeVersion":   obj.CodeVersion,
+		constants.ParamDesignID: obj.DesignId,
+		"schemaVersion":         obj.SchemaVersion,
+		"codeVersion":           obj.CodeVersion,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

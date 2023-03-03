@@ -35,6 +35,7 @@ from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
+from ...config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
     """Top level Aggregator implements an ML aggregation role."""
 
     @abstract_attribute
-    def config(self):
+    def config(self) -> Config:
         """Abstract attribute for config object."""
 
     @abstract_attribute
@@ -89,8 +90,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         self._round = 1
         self._rounds = 1
-        if 'rounds' in self.config.hyperparameters:
-            self._rounds = self.config.hyperparameters['rounds']
+        self._rounds = self.config.hyperparameters.rounds
         self._work_done = False
 
         self.framework = get_ml_framework_in_use()
@@ -206,6 +206,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
     def increment_round(self):
         """Increment the round counter."""
         logger.debug(f"Incrementing current round: {self._round}")
+        logger.debug(f"Total rounds: {self._rounds}")
         self._round += 1
         self._work_done = (self._round > self._rounds)
 

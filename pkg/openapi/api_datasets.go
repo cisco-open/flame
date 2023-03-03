@@ -30,20 +30,41 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/gorilla/mux"
 )
 
-// A DatasetsApiController binds http requests to an api service and writes the service results to the http response
+// DatasetsApiController binds http requests to an api service and writes the service results to the http response
 type DatasetsApiController struct {
-	service DatasetsApiServicer
+	service      DatasetsApiServicer
+	errorHandler ErrorHandler
+}
+
+// DatasetsApiOption for how the controller is set up.
+type DatasetsApiOption func(*DatasetsApiController)
+
+// WithDatasetsApiErrorHandler inject ErrorHandler into controller
+func WithDatasetsApiErrorHandler(h ErrorHandler) DatasetsApiOption {
+	return func(c *DatasetsApiController) {
+		c.errorHandler = h
+	}
 }
 
 // NewDatasetsApiController creates a default api controller
-func NewDatasetsApiController(s DatasetsApiServicer) Router {
-	return &DatasetsApiController{service: s}
+func NewDatasetsApiController(s DatasetsApiServicer, opts ...DatasetsApiOption) Router {
+	controller := &DatasetsApiController{
+		service:      s,
+		errorHandler: DefaultErrorHandler,
+	}
+
+	for _, opt := range opts {
+		opt(controller)
+	}
+
+	return controller
 }
 
-// Routes returns all of the api route for the DatasetsApiController
+// Routes returns all the api routes for the DatasetsApiController
 func (c *DatasetsApiController) Routes() Routes {
 	return Routes{
 		{
@@ -82,17 +103,23 @@ func (c *DatasetsApiController) Routes() Routes {
 // CreateDataset - Create meta info for a new dataset.
 func (c *DatasetsApiController) CreateDataset(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	datasetInfo := &DatasetInfo{}
-	if err := json.NewDecoder(r.Body).Decode(&datasetInfo); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	datasetInfoParam := DatasetInfo{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&datasetInfoParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.CreateDataset(r.Context(), user, *datasetInfo)
+	if err := AssertDatasetInfoRequired(datasetInfoParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.CreateDataset(r.Context(), userParam, datasetInfoParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -102,15 +129,15 @@ func (c *DatasetsApiController) CreateDataset(w http.ResponseWriter, r *http.Req
 // GetAllDatasets - Get the meta info on all the datasets
 func (c *DatasetsApiController) GetAllDatasets(w http.ResponseWriter, r *http.Request) {
 	query := r.URL.Query()
-	limit, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get(constants.ParamLimit), false)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.GetAllDatasets(r.Context(), limit)
+	result, err := c.service.GetAllDatasets(r.Context(), limitParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -120,14 +147,14 @@ func (c *DatasetsApiController) GetAllDatasets(w http.ResponseWriter, r *http.Re
 // GetDataset - Get dataset meta information
 func (c *DatasetsApiController) GetDataset(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	datasetId := params["datasetId"]
+	datasetIdParam := params["datasetId"]
 
-	result, err := c.service.GetDataset(r.Context(), user, datasetId)
+	result, err := c.service.GetDataset(r.Context(), userParam, datasetIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -138,17 +165,17 @@ func (c *DatasetsApiController) GetDataset(w http.ResponseWriter, r *http.Reques
 func (c *DatasetsApiController) GetDatasets(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	query := r.URL.Query()
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	limit, err := parseInt32Parameter(query.Get("limit"), false)
+	limitParam, err := parseInt32Parameter(query.Get(constants.ParamLimit), false)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.GetDatasets(r.Context(), user, limit)
+	result, err := c.service.GetDatasets(r.Context(), userParam, limitParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code
@@ -158,19 +185,25 @@ func (c *DatasetsApiController) GetDatasets(w http.ResponseWriter, r *http.Reque
 // UpdateDataset - Update meta info for a given dataset
 func (c *DatasetsApiController) UpdateDataset(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
-	user := params["user"]
+	userParam := params[constants.ParamUser]
 
-	datasetId := params["datasetId"]
+	datasetIdParam := params["datasetId"]
 
-	datasetInfo := &DatasetInfo{}
-	if err := json.NewDecoder(r.Body).Decode(&datasetInfo); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
+	datasetInfoParam := DatasetInfo{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&datasetInfoParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateDataset(r.Context(), user, datasetId, *datasetInfo)
+	if err := AssertDatasetInfoRequired(datasetInfoParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.UpdateDataset(r.Context(), userParam, datasetIdParam, datasetInfoParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
-		EncodeJSONResponse(err.Error(), &result.Code, w)
+		c.errorHandler(w, r, err, &result)
 		return
 	}
 	// If no error, encode the body and the result code

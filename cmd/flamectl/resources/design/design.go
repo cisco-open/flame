@@ -25,6 +25,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -40,7 +41,7 @@ type Params struct {
 func Create(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user": params.User,
+		constants.ParamUser: params.User,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignEndPoint, uriMap)
 
@@ -66,8 +67,8 @@ func Create(params Params) error {
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignEndPoint, uriMap)
 
@@ -98,8 +99,8 @@ func Remove(params Params) error {
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignEndPoint, uriMap)
 
@@ -129,8 +130,8 @@ func Get(params Params) error {
 func GetMany(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"limit": params.Limit,
+		constants.ParamUser:  params.User,
+		constants.ParamLimit: params.Limit,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignsEndPoint, uriMap)
 

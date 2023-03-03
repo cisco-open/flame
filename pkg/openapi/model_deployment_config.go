@@ -25,6 +25,8 @@
 
 package openapi
 
+import "github.com/cisco-open/flame/pkg/openapi/constants"
+
 // DeploymentConfig - Deployment config for agents
 type DeploymentConfig struct {
 	JobId string `json:"jobId"`
@@ -38,9 +40,9 @@ type DeploymentConfig struct {
 // AssertDeploymentConfigRequired checks if the required fields are not zero-ed
 func AssertDeploymentConfigRequired(obj DeploymentConfig) error {
 	elements := map[string]interface{}{
-		"jobId":    obj.JobId,
-		"imageLoc": obj.ImageLoc,
-		"agentKVs": obj.AgentKVs,
+		constants.ParamJobID: obj.JobId,
+		"imageLoc":           obj.ImageLoc,
+		"agentKVs":           obj.AgentKVs,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

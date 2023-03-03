@@ -75,10 +75,8 @@ class PyTorchMnistTrainer(Trainer):
         self.device = None
         self.train_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = 16
-        if 'batchSize' in self.config.hyperparameters:
-            self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size or 16
 
     def initialize(self) -> None:
         """Initialize role."""

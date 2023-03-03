@@ -2,11 +2,16 @@
     "name": "A simple schema for distributed training with MQTT backend",
     "description": "This implementation is on Keras using MNIST dataset.",
     "roles": [
-	{
-	    "name": "trainer",
-	    "description": "It consumes the data and trains local model",
-	    "isDataConsumer": true
-	}
+        {
+            "name": "trainer",
+            "description": "It consumes the data and trains local model",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "default/us"
+                }
+            ]
+        }
     ],
     "channels": [
         {
@@ -22,8 +27,10 @@
                 "trainer",
                 "trainer"
             ],
-	    "funcTags": {
-                "trainer": ["ring_allreduce"]
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
             }
         }
     ]

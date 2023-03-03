@@ -25,6 +25,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -54,7 +55,7 @@ func Create(params Params) error {
 
 	// construct URL
 	uriMap := map[string]string{
-		"user": params.User,
+		constants.ParamUser: params.User,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateJobEndpoint, uriMap)
 
@@ -84,8 +85,8 @@ func Create(params Params) error {
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobEndPoint, uriMap)
 
@@ -127,8 +128,8 @@ func Get(params Params) error {
 func GetMany(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"limit": params.Limit,
+		constants.ParamUser:  params.User,
+		constants.ParamLimit: params.Limit,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobsEndPoint, uriMap)
 
@@ -163,8 +164,8 @@ func GetMany(params Params) error {
 func GetStatus(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetJobStatusEndPoint, uriMap)
 
@@ -212,8 +213,8 @@ func Update(params Params) error {
 
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobEndPoint, uriMap)
 
@@ -234,8 +235,8 @@ func Update(params Params) error {
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteJobEndPoint, uriMap)
 
@@ -259,8 +260,8 @@ func Remove(params Params) error {
 func Start(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
@@ -285,8 +286,8 @@ func Start(params Params) error {
 func Stop(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
