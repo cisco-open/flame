@@ -20,7 +20,7 @@ from random import randrange
 from statistics import mean
 
 import numpy as np
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.mode.horizontal.trainer import Trainer
 from tensorflow import keras
 from tensorflow.keras import layers
@@ -131,7 +131,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = Config(args.config)
 
     t = KerasMnistTrainer(config)
     t.compose()

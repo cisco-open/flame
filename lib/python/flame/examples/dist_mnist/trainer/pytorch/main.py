@@ -26,7 +26,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import torch.utils.data as data_utils
-from flame.config import Config, load_config
+from flame.config import Config
 from flame.mode.distributed.trainer import Trainer
 from torchvision import datasets, transforms
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    config = load_config(args.config)
+    config = Config(args.config)
 
     t = PyTorchMnistTrainer(config)
     t.compose()
