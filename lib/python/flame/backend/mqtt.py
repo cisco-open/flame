@@ -31,6 +31,7 @@ from ..common.constants import (DEFAULT_RUN_ASYNC_WAIT_TIME, EMPTY_PAYLOAD,
 from ..common.util import background_thread_loop, run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 from .abstract import AbstractBackend
+from .chunk_manager import ChunkManager
 from .chunk_store import ChunkStore
 
 END_STATUS_ON = 'online'
@@ -75,7 +76,6 @@ class MqttBackend(AbstractBackend):
         self._broker = None
         self._mqtt_client = None
         self._last_payload_sig = None
-        self._msg_chunks = None
         self._cleanup_waits = None
         if self._initialized:
             return
@@ -85,6 +85,9 @@ class MqttBackend(AbstractBackend):
 
         with background_thread_loop() as loop:
             self._loop = loop
+
+        # initialize a chunk manager
+        self.chunk_mgr = ChunkManager(self._loop)
 
         async def _init_loop_stuff():
             self._eventq = asyncio.Queue()
@@ -114,8 +117,6 @@ class MqttBackend(AbstractBackend):
 
     def configure(self, broker: str, job_id: str, task_id: str):
         """Configure the backend."""
-        self._msg_chunks: dict[str, ChunkStore] = {}
-
         self._broker = broker
         self._job_id = job_id
         self._id = task_id
@@ -246,14 +247,8 @@ class MqttBackend(AbstractBackend):
             expiry = time.time() + MQTT_TIME_WAIT
             self._cleanup_waits[msg.end_id] = expiry
 
-        if msg.end_id not in self._msg_chunks:
-            channel = self._channels[msg.channel_name]
-            self._msg_chunks[msg.end_id] = ChunkStore(self._loop, channel)
-
-        chunk_store = self._msg_chunks[msg.end_id]
-        if not chunk_store.assemble(msg) or chunk_store.eom:
-            # clean up if message is wrong or completely assembled
-            del self._msg_chunks[msg.end_id]
+        channel = self._channels[msg.channel_name]
+        self.chunk_mgr.handle(msg, channel)
 
     async def _rx_task(self):
         self._rx_deque = deque()

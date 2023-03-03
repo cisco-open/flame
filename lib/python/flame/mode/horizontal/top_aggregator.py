@@ -24,7 +24,9 @@ from diskcache import Cache
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, get_ml_framework_in_use,
-                            mlflow_runname, valid_frameworks)
+                            mlflow_runname, valid_frameworks,
+                            weights_to_device, weights_to_model_device)
+from ...common.constants import DeviceType
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager, PluginType
@@ -116,7 +118,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
             logger.debug(f"received data from {end}")
             if MessageType.WEIGHTS in msg:
-                weights = msg[MessageType.WEIGHTS]
+                weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
             if MessageType.DATASET_SIZE in msg:
                 count = msg[MessageType.DATASET_SIZE]
@@ -166,7 +168,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
             channel.send(end, {
-                MessageType.WEIGHTS: self.weights,
+                MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
                 MessageType.ROUND: self._round
             })
 

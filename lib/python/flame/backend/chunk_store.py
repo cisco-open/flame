@@ -16,11 +16,9 @@
 """ChunkStore."""
 
 import logging
-from threading import Thread
 from typing import Tuple, Union
 
 from ..common.constants import EMPTY_PAYLOAD
-from ..common.util import run_async
 from ..proto import backend_msg_pb2 as msg_pb2
 
 DEFAULT_CHUNK_SIZE = 1048576  # 1MB
@@ -31,11 +29,12 @@ logger = logging.getLogger(__name__)
 class ChunkStore(object):
     """ChunkStore class."""
 
-    def __init__(self, loop=None, channel=None):
+    def __init__(self):
         """Initialize an instance."""
-        self._loop = loop
-        self._channel = channel
+        self.reset()
 
+    def reset(self):
+        """Reset the state of chunk store."""
         # for fragment
         self.pidx = 0
         self.cidx = DEFAULT_CHUNK_SIZE
@@ -44,9 +43,13 @@ class ChunkStore(object):
         self.recv_buf = list()
 
         # for both fragment and assemble
-        self.data = b''
+        self.data = EMPTY_PAYLOAD
         self.seqno = -1
         self.eom = False
+
+    def get_data(self) -> Union[bytes, None]:
+        """Return data."""
+        return self.data
 
     def set_data(self, data: bytes) -> None:
         """Set data in chunk store."""
@@ -91,11 +94,6 @@ class ChunkStore(object):
 
         This method pushes message payload into a receive buffer.
         If eom (end of message) is set, bytes in the array are joined.
-        Then, the assembled data will be put into a receive queue.
-
-        The join operation can be exepnsive if the data size is large.
-        We run the join operation in a separate thread in order to unblock
-        asyncio tasks as quickly as possible.
         """
         # out of order delivery
         if self.seqno + 1 != msg.seqno:
@@ -109,28 +107,6 @@ class ChunkStore(object):
         self.eom = msg.eom
 
         if self.eom:
-            # we assemble payloads in the recv buf array
-            # only if eom is set to True.
-            # In this way, we only pay byte concatenation cost once
-            _thread = Thread(target=self._assemble,
-                             args=(msg.end_id, ),
-                             daemon=True)
-            _thread.start()
+            self.data = EMPTY_PAYLOAD.join(self.recv_buf)
 
         return True
-
-    def _assemble(self, end_id: str) -> None:
-        # This code must be executed in a separate thread
-        self.data = EMPTY_PAYLOAD.join(self.recv_buf)
-
-        async def inner():
-            logger.debug(f'fully assembled data size = {len(self.data)}')
-
-            rxq = self._channel.get_rxq(end_id)
-            if rxq is None:
-                logger.debug(f"rxq not found for {end_id}")
-                return
-
-            await rxq.put(self.data)
-
-        _, status = run_async(inner(), self._loop)

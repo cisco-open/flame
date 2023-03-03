@@ -41,3 +41,9 @@ class CommType(Enum):
 
     BROADCAST = 1
     UNICAST = 2
+
+class DeviceType(Enum):
+    """Enum class for device."""
+
+    CPU = 1
+    GPU = 2

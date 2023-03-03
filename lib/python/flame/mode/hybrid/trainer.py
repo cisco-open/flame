@@ -20,6 +20,8 @@ import time
 
 from ...channel_manager import ChannelManager
 from ...mode.distributed.trainer import Trainer as DistTrainer
+from ...common.util import (weights_to_device, weights_to_model_device)
+from ...common.constants import DeviceType
 from ..composer import Composer
 from ..message import MessageType
 from ..tasklet import Loop, Tasklet
@@ -75,7 +77,7 @@ class Trainer(DistTrainer):
         msg = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
-            self.weights = msg[MessageType.WEIGHTS]
+            self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
         if MessageType.EOT in msg:
@@ -135,7 +137,7 @@ class Trainer(DistTrainer):
         delta_weights = self._delta_weights_fn(weights, self.prev_weights)
 
         msg = {
-            MessageType.WEIGHTS: delta_weights,
+            MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: size,
             MessageType.MODEL_VERSION: self._round
         }

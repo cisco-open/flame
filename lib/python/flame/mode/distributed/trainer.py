@@ -24,7 +24,9 @@ from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, delta_weights_pytorch,
                             delta_weights_tensorflow, get_ml_framework_in_use,
-                            mlflow_runname, valid_frameworks)
+                            mlflow_runname, valid_frameworks,
+                            weights_to_device, weights_to_model_device)
+from ...common.constants import DeviceType
 from ...registries import registry_provider
 from ..composer import Composer
 from ..message import MessageType
@@ -43,6 +45,10 @@ class Trainer(Role, metaclass=ABCMeta):
     @abstract_attribute
     def config(self) -> Config:
         """Abstract attribute for config object."""
+    
+    @abstract_attribute
+    def model(self):
+        """Abstract attribute for model object."""
 
     @abstract_attribute
     def dataset_size(self):
@@ -127,6 +133,9 @@ class Trainer(Role, metaclass=ABCMeta):
         # https://github.com/baidu-research/baidu-allreduce/blob/master/collectives.cu
         logger.info("starting ring-allreduce")
         my_id = channel.get_backend_id()
+        
+        # do all communication with weights on cpu
+        self.weights = weights_to_device(self.weights, DeviceType.CPU)
 
         rank = self.ends_of_ring.index(my_id)
         size = len(self.ends_of_ring)
@@ -208,6 +217,8 @@ class Trainer(Role, metaclass=ABCMeta):
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
 
             self._allgather_fn(from_idx, recv_chunk)
+            
+        self.weights = weights_to_model_device(self.weights, self.model)
 
         # digest = hashlib.sha1(str(self.weights).encode('utf-8')).hexdigest()
         # logger.debug(f"after allgather: weight digest - {digest}")
@@ -318,7 +329,7 @@ class Trainer(Role, metaclass=ABCMeta):
                     MessageType.DATASET_SIZE: self.dataset_size,
                     MessageType.ROUND: self._round,
                     MessageType.IS_COMMITTER: self.is_committer,
-                    MessageType.RING_WEIGHTS: self.ring_weights
+                    MessageType.RING_WEIGHTS: weights_to_device(self.ring_weights, DeviceType.CPU)
                 }
                 channel.send(end, ring_weights_msg)
 
@@ -326,7 +337,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 if MessageType.RING_WEIGHTS in msg:
                     # set latest weights sent from committer
                     logger.debug(f"{my_id}: fetching ring weights from {end}")
-                    self.weights = msg[MessageType.RING_WEIGHTS]
+                    self.weights = weights_to_model_device(msg[MessageType.RING_WEIGHTS], self.model)
                     self._update_model()
                 else:
                     # since ring weights are not in the message from committer,
