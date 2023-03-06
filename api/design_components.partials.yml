@@ -31,7 +31,6 @@ DesignInfo:
       type: string
   required:
     - id
-    - name
   example:
     name: diabete predict
     description: Helps in quick diagnosis and prediction of diabetes among patients.
@@ -80,7 +79,6 @@ DesignSchema:
       items:
         $ref: '#/components/schemas/Connector'
   required:
-    - version
     - name
     - roles
     - channels

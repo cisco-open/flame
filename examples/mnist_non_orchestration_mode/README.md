@@ -1,4 +1,8 @@
-## MNIST in non-orchestration mode
+## MNIST in non-orchestration mode (DEPRECATED)
+
+
+**Note: This example is made under Flame's non-orchestration mode, which will be deprecated in the future release.
+This example under the orchestration mode (a fully-automated mode in Flame) is found [here](../mnist).**
 
 Here we go over how to run MNIST example in non-orchestration mode within [fiab](../../docs/03-fiab.md) environment.
 In non-orchestration mode, participants drive participation. Hence, participants should bring their dataset along with compute.

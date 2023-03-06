@@ -25,8 +25,6 @@
 
 package openapi
 
-import "github.com/cisco-open/flame/pkg/openapi/constants"
-
 // DesignSchema - Schema to define the roles and their connections
 type DesignSchema struct {
 	Version string `json:"version"`
@@ -45,10 +43,9 @@ type DesignSchema struct {
 // AssertDesignSchemaRequired checks if the required fields are not zero-ed
 func AssertDesignSchemaRequired(obj DesignSchema) error {
 	elements := map[string]interface{}{
-		constants.ParamVersion: obj.Version,
-		"name":                 obj.Name,
-		"roles":                obj.Roles,
-		"channels":             obj.Channels,
+		"name":     obj.Name,
+		"roles":    obj.Roles,
+		"channels": obj.Channels,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

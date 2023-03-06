@@ -23,6 +23,7 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS, ErrorCode
 
+from ..config import Hyperparameters
 from .abstract import AbstractRegistryClient
 
 logger = logging.getLogger(__name__)
@@ -88,12 +89,12 @@ class MLflowRegistryClient(AbstractRegistryClient):
 
         mlflow.log_metrics(metrics, step=epoch)
 
-    def save_params(self, hyperparameters: Optional[dict[str, float]]) -> None:
+    def save_params(self, hyperparameters: Optional[Hyperparameters]) -> None:
         """Save hyperparameters in a model registry."""
         if not hyperparameters:
             return
 
-        mlflow.log_params(hyperparameters)
+        mlflow.log_params(hyperparameters.dict())
 
     def save_artifact(self, local_path: str) -> None:
         """Save an artifact in a model registry."""
