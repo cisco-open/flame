@@ -16,7 +16,6 @@
 """MedMNIST horizontal FL trainer for Keras."""
 
 import logging
-from random import randrange
 from statistics import mean
 
 import numpy as np
@@ -46,14 +45,11 @@ class KerasMnistTrainer(Trainer):
         self._x_test = None
         self._y_test = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = 128
-        if 'batchSize' in self.config.hyperparameters:
-            self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size or 128
 
     def initialize(self) -> None:
         """Initialize role."""
-        
         model = keras.Sequential([
             keras.Input(shape=self.input_shape),
             layers.Conv2D(33, kernel_size=(3, 3), activation="relu"),
@@ -73,26 +69,23 @@ class KerasMnistTrainer(Trainer):
 
     def load_data(self) -> None:
         """Load data."""
-        
         self._download()
-        
+
         npz_file = np.load("pathmnist.npz")
         x_train = npz_file['train_images'].astype("float32") / 255
         y_train = npz_file['train_labels']
         x_test = npz_file['val_images'].astype("float32") / 255
         y_test = npz_file['val_labels']
-        
-        
+
         # convert class vectors to binary class matrices
         y_train = keras.utils.to_categorical(y_train, self.num_classes)
         y_test = keras.utils.to_categorical(y_test, self.num_classes)
-        
+
         self._x_train = x_train
         self._y_train = y_train
         self._x_test = x_test
         self._y_test = y_test
-    
-    
+
     def _download(self) -> None:
         import requests
         r = requests.get(self.config.dataset, allow_redirects=True)
@@ -123,7 +116,7 @@ class KerasMnistTrainer(Trainer):
         # update metrics after each evaluation so that the metrics can be
         # logged in a model registry.
         self.update_metrics({'test-loss': score[0], 'test-accuracy': score[1]})
-        
+
 
 if __name__ == "__main__":
     import argparse

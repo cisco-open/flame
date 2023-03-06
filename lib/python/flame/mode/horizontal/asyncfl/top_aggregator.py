@@ -20,9 +20,9 @@ import time
 from copy import deepcopy
 
 from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
-from ....optimizer.train_result import TrainResult
-from ....common.util import (weights_to_device, weights_to_model_device)
 from ....common.constants import DeviceType
+from ....common.util import weights_to_device, weights_to_model_device
+from ....optimizer.train_result import TrainResult
 from ...composer import Composer
 from ...message import MessageType
 from ...tasklet import Loop, Tasklet
@@ -41,9 +41,7 @@ class TopAggregator(SyncTopAgg):
 
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
-        self._agg_goal = 0
-        if 'aggGoal' in self.config.hyperparameters:
-            self._agg_goal = self.config.hyperparameters['aggGoal']
+        self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
 
     def _reset_agg_goal_variables(self):
         logger.debug("reset agg goal variables")
@@ -76,7 +74,8 @@ class TopAggregator(SyncTopAgg):
         logger.debug(f"received data from {end}")
 
         if MessageType.WEIGHTS in msg:
-            weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+            weights = weights_to_model_device(msg[MessageType.WEIGHTS],
+                                              self.model)
 
         if MessageType.DATASET_SIZE in msg:
             count = msg[MessageType.DATASET_SIZE]
@@ -141,9 +140,12 @@ class TopAggregator(SyncTopAgg):
             # we use _round to indicate a model version
             channel.send(
                 end, {
-                    MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
-                    MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round
+                    MessageType.WEIGHTS:
+                    weights_to_device(self.weights, DeviceType.CPU),
+                    MessageType.ROUND:
+                    self._round,
+                    MessageType.MODEL_VERSION:
+                    self._round
                 })
 
     def compose(self) -> None:

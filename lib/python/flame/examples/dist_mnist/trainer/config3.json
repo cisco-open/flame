@@ -25,8 +25,10 @@
                 "trainer",
                 "trainer"
             ],
-	    "funcTags": {
-                "trainer": ["ring_allreduce"]
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
             }
         }
     ],
@@ -40,20 +42,20 @@
         "rounds": 10
     },
     "baseModel": {
-	    "name": "",
-	    "version": 1
+        "name": "",
+        "version": 1
     },
-    "job" : {
-	    "id": "622a358619ab59012eabeefb",
-	    "name": "dist_mnist"
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "dist_mnist"
     },
     "registry": {
 	"sort": "dummy",
 	"uri": ""
     },
     "selector": {
-	    "sort": "default",
-	    "kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "optimizer": {
         "sort": "fedavg",

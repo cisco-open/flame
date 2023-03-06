@@ -25,6 +25,7 @@ import (
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -40,9 +41,9 @@ type Params struct {
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":   params.User,
-		"jobId":  params.JobId,
-		"taskId": params.TaskId,
+		constants.ParamUser:   params.User,
+		constants.ParamJobID:  params.JobId,
+		constants.ParamTaskID: params.TaskId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetTaskInfoEndpoint, uriMap)
 
@@ -68,9 +69,9 @@ func Get(params Params) error {
 func GetMany(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":  params.User,
-		"jobId": params.JobId,
-		"limit": params.Limit,
+		constants.ParamUser:  params.User,
+		constants.ParamJobID: params.JobId,
+		constants.ParamLimit: params.Limit,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetTasksInfoEndpoint, uriMap)
 

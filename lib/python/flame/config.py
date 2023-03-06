@@ -16,423 +16,287 @@
 """Config parser."""
 
 import json
-import sys
+import typing as t
 from enum import Enum
 
-CONF_KEY_TASK = 'task'
-CONF_KEY_TASK_ID = 'taskid'
-CONF_KEY_BACKEND = 'backend'
-CONF_KEY_CHANNEL = 'channels'
-CONF_KEY_DATASET = 'dataset'
-CONF_KEY_HYPERPARAMS = 'hyperparameters'
-CONF_KEY_MAX_RUN_TIME = 'maxRunTime'
-CONF_KEY_REALM = 'realm'
-CONF_KEY_ROLE = 'role'
-
-CONF_KEY_CHANNEL_NAME = 'name'
-CONF_KEY_CHANNEL_PAIR = 'pair'
-CONF_KEY_CHANNEL_IS_BIDIR = 'isBidirectional'
-CONF_KEY_CHANNEL_GROUPBY = 'groupBy'
-CONF_KEY_CHANNEL_GROUPBY_TYPE = 'type'
-CONF_KEY_CHANNEL_GROUPBY_VALUE = 'value'
-CONF_KEY_CHANNEL_FUNC_TAGS = 'funcTags'
-
-CONF_KEY_BASE_MODEL = 'baseModel'
-CONF_KEY_BASE_MODEL_NAME = 'name'
-CONF_KEY_BASE_MODEL_VERSION = 'version'
-
-CONF_KEY_BROKERS = 'brokers'
-CONF_KEY_BROKERS_HOST = 'host'
-CONF_KEY_BROKERS_SORT = 'sort'
-
-CONF_KEY_JOB = 'job'
-CONF_KEY_JOB_ID = 'id'
-CONF_KEY_JOB_NAME = 'name'
-
-CONF_KEY_REGISTRY = 'registry'
-CONF_KEY_REGISTRY_SORT = 'sort'
-CONF_KEY_REGISTRY_URI = 'uri'
-
-CONF_KEY_OPTIMIZER = 'optimizer'
-CONF_KEY_OPTIMIZER_SORT = 'sort'
-CONF_KEY_OPTIMIZER_KWARGS = 'kwargs'
-
-CONF_KEY_SELECTOR = 'selector'
-CONF_KEY_SELECTOR_SORT = 'sort'
-CONF_KEY_SELECTOR_KWARGS = 'kwargs'
-
-GROUPBY_DEFAULT_GROUP = 'default'
-
-DEFAULT_HYPERARAMETERS_DICT = {'rounds': 1, 'epochs': 1, 'batchSize': 16}
-
-CONF_KEY_CHANNELCONFIGS = 'channelConfigs'
+from pydantic import BaseModel as pydBaseModel
+from pydantic import Field
 
 
-class BackendType(Enum):
+class FlameSchema(pydBaseModel):
+    pass
+
+
+GROUPBY_DEFAULT_GROUP = "default"
+REALM_SEPARATOR = "/"
+DEFAULT_HYPERARAMETERS_DICT = {"rounds": 1, "epochs": 1, "batchSize": 16}
+
+
+class BackendType(str, Enum):
     """Define backend types."""
 
-    LOCAL = 1
-    P2P = 2
-    MQTT = 3
+    LOCAL = "local"
+    P2P = "p2p"
+    MQTT = "mqtt"
 
 
-class RegistryType(Enum):
+class RegistryType(str, Enum):
     """Define model registry types."""
 
-    DUMMY = 1
-    MLFLOW = 2
+    DUMMY = "dummy"
+    MLFLOW = "mlflow"
 
 
-class OptimizerType(Enum):
+class OptimizerType(str, Enum):
     """Define optimizer types."""
 
-    FEDAVG = 1  # default
-    FEDADAGRAD = 2  # FedAdaGrad
-    FEDADAM = 3  # FedAdam
-    FEDYOGI = 4  # FedYogi
+    FEDAVG = "fedavg"
+    FEDADAGRAD = "fedadagrad"
+    FEDADAM = "fedadam"
+    FEDYOGI = "fedyogi"
     # FedBuff from https://arxiv.org/pdf/1903.03934.pdf and
     # https://arxiv.org/pdf/2111.04877.pdf
-    FEDBUFF = 5
-    FEDPROX = 6 # FedProx
+    FEDBUFF = "fedbuff"
+    FEDPROX = "fedprox"  # FedProx
+
+    DEFAULT = FEDAVG
 
 
-class SelectorType(Enum):
+class SelectorType(str, Enum):
     """Define selector types."""
 
-    DEFAULT = 1  # default
-    RANDOM = 2  # random
-    FEDBUFF = 3  # fedbuff
-
-
-REALM_SEPARATOR = '/'
-
-
-class Config(object):
-    """Config class."""
-
-    class Channel(object):
-        """Channel class."""
-
-        class GroupBy(object):
-            """GroupBy class."""
-
-            def __init__(self, json_data=None):
-                """Initialize GroupBy instance."""
-                self.gtype = ''
-                self.value = []
-
-                if json_data is None:
-                    return
-
-                self.gtype = json_data[CONF_KEY_CHANNEL_GROUPBY_TYPE]
-                self.value = json_data[CONF_KEY_CHANNEL_GROUPBY_VALUE]
-
-            def __str__(self):
-                """Return GroupBy info as string."""
-                return (
-                    "\t\t--- groupby ---\n" +
-                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_TYPE}: {self.gtype}\n" +
-                    f"\t\t\t{CONF_KEY_CHANNEL_GROUPBY_VALUE}: {self.value}\n")
-
-            def groupable_value(self, realm=''):
-                """Return groupby value."""
-                if self.value is None:
-                    return GROUPBY_DEFAULT_GROUP
-
-                for entry in self.value:
-                    # check if an entry is a prefix of realm in a '/'-separated
-                    # fashion; if so, then return the matching entry
-                    if realm.startswith(entry) and (len(realm) == len(entry)
-                                                    or realm[len(entry)]
-                                                    == REALM_SEPARATOR):
-                        return entry
-
-                return GROUPBY_DEFAULT_GROUP
-
-        def __init__(self, json_data):
-            """Initialize Channel instance."""
-            self.name = json_data[CONF_KEY_CHANNEL_NAME]
-            self.pair = json_data[CONF_KEY_CHANNEL_PAIR]
-            if len(self.pair) != 2:
-                sys.exit(f'A pair must have two ends, but got {self.pair}')
-
-            self.is_bidrectional = True
-            if CONF_KEY_CHANNEL_IS_BIDIR in json_data:
-                self.is_bidrectional = json_data[CONF_KEY_CHANNEL_IS_BIDIR]
-
-            if CONF_KEY_CHANNEL_GROUPBY in json_data:
-                self.groupby = Config.Channel.GroupBy(
-                    json_data[CONF_KEY_CHANNEL_GROUPBY])
-            else:
-                self.groupby = Config.Channel.GroupBy()
-
-            self.func_tags = dict()
-            if CONF_KEY_CHANNEL_FUNC_TAGS in json_data:
-                for k, v in json_data[CONF_KEY_CHANNEL_FUNC_TAGS].items():
-                    # k: role, v: tag list
-                    self.func_tags[k] = v
-
-        def __str__(self):
-            """Return channel info as string."""
-            return (
-                "\t--- channel ---\n" +
-                f"\t\t{CONF_KEY_CHANNEL_NAME}: {self.name}\n" +
-                f"\t\t{CONF_KEY_CHANNEL_PAIR}: {self.pair}\n" +
-                f"\t\t{CONF_KEY_CHANNEL_IS_BIDIR}: {self.is_bidrectional}\n" +
-                str(self.groupby))
-
-    class BaseModel(object):
-        """Base model class."""
-
-        def __init__(self, json_data=None):
-            """Initialize BaseModel instance."""
-            self.name = json_data[CONF_KEY_BASE_MODEL_NAME]
-            self.version = json_data[CONF_KEY_BASE_MODEL_VERSION]
-
-        def __str__(self):
-            """Return base model's detail as string."""
-            return ("\t--- base model ---\n" +
-                    f"\t\t{CONF_KEY_BASE_MODEL_NAME}: {self.name}\n" +
-                    f"\t\t{CONF_KEY_BASE_MODEL_VERSION}: {self.version}\n")
-
-    class Brokers(object):
-        """Brokers class."""
-
-        def __init__(self, json_data=None):
-            """Initialize BaseModel instance."""
-            self.sort_to_host = dict()
-
-            for broker in json_data:
-                key = broker[CONF_KEY_BROKERS_SORT].upper()
-                try:
-                    sort = BackendType[key]
-                except KeyError:
-                    valid_types = [backend.name for backend in BackendType]
-                    sys.exit(f"invalid sort type: {key}\n" +
-                             f"broker's sort must be one of {valid_types}.")
-
-                host = broker[CONF_KEY_BROKERS_HOST]
-                self.sort_to_host[sort] = host
-
-        def __str__(self):
-            """Return brokers' details as string."""
-            info = ""
-            for sort, host in self.sort_to_host.items():
-                info += f"\t\t{sort}: {host}\n"
-            return ("\t--- brokers ---\n" + info)
-
-    class Job(object):
-        """Job class."""
-
-        def __init__(self, json_data=None):
-            """Initialize Job instance."""
-            self.job_id = json_data[CONF_KEY_JOB_ID]
-            self.name = json_data[CONF_KEY_JOB_NAME]
-
-        def __str__(self):
-            """Return job's detail in string format."""
-            return ("\t--- job ---\n" +
-                    f"\t\t{CONF_KEY_JOB_ID}: {self.job_id}\n" +
-                    f"\t\t{CONF_KEY_JOB_NAME}: {self.name}\n")
-
-    class Registry(object):
-        """Registry class."""
-
-        def __init__(self, json_data=None):
-            """Initialize Registry instance."""
-            sort = json_data[CONF_KEY_REGISTRY_SORT].upper()
-            try:
-                self.sort = RegistryType[sort]
-            except KeyError:
-                valid_types = [registry.name for registry in RegistryType]
-                sys.exit(f"invailid registry type: {sort}" +
-                         f"valid registry type(s) are {valid_types}")
-
-            self.uri = json_data[CONF_KEY_REGISTRY_URI]
-
-        def __str__(self):
-            """Return model registry's detail in string format."""
-            return ("\t--- registry ---\n" +
-                    f"\t\t{CONF_KEY_REGISTRY_SORT}: {self.sort}\n" +
-                    f"\t\t{CONF_KEY_REGISTRY_URI}: {self.uri}\n")
-
-    class Selector(object):
-        """Selector class."""
-
-        def __init__(self, json_data=None) -> None:
-            """Initialize Selector instance."""
-            self.sort = SelectorType.DEFAULT
-            self.kwargs = dict()
-
-            if CONF_KEY_SELECTOR not in json_data:
-                return
-
-            json_data = json_data[CONF_KEY_SELECTOR]
-
-            if CONF_KEY_SELECTOR_SORT not in json_data:
-                return
-
-            sort = json_data[CONF_KEY_SELECTOR_SORT].upper()
-            try:
-                self.sort = SelectorType[sort]
-            except KeyError:
-                valid_types = [selector.name for selector in SelectorType]
-                sys.exit(f"invailid selector type: {sort}" +
-                         f"valid selector type(s) are {valid_types}")
-
-            if CONF_KEY_SELECTOR_KWARGS in json_data:
-                self.kwargs = json_data[CONF_KEY_SELECTOR_KWARGS]
-
-            if not self.kwargs:
-                self.kwargs = dict()
-
-        def __str__(self) -> str:
-            """Return model selector's detail in string format."""
-            return ("\t--- selector ---\n" +
-                    f"\t\t{CONF_KEY_SELECTOR_SORT}: {self.sort}\n" +
-                    f"\t\t{CONF_KEY_SELECTOR_KWARGS}: {self.kwargs}\n")
-
-    class Optimizer(object):
-        """Optimizer Class."""
-
-        def __init__(self, json_data=None) -> None:
-            """Initialize Optimizer instance."""
-            self.sort = OptimizerType.FEDAVG
-            self.kwargs = dict()
-
-            if CONF_KEY_OPTIMIZER not in json_data:
-                return
-
-            json_data = json_data[CONF_KEY_OPTIMIZER]
-
-            if CONF_KEY_OPTIMIZER_SORT not in json_data:
-                return
-
-            sort = json_data[CONF_KEY_OPTIMIZER_SORT].upper()
-            try:
-                self.sort = OptimizerType[sort]
-            except KeyError:
-                valid_types = [optimizer.name for optimizer in OptimizerType]
-                sys.exit(f"invailid optimizer type: {sort}" +
-                         f"valid optimizer type(s) are {valid_types}")
-
-            if CONF_KEY_OPTIMIZER_KWARGS in json_data:
-                self.kwargs = json_data[CONF_KEY_OPTIMIZER_KWARGS]
-
-        def __str__(self) -> str:
-            """Return FL aggregation optimizer's detail in string format."""
-            return ("\t--- optimizer ---\n" +
-                    f"\t\t{CONF_KEY_OPTIMIZER_SORT}: {self.sort}\n" +
-                    f"\t\t{CONF_KEY_OPTIMIZER_KWARGS}: {self.kwargs}\n")
-
-    class ChannelConfigs(object):
-        """ChannelConfigs class."""
-
-        def __init__(self, json_data=None) -> None:
-            """Initialize ChannelConfigs instance."""
-            self.backends = dict()
-            self.channel_brokers = dict()
-
-            if CONF_KEY_CHANNELCONFIGS not in json_data:
-                return
-            json_data = json_data[CONF_KEY_CHANNELCONFIGS]
-
-            for k, v in json_data.items():
-                backend_key = v['backend'].upper()
-                try:
-                    self.backends[k] = BackendType[backend_key]
-                except:
-                    valid_types = [backend.name for backend in BackendType]
-                    sys.exit(f"invailid backend type: {backend_key}\n" +
-                             f"valid backend type(s) are {valid_types}")
-                self.channel_brokers[k] = Config.Brokers(v['brokers'])
-
-    def __init__(self, config_file: str):
-        """Initialize Config instance."""
-        with open(config_file) as f:
-            json_data = json.load(f)
-            f.close()
-
-        self.role = json_data[CONF_KEY_ROLE]
-        self.realm = json_data[CONF_KEY_REALM]
-
-        self.task = 'local'
-        if CONF_KEY_TASK in json_data:
-            self.task = json_data[CONF_KEY_TASK]
-
-        self.task_id = json_data[CONF_KEY_TASK_ID]
-
-        self._init_backend(json_data)
-
-        self._init_channels(json_data)
-
-        self._init_hyperparameters(json_data)
-
-        self.brokers = Config.Brokers(json_data[CONF_KEY_BROKERS])
-
-        self.job = Config.Job(json_data[CONF_KEY_JOB])
-
-        self.registry = Config.Registry(json_data[CONF_KEY_REGISTRY])
-
-        self.selector = Config.Selector(json_data)
-
-        self.optimizer = Config.Optimizer(json_data)
-
-        self.channelConfigs = None
-        if CONF_KEY_CHANNELCONFIGS in json_data:
-            self.channelConfigs = Config.ChannelConfigs(json_data)
-
-        self.dataset = ''
-        if CONF_KEY_DATASET in json_data:
-            self.dataset = json_data[CONF_KEY_DATASET]
-
-        self.max_run_time = 300
-        if CONF_KEY_MAX_RUN_TIME in json_data:
-            self.max_run_time = json_data[CONF_KEY_MAX_RUN_TIME]
-
-        self.base_model = None
-        if CONF_KEY_BASE_MODEL in json_data:
-            self.base_model = Config.BaseModel(json_data[CONF_KEY_BASE_MODEL])
-
-    def _init_backend(self, json_data):
-        backend_key = json_data[CONF_KEY_BACKEND].upper()
-        try:
-            self.backend = BackendType[backend_key]
-        except KeyError:
-            valid_types = [backend.name for backend in BackendType]
-            sys.exit(f"invailid backend type: {backend_key}\n" +
-                     f"valid backend type(s) are {valid_types}")
-
-    def _init_channels(self, json_data):
-        self.func_tag_map = dict()
-        self.channels = dict()
-
-        for channel_info in json_data[CONF_KEY_CHANNEL]:
-            channel_config = Config.Channel(channel_info)
-            self.channels[channel_config.name] = channel_config
-
-            # build a map from function tag to channel name
-            for tag in channel_config.func_tags[self.role]:
-                self.func_tag_map[tag] = channel_config.name
-
-    def _init_hyperparameters(self, json_data):
-        self.hyperparameters = None
-        if CONF_KEY_HYPERPARAMS in json_data:
-            self.hyperparameters = json_data[CONF_KEY_HYPERPARAMS]
-        for k, v in DEFAULT_HYPERARAMETERS_DICT.items():
-            if k in self.hyperparameters:
-                continue
-            self.hyperparameters[k] = v
-
-    def __str__(self):
-        """Return config info as string."""
-        info = ("--- config ---\n" +
-                f"\t{CONF_KEY_BACKEND}: {self.backend}\n" +
-                f"\t{CONF_KEY_TASK}: {self.task}\n" +
-                f"\t{CONF_KEY_ROLE}: {self.role}\n" +
-                f"\t{CONF_KEY_REALM}: {self.realm}\n" + str(self.base_model) +
-                str(self.brokers) + str(self.job) + str(self.registry))
-        for _, channel in self.channels.items():
-            info += str(channel)
-
-        return info
+    DEFAULT = "default"
+    RANDOM = "random"
+    FEDBUFF = "fedbuff"
+
+
+class Job(FlameSchema):
+    job_id: str = Field(alias="id")
+    name: str
+
+
+class Registry(FlameSchema):
+    sort: RegistryType
+    uri: str
+
+
+class Selector(FlameSchema):
+    sort: SelectorType = Field(default=SelectorType.DEFAULT)
+    kwargs: dict = Field(default={})
+
+
+class Optimizer(FlameSchema):
+    sort: OptimizerType = Field(default=OptimizerType.DEFAULT)
+    kwargs: dict = Field(default={})
+
+
+class BaseModel(FlameSchema):
+    name: str = Field(default="")
+    version: int = Field(default=0)
+
+
+class Hyperparameters(FlameSchema):
+    batch_size: t.Optional[int] = Field(alias="batchSize")
+    learning_rate: t.Optional[float] = Field(alias="learningRate")
+    rounds: int
+    epochs: int
+    aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
+
+
+class Groups(FlameSchema):
+    param_channel: str
+    global_channel: str
+
+
+class FuncTags(FlameSchema):
+    aggregator: list[str]
+    trainer: list[str]
+
+
+class GroupBy(FlameSchema):
+    type: t.Optional[str] = Field(default="")
+    value: t.Optional[list[str]] = Field(default=[])
+
+    def groupable_value(self, realm=""):
+        """Return groupby value."""
+        if self.value is None:
+            return GROUPBY_DEFAULT_GROUP
+
+        for entry in self.value:
+            # check if an entry is a prefix of realm in a '/'-separated
+            # fashion; if so, then return the matching entry
+            if realm.startswith(entry) and (len(realm) == len(entry)
+                                            or realm[len(entry)]
+                                            == REALM_SEPARATOR):
+                return entry
+
+        return GROUPBY_DEFAULT_GROUP
+
+
+class Broker(FlameSchema):
+    sort_to_host: dict
+
+
+class Channel(FlameSchema):
+    name: str
+    pair: list[str] = Field(min_length=2)
+    is_bidirectional: t.Optional[bool] = Field(default=True)
+    group_by: t.Optional[GroupBy] = Field(default=GroupBy())
+    func_tags: dict = Field(default={}, alias="func_tags")
+    description: t.Optional[str]
+
+
+class ChannelConfigs(FlameSchema):
+    backends: dict = Field(default={})
+    channel_brokers: dict = Field(default={})
+
+
+class Config(FlameSchema):
+
+    def __init__(self, config_path: str):
+        raw_config = read_config(config_path)
+        transformed_config = transform_config(raw_config)
+
+        super().__init__(**transformed_config)
+
+    role: str
+    realm: str
+    task: t.Optional[str] = Field(default="local")
+    task_id: str
+    backend: BackendType
+    channels: dict
+    hyperparameters: Hyperparameters
+    brokers: Broker
+    job: Job
+    registry: Registry
+    selector: Selector
+    optimizer: t.Optional[Optimizer] = Field(default=Optimizer())
+    channel_configs: t.Optional[ChannelConfigs]
+    dataset: str
+    max_run_time: int
+    base_model: BaseModel
+    groups: t.Optional[Groups]
+    dependencies: list[str]
+    func_tag_map: t.Optional[dict]
+
+
+def read_config(filename: str) -> dict:
+    with open(filename) as f:
+        return json.loads(f.read())
+
+
+def transform_config(raw_config: dict) -> dict:
+    config_data = {
+        "role": raw_config["role"],
+        "realm": raw_config["realm"],
+        "task_id": raw_config["taskid"],
+        "backend": raw_config["backend"],
+    }
+
+    if raw_config.get("task", None):
+        config_data = config_data | {
+            "task": raw_config["task"],
+        }
+
+    channels, func_tag_map = transform_channels(config_data["role"],
+                                                raw_config["channels"])
+    config_data = config_data | {
+        "channels": channels,
+        "func_tag_map": func_tag_map
+    }
+
+    hyperparameters = transform_hyperparameters(raw_config["hyperparameters"])
+    config_data = config_data | {"hyperparameters": hyperparameters}
+
+    sort_to_host = transform_brokers(raw_config["brokers"])
+    config_data = config_data | {"brokers": sort_to_host}
+
+    config_data = config_data | {
+        "job": raw_config["job"],
+        "registry": raw_config["registry"],
+        "selector": raw_config["selector"],
+    }
+
+    if raw_config.get("optimizer", None):
+        config_data = config_data | {"optimizer": raw_config.get("optimizer")}
+
+    backends, channel_brokers = transform_channel_configs(
+        raw_config.get("channelConfigs", {}))
+    config_data = config_data | {
+        "channel_configs": {
+            "backends": backends,
+            "channel_brokers": channel_brokers
+        }
+    }
+
+    config_data = config_data | {
+        "dataset": raw_config.get("dataset", ""),
+        "max_run_time": raw_config.get("maxRunTime", 300),
+        "base_model": raw_config.get("baseModel", None),
+        "dependencies": raw_config.get("dependencies", None),
+    }
+
+    return config_data
+
+
+def transform_channel(raw_channel_config: dict):
+    name = raw_channel_config["name"]
+    pair = raw_channel_config["pair"]
+    is_bidirectional = raw_channel_config.get("isBidirectional", True)
+    group_by = {
+        "type": "",
+        "value": []
+    } | raw_channel_config.get("groupBy", {})
+    func_tags = raw_channel_config.get("funcTags", {})
+    description = raw_channel_config.get("description", "")
+
+    return {
+        "name": name,
+        "pair": pair,
+        "is_bidirectional": is_bidirectional,
+        "group_by": group_by,
+        "func_tags": func_tags,
+        "description": description,
+    }
+
+
+def transform_channels(role, raw_channels_config: dict):
+    channels = {}
+    func_tag_map = {}
+    for raw_channel_config in raw_channels_config:
+        channel = transform_channel(raw_channel_config)
+        channels[channel["name"]] = Channel(**channel)
+
+        for tag in channel["func_tags"][role]:
+            func_tag_map[tag] = channel["name"]
+
+    return channels, func_tag_map
+
+
+def transform_hyperparameters(raw_hyperparameters_config: dict):
+    hyperparameters = DEFAULT_HYPERARAMETERS_DICT
+    if raw_hyperparameters_config:
+        hyperparameters = hyperparameters | raw_hyperparameters_config
+
+    return hyperparameters
+
+
+def transform_brokers(raw_brokers_config: dict):
+    sort_to_host = {}
+    for raw_broker in raw_brokers_config:
+        sort = raw_broker["sort"]
+        host = raw_broker["host"]
+        sort_to_host[sort] = host
+
+    return Broker(sort_to_host=sort_to_host)
+
+
+def transform_channel_configs(raw_channel_configs_config: dict):
+    backends = {}
+    channel_brokers = {}
+
+    for k, v in raw_channel_configs_config.items():
+        backends[k] = v["backend"]
+        channel_brokers[k] = transform_brokers(v["brokers"])
+
+    return backends, channel_brokers

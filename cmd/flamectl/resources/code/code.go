@@ -27,6 +27,7 @@ import (
 	"strings"
 
 	"github.com/cisco-open/flame/cmd/flamectl/resources"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -42,8 +43,8 @@ type Params struct {
 func Create(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignCodeEndPoint, uriMap)
 
@@ -87,9 +88,9 @@ func Create(params Params) error {
 func Get(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
-		"version":  params.CodeVer,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+		constants.ParamVersion:  params.CodeVer,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
@@ -125,9 +126,9 @@ func mustOpen(f string) *os.File {
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		"user":     params.User,
-		"designId": params.DesignId,
-		"version":  params.CodeVer,
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+		constants.ParamVersion:  params.CodeVer,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 

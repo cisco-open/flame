@@ -49,9 +49,7 @@ class MiddleAggregator(SyncMidAgg):
 
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
-        self._agg_goal = 0
-        if 'aggGoal' in self.config.hyperparameters:
-            self._agg_goal = self.config.hyperparameters['aggGoal']
+        self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:

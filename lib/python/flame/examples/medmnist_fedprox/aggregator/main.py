@@ -13,13 +13,12 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-
 """MedMNIST FedProx aggregator for PyTorch."""
 
 import logging
 
 from flame.config import Config
-from flame.dataset import Dataset # Not sure why we need this.
+from flame.dataset import Dataset  # Not sure why we need this.
 from flame.mode.horizontal.top_aggregator import TopAggregator
 import torch
 
@@ -31,16 +30,18 @@ import torchvision
 logger = logging.getLogger(__name__)
 
 # keep track of losses/accuracies of global model
-fed_acc  = []
+fed_acc = []
 fed_loss = []
 
+
 class PathMNISTDataset(torch.utils.data.Dataset):
+
     def __init__(self, transform=None, as_rgb=False):
         npz_file = np.load("pathmnist.npz")
-        
+
         self.transform = transform
         self.as_rgb = as_rgb
-        
+
         self.imgs = npz_file["val_images"]
         self.labels = npz_file["val_labels"]
 
@@ -59,6 +60,7 @@ class PathMNISTDataset(torch.utils.data.Dataset):
 
         return img, target
 
+
 class CNN(torch.nn.Module):
     """CNN Class"""
 
@@ -68,14 +70,11 @@ class CNN(torch.nn.Module):
         self.num_classes = num_classes
         self.features = torch.nn.Sequential(
             torch.nn.Conv2d(3, 6, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(6),
-            torch.nn.ReLU(),
+            torch.nn.BatchNorm2d(6), torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=2, stride=2),
             torch.nn.Conv2d(6, 16, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(16),
-            torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2, stride=2)
-        )
+            torch.nn.BatchNorm2d(16), torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2))
         self.fc = torch.nn.Linear(16 * 7 * 7, num_classes)
 
     def forward(self, x):
@@ -84,16 +83,17 @@ class CNN(torch.nn.Module):
         x = self.fc(x)
         return x
 
+
 class PyTorchMedMNistAggregator(TopAggregator):
     """PyTorch MedMNist Aggregator"""
 
     def __init__(self, config: Config) -> None:
         self.config = config
         self.model = None
-        self.dataset: Dataset = None # Not sure why we need this.
-        
-        self.batch_size = self.config.hyperparameters['batchSize']
-        
+        self.dataset: Dataset = None  # Not sure why we need this.
+
+        self.batch_size = self.config.hyperparameters.batch_size
+
         self.device = torch.device("cpu")
 
     def initialize(self):
@@ -106,10 +106,11 @@ class PyTorchMedMNistAggregator(TopAggregator):
         logger.info('in load_data')
         # FIX this. easy to break right now
         self._download()
-        
+
         data_transform = torchvision.transforms.Compose([
             torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
+            torchvision.transforms.Normalize((0.485, 0.456, 0.406),
+                                             (0.229, 0.224, 0.225))
         ])
 
         dataset = PathMNISTDataset(transform=data_transform)

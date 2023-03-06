@@ -102,10 +102,10 @@ class PyTorchMedMNistTrainer(Trainer):
         self.train_loader = None
         self.val_loader = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size
         self._round = 1
-        self._rounds = self.config.hyperparameters['rounds']
+        self._rounds = self.config.hyperparameters.rounds
 
     def initialize(self) -> None:
         """Initialize role."""

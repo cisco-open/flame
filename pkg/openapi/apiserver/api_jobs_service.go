@@ -34,6 +34,7 @@ import (
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 	"github.com/cisco-open/flame/pkg/util"
 )
@@ -56,7 +57,7 @@ func (s *JobsApiService) CreateJob(ctx context.Context, user string, jobSpec ope
 
 	// create controller request
 	uriMap := map[string]string{
-		"user": user,
+		constants.ParamUser: user,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.CreateJobEndpoint, uriMap)
 
@@ -85,8 +86,8 @@ func (s *JobsApiService) DeleteJob(ctx context.Context, user string, jobId strin
 
 	// create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteJobEndPoint, uriMap)
 
@@ -106,8 +107,8 @@ func (s *JobsApiService) GetJob(ctx context.Context, user string, jobId string) 
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobEndPoint, uriMap)
 
@@ -130,8 +131,8 @@ func (s *JobsApiService) GetJobStatus(ctx context.Context, user string, jobId st
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobStatusEndPoint, uriMap)
 
@@ -154,8 +155,8 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 
 	//create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"limit": strconv.Itoa(int(limit)),
+		constants.ParamUser:  user,
+		constants.ParamLimit: strconv.Itoa(int(limit)),
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsEndPoint, uriMap)
 
@@ -179,9 +180,9 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId strin
 	}
 
 	uriMap := map[string]string{
-		"jobId":  jobId,
-		"taskId": taskId,
-		"key":    key,
+		constants.ParamJobID:  jobId,
+		constants.ParamTaskID: taskId,
+		constants.ParamKey:    key,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskEndpoint, uriMap)
 
@@ -200,9 +201,9 @@ func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId strin
 // GetTaskInfo - Get the info of a task in a job
 func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId string, taskId string) (openapi.ImplResponse, error) {
 	uriMap := map[string]string{
-		"user":   user,
-		"jobId":  jobId,
-		"taskId": taskId,
+		constants.ParamUser:   user,
+		constants.ParamJobID:  jobId,
+		constants.ParamTaskID: taskId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTaskInfoEndpoint, uriMap)
 
@@ -221,9 +222,9 @@ func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId str
 // GetTasksInfo - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
-		"limit": strconv.Itoa(int(limit)),
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
+		constants.ParamLimit: strconv.Itoa(int(limit)),
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
@@ -246,8 +247,8 @@ func (s *JobsApiService) UpdateJob(ctx context.Context, user string, jobId strin
 
 	// create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobEndPoint, uriMap)
 
@@ -268,8 +269,8 @@ func (s *JobsApiService) UpdateJobStatus(ctx context.Context, user string, jobId
 
 	// create controller request
 	uriMap := map[string]string{
-		"user":  user,
-		"jobId": jobId,
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateJobStatusEndPoint, uriMap)
 
@@ -290,8 +291,8 @@ func (s *JobsApiService) UpdateTaskStatus(ctx context.Context, jobId string, tas
 
 	// create controller request
 	uriMap := map[string]string{
-		"jobId":  jobId,
-		"taskId": taskId,
+		constants.ParamJobID:  jobId,
+		constants.ParamTaskID: taskId,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.UpdateTaskStatusEndPoint, uriMap)
 

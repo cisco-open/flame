@@ -39,3 +39,46 @@ type DesignSchema struct {
 
 	Connectors []Connector `json:"connectors,omitempty"`
 }
+
+// AssertDesignSchemaRequired checks if the required fields are not zero-ed
+func AssertDesignSchemaRequired(obj DesignSchema) error {
+	elements := map[string]interface{}{
+		"name":     obj.Name,
+		"roles":    obj.Roles,
+		"channels": obj.Channels,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	for _, el := range obj.Roles {
+		if err := AssertRoleRequired(el); err != nil {
+			return err
+		}
+	}
+	for _, el := range obj.Channels {
+		if err := AssertChannelRequired(el); err != nil {
+			return err
+		}
+	}
+	for _, el := range obj.Connectors {
+		if err := AssertConnectorRequired(el); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AssertRecurseDesignSchemaRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of DesignSchema (e.g. [][]DesignSchema), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDesignSchemaRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aDesignSchema, ok := obj.(DesignSchema)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertDesignSchemaRequired(aDesignSchema)
+	})
+}

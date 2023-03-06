@@ -57,8 +57,8 @@ class PyTorchAdultAggregator(TopAggregator):
 
         self.device = None
 
-        self.epochs = self.config.hyperparameters['epochs']
-        self.batch_size = self.config.hyperparameters['batchSize']
+        self.epochs = self.config.hyperparameters.epochs
+        self.batch_size = self.config.hyperparameters.batch_size
 
     def initialize(self) -> None:
         """Initialize role."""

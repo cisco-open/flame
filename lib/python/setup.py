@@ -19,7 +19,7 @@ from setuptools import find_packages, setup
 
 setup(
     name='flame',
-    version='0.0.17',
+    version='0.1.0',
     author='Flame Maintainers',
     author_email='flame-github-owners@cisco.com',
     include_package_data=True,
@@ -40,5 +40,17 @@ setup(
         'paho-mqtt',
         'protobuf==3.19.5',
         'grpcio==1.51.1',
+        'pydantic',
+        'grpcio==1.51.1',
     ],
+    extras_require={
+        'dev': [
+            'pre-commit',
+            'black',
+            'flake8',
+            'bandit',
+            'mypy',
+            'isort',
+        ],
+    },
 )

@@ -37,3 +37,35 @@ type Design struct {
 
 	Schemas []DesignSchema `json:"schemas"`
 }
+
+// AssertDesignRequired checks if the required fields are not zero-ed
+func AssertDesignRequired(obj Design) error {
+	elements := map[string]interface{}{
+		"id":      obj.Id,
+		"schemas": obj.Schemas,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	for _, el := range obj.Schemas {
+		if err := AssertDesignSchemaRequired(el); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// AssertRecurseDesignRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of Design (e.g. [][]Design), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDesignRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aDesign, ok := obj.(Design)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertDesignRequired(aDesign)
+	})
+}

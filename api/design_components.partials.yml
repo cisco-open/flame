@@ -31,7 +31,6 @@ DesignInfo:
       type: string
   required:
     - id
-    - name
   example:
     name: diabete predict
     description: Helps in quick diagnosis and prediction of diabetes among patients.
@@ -80,7 +79,6 @@ DesignSchema:
       items:
         $ref: '#/components/schemas/Connector'
   required:
-    - version
     - name
     - roles
     - channels
@@ -127,6 +125,10 @@ Role:
     replica:
       format: int32
       type: integer
+    groupAssociation:
+      type: array
+      items:
+        $ref: '#/components/schemas/GroupAssociation'
   required:
     - name
   example:
@@ -136,6 +138,17 @@ Role:
     - name: aggregator
       description: These are responsible to aggregate the updates from trainer nodes.
       replica: 2
+
+#########################
+# GroupAssociation
+#########################
+GroupAssociation:
+  type: object
+  additionalProperties:
+    type: string
+  example:
+    "param-channel": "red"
+    "global-channel": "black"
 
 #########################
 # Channel between roles

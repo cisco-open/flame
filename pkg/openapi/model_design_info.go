@@ -35,3 +35,29 @@ type DesignInfo struct {
 
 	UserId string `json:"userId,omitempty"`
 }
+
+// AssertDesignInfoRequired checks if the required fields are not zero-ed
+func AssertDesignInfoRequired(obj DesignInfo) error {
+	elements := map[string]interface{}{
+		"id": obj.Id,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
+	return nil
+}
+
+// AssertRecurseDesignInfoRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of DesignInfo (e.g. [][]DesignInfo), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseDesignInfoRequired(objSlice interface{}) error {
+	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
+		aDesignInfo, ok := obj.(DesignInfo)
+		if !ok {
+			return ErrTypeAssertionError
+		}
+		return AssertDesignInfoRequired(aDesignInfo)
+	})
+}

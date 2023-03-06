@@ -72,6 +72,7 @@ type DesignCodesApiRouter interface {
 // pass the data to a DesignSchemasApiServicer to perform the required actions, then write the service results to the http response.
 type DesignSchemasApiRouter interface {
 	CreateDesignSchema(http.ResponseWriter, *http.Request)
+	DeleteDesignSchema(http.ResponseWriter, *http.Request)
 	GetDesignSchema(http.ResponseWriter, *http.Request)
 	GetDesignSchemas(http.ResponseWriter, *http.Request)
 	UpdateDesignSchema(http.ResponseWriter, *http.Request)
@@ -106,7 +107,7 @@ type JobsApiRouter interface {
 
 // ComputesApiServicer defines the api actions for the ComputesApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type ComputesApiServicer interface {
 	DeleteCompute(context.Context, string, string) (ImplResponse, error)
@@ -122,7 +123,7 @@ type ComputesApiServicer interface {
 
 // DatasetsApiServicer defines the api actions for the DatasetsApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DatasetsApiServicer interface {
 	CreateDataset(context.Context, string, DatasetInfo) (ImplResponse, error)
@@ -134,7 +135,7 @@ type DatasetsApiServicer interface {
 
 // DesignCodesApiServicer defines the api actions for the DesignCodesApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignCodesApiServicer interface {
 	CreateDesignCode(context.Context, string, string, string, string, *os.File) (ImplResponse, error)
@@ -145,7 +146,7 @@ type DesignCodesApiServicer interface {
 
 // DesignSchemasApiServicer defines the api actions for the DesignSchemasApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignSchemasApiServicer interface {
 	CreateDesignSchema(context.Context, string, string, DesignSchema) (ImplResponse, error)
@@ -157,7 +158,7 @@ type DesignSchemasApiServicer interface {
 
 // DesignsApiServicer defines the api actions for the DesignsApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type DesignsApiServicer interface {
 	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
@@ -168,7 +169,7 @@ type DesignsApiServicer interface {
 
 // JobsApiServicer defines the api actions for the JobsApi service
 // This interface intended to stay up to date with the openapi yaml used to generate it,
-// while the service implementation can ignored with the .openapi-generator-ignore file
+// while the service implementation can be ignored with the .openapi-generator-ignore file
 // and updated with the logic required for the API.
 type JobsApiServicer interface {
 	CreateJob(context.Context, string, JobSpec) (ImplResponse, error)
