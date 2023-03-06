@@ -89,7 +89,7 @@ class MLflowRegistryClient(AbstractRegistryClient):
 
         mlflow.log_metrics(metrics, step=epoch)
 
-    def save_params(self, hyperparameters: Hyperparameters) -> None:
+    def save_params(self, hyperparameters: Optional[Hyperparameters]) -> None:
         """Save hyperparameters in a model registry."""
         if not hyperparameters:
             return
