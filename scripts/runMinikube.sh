@@ -67,10 +67,6 @@ minikube addons enable ingress-dns
 
 ../fiab/setup-cert-manager.sh
 
-eval $(minikube docker-env)
-
-../fiab/build-image.sh 
-
 afplay /System/Library/Sounds/Glass.aiff
 
 set +x;
