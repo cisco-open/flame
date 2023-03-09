@@ -87,11 +87,11 @@ func (cfg *JobConfig) Configure(jobSpec *openapi.JobSpec, brokers []config.Broke
 	// DesignId is a string suitable as job's name
 	cfg.Job.Name = jobSpec.DesignId
 	cfg.MaxRunTime = jobSpec.MaxRunTime
-	cfg.BaseModel = jobSpec.BaseModel
-	cfg.Hyperparameters = jobSpec.Hyperparameters
-	cfg.Optimizer = jobSpec.Optimizer
-	cfg.Selector = jobSpec.Selector
-	cfg.Dependencies = jobSpec.Dependencies
+	cfg.BaseModel = jobSpec.ModelSpec.BaseModel
+	cfg.Hyperparameters = jobSpec.ModelSpec.Hyperparameters
+	cfg.Optimizer = jobSpec.ModelSpec.Optimizer
+	cfg.Selector = jobSpec.ModelSpec.Selector
+	cfg.Dependencies = jobSpec.ModelSpec.Dependencies
 	cfg.BackEnd = string(jobSpec.Backend)
 	cfg.Brokers = brokers
 	cfg.Registry = registry
@@ -144,7 +144,6 @@ func (jc JobConfig) Print() {
 	for i, channel := range jc.Channels {
 		zap.S().Debugf("\t[%d] channel: %v\n", i, channel)
 	}
-
 	zap.S().Debugf("MaxRunTime: %d\n", jc.MaxRunTime)
 	zap.S().Debugf("BaseModelId: %s\n", jc.BaseModelId)
 	zap.S().Debugf("Hyperparameters: %v\n", jc.Hyperparameters)

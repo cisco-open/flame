@@ -29,15 +29,17 @@ import (
 
 var (
 	testJobSpec = openapi.JobSpec{
-		UserId:          "testUser",
-		Id:              "12345",
-		DesignId:        "test",
-		SchemaVersion:   "1",
-		CodeVersion:     "1",
-		Backend:         "mqtt",
-		MaxRunTime:      300,
-		Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
-		Dependencies:    []string{"numpy >= 1.2.0"},
+		UserId:        "testUser",
+		Id:            "12345",
+		DesignId:      "test",
+		SchemaVersion: "1",
+		CodeVersion:   "1",
+		Backend:       "mqtt",
+		MaxRunTime:    300,
+		ModelSpec: openapi.ModelSpec{
+			Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
+			Dependencies:    []string{"numpy >= 1.2.0"},
+		},
 	}
 
 	testSchema = openapi.DesignSchema{

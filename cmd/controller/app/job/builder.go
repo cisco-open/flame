@@ -119,13 +119,14 @@ func (b *JobBuilder) setup() error {
 	// reset datasets array
 	b.datasets = make([]openapi.DatasetInfo, 0)
 	// update datasets
-	for _, datasetId := range b.jobSpec.DataSpec.FromSystem {
-		datasetInfo, err := b.dbService.GetDatasetById(datasetId)
-		if err != nil {
-			return err
+	for _, datasetIdList := range b.jobSpec.DataSpec.FromSystem {
+		for _, datasetId := range datasetIdList {
+			datasetInfo, err := b.dbService.GetDatasetById(datasetId)
+			if err != nil {
+				return err
+			}
+			b.datasets = append(b.datasets, datasetInfo)
 		}
-
-		b.datasets = append(b.datasets, datasetInfo)
 	}
 
 	return nil
