@@ -130,6 +130,12 @@ issues:
     - path: _test\.go
       linters:
         - gomnd
+    - path: pkg/openapi/api_design_schemas.go
+      linters:
+        - dupl
+    - path: pkg/openapi/api_jobs.go
+      linters:
+        - dupl
 
     # https://github.com/go-critic/go-critic/issues/926
     - linters:
