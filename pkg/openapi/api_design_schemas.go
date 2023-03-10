@@ -103,28 +103,32 @@ func (c *DesignSchemasApiController) Routes() Routes {
 
 // CreateDesignSchema - Update a design schema
 func (c *DesignSchemasApiController) CreateDesignSchema(w http.ResponseWriter, r *http.Request) {
+	designSchemaParam := DesignSchema{}
+
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
-
 	designIdParam := params[constants.ParamDesignID]
 
-	designSchemaParam := DesignSchema{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
+
 	if err := d.Decode(&designSchemaParam); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
+
 	if err := AssertDesignSchemaRequired(designSchemaParam); err != nil {
 		c.errorHandler(w, r, err, nil)
 		return
 	}
+
 	result, err := c.service.CreateDesignSchema(r.Context(), userParam, designIdParam, designSchemaParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
 		return
 	}
+
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }

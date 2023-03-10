@@ -344,9 +344,6 @@ func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request)
 func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 
-	userParam := params[constants.ParamUser]
-	jobIdParam := params[constants.ParamJobID]
-
 	jobSpecParam := JobSpec{}
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
@@ -360,6 +357,9 @@ func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 		c.errorHandler(w, r, err, nil)
 		return
 	}
+
+	userParam := params[constants.ParamUser]
+	jobIdParam := params[constants.ParamJobID]
 
 	result, err := c.service.UpdateJob(r.Context(), userParam, jobIdParam, jobSpecParam)
 	// If an error occurred, encode the error with the status code
@@ -401,28 +401,32 @@ func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Reque
 
 // UpdateTaskStatus - Update the status of a task
 func (c *JobsApiController) UpdateTaskStatus(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	jobIdParam := params[constants.ParamJobID]
-
-	taskIdParam := params[constants.ParamTaskID]
-
 	taskStatusParam := TaskStatus{}
+
 	d := json.NewDecoder(r.Body)
 	d.DisallowUnknownFields()
+
 	if err := d.Decode(&taskStatusParam); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
+
 	if err := AssertTaskStatusRequired(taskStatusParam); err != nil {
 		c.errorHandler(w, r, err, nil)
 		return
 	}
+
+	params := mux.Vars(r)
+	jobIdParam := params[constants.ParamJobID]
+	taskIdParam := params[constants.ParamTaskID]
+
 	result, err := c.service.UpdateTaskStatus(r.Context(), jobIdParam, taskIdParam, taskStatusParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
 		return
 	}
+
 	// If no error, encode the body and the result code
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
