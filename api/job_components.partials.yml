@@ -19,6 +19,17 @@
 ########################################
 JobSpec:
   description: Job specification
+  allOf:
+    - $ref: '#/components/schemas/BasicJobInfo'
+    - type: object
+      properties:
+        dataSpec:
+          $ref: '#/components/schemas/DataSpec'
+        modelSpec:
+          $ref: '#/components/schemas/ModelSpec'
+
+BasicJobInfo:
+  description: Basic Job specification
   type: object
   properties:
     id:
@@ -31,12 +42,6 @@ JobSpec:
       type: string
     codeVersion:
       type: string
-    dataSpec:
-      $ref: '#/components/schemas/DataSpec'
-    optimizer:
-      $ref: '#/components/schemas/Optimizer'
-    selector:
-      $ref: '#/components/schemas/Selector'
     priority:
       $ref: '#/components/schemas/JobPriority'
     backend:
@@ -45,14 +50,6 @@ JobSpec:
       type: integer
       format: int32
       default: 600 # 600s = 10min
-    baseModel:
-      $ref: '#/components/schemas/BaseModel'
-    hyperparameters:
-      type: object
-    dependencies:
-      type: array
-      items:
-        type: string
   required:
     - designId
     - schemaVersion
@@ -62,21 +59,9 @@ JobSpec:
     designId: "60d0d66716af12b787d9ef0a"
     schemaVersion: "1"
     codeVersion: "1"
-    selector:
-      sort: random
-      kwargs:
-        k: 10
-    prority: "low"
+    priority: "low"
     backend: "mqtt"
     maxRunTime: 600
-    baseModel:
-        name: mnist-624d9fc43395791
-        version: 2
-    hyperparameters:
-      - rounds: 5
-      - runningRate: 0.01
-    dependencies:
-      - numpy >= 1.2.0
 
 JobPriority:
   enum:
@@ -88,6 +73,72 @@ CommBackend:
   enum:
     - mqtt
     - p2p
+
+########################################
+# Data Spec
+########################################
+DataSpec:
+  description: Dataset specification
+  type: object
+  properties:
+    fromUser:
+      $ref: '#/components/schemas/FromUser'
+    fromSystem:
+      $ref: '#/components/schemas/FromSystem'
+  example:
+    fromUser:
+      default: 1 # there is one user-fed dataset under default realm
+      uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
+      us/foo: 3 # there are three user-fed datasets under us/foo realm
+    fromSystem:
+      trainer:
+        "default/eu":
+          - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
+          - 61609290fa724deafdb2a4fb # id of dataset registered in the flame system
+        "default/us":
+          - 61609290fa724deafdb2a4fc # id of dataset registered in the flame system
+
+########################################
+# FromUser
+########################################
+FromUser:
+  # an object is a key-value pair of realm and count
+  type: object
+  additionalProperties:
+    type: integer
+    format: int32
+
+########################################
+# FromSystem
+########################################
+FromSystem:
+  type: object
+  additionalProperties:
+    type: object
+    additionalProperties:
+      type: array
+      items:
+        type: string
+
+########################################
+# Model Spec
+########################################
+ModelSpec:
+  description: Model specification
+  type: object
+  properties:
+    baseModel:
+      $ref: '#/components/schemas/BaseModel'
+    optimizer:
+      $ref: '#/components/schemas/Optimizer'
+    selector:
+      $ref: '#/components/schemas/Selector'
+    hyperparameters:
+      type: object
+    dependencies:
+      type: array
+      items:
+        type: string
 
 ########################################
 # Base Model
@@ -103,30 +154,6 @@ BaseModel:
   example:
     name: mnist-624d9fc43395791
     version: 2
-
-########################################
-# Data Spec
-########################################
-DataSpec:
-  type: object
-  properties:
-    fromUser:
-      # an object is a key-value pair of realm and count
-      type: object
-      additionalProperties:
-        type: integer
-        format: int32
-    fromSystem:
-      type: array
-      items:
-        type: string
-  example:
-    fromUser:
-      default: 1 # there is one user-fed dataset under default realm
-      uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
-      us/foo: 3 # there are three user-fed datasets under us/foo realm
-    fromSystem:
-      - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
 
 ########################################
 # Optimizer

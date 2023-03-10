@@ -8,7 +8,7 @@
             "isDataConsumer": true,
             "groupAssociation": [
                 {
-                    "param-channel": "default/us"
+                    "param-channel": "us"
                 }
             ]
         },
@@ -18,7 +18,7 @@
             "replica": 1,
             "groupAssociation": [
                 {
-                    "param-channel": "default/us"
+                    "param-channel": "us"
                 }
             ]
         }
@@ -34,7 +34,7 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/us"
+                    "us"
                 ]
             },
             "funcTags": {

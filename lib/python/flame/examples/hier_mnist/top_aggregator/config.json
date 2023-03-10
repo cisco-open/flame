@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "global-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
@@ -55,8 +58,8 @@
         "name": "mnist"
     },
     "registry": {
-	"sort": "dummy",
-	"uri": "http://flame-mlflow:5000"
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
     },
     "selector": {
         "sort": "default",

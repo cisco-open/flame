@@ -1,0 +1,21 @@
+{
+    "fromUser": {
+        "default": 0
+    },
+    "fromSystem": {
+        "trainer": {
+            "us": [
+                "629a403622f4715eabf99c5b",
+                "629a404422f4715eabf99c5c",
+                "629a404b22f4715eabf99c5d",
+                "629a405422f4715eabf99c5e",
+                "629a405d22f4715eabf99c5f",
+                "629a406422f4715eabf99c60",
+                "629a406c22f4715eabf99c61",
+                "629a407322f4715eabf99c62",
+                "629a407a22f4715eabf99c63",
+                "629a408022f4715eabf99c64"
+            ]
+        }
+    }
+}

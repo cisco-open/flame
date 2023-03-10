@@ -2,47 +2,10 @@
     "designId": "medmnist",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 0
-        },
-        "fromSystem": [
-            "629a403622f4715eabf99c5b",
-            "629a404422f4715eabf99c5c",
-            "629a404b22f4715eabf99c5d",
-            "629a405422f4715eabf99c5e",
-            "629a405d22f4715eabf99c5f",
-            "629a406422f4715eabf99c60",
-            "629a406c22f4715eabf99c61",
-            "629a407322f4715eabf99c62",
-            "629a407a22f4715eabf99c63",
-            "629a408022f4715eabf99c64"
-        ]
-    },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 86400,
+    "backend": "mqtt",
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "rounds": 100,
-        "batchSize": 32,
-        "learningRate": 0.01,
-        "epochs": 4
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "default",
-        "kwargs": {}
-    },
-    "optimizer": {
-        "sort": "fedavg",
-        "kwargs": {}
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

@@ -1,0 +1,20 @@
+{
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "hyperparameters": {
+        "rounds": 5,
+        "batchSize": 32,
+        "learningRate": 0.01
+    },
+    "dependencies" : [
+        "numpy >= 1.2.0"
+    ],
+    "selector": {
+        "sort": "random",
+        "kwargs": {
+            "k": 1
+        }
+    }
+}

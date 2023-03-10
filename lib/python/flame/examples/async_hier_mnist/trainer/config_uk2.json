@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default/us/west/org1"
+    },
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to trainer and vice-versa",
@@ -19,7 +22,7 @@
                 "value": [
                     "default/us/west/org1",
                     "default/uk/london/org2"
-                                ]
+                ]
             },
             "name": "param-channel",
             "pair": [
@@ -53,7 +56,7 @@
         "name": "",
         "version": 1
     },
-    "job" : {
+    "job": {
         "id": "622a358619ab59012eabeefb",
         "name": "mnist"
     },

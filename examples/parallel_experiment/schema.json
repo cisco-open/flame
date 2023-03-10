@@ -8,7 +8,13 @@
             "isDataConsumer": true,
             "groupAssociation": [
                 {
-                    "param-channel": "default/us"
+                    "param-channel": "us"
+                },
+                {
+                    "param-channel": "eu"
+                },
+                {
+                    "param-channel": "asia"
                 }
             ]
         },
@@ -18,7 +24,13 @@
             "replica": 1,
             "groupAssociation": [
                 {
-                    "param-channel": "default/us"
+                    "param-channel": "us"
+                },
+                {
+                    "param-channel": "eu"
+                },
+                {
+                    "param-channel": "asia"
                 }
             ]
         }
@@ -34,9 +46,9 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/us",
-                    "default/eu",
-                    "default/asia"
+                    "us",
+                    "eu",
+                    "asia"
                 ]
             },
             "funcTags": {

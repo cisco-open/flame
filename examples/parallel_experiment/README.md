@@ -7,18 +7,18 @@ We will run this example within [fiab](../../docs/03-fiab.md) environment.
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
 ### Step 1: create a design
 ```bash
-flamectl create design parallel_exp -d "parallel exp"
+flamectl create design parallel_experiment -d "parallel exp"
 ```
 
 ### Step 2: create a schema
 ```bash
-flamectl create schema schema.json --design parallel_exp
+flamectl create schema schema.json --design parallel_experiment
 ```
 
 ### Step 3: add mnist code to the design
 
 ```bash
-flamectl create code mnist.zip --design parallel_exp
+flamectl create code parallel_experiment.zip --design parallel_experiment
 ```
 Note: to understand relationship between schema and code, unzip `adult.zip` and check the folder structure in it.
 

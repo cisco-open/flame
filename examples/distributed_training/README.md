@@ -7,13 +7,13 @@ Note: You may want to add `--insecure` to all the `flamectl` command if you plan
 ### Step 1: create a design
 
 ```bash
-flamectl create design dist -d "distributed training"
+flamectl create design distributed_training -d "distributed training"
 ```
 
 ### Step 2: create a schema 
 
 ```bash
-flamectl create schema schema.json --design dist
+flamectl create schema schema.json --design distributed_training
 ```
 
 The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
@@ -21,7 +21,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code mnist.zip --design dist
+flamectl create code distributed_training.zip --design distributed_training
 ```
 
 ### Step 4: create datasets

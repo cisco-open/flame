@@ -29,33 +29,16 @@ import "github.com/cisco-open/flame/pkg/openapi/constants"
 
 // JobSpec - Job specification
 type JobSpec struct {
-	Id string `json:"id,omitempty"`
-
-	UserId string `json:"userId,omitempty"`
-
-	DesignId string `json:"designId"`
-
-	SchemaVersion string `json:"schemaVersion"`
-
-	CodeVersion string `json:"codeVersion"`
-
-	DataSpec DataSpec `json:"dataSpec,omitempty"`
-
-	Optimizer Optimizer `json:"optimizer,omitempty"`
-
-	Selector Selector `json:"selector,omitempty"`
-
-	Priority JobPriority `json:"priority,omitempty"`
-
-	Backend CommBackend `json:"backend,omitempty"`
-
-	MaxRunTime int32 `json:"maxRunTime,omitempty"`
-
-	BaseModel BaseModel `json:"baseModel,omitempty"`
-
-	Hyperparameters map[string]interface{} `json:"hyperparameters,omitempty"`
-
-	Dependencies []string `json:"dependencies,omitempty"`
+	Id            string      `json:"id,omitempty"`
+	UserId        string      `json:"userId,omitempty"`
+	DesignId      string      `json:"designId"`
+	SchemaVersion string      `json:"schemaVersion"`
+	CodeVersion   string      `json:"codeVersion"`
+	Priority      JobPriority `json:"priority,omitempty"`
+	Backend       CommBackend `json:"backend,omitempty"`
+	MaxRunTime    int32       `json:"maxRunTime,omitempty"`
+	DataSpec      DataSpec    `json:"dataSpec,omitempty"`
+	ModelSpec     ModelSpec   `json:"modelSpec,omitempty"`
 }
 
 // AssertJobSpecRequired checks if the required fields are not zero-ed
@@ -74,13 +57,8 @@ func AssertJobSpecRequired(obj JobSpec) error {
 	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
 		return err
 	}
-	if err := AssertOptimizerRequired(obj.Optimizer); err != nil {
-		return err
-	}
-	if err := AssertSelectorRequired(obj.Selector); err != nil {
-		return err
-	}
-	if err := AssertBaseModelRequired(obj.BaseModel); err != nil {
+
+	if err := AssertModelSpecRequired(obj.ModelSpec); err != nil {
 		return err
 	}
 	return nil

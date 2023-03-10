@@ -1,0 +1,42 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "64145f7b10b9b3b94f5252a5",
+        "name": "distributed_training"
+    },
+    "role": "trainer",
+    "realm": "",
+    "channels": [
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from a trainer to another trainer",
+            "pair": [
+                "trainer",
+                "trainer"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "us"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "us"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_3.npz",
+    "optimizer": {},
+    "selector": {}
+}

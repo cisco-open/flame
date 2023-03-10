@@ -145,7 +145,7 @@ class ChannelManager(object):
             me = channel_config.pair[1]
             other = channel_config.pair[0]
 
-        groupby = channel_config.group_by.groupable_value(self._config.realm)
+        groupby = channel_config.group_by.groupable_value(self._config.group_association.get(name))
 
         selector = selector_provider.get(self._config.selector.sort,
                                          **self._config.selector.kwargs)

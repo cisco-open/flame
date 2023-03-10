@@ -2,29 +2,9 @@
     "designId": "adult",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 1
-        },
-        "fromSystem": []
-    },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 1800,
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "rounds": 5
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "default",
-        "kwargs": {}
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

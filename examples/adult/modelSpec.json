@@ -1,0 +1,16 @@
+{
+    "baseModel": {
+        "name": "",
+        "version": 0
+    },
+    "hyperparameters": {
+        "rounds": 5
+    },
+    "dependencies" : [
+        "numpy >= 1.2.0"
+    ],
+    "selector": {
+        "sort": "default",
+        "kwargs": {}
+    }
+}

@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "global-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from a trainer to an aggregator",

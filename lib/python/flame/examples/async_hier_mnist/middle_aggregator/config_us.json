@@ -11,6 +11,10 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "global-channel": "default",
+        "param-channel": "default/us/west/org1"
+    },
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
@@ -77,7 +81,7 @@
         "name": "",
         "version": 1
     },
-    "job" : {
+    "job": {
         "id": "622a358619ab59012eabeefb",
         "name": "mnist"
     },

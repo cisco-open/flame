@@ -1,42 +1,13 @@
 {
-    "designId": "parallel_exp",
+    "designId": "parallel_experiment",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 0
-        },
-        "fromSystem": [
-            "6261a0541bf79323fd13a4e9",
-            "6261a05d1bf79323fd13a4ea",
-            "6261a0651bf79323fd13a4eb"
-        ]
-    },
+
     "priority": "low",
 
     "backend": "mqtt",
     "maxRunTime": 1800,
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "rounds": 5,
-        "batchSize": 32,
-        "learningRate": 0.01
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "random",
-        "kwargs": {
-            "k": 1
-        }
-    },
-    "optimizer": {
-        "sort": "fedavg",
-        "kwargs": {}
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

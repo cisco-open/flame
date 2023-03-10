@@ -10,8 +10,10 @@
             "host": "localhost:10104",
             "sort": "p2p"
         }
-
     ],
+    "groupAssociation": {
+        "param-channel": "default/us"
+    },
     "channels": [
         {
             "description": "Model update is sent from a trainer to another trainer",
@@ -51,8 +53,8 @@
         "name": "dist_mnist"
     },
     "registry": {
-	"sort": "dummy",
-	"uri": ""
+        "sort": "dummy",
+        "uri": ""
     },
     "selector": {
         "sort": "default",

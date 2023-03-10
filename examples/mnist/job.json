@@ -2,35 +2,10 @@
     "designId": "mnist",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 0
-        },
-        "fromSystem": [
-            "61e0c1e86bdf29b562de7c22"
-        ]
-    },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 1800,
+    "backend": "mqtt",
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "rounds": 5,
-        "batchSize": 32,
-        "learningRate": 0.01
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "random",
-        "kwargs": {
-            "k": 1
-        }
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

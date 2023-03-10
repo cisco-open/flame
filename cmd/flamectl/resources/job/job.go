@@ -20,6 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -38,6 +39,64 @@ type Params struct {
 	Limit   string
 }
 
+type CreateJobRequest struct {
+	Id            string              `json:"id,omitempty"`
+	UserId        string              `json:"userId,omitempty"`
+	DesignId      string              `json:"designId"`
+	SchemaVersion string              `json:"schemaVersion"`
+	CodeVersion   string              `json:"codeVersion"`
+	Priority      openapi.JobPriority `json:"priority,omitempty"`
+	MaxRunTime    int32               `json:"maxRunTime,omitempty"`
+	Backend       openapi.CommBackend `json:"backend,omitempty"`
+	DataSpecPath  string              `json:"dataSpecPath,omitempty"`
+	ModelSpecPath string              `json:"modelSpecPath,omitempty"`
+}
+
+func createJobSpec(data []byte, jobFile string) (bool, openapi.JobSpec) {
+	// encode the data
+	createJobRequest := CreateJobRequest{}
+	err := json.Unmarshal(data, &createJobRequest)
+	if err != nil {
+		fmt.Println("Failed to unmarshal the job file")
+		return false, openapi.JobSpec{}
+	}
+
+	//validate data spec
+	dataSpec := openapi.DataSpec{}
+	dataSpecPath := fmt.Sprintf("%s/%s", path.Dir(jobFile), createJobRequest.DataSpecPath)
+
+	err = util.ReadFileToStruct(dataSpecPath, &dataSpec)
+	if err != nil {
+		fmt.Println(err)
+		fmt.Printf("Failed to parse dataSpec file %s\n", dataSpecPath)
+		return false, openapi.JobSpec{}
+	}
+
+	//validate model spec
+	modelSpec := openapi.ModelSpec{}
+	modelSpecPath := fmt.Sprintf("%s/%s", path.Dir(jobFile), createJobRequest.ModelSpecPath)
+
+	err = util.ReadFileToStruct(modelSpecPath, &modelSpec)
+	if err != nil {
+		fmt.Printf("Failed to parse modelSpec file %s\n", modelSpecPath)
+		return false, openapi.JobSpec{}
+	}
+
+	jobSpec := openapi.JobSpec{
+		Id:            createJobRequest.Id,
+		UserId:        createJobRequest.UserId,
+		DesignId:      createJobRequest.DesignId,
+		SchemaVersion: createJobRequest.SchemaVersion,
+		CodeVersion:   createJobRequest.CodeVersion,
+		Priority:      createJobRequest.Priority,
+		MaxRunTime:    createJobRequest.MaxRunTime,
+		Backend:       createJobRequest.Backend,
+		DataSpec:      dataSpec,
+		ModelSpec:     modelSpec,
+	}
+	return true, jobSpec
+}
+
 func Create(params Params) error {
 	data, err := os.ReadFile(params.JobFile)
 	if err != nil {
@@ -46,10 +105,10 @@ func Create(params Params) error {
 	}
 
 	// encode the data
-	jobSpec := openapi.JobSpec{}
-	err = json.Unmarshal(data, &jobSpec)
-	if err != nil {
-		fmt.Printf("Failed to parse %s\n", params.JobFile)
+	//validate the input - to ensure dataSpecPath and ModelSpecPath are correctly provide
+	isValid, jobSpec := createJobSpec(data, params.JobFile)
+	if !isValid {
+		fmt.Printf("Incorrect job specification provided %s\n", params.JobFile)
 		return nil
 	}
 
