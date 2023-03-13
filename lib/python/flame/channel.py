@@ -103,6 +103,14 @@ class Channel(object):
         value: any of boolean, bytes, float, int, or string
         """
         self.properties[key] = value
+    
+    def set_end_property(self, end_id: str, key: str, value: Scalar) -> None:
+        """Set property of an end."""
+        self._ends[end_id].set_property(key, value)
+    
+    def get_end_property(self, end_id, key) -> Scalar:
+        """Get property of an end."""
+        return self._ends[end_id].get_property(key)
 
     """
     ### The following are not asyncio methods

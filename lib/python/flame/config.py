@@ -68,6 +68,7 @@ class SelectorType(str, Enum):
     DEFAULT = "default"
     RANDOM = "random"
     FEDBUFF = "fedbuff"
+    OORT = "oort"
 
 
 class Job(FlameSchema):
