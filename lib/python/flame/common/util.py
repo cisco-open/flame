@@ -77,6 +77,27 @@ def get_params_detached_pytorch(model):
     """Return copy of parameters of pytorch model disconnected from graph."""
     return [param.detach().clone() for param in model.parameters()]
 
+def get_dataset_filename(link):
+    """Return path for file location"""
+    # currently only supports https and local file
+    if link.startswith('https://'):
+        import requests
+        r = requests.get(link, allow_redirects=True)
+
+        try:
+            filename = link.split('/')[-1]
+            open(filename, 'wb').write(r.content)
+        except:
+            filename = 'data'
+            open(filename, 'wb').write(r.content)
+            
+        return filename
+        
+    elif link.startswith('file://'):
+        return link[7:]
+
+    raise TypeError('link format not supported; use either https:// or file://')
+
 @contextmanager
 def background_thread_loop():
 
