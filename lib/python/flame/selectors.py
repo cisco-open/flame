@@ -20,6 +20,7 @@ from .object_factory import ObjectFactory
 from .selector.default import DefaultSelector
 from .selector.fedbuff import FedBuffSelector
 from .selector.random import RandomSelector
+from .selector.oort import OortSelector
 
 
 class SelectorProvider(ObjectFactory):
@@ -34,3 +35,4 @@ selector_provider = SelectorProvider()
 selector_provider.register(SelectorType.DEFAULT, DefaultSelector)
 selector_provider.register(SelectorType.RANDOM, RandomSelector)
 selector_provider.register(SelectorType.FEDBUFF, FedBuffSelector)
+selector_provider.register(SelectorType.OORT, OortSelector)
