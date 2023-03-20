@@ -8,7 +8,10 @@
             "isDataConsumer": true,
             "groupAssociation": [
                 {
-                    "param-channel": "default/eu"
+                    "param-channel": "eu"
+                },
+                {
+                    "param-channel": "na"
                 }
             ]
         },
@@ -18,7 +21,11 @@
             "replica": 1,
             "groupAssociation": [
                 {
-                    "param-channel": "default/us",
+                    "param-channel": "eu",
+                    "global-channel": "default"
+                },
+                {
+                    "param-channel": "na",
                     "global-channel": "default"
                 }
             ]
@@ -45,8 +52,8 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/eu",
-                    "default/na"
+                    "eu",
+                    "na"
                 ]
             },
             "funcTags": {

@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default/us/west/org1"
+    },
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to trainer and vice-versa",
@@ -56,12 +59,12 @@
         "name": "mnist"
     },
     "registry": {
-	"sort": "dummy",
-	"uri": "http://flame-mlflow:5000"
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
     },
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "maxRunTime": 300,
     "realm": "default/uk/london/org2/machine1",

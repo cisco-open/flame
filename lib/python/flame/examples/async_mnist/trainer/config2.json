@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",
@@ -26,8 +29,14 @@
                 "aggregator"
             ],
             "funcTags": {
-                "aggregator": ["distribute", "aggregate"],
-                "trainer": ["fetch", "upload"]
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
             }
         }
     ],
@@ -46,7 +55,7 @@
         "name": "",
         "version": 1
     },
-    "job" : {
+    "job": {
         "id": "622a358619ab59012eabeefb",
         "name": "mnist"
     },

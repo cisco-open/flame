@@ -2,40 +2,10 @@
     "designId": "hier_mnist",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 0
-        },
-        "fromSystem": [
-            "624b4417dad565fc66f8a0ee",
-            "624b4428dad565fc66f8a0ef",
-            "624b4430dad565fc66f8a0f0",
-            "624b4437dad565fc66f8a0f1"
-        ]
-    },
     "priority": "low",
-
-    "backend": "mqtt",
     "maxRunTime": 1800,
+    "backend": "mqtt",
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "rounds": 5,
-        "batchSize": 32,
-        "learningRate": 0.01
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "default",
-        "kwargs": {}
-    },
-    "optimizer": {
-        "sort": "fedavg",
-        "kwargs": {}
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

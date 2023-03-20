@@ -6,11 +6,14 @@
             "host": "localhost",
             "sort": "mqtt"
         },
-	{
-	    "host": "localhost:10104",
-	    "sort": "p2p"
-	}
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
     ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",

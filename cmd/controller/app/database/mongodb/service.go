@@ -93,6 +93,10 @@ func NewMongoService(uri string) (*MongoService, error) {
 	}
 	zap.S().Infof("Successfully connected to database and pinged")
 
+	return NewMongoServiceWithClient(ctx, client)
+}
+
+func NewMongoServiceWithClient(ctx context.Context, client *mongo.Client) (*MongoService, error) {
 	db := client.Database(DatabaseName)
 	mongoDB := &MongoService{
 		client:               client,

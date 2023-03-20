@@ -1,0 +1,12 @@
+{
+    "fromUser": {
+        "default": 0
+    },
+    "fromSystem": {
+        "trainer": {
+            "us": [
+              "64132c15981345ad7b31da47"
+            ]
+        }
+    }
+}

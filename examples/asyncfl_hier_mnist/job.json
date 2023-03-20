@@ -1,43 +1,11 @@
 {
-    "designId": "async_hier_mnist",
+    "designId": "asyncfl_hier_mnist",
     "schemaVersion": "1",
     "codeVersion": "1",
-    "dataSpec": {
-        "fromUser": {
-            "default": 0
-        },
-        "fromSystem": [
-            "624b4417dad565fc66f8a0ee",
-            "624b4428dad565fc66f8a0ef",
-            "624b4430dad565fc66f8a0f0",
-            "624b4437dad565fc66f8a0f1"
-        ]
-    },
     "priority": "low",
     "backend": "mqtt",
     "maxRunTime": 1800,
 
-    "baseModel": {
-        "name": "",
-        "version": 0
-    },
-    "hyperparameters": {
-        "batchSize": 32,
-        "learningRate": 0.01,
-        "rounds": 10,
-        "aggGoal": 1
-    },
-    "dependencies" : [
-        "numpy >= 1.2.0"
-    ],
-    "selector": {
-        "sort": "fedbuff",
-        "kwargs": {
-            "c": 2
-        }
-    },
-    "optimizer": {
-        "sort": "fedbuff",
-        "kwargs": {}
-    }
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
 }

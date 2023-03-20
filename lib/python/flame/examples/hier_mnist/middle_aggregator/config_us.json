@@ -11,6 +11,10 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default/us/west/org1",
+        "global-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
@@ -80,12 +84,12 @@
         "name": "mnist"
     },
     "registry": {
-	"sort": "dummy",
-	"uri": "http://flame-mlflow:5000"
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
     },
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "maxRunTime": 300,
     "realm": "default/us/west/org1/flame",

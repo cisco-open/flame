@@ -1,0 +1,48 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "64145f7b10b9b3b94f52529f",
+        "name": "asyncfl_hier_mnist"
+    },
+    "role": "trainer",
+    "realm": "",
+    "channels": [
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+            "pair": [
+                "trainer",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "eu",
+                    "na"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "eu"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_2.npz",
+    "optimizer": {},
+    "selector": {}
+}

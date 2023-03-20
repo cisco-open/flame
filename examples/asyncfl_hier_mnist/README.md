@@ -12,13 +12,13 @@ We assume that a fiab environment is set up properly. To set it up, refer to [th
 ### Step 1: create a design
 
 ```bash
-flamectl create design async_hier_mnist -d "asynchronous hierarchical FL mnist example"
+flamectl create design asyncfl_hier_mnist -d "asynchronous hierarchical FL mnist example"
 ```
 
 ### Step 2: create a schema 
 
 ```bash
-flamectl create schema schema.json --design async_hier_mnist
+flamectl create schema schema.json --design asyncfl_hier_mnist
 ```
 
 The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
@@ -26,7 +26,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code async_hier_mnist.zip --design async_hier_mnist
+flamectl create code asyncfl_hier_mnist.zip --design asyncfl_hier_mnist
 ```
 
 ### Step 4: create datasets

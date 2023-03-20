@@ -11,6 +11,10 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default/us",
+        "global-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from a trainer to another trainer",

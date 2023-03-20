@@ -1,0 +1,17 @@
+{
+    "fromUser": {
+        "default": 0
+    },
+    "fromSystem": {
+        "trainer": {
+            "eu": [
+                "64137d8ce5f264999ac9e12d",
+                "64137d8ce5f264999ac9e12e"
+            ],
+            "na": [
+                "64137d8ce5f264999ac9e12f",
+                "64137d8ce5f264999ac9e130"
+            ]
+        }
+    }
+}

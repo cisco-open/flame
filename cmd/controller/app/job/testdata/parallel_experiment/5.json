@@ -1,0 +1,47 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "64145f7c10b9b3b94f5252c3",
+        "name": "parallel_experiment"
+    },
+    "role": "trainer",
+    "realm": "",
+    "channels": [
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "us",
+                    "eu",
+                    "asia"
+                ]
+            },
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": null,
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_2.npz",
+    "optimizer": {},
+    "selector": {}
+}

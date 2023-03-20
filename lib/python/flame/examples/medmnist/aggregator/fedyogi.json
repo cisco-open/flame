@@ -7,6 +7,9 @@
             "sort": "mqtt"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",
@@ -21,9 +24,15 @@
                 "trainer",
                 "aggregator"
             ],
-	    "funcTags": {
-                "aggregator": ["distribute", "aggregate"],
-                "trainer": ["fetch", "upload"]
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
             }
         }
     ],
@@ -35,32 +44,32 @@
         "batchSize": 32,
         "learningRate": 0.001,
         "rounds": 10,
-		"epochs": 2
+        "epochs": 2
     },
     "baseModel": {
-	"name": "",
-	"version": 1
+        "name": "",
+        "version": 1
     },
-    "job" : {
-	"id": "511a358619ab59012eabeefb",
-	"name": "mednist"
+    "job": {
+        "id": "511a358619ab59012eabeefb",
+        "name": "mednist"
     },
     "registry": {
-	"sort": "dummy",
-	"uri": ""
+        "sort": "dummy",
+        "uri": ""
     },
     "selector": {
-	"sort": "default",
-	"kwargs": {}
+        "sort": "default",
+        "kwargs": {}
     },
     "optimizer": {
-    "sort": "fedyogi",
-    "kwargs": {
-        "beta_1" : 0.9,
-        "beta_2" : 0.99,
-        "eta" : 0.01,
-        "tau" : 0.001
-    }
+        "sort": "fedyogi",
+        "kwargs": {
+            "beta_1": 0.9,
+            "beta_2": 0.99,
+            "eta": 0.01,
+            "tau": 0.001
+        }
     },
     "maxRunTime": 300,
     "realm": "default",

@@ -11,6 +11,9 @@
             "sort": "p2p"
         }
     ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
     "channels": [
         {
             "description": "Model update is sent from trainer to aggregator and vice-versa",

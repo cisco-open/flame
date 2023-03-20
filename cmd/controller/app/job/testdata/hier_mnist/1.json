@@ -1,0 +1,72 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "64145f7b10b9b3b94f5252ac",
+        "name": "hier_mnist"
+    },
+    "role": "middle-aggregator",
+    "realm": "",
+    "channels": [
+        {
+            "name": "global-channel",
+            "description": "Model update is sent from middle-aggregator to top-aggregator and vice-versa",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ],
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        },
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from trainer to middle-aggregator and vice-versa",
+            "pair": [
+                "trainer",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "eu",
+                    "na"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "global-channel": "default",
+        "param-channel": "eu"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "optimizer": {},
+    "selector": {}
+}
