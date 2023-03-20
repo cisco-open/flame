@@ -22,7 +22,7 @@ minio:
       policy: readwrite
 
 imageName: ciscoresearch/flame
-imageTag: latest
+imageTag: v0.2.2
 
 frontDoorUrl:
   apiserver: apiserver.flame.test      # apiserver url needs to be updated
