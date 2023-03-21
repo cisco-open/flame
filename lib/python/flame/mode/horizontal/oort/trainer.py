@@ -103,13 +103,9 @@ class Trainer(BaseTrainer):
         else:
             return
 
-    def set_stat_utility(self, value: float) -> None:
-        """Set a new value to the trainer's statistical utility."""
-        self._stat_utility = value
-
-    def get_stat_utility(self) -> float:
-        """Get a value of the trainer's statistical utility."""
-        return self._stat_utility
+    def reset_stat_utility(self) -> None:
+        """Reset the trainer's statistical utility to zero."""
+        self._stat_utility = 0
 
     def compose(self) -> None:
         """Compose role with tasklets."""

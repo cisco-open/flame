@@ -30,22 +30,24 @@ from .end import KEY_END_STATE, VAL_END_STATE_RECVD, End
 
 logger = logging.getLogger(__name__)
 
-KEY_CH_STATE = 'state'
-VAL_CH_STATE_RECV = 'recv'
-VAL_CH_STATE_SEND = 'send'
+KEY_CH_STATE = "state"
+VAL_CH_STATE_RECV = "recv"
+VAL_CH_STATE_SEND = "send"
 
 
 class Channel(object):
     """Channel class."""
 
-    def __init__(self,
-                 backend,
-                 selector,
-                 job_id: str,
-                 name: str,
-                 me='',
-                 other='',
-                 groupby=GROUPBY_DEFAULT_GROUP):
+    def __init__(
+        self,
+        backend,
+        selector,
+        job_id: str,
+        name: str,
+        me="",
+        other="",
+        groupby=GROUPBY_DEFAULT_GROUP,
+    ):
         """Initialize instance."""
         self._backend = backend
         self._selector = selector
@@ -61,10 +63,14 @@ class Channel(object):
         # in many cases, _ends must be accessed within a backend's loop
         self._ends: dict[str, End] = dict()
 
+        # dict showing active, awaiting recv fifo tasks on each ends
+        self._active_recv_fifo_tasks: set(str) = set()
+
         async def _setup():
             self.await_join_event = asyncio.Event()
 
             self._bcast_queue = asyncio.Queue()
+            self._rx_queue = asyncio.Queue()
 
             # attach this channel to backend
             self._backend.attach_channel(self)
@@ -103,11 +109,11 @@ class Channel(object):
         value: any of boolean, bytes, float, int, or string
         """
         self.properties[key] = value
-    
+
     def set_end_property(self, end_id: str, key: str, value: Scalar) -> None:
         """Set property of an end."""
         self._ends[end_id].set_property(key, value)
-    
+
     def get_end_property(self, end_id, key) -> Scalar:
         """Get property of an end."""
         return self._ends[end_id].get_property(key)
@@ -218,9 +224,7 @@ class Channel(object):
 
         return cloudpickle.loads(payload) if payload and status else None
 
-    def recv_fifo(self,
-                  end_ids: list[str],
-                  first_k: int = 0) -> Tuple[str, Any]:
+    def recv_fifo(self, end_ids: list[str], first_k: int = 0) -> Tuple[str, Any]:
         """Receive a message per end from a list of ends.
 
         The message arrival order among ends is not fixed.
@@ -248,33 +252,23 @@ class Channel(object):
             # we handle it by setting first_k as the length of the array
             first_k = len(end_ids)
 
-        # DO NOT CHANGE self.tmqp as a local variable.
-        # With aiostream, local variable update looks incorrect.
-        # but with an instance variable , the variable update is
-        # done correctly.
-        #
-        # A temporary aysncio queue to store messages in a FIFO manner
-        self.tmpq = None
+        self.first_k = first_k
 
-        async def _put_message_to_tmpq_inner():
-            # self.tmpq must be created in the _backend loop
-            self.tmpq = asyncio.Queue()
-            _ = asyncio.create_task(
-                self._streamer_for_recv_fifo(end_ids, first_k))
+        async def _put_message_to_rxq_inner():
+            _ = asyncio.create_task(self._streamer_for_recv_fifo(end_ids))
 
         async def _get_message_inner():
-            return await self.tmpq.get()
+            return await self._rx_queue.get()
 
         # first, create an asyncio task to fetch messages and put a temp queue
-        # _put_message_to_tmpq_inner works as if it is a non-blocking call
+        # _put_message_to_rxq_inner works as if it is a non-blocking call
         # because a task is created within it
-        _, _ = run_async(_put_message_to_tmpq_inner(), self._backend.loop())
+        _, _ = run_async(_put_message_to_rxq_inner(), self._backend.loop())
 
         # the _get_message_inner() coroutine fetches a message from the temp
         # queue; we call this coroutine first_k times
         for _ in range(first_k):
-            result, status = run_async(_get_message_inner(),
-                                       self._backend.loop())
+            result, status = run_async(_get_message_inner(), self._backend.loop())
             (end_id, payload) = result
             logger.debug(f"get payload for {end_id}")
 
@@ -282,15 +276,14 @@ class Channel(object):
                 logger.debug(f"channel got a msg for {end_id}")
                 # set a property to indicate that a message was received
                 # for the end
-                self._ends[end_id].set_property(KEY_END_STATE,
-                                                VAL_END_STATE_RECVD)
+                self._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_RECVD)
             else:
                 logger.debug(f"channel has no end id {end_id} for msg")
 
             msg = cloudpickle.loads(payload) if payload and status else None
             yield end_id, msg
 
-    async def _streamer_for_recv_fifo(self, end_ids: list[str], first_k: int):
+    async def _streamer_for_recv_fifo(self, end_ids: list[str]):
         """Read messages in a FIFO fashion.
 
         This method reads messages from queues associated with each end
@@ -312,7 +305,16 @@ class Channel(object):
 
             yield end_id, payload
 
-        runs = [_get_inner(end_id) for end_id in end_ids]
+        runs = []
+        for end_id in end_ids:
+            if end_id in self._active_recv_fifo_tasks:
+                continue
+            else:
+                runs.append(_get_inner(end_id))
+                self._active_recv_fifo_tasks.add(end_id)
+
+                logger.debug(f"active task added for {end_id}")
+                logger.debug(f"{str(self._active_recv_fifo_tasks)}")
 
         # DO NOT CHANGE self.count as a local variable
         # with aiostream, local variable update looks incorrect.
@@ -321,17 +323,20 @@ class Channel(object):
         self.count = 0
         merged = stream.merge(*runs)
         async with merged.stream() as streamer:
-            logger.debug(f"0) cnt: {self.count}, first_k: {first_k}")
+            logger.debug(f"0) cnt: {self.count}, first_k: {self.first_k}")
             async for result in streamer:
                 (end_id, payload) = result
                 logger.debug(f"1) end id: {end_id}, cnt: {self.count}")
 
                 self.count += 1
                 logger.debug(f"2) end id: {end_id}, cnt: {self.count}")
-                if self.count <= first_k:
+                if self.count <= self.first_k:
                     logger.debug(f"3) end id: {end_id}, cnt: {self.count}")
-                    await self.tmpq.put(result)
+                    await self._rx_queue.put(result)
+                    self._active_recv_fifo_tasks.remove(end_id)
 
+                    logger.debug(f"active task removed for {end_id}")
+                    logger.debug(f"{str(self._active_recv_fifo_tasks)}")
                 else:
                     logger.debug(f"4) end id: {end_id}, cnt: {self.count}")
                     # We already put the first_k number of messages into
@@ -349,6 +354,10 @@ class Channel(object):
                     assert self._ends[end_id].peek_buf is None
 
                     self._ends[end_id].peek_buf = payload
+                    self._active_recv_fifo_tasks.remove(end_id)
+
+                    logger.debug(f"active task removed for {end_id}")
+                    logger.debug(f"{str(self._active_recv_fifo_tasks)}")
 
     def peek(self, end_id):
         """Peek rxq of end_id and return data if queue is not empty."""
