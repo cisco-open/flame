@@ -40,3 +40,5 @@ class MessageType(Enum):
     STAT_UTILITY = 10  # measured utility of a trainer based on Oort
 
     COORDINATED_ENDS = 11  # ends coordinated by a coordinator
+
+    DATASAMPLER_METADATA = 12  # datasampler metadata

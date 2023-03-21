@@ -38,6 +38,7 @@ from flame.mode.role import Role
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizers import optimizer_provider
 from flame.registries import registry_provider
+from flame.datasamplers import datasampler_provider
 
 logger = logging.getLogger(__name__)
 
@@ -78,6 +79,10 @@ class Trainer(Role, metaclass=ABCMeta):
             self.config.optimizer.sort, **self.config.optimizer.kwargs
         )
         self.regularizer = temp_opt.regularizer
+
+        self.datasampler = datasampler_provider.get(
+            self.config.datasampler.sort, **self.config.datasampler.kwargs
+        ).trainer_data_sampler
 
         self._round = 1
         self._work_done = False
@@ -124,6 +129,11 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
+        if MessageType.DATASAMPLER_METADATA in msg:
+            self.datasampler.handle_metadata_from_aggregator(
+                msg[MessageType.DATASAMPLER_METADATA]
+            )
+
         self.regularizer.save_state(TrainerState.PRE_TRAIN, glob_model=self.model)
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
@@ -157,6 +167,7 @@ class Trainer(Role, metaclass=ABCMeta):
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.MODEL_VERSION: self._round,
+            MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),
         }
         channel.send(end, msg)
         logger.debug("sending weights done")

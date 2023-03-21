@@ -18,6 +18,7 @@
 import logging
 import time
 from copy import deepcopy
+from datetime import datetime
 
 from diskcache import Cache
 from flame.channel_manager import ChannelManager
@@ -40,11 +41,14 @@ from flame.optimizer.train_result import TrainResult
 from flame.optimizers import optimizer_provider
 from flame.plugin import PluginManager, PluginType
 from flame.registries import registry_provider
+from flame.datasamplers import datasampler_provider
 
 logger = logging.getLogger(__name__)
 
 TAG_DISTRIBUTE = "distribute"
 TAG_AGGREGATE = "aggregate"
+PROP_ROUND_START_TIME = "round_start_time"
+PROP_ROUND_END_TIME = "round_end_time"
 
 
 class TopAggregator(Role, metaclass=ABCMeta):
@@ -94,6 +98,10 @@ class TopAggregator(Role, metaclass=ABCMeta):
             self.config.optimizer.sort, **self.config.optimizer.kwargs
         )
 
+        self.datasampler = datasampler_provider.get(
+            self.config.datasampler.sort, **self.config.datasampler.kwargs
+        ).aggregator_data_sampler
+
         self._round = 1
         self._rounds = 1
         self._rounds = self.config.hyperparameters.rounds
@@ -117,19 +125,29 @@ class TopAggregator(Role, metaclass=ABCMeta):
             return
 
         total = 0
+
         # receive local model parameters from trainers
         for msg, metadata in channel.recv_fifo(channel.ends()):
-            end, _ = metadata
+            end, timestamp = metadata
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
 
             logger.debug(f"received data from {end}")
+            channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
+
             if MessageType.WEIGHTS in msg:
                 weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
             if MessageType.DATASET_SIZE in msg:
                 count = msg[MessageType.DATASET_SIZE]
+
+            if MessageType.DATASAMPLER_METADATA in msg:
+                self.datasampler.handle_metadata_from_trainer(
+                    msg[MessageType.DATASAMPLER_METADATA],
+                    end,
+                    channel,
+                )
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
@@ -175,8 +193,11 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # before distributing weights, update it from global model
         self._update_weights()
 
+        selected_ends = channel.ends()
+        datasampler_metadata = self.datasampler.get_metadata(self._round, selected_ends)
+
         # send out global model parameters to trainers
-        for end in channel.ends():
+        for end in selected_ends:
             logger.debug(f"sending weights to {end}")
             channel.send(
                 end,
@@ -185,7 +206,12 @@ class TopAggregator(Role, metaclass=ABCMeta):
                         self.weights, DeviceType.CPU
                     ),
                     MessageType.ROUND: self._round,
+                    MessageType.DATASAMPLER_METADATA: datasampler_metadata,
                 },
+            )
+            # register round start time on each end for round duration measurement.
+            channel.set_end_property(
+                end, PROP_ROUND_START_TIME, (round, datetime.now())
             )
 
     def inform_end_of_training(self) -> None:
