@@ -19,7 +19,7 @@ import logging
 import time
 from datetime import datetime
 from copy import deepcopy
-from typing import Any
+from typing import Any, Tuple
 
 from ....common.util import weights_to_device, weights_to_model_device
 from ....common.constants import DeviceType
@@ -63,7 +63,9 @@ class TopAggregator(BaseTopAggregator):
 
         received_end_count = 0
 
-        for end, msg in channel.recv_fifo(end_ids, aggr_num):
+        for msg, metadata in channel.recv_fifo(end_ids, aggr_num):
+            end, _ = metadata
+
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
@@ -72,7 +74,7 @@ class TopAggregator(BaseTopAggregator):
                 logger.debug(f"Stale message from {end}; skipping it")
                 continue
 
-            total = self._handle_weights_msg(end, msg, channel, total)
+            total = self._handle_weights_msg(msg, metadata, channel, total)
 
             # remove end_id if it sends a valid message with correct round info
             # break the for loop if k valid messages arrive
@@ -83,7 +85,9 @@ class TopAggregator(BaseTopAggregator):
 
         # running the second loop to aggregate up to aggr_num updates from trainers
         while received_end_count < aggr_num:
-            for end, msg in channel.recv_fifo(end_ids, 1):
+            for msg, metadata in channel.recv_fifo(end_ids, 1):
+                end, _ = metadata
+
                 if not msg:
                     logger.debug(f"No data from {end}; skipping it")
                     continue
@@ -92,7 +96,7 @@ class TopAggregator(BaseTopAggregator):
                     logger.debug(f"Stale message from {end}; skipping it")
                     continue
 
-                total = self._handle_weights_msg(end, msg, channel, total)
+                total = self._handle_weights_msg(msg, metadata, channel, total)
 
                 # remove end_id if it sends a valid message with correct round info
                 # break the for loop if k valid messages arrive
@@ -154,17 +158,20 @@ class TopAggregator(BaseTopAggregator):
                 },
             )
 
-    def _handle_weights_msg(self, end: str, msg: Any, channel: Any, total: int) -> int:
+    def _handle_weights_msg(
+        self, msg: Any, metadata: Tuple[str, datetime], channel: Any, total: int
+    ) -> int:
+        end = metadata[0]
+        timestamp = metadata[1]
+
         logger.debug(f"received data from {end}")
 
         # calculate round duration for this end, if the round number information
         # is identical with round_start_time
-        # TODO: current ROUND_DURATION calculation below with datetime.now() is not
-        # accurate as the message may have been received much earlier than here
         round_start_time_tup = channel.get_end_property(end, PROP_ROUND_START_TIME)
         if round_start_time_tup[0] == msg[MessageType.MODEL_VERSION]:
             channel.set_end_property(
-                end, PROP_ROUND_DURATION, datetime.now() - round_start_time_tup[1]
+                end, PROP_ROUND_DURATION, timestamp - round_start_time_tup[1]
             )
 
         if MessageType.WEIGHTS in msg:

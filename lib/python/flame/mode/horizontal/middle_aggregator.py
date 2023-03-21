@@ -34,10 +34,10 @@ from ...config import Config
 
 logger = logging.getLogger(__name__)
 
-TAG_DISTRIBUTE = 'distribute'
-TAG_AGGREGATE = 'aggregate'
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
+TAG_DISTRIBUTE = "distribute"
+TAG_AGGREGATE = "aggregate"
+TAG_FETCH = "fetch"
+TAG_UPLOAD = "upload"
 
 # 60 second wait time until a trainer appears in a channel
 WAIT_TIME_FOR_TRAINER = 60
@@ -62,8 +62,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         self.cm(self.config)
         self.cm.join_all()
 
-        self.optimizer = optimizer_provider.get(self.config.optimizer.sort,
-                                                **self.config.optimizer.kwargs)
+        self.optimizer = optimizer_provider.get(
+            self.config.optimizer.sort, **self.config.optimizer.kwargs
+        )
 
         self._round = 1
         self._work_done = False
@@ -100,7 +101,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # one aggregator is sufficient
         end = channel.one_end()
-        msg = channel.recv(end)
+        msg, _ = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
             self.weights = msg[MessageType.WEIGHTS]
@@ -127,10 +128,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
-            channel.send(end, {
-                MessageType.WEIGHTS: self.weights,
-                MessageType.ROUND: self._round
-            })
+            channel.send(
+                end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round}
+            )
 
     def _aggregate_weights(self, tag: str) -> None:
         channel = self.cm.get_by_tag(tag)
@@ -139,7 +139,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         total = 0
         # receive local model parameters from trainers
-        for end, msg in channel.recv_fifo(channel.ends()):
+        for msg, metadata in channel.recv_fifo(channel.ends()):
+            end, _ = metadata
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
@@ -159,9 +160,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
                 self.cache[end] = tres
 
         # optimizer conducts optimization (in this case, aggregation)
-        global_weights = self.optimizer.do(deepcopy(self.weights),
-                                           self.cache,
-                                           total=total)
+        global_weights = self.optimizer.do(
+            deepcopy(self.weights), self.cache, total=total
+        )
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
@@ -185,10 +186,12 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         end = channel.one_end()
 
         channel.send(
-            end, {
+            end,
+            {
                 MessageType.WEIGHTS: self.weights,
-                MessageType.DATASET_SIZE: self.dataset_size
-            })
+                MessageType.DATASET_SIZE: self.dataset_size,
+            },
+        )
         logger.debug("sending weights done")
 
     def _send_dummy_weights(self, tag: str) -> None:
@@ -258,9 +261,20 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
-        task_internal_init >> task_load_data >> task_init >> loop(
-            task_get_fetch >> task_put_dist >> task_get_aggr >> task_put_upload
-            >> task_eval >> task_update_round) >> task_end_of_training
+        (
+            task_internal_init
+            >> task_load_data
+            >> task_init
+            >> loop(
+                task_get_fetch
+                >> task_put_dist
+                >> task_get_aggr
+                >> task_put_upload
+                >> task_eval
+                >> task_update_round
+            )
+            >> task_end_of_training
+        )
 
     def run(self) -> None:
         """Run role."""

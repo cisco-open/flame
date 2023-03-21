@@ -22,10 +22,16 @@ from copy import deepcopy
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (MLFramework, delta_weights_pytorch,
-                            delta_weights_tensorflow, get_ml_framework_in_use,
-                            mlflow_runname, valid_frameworks,
-                            weights_to_device, weights_to_model_device)
+from ...common.util import (
+    MLFramework,
+    delta_weights_pytorch,
+    delta_weights_tensorflow,
+    get_ml_framework_in_use,
+    mlflow_runname,
+    valid_frameworks,
+    weights_to_device,
+    weights_to_model_device,
+)
 from ...common.constants import DeviceType
 from ...registries import registry_provider
 from ..composer import Composer
@@ -36,7 +42,7 @@ from ...config import Config
 
 logger = logging.getLogger(__name__)
 
-TAG_RING_ALLREDUCE = 'ring_allreduce'
+TAG_RING_ALLREDUCE = "ring_allreduce"
 
 
 class Trainer(Role, metaclass=ABCMeta):
@@ -45,7 +51,7 @@ class Trainer(Role, metaclass=ABCMeta):
     @abstract_attribute
     def config(self) -> Config:
         """Abstract attribute for config object."""
-    
+
     @abstract_attribute
     def model(self):
         """Abstract attribute for model object."""
@@ -69,7 +75,8 @@ class Trainer(Role, metaclass=ABCMeta):
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
             self.model = self.registry_client.load_model(
-                base_model.name, base_model.version)
+                base_model.name, base_model.version
+            )
         self.ring_weights = None  # latest model weights from ring all-reduce
         self.weights = None
 
@@ -89,7 +96,8 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}")
+                f"supported frameworks are: {valid_frameworks}"
+            )
 
         if self.framework == MLFramework.PYTORCH:
             self._scale_down_weights_fn = self._scale_down_weights_pytorch
@@ -133,7 +141,7 @@ class Trainer(Role, metaclass=ABCMeta):
         # https://github.com/baidu-research/baidu-allreduce/blob/master/collectives.cu
         logger.info("starting ring-allreduce")
         my_id = channel.get_backend_id()
-        
+
         # do all communication with weights on cpu
         self.weights = weights_to_device(self.weights, DeviceType.CPU)
 
@@ -177,7 +185,7 @@ class Trainer(Role, metaclass=ABCMeta):
             channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i - 1 + size) % size
-            msg = channel.recv(recvfrom_id)
+            msg, _ = channel.recv(recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
             logger.debug(f"recv'd chunk: {len(recv_chunk)} from {recvfrom_id}")
@@ -205,7 +213,7 @@ class Trainer(Role, metaclass=ABCMeta):
             channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
 
             recv_chunk_idx = (rank - i + size) % size
-            msg = channel.recv(recvfrom_id)
+            msg, _ = channel.recv(recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
             try:
@@ -217,7 +225,7 @@ class Trainer(Role, metaclass=ABCMeta):
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
 
             self._allgather_fn(from_idx, recv_chunk)
-            
+
         self.weights = weights_to_model_device(self.weights, self.model)
 
         # digest = hashlib.sha1(str(self.weights).encode('utf-8')).hexdigest()
@@ -294,12 +302,12 @@ class Trainer(Role, metaclass=ABCMeta):
         dataset_size = 0
         my_id = channel.get_backend_id()
         while True:
-            msg = channel.peek(end)
+            msg, _ = channel.peek(end)
             if msg is not None and MessageType.WEIGHTS in msg:
                 logger.debug("weights msg seen; let's stop member check")
                 break
 
-            msg = channel.recv(end)
+            msg, _ = channel.recv(end)
 
             logger.debug(f"end_id: {end}, msg: {msg}")
             if MessageType.MEMBER_DIGEST not in msg:
@@ -329,7 +337,9 @@ class Trainer(Role, metaclass=ABCMeta):
                     MessageType.DATASET_SIZE: self.dataset_size,
                     MessageType.ROUND: self._round,
                     MessageType.IS_COMMITTER: self.is_committer,
-                    MessageType.RING_WEIGHTS: weights_to_device(self.ring_weights, DeviceType.CPU)
+                    MessageType.RING_WEIGHTS: weights_to_device(
+                        self.ring_weights, DeviceType.CPU
+                    ),
                 }
                 channel.send(end, ring_weights_msg)
 
@@ -337,7 +347,9 @@ class Trainer(Role, metaclass=ABCMeta):
                 if MessageType.RING_WEIGHTS in msg:
                     # set latest weights sent from committer
                     logger.debug(f"{my_id}: fetching ring weights from {end}")
-                    self.weights = weights_to_model_device(msg[MessageType.RING_WEIGHTS], self.model)
+                    self.weights = weights_to_model_device(
+                        msg[MessageType.RING_WEIGHTS], self.model
+                    )
                     self._update_model()
                 else:
                     # since ring weights are not in the message from committer,
@@ -367,7 +379,7 @@ class Trainer(Role, metaclass=ABCMeta):
             MessageType.MEMBER_DIGEST: digest,
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.ROUND: self._round,
-            MessageType.IS_COMMITTER: self.is_committer
+            MessageType.IS_COMMITTER: self.is_committer,
         }
 
         if self.ring_weights is None:
@@ -394,7 +406,7 @@ class Trainer(Role, metaclass=ABCMeta):
 
         # check if work is done by others
         # if work is done, then no further distributed learning needed
-        self._work_done = (self._round > self._rounds)
+        self._work_done = self._round > self._rounds
         if self._work_done:
             return
 
@@ -449,7 +461,7 @@ class Trainer(Role, metaclass=ABCMeta):
         logger.debug(f"Total rounds: {self._rounds}")
 
         self._round += 1
-        self._work_done = (self._round > self._rounds)
+        self._work_done = self._round > self._rounds
 
         channel = self.cm.get_by_tag(TAG_RING_ALLREDUCE)
         if not channel:
@@ -501,9 +513,21 @@ class Trainer(Role, metaclass=ABCMeta):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_init_cm >> task_internal_init >> task_load_data >> task_init >> loop(
-                task_train >> task_allreduce >> task_eval >> task_save_metrics
-                >> task_increment_round) >> task_save_params >> task_save_model
+            (
+                task_init_cm
+                >> task_internal_init
+                >> task_load_data
+                >> task_init
+                >> loop(
+                    task_train
+                    >> task_allreduce
+                    >> task_eval
+                    >> task_save_metrics
+                    >> task_increment_round
+                )
+                >> task_save_params
+                >> task_save_model
+            )
 
     def run(self) -> None:
         """Run role."""

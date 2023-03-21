@@ -66,7 +66,8 @@ class TopAggregator(SyncTopAgg):
             self._agg_goal_weights = deepcopy(self.weights)
 
         # receive local model parameters from a trainer who arrives first
-        end, msg = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
+        msg, metadata = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
+        end, _ = metadata
         if not msg:
             logger.debug(f"No data from {end}; skipping it")
             return
@@ -74,8 +75,7 @@ class TopAggregator(SyncTopAgg):
         logger.debug(f"received data from {end}")
 
         if MessageType.WEIGHTS in msg:
-            weights = weights_to_model_device(msg[MessageType.WEIGHTS],
-                                              self.model)
+            weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
         if MessageType.DATASET_SIZE in msg:
             count = msg[MessageType.DATASET_SIZE]
@@ -90,18 +90,16 @@ class TopAggregator(SyncTopAgg):
             # save training result from trainer in a disk cache
             self.cache[end] = tres
 
-            self._agg_goal_weights = self.optimizer.do(self._agg_goal_weights,
-                                                       self.cache,
-                                                       total=count,
-                                                       version=self._round)
+            self._agg_goal_weights = self.optimizer.do(
+                self._agg_goal_weights, self.cache, total=count, version=self._round
+            )
             # increment agg goal count
             self._agg_goal_cnt += 1
 
         if self._agg_goal_cnt < self._agg_goal:
             # didn't reach the aggregation goal; return
             logger.debug("didn't reach agg goal")
-            logger.debug(
-                f" current: {self._agg_goal_cnt}; agg goal: {self._agg_goal}")
+            logger.debug(f" current: {self._agg_goal_cnt}; agg goal: {self._agg_goal}")
             return
 
         if self._agg_goal_weights is None:
@@ -139,14 +137,15 @@ class TopAggregator(SyncTopAgg):
             logger.debug(f"sending weights to {end}")
             # we use _round to indicate a model version
             channel.send(
-                end, {
-                    MessageType.WEIGHTS:
-                    weights_to_device(self.weights, DeviceType.CPU),
-                    MessageType.ROUND:
-                    self._round,
-                    MessageType.MODEL_VERSION:
-                    self._round
-                })
+                end,
+                {
+                    MessageType.WEIGHTS: weights_to_device(
+                        self.weights, DeviceType.CPU
+                    ),
+                    MessageType.ROUND: self._round,
+                    MessageType.MODEL_VERSION: self._round,
+                },
+            )
 
     def compose(self) -> None:
         """Compose role with tasklets."""
@@ -186,14 +185,25 @@ class TopAggregator(SyncTopAgg):
 
         # create a loop object for asyncfl to manage concurrency as well as
         # aggregation goal
-        asyncfl_loop = Loop(
-            loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
+        asyncfl_loop = Loop(loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
 
-        task_internal_init >> task_load_data >> task_init >> loop(
-            task_reset_agg_goal_vars >> asyncfl_loop(
-                task_put >> task_get) >> task_train >> task_eval >>
-            task_analysis >> task_save_metrics >> task_increment_round
-        ) >> task_end_of_training >> task_save_params >> task_save_model
+        (
+            task_internal_init
+            >> task_load_data
+            >> task_init
+            >> loop(
+                task_reset_agg_goal_vars
+                >> asyncfl_loop(task_put >> task_get)
+                >> task_train
+                >> task_eval
+                >> task_analysis
+                >> task_save_metrics
+                >> task_increment_round
+            )
+            >> task_end_of_training
+            >> task_save_params
+            >> task_save_model
+        )
 
     @classmethod
     def get_func_tags(cls) -> list[str]:

@@ -222,7 +222,14 @@ class Channel(object):
             # set a property that says a message was received for the end
             self._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_RECVD)
 
-        return cloudpickle.loads(payload) if payload and status else None
+        # dissect the payload into msg and timestamp
+        msg, timestamp = (
+            (cloudpickle.loads(payload[0]), payload[1])
+            if payload and status
+            else (None, None)
+        )
+
+        return msg, timestamp
 
     def recv_fifo(self, end_ids: list[str], first_k: int = 0) -> Tuple[str, Any]:
         """Receive a message per end from a list of ends.
@@ -280,8 +287,14 @@ class Channel(object):
             else:
                 logger.debug(f"channel has no end id {end_id} for msg")
 
-            msg = cloudpickle.loads(payload) if payload and status else None
-            yield end_id, msg
+            msg, timestamp = (
+                (cloudpickle.loads(payload[0]), payload[1])
+                if payload and status
+                else (None, None)
+            )
+            metadata = (end_id, timestamp)
+
+            yield msg, metadata
 
     async def _streamer_for_recv_fifo(self, end_ids: list[str]):
         """Read messages in a FIFO fashion.
@@ -372,7 +385,13 @@ class Channel(object):
 
         payload, status = run_async(_peek(), self._backend.loop())
 
-        return cloudpickle.loads(payload) if payload and status else None
+        msg, timestamp = (
+            (cloudpickle.loads(payload[0]), payload[1])
+            if payload and status
+            else (None, None)
+        )
+
+        return msg, timestamp
 
     def join(self):
         """Join the channel."""

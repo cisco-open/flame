@@ -22,10 +22,16 @@ from ...channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ...channel_manager import ChannelManager
 from ...common.constants import TrainerState
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (MLFramework, delta_weights_pytorch,
-                            delta_weights_tensorflow, get_ml_framework_in_use,
-                            mlflow_runname, valid_frameworks,
-                            weights_to_device, weights_to_model_device)
+from ...common.util import (
+    MLFramework,
+    delta_weights_pytorch,
+    delta_weights_tensorflow,
+    get_ml_framework_in_use,
+    mlflow_runname,
+    valid_frameworks,
+    weights_to_device,
+    weights_to_model_device,
+)
 from ...optimizers import optimizer_provider
 from ...common.constants import DeviceType
 from ...registries import registry_provider
@@ -37,8 +43,8 @@ from ...config import Config
 
 logger = logging.getLogger(__name__)
 
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
+TAG_FETCH = "fetch"
+TAG_UPLOAD = "upload"
 
 
 class Trainer(Role, metaclass=ABCMeta):
@@ -47,11 +53,11 @@ class Trainer(Role, metaclass=ABCMeta):
     @abstract_attribute
     def config(self) -> Config:
         """Abstract attribute for config object."""
-    
+
     @abstract_attribute
     def model(self):
         """Abstract attribute for model object."""
-    
+
     @abstract_attribute
     def dataset_size(self):
         """Abstract attribute for size of dataset used to train."""
@@ -70,8 +76,9 @@ class Trainer(Role, metaclass=ABCMeta):
         self.metrics = dict()
 
         # needed for trainer-side optimization algorithms such as fedprox
-        temp_opt = optimizer_provider.get(self.config.optimizer.sort,
-                                                **self.config.optimizer.kwargs)
+        temp_opt = optimizer_provider.get(
+            self.config.optimizer.sort, **self.config.optimizer.kwargs
+        )
         self.regularizer = temp_opt.regularizer
 
         self._round = 1
@@ -81,7 +88,8 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.framework == MLFramework.UNKNOWN:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks are: {valid_frameworks}")
+                f"supported frameworks are: {valid_frameworks}"
+            )
 
         if self.framework == MLFramework.PYTORCH:
             self._delta_weights_fn = delta_weights_pytorch
@@ -106,7 +114,7 @@ class Trainer(Role, metaclass=ABCMeta):
 
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_RECV)
-        msg = channel.recv(end)
+        msg, _ = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
@@ -150,7 +158,7 @@ class Trainer(Role, metaclass=ABCMeta):
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,
-            MessageType.MODEL_VERSION: self._round
+            MessageType.MODEL_VERSION: self._round,
         }
         channel.send(end, msg)
         logger.debug("sending weights done")
@@ -204,9 +212,14 @@ class Trainer(Role, metaclass=ABCMeta):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_internal_init >> task_load_data >> task_init >> loop(
-                task_get >> task_train >> task_eval >> task_put >>
-                task_save_metrics)
+            (
+                task_internal_init
+                >> task_load_data
+                >> task_init
+                >> loop(
+                    task_get >> task_train >> task_eval >> task_put >> task_save_metrics
+                )
+            )
 
     def run(self) -> None:
         """Run role."""
