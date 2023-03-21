@@ -54,6 +54,7 @@ BasicJobInfo:
     - designId
     - schemaVersion
     - codeVersion
+    - backend
   example:
     userId: "john"
     designId: "60d0d66716af12b787d9ef0a"

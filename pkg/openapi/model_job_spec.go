@@ -35,7 +35,7 @@ type JobSpec struct {
 	SchemaVersion string      `json:"schemaVersion"`
 	CodeVersion   string      `json:"codeVersion"`
 	Priority      JobPriority `json:"priority,omitempty"`
-	Backend       CommBackend `json:"backend,omitempty"`
+	Backend       CommBackend `json:"backend"`
 	MaxRunTime    int32       `json:"maxRunTime,omitempty"`
 	ModelSpec     ModelSpec   `json:"modelSpec,omitempty"`
 
