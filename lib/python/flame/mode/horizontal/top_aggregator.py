@@ -134,7 +134,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(deepcopy(self.weights),
                                            self.cache,
-                                           total=total)
+                                           total=total,
+                                           num_trainers=len(channel.ends()))
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)

@@ -17,8 +17,10 @@
 
 import logging
 
+from copy import deepcopy
 from ...channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from ...channel_manager import ChannelManager
+from ...common.constants import TrainerState
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
 from ...common.util import (MLFramework, delta_weights_pytorch,
                             delta_weights_tensorflow, get_ml_framework_in_use,
@@ -116,6 +118,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
+        self.regularizer.save_state(TrainerState.PRE_TRAIN, glob_model = self.model)
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
     def put(self, tag: str) -> None:
@@ -137,8 +140,12 @@ class Trainer(Role, metaclass=ABCMeta):
         end = channel.one_end(VAL_CH_STATE_SEND)
 
         self._update_weights()
+        self.regularizer.save_state(TrainerState.POST_TRAIN, loc_model=self.model)
 
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
+
+        # send delta_weights to regularizer
+        self.regularizer.update()
 
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),

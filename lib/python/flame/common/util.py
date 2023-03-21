@@ -77,6 +77,17 @@ def get_params_detached_pytorch(model):
     """Return copy of parameters of pytorch model disconnected from graph."""
     return [param.detach().clone() for param in model.parameters()]
 
+def get_params_as_vector_pytorch(params):
+    """Return the list of parameters passed in concatenated into one vector."""
+    import torch
+    vector = None
+    for param in params:
+        if not isinstance(vector, torch.Tensor):
+            vector = param.reshape(-1)
+        else:
+            vector = torch.cat((vector, param.reshape(-1)), 0)
+    return vector
+
 def get_dataset_filename(link):
     """Return path for file location"""
     # currently only supports https and local file

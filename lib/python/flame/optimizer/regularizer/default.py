@@ -16,6 +16,8 @@
 """Dummy Regularizer."""
 import logging
 
+from flame.common.constants import TrainerState
+
 logger = logging.getLogger(__name__)
 
 
@@ -29,3 +31,11 @@ class Regularizer:
     def get_term(self, **kwargs):
         """No regularizer term for dummy regularizer."""
         return 0.0
+    
+    def save_state(self, state: TrainerState, **kwargs):
+        """No states saved in dummy regularizer."""
+        pass
+
+    def update(self):
+        """No need for update in dummy regularizer."""
+        pass
