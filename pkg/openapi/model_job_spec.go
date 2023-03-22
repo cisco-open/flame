@@ -37,8 +37,10 @@ type JobSpec struct {
 	Priority      JobPriority `json:"priority,omitempty"`
 	Backend       CommBackend `json:"backend,omitempty"`
 	MaxRunTime    int32       `json:"maxRunTime,omitempty"`
-	DataSpec      DataSpec    `json:"dataSpec,omitempty"`
 	ModelSpec     ModelSpec   `json:"modelSpec,omitempty"`
+
+	// Dataset specification
+	DataSpec []RoleDatasetGroups `json:"dataSpec,omitempty"`
 }
 
 // AssertJobSpecRequired checks if the required fields are not zero-ed
@@ -54,10 +56,11 @@ func AssertJobSpecRequired(obj JobSpec) error {
 		}
 	}
 
-	if err := AssertDataSpecRequired(obj.DataSpec); err != nil {
-		return err
+	for _, el := range obj.DataSpec {
+		if err := AssertRoleDatasetGroupsRequired(el); err != nil {
+			return err
+		}
 	}
-
 	if err := AssertModelSpecRequired(obj.ModelSpec); err != nil {
 		return err
 	}

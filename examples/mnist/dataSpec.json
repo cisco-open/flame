@@ -1,12 +1,10 @@
-{
-    "fromUser": {
-        "default": 0
-    },
-    "fromSystem": {
-        "trainer": {
+[
+    {
+        "role": "trainer",
+        "datasetGroups": {
             "us": [
-              "64132c15981345ad7b31da47"
+                "64132c15981345ad7b31da47"
             ]
         }
     }
-}
+]

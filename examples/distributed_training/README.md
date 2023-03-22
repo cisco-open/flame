@@ -32,14 +32,14 @@ New dataset created successfully
 	dataset ID: "629e38c756ead26aef5ed5fb"
 ```
 
-Copy the Dataset ID into `job.json`, and repeat for other datasets.
+Copy the Dataset ID into `dataSpec.json`, and repeat for other datasets.
 
 ```bash
 flamectl create dataset dataset_2.json
 flamectl create dataset dataset_3.json
 ```
 
-Replace the dataset IDs generated with the ones existing in `job.json`.
+Replace the dataset IDs generated with the ones existing in `dataSpec.json`.
 
 ### Step 5: create a job
 

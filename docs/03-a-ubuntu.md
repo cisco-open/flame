@@ -148,7 +148,7 @@ Error: INSTALLATION FAILED: failed post-install: timed out waiting for the condi
 This issue may be because container images are large or the Internet connection is slow.
 The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
 The latest minikube still doesn't contain the patched component (cri-dockerd 0.2.6).
-A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:latest`).
+A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:v0.2.2`).
 The command `kubectl get pods -n flame` gives a list of pods and their status.
 The pods with `ErrImagePull` or `ImagePullBackOff` status are ones that might be affected by the issue.
 Identifying the required image can be done by running a `kubectl describe` command

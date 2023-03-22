@@ -1,9 +1,7 @@
-{
-    "fromUser": {
-        "default": 0
-    },
-    "fromSystem": {
-        "trainer": {
+[
+    {
+        "role": "trainer",
+        "datasetGroups": {
             "us": [
                 "6270770d081ef2787befd972",
                 "62707721081ef2787befd973",
@@ -11,4 +9,4 @@
             ]
         }
     }
-}
+]

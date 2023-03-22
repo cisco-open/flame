@@ -153,7 +153,10 @@ func (b *JobBuilder) setup() error {
 	b.roleCode = zippedRoleCode
 
 	// Iterating for each dataset id to fetch dataset info and update the datasets array.
-	for roleName, groups := range b.jobSpec.DataSpec.FromSystem {
+	for _, dataSpec := range b.jobSpec.DataSpec {
+		roleName := dataSpec.Role
+		groups := dataSpec.DatasetGroups
+
 		if len(groups) == 0 {
 			return fmt.Errorf("no dataset group specified for trainer role %s", roleName)
 		}
@@ -218,21 +221,6 @@ func (b *JobBuilder) build() ([]objects.Task, []string, error) {
 				tasks = append(tasks, task)
 			}
 			continue
-		}
-
-		// TODO: this is absolute and should be removed
-		for group, count := range b.jobSpec.DataSpec.FromUser {
-			for i := 0; i < int(count); i++ {
-				task := tmpl.Task
-
-				task.Type = openapi.USER
-				task.JobConfig.Realm = group
-				task.JobConfig.GroupAssociation = b.getGroupAssociationByGroup(roleName, group)
-
-				task.GenerateTaskId(i)
-
-				tasks = append(tasks, task)
-			}
 		}
 
 		var count int

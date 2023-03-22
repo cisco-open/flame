@@ -36,7 +36,7 @@ For role, it has two attributes: *isDataConsumer* and *replica*.
 
 **isDataconsumer**: this is a boolean attribute to denote that a role is supposed to consume data.
 If the attribute is set, it indicates workers created from this role are training workers.
-It has an important implication. In the orchestration mode, the number of specified datasets corresponds to the number of workers from the role with isDataConsumer attribute set.
+It has an important implication, indicating the number of specified datasets corresponds to the number of workers from the role with isDataConsumer attribute set.
 
 **replica**: This is applied to the roles with no isDataConsumer attribute set. This feature is for high availability.
 It is yet to be implemented and will be supported in the future.
