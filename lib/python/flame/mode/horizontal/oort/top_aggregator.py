@@ -19,6 +19,7 @@ import logging
 import time
 from datetime import datetime
 from copy import deepcopy
+from typing import Any
 
 from ....common.util import weights_to_device, weights_to_model_device
 from ....common.constants import DeviceType
@@ -57,60 +58,48 @@ class TopAggregator(BaseTopAggregator):
         # terminate aggregating when received weights from k ends
         # (k * overcommitment is selected for training with Oort)
 
-        end_msg = {}
         end_ids = channel.ends()
+        aggr_num = min(self.config.selector.kwargs["aggr_num"], len(end_ids))
 
-        for end, msg in channel.recv_fifo(end_ids):
+        received_end_count = 0
+
+        for end, msg in channel.recv_fifo(end_ids, aggr_num):
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
-            end_msg[end] = (msg, datetime.now())
 
-        # TODO:
-        # currently, we implement to receive all the messages and
-        # accept the fastest k messages; we should change this part
-        # to only receive k messages
+            if self._round != msg[MessageType.MODEL_VERSION]:
+                logger.debug(f"Stale message from {end}; skipping it")
+                continue
 
-        # sort received msg from ends by its arrival time
-        end_msg = sorted(end_msg.items(), key=lambda x: x[1][1])
+            total = self._handle_weights_msg(end, msg, channel, total)
 
-        aggr_num = min(self.config.selector.kwargs["aggr_num"], len(end_ids))
-        for end in end_msg.keys()[:aggr_num]:
-            msg, timestamp = end_msg[end]
-            logger.debug(f"received data from {end} at {timestamp}")
+            # remove end_id if it sends a valid message with correct round info
+            # break the for loop if k valid messages arrive
+            received_end_count += 1
+            end_ids.remove(end)
+            if received_end_count == aggr_num:
+                break
 
-            # calculate round duration for this end, if the round number information
-            # is identical with round_start_time
-            round_start_time_tup = channel.get_end_property(end, PROP_ROUND_START_TIME)
-            if round_start_time_tup[0] == msg[MessageType.MODEL_VERSION]:
-                channel.set_end_property(
-                    end, PROP_ROUND_DURATION, timestamp - round_start_time_tup[1]
-                )
+        # running the second loop to aggregate up to aggr_num updates from trainers
+        while received_end_count < aggr_num:
+            for end, msg in channel.recv_fifo(end_ids, 1):
+                if not msg:
+                    logger.debug(f"No data from {end}; skipping it")
+                    continue
 
-            if MessageType.WEIGHTS in msg:
-                weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+                if self._round != msg[MessageType.MODEL_VERSION]:
+                    logger.debug(f"Stale message from {end}; skipping it")
+                    continue
 
-            if MessageType.DATASET_SIZE in msg:
-                count = msg[MessageType.DATASET_SIZE]
+                total = self._handle_weights_msg(end, msg, channel, total)
 
-            if MessageType.STAT_UTILITY in msg:
-                channel.set_end_property(
-                    end,
-                    PROP_STAT_UTILITY,
-                    msg[MessageType.STAT_UTILITY],
-                )
-            if MessageType.MODEL_VERSION in msg:
-                channel.set_end_property(
-                    end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
-                )
-
-            logger.debug(f"{end}'s parameters trained with {count} samples")
-
-            if weights is not None and count > 0:
-                total += count
-                tres = TrainResult(weights, count)
-                # save training result from trainer in a disk cache
-                self.cache[end] = tres
+                # remove end_id if it sends a valid message with correct round info
+                # break the for loop if k valid messages arrive
+                received_end_count += 1
+                end_ids.remove(end)
+                if received_end_count == aggr_num:
+                    break
 
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(
@@ -164,3 +153,41 @@ class TopAggregator(BaseTopAggregator):
                     MessageType.ROUND: self._round,
                 },
             )
+
+    def _handle_weights_msg(self, end: str, msg: Any, channel: Any, total: int) -> int:
+        logger.debug(f"received data from {end}")
+
+        # calculate round duration for this end, if the round number information
+        # is identical with round_start_time
+        # TODO: current ROUND_DURATION calculation below with datetime.now() is not
+        # accurate as the message may have been received much earlier than here
+        round_start_time_tup = channel.get_end_property(end, PROP_ROUND_START_TIME)
+        if round_start_time_tup[0] == msg[MessageType.MODEL_VERSION]:
+            channel.set_end_property(
+                end, PROP_ROUND_DURATION, datetime.now() - round_start_time_tup[1]
+            )
+
+        if MessageType.WEIGHTS in msg:
+            weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+
+        if MessageType.DATASET_SIZE in msg:
+            count = msg[MessageType.DATASET_SIZE]
+
+        if MessageType.STAT_UTILITY in msg:
+            channel.set_end_property(
+                end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
+            )
+        if MessageType.MODEL_VERSION in msg:
+            channel.set_end_property(
+                end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
+            )
+
+        logger.debug(f"{end}'s parameters trained with {count} samples")
+
+        if weights is not None and count > 0:
+            total += count
+            tres = TrainResult(weights, count)
+            # save training result from trainer in a disk cache
+            self.cache[end] = tres
+
+        return total

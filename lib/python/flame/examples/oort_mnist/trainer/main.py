@@ -20,7 +20,6 @@ https://github.com/pytorch/examples/blob/master/mnist/main.py.
 """
 
 import logging
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -114,7 +113,7 @@ class PyTorchOortMnistTrainer(Trainer):
 
     def _train_epoch(self, epoch):
         self.model.train()
-        self.set_stat_utility(0)
+        self.reset_stat_utility()
 
         # calculate trainer's statistical utility while running minibatches on epoch 1
         # this implementation was based on the Oort authors' implementation:
