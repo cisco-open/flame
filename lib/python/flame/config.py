@@ -129,6 +129,7 @@ class GroupBy(FlameSchema):
 
         return GROUPBY_DEFAULT_GROUP
 
+
 class Broker(FlameSchema):
     sort_to_host: dict
 
@@ -162,18 +163,18 @@ class Config(FlameSchema):
     task_id: str
     backend: BackendType
     channels: dict
-    hyperparameters: Hyperparameters
+    hyperparameters: t.Optional[Hyperparameters]
     brokers: Broker
     job: Job
-    registry: Registry
-    selector: Selector
+    registry: t.Optional[Registry]
+    selector: t.Optional[Selector]
     optimizer: t.Optional[Optimizer] = Field(default=Optimizer())
     channel_configs: t.Optional[ChannelConfigs]
     dataset: str
     max_run_time: int
-    base_model: BaseModel
+    base_model: t.Optional[BaseModel]
     groups: t.Optional[Groups]
-    dependencies: list[str]
+    dependencies: t.Optional[list[str]]
     func_tag_map: t.Optional[dict]
 
 
@@ -203,17 +204,22 @@ def transform_config(raw_config: dict) -> dict:
         "func_tag_map": func_tag_map
     }
 
-    hyperparameters = transform_hyperparameters(raw_config["hyperparameters"])
-    config_data = config_data | {"hyperparameters": hyperparameters}
+    if raw_config.get("hyperparameters", None):
+        hyperparameters = transform_hyperparameters(
+            raw_config["hyperparameters"])
+
+        config_data = config_data | {"hyperparameters": hyperparameters}
 
     sort_to_host = transform_brokers(raw_config["brokers"])
     config_data = config_data | {"brokers": sort_to_host}
 
     config_data = config_data | {
         "job": raw_config["job"],
-        "registry": raw_config["registry"],
         "selector": raw_config["selector"],
     }
+
+    if raw_config.get("registry", None):
+        config_data = config_data | {"registry": raw_config["registry"]}
 
     if raw_config.get("optimizer", None):
         config_data = config_data | {"optimizer": raw_config.get("optimizer")}

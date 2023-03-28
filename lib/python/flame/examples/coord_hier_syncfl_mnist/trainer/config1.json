@@ -1,0 +1,94 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa745",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "trainer-coord-channel": "default",
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "name": "trainer-coord-channel",
+            "description": "Channel between trainer and coordinator",
+            "pair": [
+                "trainer",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "getAggregator"
+                ],
+                "coordinator": [
+                    "selectAggregator"
+                ]
+            }
+        },
+        {
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "middle-aggregator",
+                "trainer"
+            ],
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
+    },
+    "selector": {
+        "sort": "default",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "org1-cluster",
+    "role": "trainer"
+}
