@@ -39,7 +39,6 @@ If the attribute is set, it indicates workers created from this role are trainin
 It has an important implication, indicating the number of specified datasets corresponds to the number of workers from the role with isDataConsumer attribute set.
 
 **replica**: This is applied to the roles with no isDataConsumer attribute set. This feature is for high availability.
-It is yet to be implemented and will be supported in the future.
 
 A channel also has two attributes: *groupBy* and *funcTags*. 
 

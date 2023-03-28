@@ -191,45 +191,85 @@ func (b *JobBuilder) setup() error {
 	return nil
 }
 
+// build is a function that builds an array of tasks, an array of roles and checks them for errors.
 func (b *JobBuilder) build() ([]objects.Task, []string, error) {
+	// Retrieve task templates and dataRoles.
 	dataRoles, templates := b.getTaskTemplates()
+
+	// Check if dataRoles and templates are valid.
 	if err := b.preCheck(dataRoles, templates); err != nil {
 		return nil, nil, err
 	}
 
+	// Build an array of tasks based on templates.
+	tasks := b.buildTasks(templates)
+
+	// Check if dataRoles and templates are valid after building the tasks.
+	if err := b.postCheck(dataRoles, templates); err != nil {
+		return nil, nil, err
+	}
+
+	// Initialize roles array.
+	var roles []string
+
+	// Append the roles from each template to the roles array.
+	for _, template := range templates {
+		roles = append(roles, template.Role)
+	}
+
+	// Return the built tasks, roles and no errors.
+	return tasks, roles, nil
+}
+
+/*
+buildTasks generates the slice of Task objects based on task templates and various job builder properties.
+It returns the generated slice of Task objects.
+
+@param b *JobBuilder - The job builder instance from which the function is called
+@param templates map[string]*taskTemplate - Task templates that the tasks should be generated from
+
+@return []objects.Task - The slice of generated Task objects
+*/
+func (b *JobBuilder) buildTasks(templates map[string]*taskTemplate) []objects.Task {
 	var tasks []objects.Task
 
+	// Sort role keys of templates in alphabetical order and iterate through them
 	roleKeys := sortedKeys(templates)
 	for _, roleName := range roleKeys {
 		tmpl := templates[roleName]
 
+		// Generate tasks for non-data consuming task templates
 		if !tmpl.isDataConsumer {
-			var count int
-			for i, associations := range b.groupAssociations[roleName] {
-				task := tmpl.Task
+			var index int
 
-				task.ComputeId = util.DefaultRealm
-				task.Type = openapi.SYSTEM
-				task.Key = util.RandString(taskKeyLen)
-				task.JobConfig.GroupAssociation = associations
+			// Add the replicas
+			for replica := 0; replica < tmpl.replica; replica++ {
+				for _, associations := range b.groupAssociations[roleName] {
+					task := tmpl.Task
 
-				index := i + count
-				count++
+					task.ComputeId = util.DefaultRealm
+					task.Type = openapi.SYSTEM
+					task.Key = util.RandString(taskKeyLen)
+					task.JobConfig.GroupAssociation = associations
 
-				task.GenerateTaskId(index)
+					task.GenerateTaskId(index)
 
-				tasks = append(tasks, task)
+					index++
+
+					tasks = append(tasks, task)
+				}
 			}
+
 			continue
 		}
 
-		var count int
+		var index int
 		groups := sortedKeys(b.datasets[roleName])
 
 		for _, groupName := range groups {
 			datasets := b.datasets[roleName][groupName]
 
-			for i, dataset := range datasets {
+			for _, dataset := range datasets {
 				task := tmpl.Task
 
 				task.ComputeId = dataset.ComputeId
@@ -238,27 +278,16 @@ func (b *JobBuilder) build() ([]objects.Task, []string, error) {
 				task.JobConfig.DatasetUrl = dataset.Url
 				task.JobConfig.GroupAssociation = b.getGroupAssociationByGroup(roleName, groupName)
 
-				index := count + i
-				count++
-
 				task.GenerateTaskId(index)
+
+				index++
 
 				tasks = append(tasks, task)
 			}
 		}
 	}
 
-	if err := b.postCheck(dataRoles, templates); err != nil {
-		return nil, nil, err
-	}
-
-	var roles []string
-
-	for _, template := range templates {
-		roles = append(roles, template.Role)
-	}
-
-	return tasks, roles, nil
+	return tasks
 }
 
 func (b *JobBuilder) getGroupAssociationByGroup(roleName, groupName string) map[string]string {
@@ -296,6 +325,11 @@ func (b *JobBuilder) getTaskTemplates() ([]string, map[string]*taskTemplate) {
 		template.isDataConsumer = role.IsDataConsumer
 		if role.IsDataConsumer {
 			dataRoles = append(dataRoles, role.Name)
+		}
+
+		template.replica = int(role.Replica)
+		if template.replica <= 0 {
+			template.replica = 1
 		}
 
 		template.ZippedCode = b.roleCode[role.Name]
@@ -436,7 +470,7 @@ func (b *JobBuilder) postCheck(dataRoles []string, templates map[string]*taskTem
 
 type taskTemplate struct {
 	objects.Task
-
+	replica        int
 	isDataConsumer bool
 }
 

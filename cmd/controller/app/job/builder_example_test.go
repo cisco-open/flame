@@ -102,8 +102,8 @@ func Test_asyncfl_hier_mnist(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"eu": []string{datasetEuGermanyID, datasetEuUkID},
-				"na": []string{datasetNaCanadaID, datasetNaUsID},
+				"eu": {datasetEuGermanyID, datasetEuUkID},
+				"na": {datasetNaCanadaID, datasetNaUsID},
 			},
 		},
 	}
@@ -176,7 +176,7 @@ func Test_distributed_training(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"us": []string{dataset1ID, dataset2ID, dataset3ID},
+				"us": {dataset1ID, dataset2ID, dataset3ID},
 			},
 		},
 	}
@@ -252,8 +252,8 @@ func Test_hier_mnist(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"eu": []string{datasetEuGermanyID, datasetEuUkID},
-				"na": []string{datasetNaCanadaID, datasetNaUsID},
+				"eu": {datasetEuGermanyID, datasetEuUkID},
+				"na": {datasetNaCanadaID, datasetNaUsID},
 			},
 		},
 	}
@@ -348,7 +348,7 @@ func Test_medmnist(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"us": []string{
+				"us": {
 					dataset1ID, dataset2ID, dataset3ID, dataset4ID, dataset5ID,
 					dataset6ID, dataset7ID, dataset8ID, dataset9ID, dataset10ID,
 				},
@@ -418,7 +418,7 @@ func Test_mnist(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"us": []string{datasetID},
+				"us": {datasetID},
 			},
 		},
 	}
@@ -490,9 +490,9 @@ func Test_parallel_experiment(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"asia": []string{datasetAsiaID},
-				"uk":   []string{datasetEuUkID},
-				"us":   []string{datasetUsWestID},
+				"asia": {datasetAsiaID},
+				"uk":   {datasetEuUkID},
+				"us":   {datasetUsWestID},
 			},
 		},
 	}
@@ -508,6 +508,73 @@ func Test_parallel_experiment(t *testing.T) {
 
 	sort.Strings(roles)
 	expectedRoles := []string{"aggregator", "trainer"}
+	assert.Equal(t, expectedRoles, roles)
+
+	exampleConfigPath := "testdata/" + designID
+	validateTasks(t, exampleConfigPath, tasks)
+}
+
+func Test_asyncfl_hier_mnist_lb(t *testing.T) {
+	rootExample := baseExampleFolder + "/asyncfl_hier_mnist_lb"
+
+	db := connect(t)
+	userID := uuid.NewString()
+	ctx := context.Background()
+
+	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
+	assert.NoError(t, err)
+
+	builder := NewJobBuilder(dbService, config.JobParams{})
+	assert.NotNil(t, builder)
+
+	designID := "asyncfl_hier_mnist_lb"
+
+	err = dbService.CreateDesign(userID, openapi.Design{
+		Name:        userID,
+		UserId:      userID,
+		Id:          designID,
+		Description: "parallel exp",
+		Schemas:     []openapi.DesignSchema{},
+	})
+	assert.NoError(t, err)
+
+	var designSchemaData openapi.DesignSchema
+	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
+	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
+	assert.NoError(t, err)
+
+	designCodeFile, err := os.Open(rootExample + "/asyncfl_hier_mnist_lb.zip")
+	assert.NoError(t, err)
+	err = dbService.CreateDesignCode(userID, designID, "asyncfl_hier_mnist_lb", "zip", designCodeFile)
+	assert.NoError(t, err)
+
+	var datasetRed openapi.DatasetInfo
+	readFileToStruct(t, rootExample+"/dataset_red.json", &datasetRed)
+	datasetRedID, err := dbService.CreateDataset(userID, datasetRed)
+	assert.NoError(t, err)
+
+	var jobSpecData openapi.JobSpec
+	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"red": {datasetRedID},
+			},
+		},
+	}
+	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
+	assert.NoError(t, err)
+	assert.Equal(t, openapi.READY, jobStatus.State)
+
+	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
+	assert.NoError(t, err)
+
+	tasks, roles, err := builder.GetTasks(&jobSpec)
+	assert.NoError(t, err)
+
+	sort.Strings(roles)
+	expectedRoles := []string{"middle-aggregator", "top-aggregator", "trainer"}
 	assert.Equal(t, expectedRoles, roles)
 
 	exampleConfigPath := "testdata/" + designID
