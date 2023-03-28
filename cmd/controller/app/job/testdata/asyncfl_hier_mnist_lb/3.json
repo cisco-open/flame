@@ -1,0 +1,45 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "6421a2dbb55f25122132342b",
+        "name": "asyncfl_hier_mnist_lb"
+    },
+    "role": "top-aggregator",
+    "realm": "",
+    "channels": [
+        {
+            "name": "global-channel",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "black"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ],
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "global-channel": "black"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "optimizer": {},
+    "selector": {}
+}

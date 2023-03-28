@@ -1,0 +1,69 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "6421a2dbb55f25122132342b",
+        "name": "asyncfl_hier_mnist_lb"
+    },
+    "role": "middle-aggregator",
+    "realm": "",
+    "channels": [
+        {
+            "name": "global-channel",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "black"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ],
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        },
+        {
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "red"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "global-channel": "black",
+        "param-channel": "red"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "optimizer": {},
+    "selector": {}
+}

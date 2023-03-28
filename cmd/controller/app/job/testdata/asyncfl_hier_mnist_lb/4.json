@@ -1,0 +1,46 @@
+{
+    "backend": "mqtt",
+    "registry": {
+        "sort": "",
+        "uri": ""
+    },
+    "job": {
+        "id": "6421a2dbb55f25122132342b",
+        "name": "asyncfl_hier_mnist_lb"
+    },
+    "role": "trainer",
+    "realm": "",
+    "channels": [
+        {
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "red"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "red"
+    },
+    "maxRunTime": 1800,
+    "baseModel": {},
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_1.npz",
+    "optimizer": {},
+    "selector": {}
+}
