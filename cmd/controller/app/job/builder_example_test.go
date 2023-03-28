@@ -98,10 +98,13 @@ func Test_asyncfl_hier_mnist(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"eu": []string{datasetEuGermanyID, datasetEuUkID},
-			"na": []string{datasetNaCanadaID, datasetNaUsID},
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"eu": []string{datasetEuGermanyID, datasetEuUkID},
+				"na": []string{datasetNaCanadaID, datasetNaUsID},
+			},
 		},
 	}
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
@@ -169,9 +172,12 @@ func Test_distributed_training(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"us": []string{dataset1ID, dataset2ID, dataset3ID},
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"us": []string{dataset1ID, dataset2ID, dataset3ID},
+			},
 		},
 	}
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
@@ -242,10 +248,13 @@ func Test_hier_mnist(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"eu": []string{datasetEuGermanyID, datasetEuUkID},
-			"na": []string{datasetNaCanadaID, datasetNaUsID},
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"eu": []string{datasetEuGermanyID, datasetEuUkID},
+				"na": []string{datasetNaCanadaID, datasetNaUsID},
+			},
 		},
 	}
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
@@ -335,11 +344,14 @@ func Test_medmnist(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"us": []string{
-				dataset1ID, dataset2ID, dataset3ID, dataset4ID, dataset5ID,
-				dataset6ID, dataset7ID, dataset8ID, dataset9ID, dataset10ID,
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"us": []string{
+					dataset1ID, dataset2ID, dataset3ID, dataset4ID, dataset5ID,
+					dataset6ID, dataset7ID, dataset8ID, dataset9ID, dataset10ID,
+				},
 			},
 		},
 	}
@@ -402,9 +414,12 @@ func Test_mnist(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"us": []string{datasetID},
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"us": []string{datasetID},
+			},
 		},
 	}
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
@@ -471,11 +486,14 @@ func Test_parallel_experiment(t *testing.T) {
 
 	var jobSpecData openapi.JobSpec
 	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec.FromSystem = map[string]map[string][]string{
-		"trainer": {
-			"asia": []string{datasetAsiaID},
-			"uk":   []string{datasetEuUkID},
-			"us":   []string{datasetUsWestID},
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role: "trainer",
+			DatasetGroups: map[string][]string{
+				"asia": []string{datasetAsiaID},
+				"uk":   []string{datasetEuUkID},
+				"us":   []string{datasetUsWestID},
+			},
 		},
 	}
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)

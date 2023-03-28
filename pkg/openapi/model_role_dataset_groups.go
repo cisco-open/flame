@@ -1,4 +1,4 @@
-// Copyright 2022 Cisco Systems, Inc. and its affiliates
+// Copyright 2023 Cisco Systems, Inc. and its affiliates
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,25 +25,26 @@
 
 package openapi
 
-type DataSpec struct {
-	FromUser map[string]int32 `json:"fromUser,omitempty"`
+// RoleDatasetGroups - Dataset specification
+type RoleDatasetGroups struct {
+	Role string `json:"role,omitempty"`
 
-	FromSystem map[string]map[string][]string `json:"fromSystem,omitempty"`
+	DatasetGroups map[string][]string `json:"datasetGroups,omitempty"`
 }
 
-// AssertDataSpecRequired checks if the required fields are not zero-ed
-func AssertDataSpecRequired(obj DataSpec) error {
+// AssertRoleDatasetGroupsRequired checks if the required fields are not zero-ed
+func AssertRoleDatasetGroupsRequired(obj RoleDatasetGroups) error {
 	return nil
 }
 
-// AssertRecurseDataSpecRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of DataSpec (e.g. [][]DataSpec), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseDataSpecRequired(objSlice interface{}) error {
+// AssertRecurseRoleDatasetGroupsRequired recursively checks if required fields are not zero-ed in a nested slice.
+// Accepts only nested slice of RoleDatasetGroups (e.g. [][]RoleDatasetGroups), otherwise ErrTypeAssertionError is thrown.
+func AssertRecurseRoleDatasetGroupsRequired(objSlice interface{}) error {
 	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aDataSpec, ok := obj.(DataSpec)
+		aRoleDatasetGroups, ok := obj.(RoleDatasetGroups)
 		if !ok {
 			return ErrTypeAssertionError
 		}
-		return AssertDataSpecRequired(aDataSpec)
+		return AssertRoleDatasetGroupsRequired(aRoleDatasetGroups)
 	})
 }

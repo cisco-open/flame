@@ -32,13 +32,21 @@ $ flamectl create dataset dataset_asia_china.json
 New dataset created successfully
 	dataset ID: "62618818edcb3220775de1a4"
 ```
-repeat the same step for other two datasets and then copy all three dataset IDs into `job.json`
+repeat the same step for other two datasets and then copy all three dataset IDs into `dataSpec.json`
 ```json
-	"fromSystem": [
-		"62618818edcb3220775de1a4",
-		"62618821edcb3220775de1a5",
-		"62618829edcb3220775de1a6"
-	]
+{
+    "trainer": {
+        "asia": [
+            "62618818edcb3220775de1a4"
+        ],
+        "eu": [
+            "641877867330c10d152389c7"
+        ],
+        "us": [
+            "parallel_experiment"
+        ]
+    }
+}
 ```
 
 ### Step 5: create a job

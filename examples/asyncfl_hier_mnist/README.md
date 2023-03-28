@@ -37,7 +37,7 @@ New dataset created successfully
 	dataset ID: "629e3095741b82c266a41478"
 ```
 
-Copy the Dataset ID into `job.json`, and repeat for other datasets.
+Copy the Dataset ID into `dataSpec.json`, and repeat for other datasets.
 
 ```bash
 flamectl create dataset dataset_na_canada.json
@@ -45,7 +45,7 @@ flamectl create dataset dataset_eu_germany.json
 flamectl create dataset dataset_eu_uk.json
 ```
 
-Replace the dataset IDs generated with the ones existing in `job.json`.
+Replace the dataset IDs generated with the ones existing in `dataSpec.json`.
 
 Flame will assign a trainer to each dataset. As each dataset has a realm specified, the middle aggreagator will be created based on the corresponding groupBy tag. In this case, there will be one middle aggregator for Europe (eu) and one for North America (na).
 

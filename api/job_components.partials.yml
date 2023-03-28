@@ -79,46 +79,38 @@ CommBackend:
 ########################################
 DataSpec:
   description: Dataset specification
-  type: object
-  properties:
-    fromUser:
-      $ref: '#/components/schemas/FromUser'
-    fromSystem:
-      $ref: '#/components/schemas/FromSystem'
+  type: array
+  items:
+    $ref: '#/components/schemas/RoleDatasetGroups'
   example:
-    fromUser:
-      default: 1 # there is one user-fed dataset under default realm
-      uk: 2 # there are two user-fed datasets (hence two compute nodes) under uk realm
-      us/foo: 3 # there are three user-fed datasets under us/foo realm
-    fromSystem:
-      trainer:
-        "default/eu":
+    - role: trainer
+      datasetGroups:
+        "eu":
           - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
           - 61609290fa724deafdb2a4fb # id of dataset registered in the flame system
-        "default/us":
+        "us":
           - 61609290fa724deafdb2a4fc # id of dataset registered in the flame system
 
-########################################
-# FromUser
-########################################
-FromUser:
-  # an object is a key-value pair of realm and count
+RoleDatasetGroups:
+  description: Dataset specification
   type: object
-  additionalProperties:
-    type: integer
-    format: int32
-
-########################################
-# FromSystem
-########################################
-FromSystem:
-  type: object
-  additionalProperties:
-    type: object
-    additionalProperties:
-      type: array
-      items:
-        type: string
+  properties:
+    role:
+      type: string
+    datasetGroups:
+      type: object
+      additionalProperties:
+        type: array
+        items:
+          type: string
+  example:
+    role: trainer
+    datasetGroups:
+      "eu":
+        - 61609290fa724deafdb2a4fa # id of dataset registered in the flame system
+        - 61609290fa724deafdb2a4fb # id of dataset registered in the flame system
+      "us":
+        - 61609290fa724deafdb2a4fc # id of dataset registered in the flame system
 
 ########################################
 # Model Spec

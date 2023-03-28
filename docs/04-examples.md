@@ -72,11 +72,11 @@ flamectl create dataset dataset.json
 ```
 The last command returns the dataset's ID if successful.
 If you want to start a two-trainer example, you need to create one more dataset because flame automatically assigns a trainer to a new dataset.
-As the dataset ID is a unique key based on both URL in `dataset.json` and user ID in `${Home}/.flame/config.yaml`, you can modify either URL or user id. Or you can simply duplicate the same dataset's ID in `job.json`.
+As the dataset ID is a unique key based on both URL in `dataset.json` and user ID in `${HOME}/.flame/config.yaml`, you can modify either URL or user id. Or you can simply duplicate the same dataset's ID in `dataSpec.json`.
 
 ### Step 5: modify a job specification
 
-With your choice of text editor, modify `job.json` to specify correct dataset's ID and save the change.
+With your choice of text editor, modify `dataSpec.json` to specify correct dataset's ID and save the change.
 
 ### Step 6: create a job
 ```bash

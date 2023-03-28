@@ -72,16 +72,4 @@ and makes worker creation requests.
 9. Step 9: The flamelet monitors the execution of the task and updates the state once the task execution is over.
 10. Step 10: In the meantime, the controller also monitors a job's status and take action when necessary (e.g., deallocating workers).
 
-The above workflow can have some variations depending deployment mode.
-There are two types of deployment modes: **orchestration** and **non-ochestration**.
-In orchestration mode, all the workers are under the management of flame system through the help of cluster orchestrators.
-On the other hand, in non-orchestration mode, the workers of consuming data (e.g., training worker) are not under management of the flame system.
-The non-ochestration mode is useful in one of the following situations:
-* when the flame system doesn't have permission to utilize resources of geo-distributed clusters
-* when the geo-distributed clusters are not under the management of one organization
-* when participants of a FL job want to have a control over when to join or leave the job
-
-In non-ochestration mode, the fleddge system is only responsible for managing (i.e., (de)allocation) non-data consuming workers (e.g., model aggregating workers).
-The system supports a hybrid mode where some are managed workers and others are non-managed workers.
-
 Note that the flame system is in active development and not all the functionalities are supported yet.

@@ -62,7 +62,7 @@ func createJobSpec(data []byte, jobFile string) (bool, openapi.JobSpec) {
 	}
 
 	//validate data spec
-	dataSpec := openapi.DataSpec{}
+	var dataSpec []openapi.RoleDatasetGroups
 	dataSpecPath := fmt.Sprintf("%s/%s", path.Dir(jobFile), createJobRequest.DataSpecPath)
 
 	err = util.ReadFileToStruct(dataSpecPath, &dataSpec)
