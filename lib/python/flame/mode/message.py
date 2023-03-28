@@ -37,4 +37,4 @@ class MessageType(Enum):
 
     MODEL_VERSION = 9  # model version used; an non-negative integer
 
-    STAT_UTILITY = 10  # measured utility of a client based on Oort
+    STAT_UTILITY = 10  # measured utility of a trainer based on Oort

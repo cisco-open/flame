@@ -18,6 +18,7 @@
 import logging
 from queue import Queue
 from threading import Thread
+from datetime import datetime
 
 from ..channel import Channel
 from ..common.util import run_async
@@ -33,14 +34,9 @@ KEY_LOOP = "loop"
 class ChunkThread(Thread):
     """ChunkThread class."""
 
-    def __init__(self,
-                 group=None,
-                 target=None,
-                 name=None,
-                 args=(),
-                 kwargs=None,
-                 *,
-                 daemon=None):
+    def __init__(
+        self, group=None, target=None, name=None, args=(), kwargs=None, *, daemon=None
+    ):
         """Initialize an instance."""
         # call parent constructure method
         super().__init__(group, target, name, daemon=daemon)
@@ -62,18 +58,19 @@ class ChunkThread(Thread):
         the message to its designated receive queue.
         """
 
-        async def inner(end_id: str, data: bytes):
-            logger.debug(f'fully assembled data size = {len(data)}')
+        async def inner(end_id: str, data: bytes, timestamp: datetime):
+            logger.debug(f"fully assembled data size = {len(data)}")
 
             rxq = self._channel.get_rxq(end_id)
             if rxq is None:
                 logger.debug(f"rxq not found for {end_id}")
                 return
 
-            await rxq.put(data)
+            await rxq.put((data, timestamp))
 
         while True:
             msg = self.queue.get()
+            timestamp = datetime.now()
 
             # assemble is done in a chunk thread so that it won't block
             # asyncio task
@@ -89,7 +86,7 @@ class ChunkThread(Thread):
 
                 payload = self.chunk_store.get_data()
                 # now push payload to a target receive queue.
-                _, status = run_async(inner(msg.end_id, payload), self._loop)
+                _, status = run_async(inner(msg.end_id, payload, timestamp), self._loop)
 
                 # message was completely assembled, reset the chunk store
                 self.chunk_store.reset()

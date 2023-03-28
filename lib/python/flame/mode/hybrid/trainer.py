@@ -20,7 +20,7 @@ import time
 
 from ...channel_manager import ChannelManager
 from ...mode.distributed.trainer import Trainer as DistTrainer
-from ...common.util import (weights_to_device, weights_to_model_device)
+from ...common.util import weights_to_device, weights_to_model_device
 from ...common.constants import DeviceType
 from ..composer import Composer
 from ..message import MessageType
@@ -28,9 +28,9 @@ from ..tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
-TAG_RING_ALLREDUCE = 'ring_allreduce'
+TAG_FETCH = "fetch"
+TAG_UPLOAD = "upload"
+TAG_RING_ALLREDUCE = "ring_allreduce"
 
 
 class Trainer(DistTrainer):
@@ -74,7 +74,7 @@ class Trainer(DistTrainer):
 
         # one aggregator is sufficient
         end = channel.one_end()
-        msg = channel.recv(end)
+        msg, _ = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
@@ -139,7 +139,7 @@ class Trainer(DistTrainer):
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: size,
-            MessageType.MODEL_VERSION: self._round
+            MessageType.MODEL_VERSION: self._round,
         }
         channel.send(end, msg)
 
@@ -174,10 +174,22 @@ class Trainer(DistTrainer):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_init_cm >> task_internal_init >> task_load_data >> task_init >> loop(
-                task_get >> task_train >> task_allreduce >> task_eval >>
-                task_save_metrics >> task_put
-            ) >> task_save_params >> task_save_model
+            (
+                task_init_cm
+                >> task_internal_init
+                >> task_load_data
+                >> task_init
+                >> loop(
+                    task_get
+                    >> task_train
+                    >> task_allreduce
+                    >> task_eval
+                    >> task_save_metrics
+                    >> task_put
+                )
+                >> task_save_params
+                >> task_save_model
+            )
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
