@@ -579,8 +579,20 @@ func Test_hybrid(t *testing.T) {
 	assert.NoError(t, err)
 
 	var dataset openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset.json", &dataset)
-	datasetID, err := dbService.CreateDataset(userID, dataset)
+	readFileToStruct(t, rootExample+"/dataset1.json", &dataset)
+	datasetID1, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset2.json", &dataset)
+	datasetID2, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset3.json", &dataset)
+	datasetID3, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset4.json", &dataset)
+	datasetID4, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 
 	var jobSpecData openapi.JobSpec
@@ -589,7 +601,8 @@ func Test_hybrid(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"us": {datasetID},
+				"eu": {datasetID1, datasetID2},
+				"us": {datasetID3, datasetID4},
 			},
 		},
 	}
@@ -607,10 +620,6 @@ func Test_hybrid(t *testing.T) {
 	expectedRoles := []string{"aggregator", "trainer"}
 	assert.Equal(t, expectedRoles, roles)
 
-	for _, task := range tasks {
-		fmt.Println(task.JobConfig.Channels)
-	}
-	// fmt.Println(fmt.Sprintf("len config: %d", len(tasks[0].JobConfig.Channels)))
 	exampleConfigPath := "testdata/" + designID
 	validateTasks(t, exampleConfigPath, tasks)
 }

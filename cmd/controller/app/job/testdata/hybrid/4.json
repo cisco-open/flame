@@ -12,7 +12,7 @@
         }
     ],
     "groupAssociation": {
-        "param-channel": "eu",
+        "param-channel": "us",
         "global-channel": "default"
     },
     "channels": [
@@ -69,5 +69,5 @@
     },
     "maxRunTime": 300,
     "role": "trainer",
-    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz"
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_3.npz"
 }
