@@ -1,4 +1,4 @@
-# Copyright 2022 Cisco Systems, Inc. and its affiliates
+# Copyright 2023 Cisco Systems, Inc. and its affiliates
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,16 +13,3 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""honrizontal FL middle level aggregator."""
-
-from flame.mode.horizontal.syncfl.middle_aggregator import (
-    TAG_AGGREGATE,
-    TAG_DISTRIBUTE,
-    TAG_FETCH,
-    TAG_UPLOAD,
-    MiddleAggregator,
-)
-
-# Redirect `flame.mode.horizontal.middle_aggregator` to
-# `flame.mode.horizontal.syncfl.middle_aggregator`
-# This is for backward compatibility
