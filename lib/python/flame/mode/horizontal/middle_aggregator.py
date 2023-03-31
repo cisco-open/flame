@@ -23,6 +23,14 @@ from diskcache import Cache
 
 from ...channel_manager import ChannelManager
 from ...common.custom_abcmeta import ABCMeta, abstract_attribute
+from ...common.util import (
+    MLFramework,
+    delta_weights_pytorch,
+    delta_weights_tensorflow,
+    get_ml_framework_in_use,
+    valid_frameworks,
+)
+from ...config import Config
 from ...optimizer.train_result import TrainResult
 from ...optimizers import optimizer_provider
 from ...plugin import PluginManager
@@ -30,7 +38,6 @@ from ..composer import Composer
 from ..message import MessageType
 from ..role import Role
 from ..tasklet import Loop, Tasklet
-from ...config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +81,19 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
         # save distribute tag in an instance variable
         self.dist_tag = TAG_DISTRIBUTE
+
+        self.framework = get_ml_framework_in_use()
+        if self.framework == MLFramework.UNKNOWN:
+            raise NotImplementedError(
+                "supported ml framework not found; "
+                f"supported frameworks are: {valid_frameworks}"
+            )
+
+        if self.framework == MLFramework.PYTORCH:
+            self._delta_weights_fn = delta_weights_pytorch
+
+        elif self.framework == MLFramework.TENSORFLOW:
+            self._delta_weights_fn = delta_weights_tensorflow
 
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
@@ -168,6 +188,9 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
             time.sleep(1)
             return
 
+        # save global weights before updating it
+        self.prev_weights = self.weights
+
         # set global weights
         self.weights = global_weights
         self.dataset_size = total
@@ -176,7 +199,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         logger.debug("calling _send_weights")
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_send_weights] channel not found with {tag}")
+            logger.debug(f"channel not found with {tag}")
             return
 
         # this call waits for at least one peer to join this channel
@@ -185,13 +208,14 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         # one aggregator is sufficient
         end = channel.one_end()
 
-        channel.send(
-            end,
-            {
-                MessageType.WEIGHTS: self.weights,
-                MessageType.DATASET_SIZE: self.dataset_size,
-            },
-        )
+        delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
+
+        msg = {
+            MessageType.WEIGHTS: delta_weights,
+            MessageType.DATASET_SIZE: self.dataset_size,
+            MessageType.MODEL_VERSION: self._round,
+        }
+        channel.send(end, msg)
         logger.debug("sending weights done")
 
     def _send_dummy_weights(self, tag: str) -> None:
