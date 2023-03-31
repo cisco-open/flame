@@ -38,3 +38,5 @@ class MessageType(Enum):
     MODEL_VERSION = 9  # model version used; an non-negative integer
 
     STAT_UTILITY = 10  # measured utility of a trainer based on Oort
+
+    COORDINATED_ENDS = 11  # ends coordinated by a coordinator

@@ -1,0 +1,98 @@
+{
+    "taskid": "09d06b7526964db86cf37c70e8e0cdb6bd7aa743",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "top-agg-coord-channel": "default",
+        "middle-agg-coord-channel": "default",
+        "trainer-coord-channel": "default"
+    },
+    "channels": [
+        {
+            "name": "top-agg-coord-channel",
+            "description": "Channel between top aggregator and coordinator",
+            "pair": [
+                "top-aggregator",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "top-aggregator": [
+                    "notifyCoordinator"
+                ],
+                "coordinator": [
+                    "checkEOT"
+                ]
+            }
+        },
+        {
+            "name": "middle-agg-coord-channel",
+            "description": "Channel between middle aggregator and coordinator",
+            "pair": [
+                "middle-aggregator",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "getTrainers"
+                ],
+                "coordinator": [
+                    "selectTrainers"
+                ]
+            }
+        },
+        {
+            "name": "trainer-coord-channel",
+            "description": "Channel between trainer and coordinator",
+            "pair": [
+                "trainer",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "getAggregator"
+                ],
+                "coordinator": [
+                    "selectAggregator"
+                ]
+            }
+        }
+    ],
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "selector": {
+        "sort": "default",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default-cluster",
+    "role": "coordinator"
+}
