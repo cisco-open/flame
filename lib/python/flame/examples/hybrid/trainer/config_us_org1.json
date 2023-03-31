@@ -12,7 +12,7 @@
         }
     ],
     "groupAssociation": {
-        "param-channel": "default/us",
+        "param-channel": "us",
         "global-channel": "default"
     },
     "channels": [
@@ -21,8 +21,8 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/us",
-                    "default/eu"
+                    "eu",
+                    "us"
                 ]
             },
             "name": "param-channel",
@@ -91,7 +91,7 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/us/org",
+    "realm": "us-org-cluster",
     "role": "trainer",
     "channelConfigs": {
         "param-channel": {

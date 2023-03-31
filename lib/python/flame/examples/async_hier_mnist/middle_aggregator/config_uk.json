@@ -13,7 +13,7 @@
     ],
     "groupAssociation": {
         "global-channel": "default",
-        "param-channel": "default/us/west/org1"
+        "param-channel": "uk"
     },
     "channels": [
         {
@@ -45,8 +45,8 @@
             "groupBy": {
                 "type": "tag",
                 "value": [
-                    "default/us/west/org1",
-                    "default/uk/london/org2"
+                    "uk",
+                    "us"
                 ]
             },
             "name": "param-channel",
@@ -87,7 +87,7 @@
     },
     "registry": {
         "sort": "dummy",
-        "uri": "http://flame-mlflow:5000"
+        "uri": ""
     },
     "selector": {
         "sort": "fedbuff",
@@ -101,6 +101,6 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default/uk/london/org2/flame",
+    "realm": "uk-default-cluster",
     "role": "middle-aggregator"
 }
