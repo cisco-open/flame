@@ -149,7 +149,6 @@ class ChannelConfigs(FlameSchema):
 
 
 class Config(FlameSchema):
-
     def __init__(self, config_path: str):
         raw_config = read_config(config_path)
         transformed_config = transform_config(raw_config)
@@ -197,16 +196,13 @@ def transform_config(raw_config: dict) -> dict:
             "task": raw_config["task"],
         }
 
-    channels, func_tag_map = transform_channels(config_data["role"],
-                                                raw_config["channels"])
-    config_data = config_data | {
-        "channels": channels,
-        "func_tag_map": func_tag_map
-    }
+    channels, func_tag_map = transform_channels(
+        config_data["role"], raw_config["channels"]
+    )
+    config_data = config_data | {"channels": channels, "func_tag_map": func_tag_map}
 
     if raw_config.get("hyperparameters", None):
-        hyperparameters = transform_hyperparameters(
-            raw_config["hyperparameters"])
+        hyperparameters = transform_hyperparameters(raw_config["hyperparameters"])
 
         config_data = config_data | {"hyperparameters": hyperparameters}
 
@@ -225,12 +221,10 @@ def transform_config(raw_config: dict) -> dict:
         config_data = config_data | {"optimizer": raw_config.get("optimizer")}
 
     backends, channel_brokers = transform_channel_configs(
-        raw_config.get("channelConfigs", {}))
+        raw_config.get("channelConfigs", {})
+    )
     config_data = config_data | {
-        "channel_configs": {
-            "backends": backends,
-            "channel_brokers": channel_brokers
-        }
+        "channel_configs": {"backends": backends, "channel_brokers": channel_brokers}
     }
 
     config_data = config_data | {
@@ -247,10 +241,7 @@ def transform_channel(raw_channel_config: dict):
     name = raw_channel_config["name"]
     pair = raw_channel_config["pair"]
     is_bidirectional = raw_channel_config.get("isBidirectional", True)
-    group_by = {
-        "type": "",
-        "value": []
-    } | raw_channel_config.get("groupBy", {})
+    group_by = {"type": "", "value": []} | raw_channel_config.get("groupBy", {})
     func_tags = raw_channel_config.get("funcTags", {})
     description = raw_channel_config.get("description", "")
 
