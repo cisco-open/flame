@@ -17,6 +17,7 @@
     },
     "channels": [
         {
+            "backend": "p2p",
             "description": "Model update is sent from a trainer to another trainer",
             "groupBy": {
                 "type": "tag",
@@ -92,34 +93,5 @@
     },
     "maxRunTime": 300,
     "realm": "eu-org-cluster",
-    "role": "trainer",
-    "channelConfigs": {
-        "param-channel": {
-            "backend": "p2p",
-            "brokers": [
-                {
-                    "host": "localhost",
-                    "sort": "mqtt"
-                },
-                {
-                    "host": "localhost:10104",
-                    "sort": "p2p"
-                }
-            ]
-        },
-        "global-channel": {
-            "//": "bug: due to https://github.com/grpc/grpc/issues/25364, more than one p2p (grpc) backend can be used",
-            "backend": "mqtt",
-            "brokers": [
-                {
-                    "host": "localhost",
-                    "sort": "mqtt"
-                },
-                {
-                    "host": "localhost:10104",
-                    "sort": "p2p"
-                }
-            ]
-        }
-    }
+    "role": "trainer"
 }

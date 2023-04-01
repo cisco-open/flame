@@ -22,22 +22,21 @@ from collections import deque
 from enum import IntEnum
 
 import paho.mqtt.client as mqtt
-from google.protobuf.any_pb2 import Any
-from paho.mqtt.client import MQTTv5
-
-from ..channel import Channel
-from ..common.constants import (
+from flame.backend.abstract import AbstractBackend
+from flame.backend.chunk_manager import ChunkManager
+from flame.backend.chunk_store import ChunkStore
+from flame.channel import Channel
+from flame.common.constants import (
     DEFAULT_RUN_ASYNC_WAIT_TIME,
     EMPTY_PAYLOAD,
     MQTT_TOPIC_PREFIX,
     BackendEvent,
     CommType,
 )
-from ..common.util import background_thread_loop, run_async
-from ..proto import backend_msg_pb2 as msg_pb2
-from .abstract import AbstractBackend
-from .chunk_manager import ChunkManager
-from .chunk_store import ChunkStore
+from flame.common.util import background_thread_loop, run_async
+from flame.proto import backend_msg_pb2 as msg_pb2
+from google.protobuf.any_pb2 import Any
+from paho.mqtt.client import MQTTv5
 
 END_STATUS_ON = "online"
 END_STATUS_OFF = "offline"
@@ -306,11 +305,15 @@ class MqttBackend(AbstractBackend):
 
     def on_message(self, client, userdata, message):
         """on_message receives message."""
-        logger.debug(
-            f"on_message - topic: {message.topic}; len: {len(message.payload)}"
-        )
+        logger.debug(f"topic: {message.topic}; len: {len(message.payload)}")
 
         idx = len(self._rx_deque) - 1
+
+        if self._rx_deque[idx].cancelled():
+            # this is because _rx_task is cancelled
+            # rx_task is cancelled when the program exits; nothing to do
+            return
+
         # set result at the end of the queue
         self._rx_deque[idx].set_result(message)
         # add one extra future in the queue

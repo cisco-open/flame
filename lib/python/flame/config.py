@@ -31,6 +31,9 @@ GROUPBY_DEFAULT_GROUP = "default"
 GROUP_ASSOCIATION_SEPARATOR = "/"
 DEFAULT_HYPERARAMETERS_DICT = {"rounds": 1, "epochs": 1, "batchSize": 16}
 
+RAW_KEY_BACKEND = "backend"
+RAW_KEY_BROKER_HOST = "brokerHost"
+
 
 class BackendType(str, Enum):
     """Define backend types."""
@@ -141,6 +144,8 @@ class Channel(FlameSchema):
     group_by: t.Optional[GroupBy] = Field(default=GroupBy())
     func_tags: dict = Field(default={}, alias="func_tags")
     description: t.Optional[str]
+    backend: t.Optional[str]
+    broker_host: t.Optional[str]
 
 
 class ChannelConfigs(FlameSchema):
@@ -168,7 +173,6 @@ class Config(FlameSchema):
     registry: t.Optional[Registry]
     selector: t.Optional[Selector]
     optimizer: t.Optional[Optimizer] = Field(default=Optimizer())
-    channel_configs: t.Optional[ChannelConfigs]
     dataset: str
     max_run_time: int
     base_model: t.Optional[BaseModel]
@@ -187,7 +191,7 @@ def transform_config(raw_config: dict) -> dict:
         "role": raw_config["role"],
         "realm": raw_config["realm"],
         "task_id": raw_config["taskid"],
-        "backend": raw_config["backend"],
+        "backend": raw_config[RAW_KEY_BACKEND],
         "group_association": raw_config["groupAssociation"],
     }
 
@@ -220,13 +224,6 @@ def transform_config(raw_config: dict) -> dict:
     if raw_config.get("optimizer", None):
         config_data = config_data | {"optimizer": raw_config.get("optimizer")}
 
-    backends, channel_brokers = transform_channel_configs(
-        raw_config.get("channelConfigs", {})
-    )
-    config_data = config_data | {
-        "channel_configs": {"backends": backends, "channel_brokers": channel_brokers}
-    }
-
     config_data = config_data | {
         "dataset": raw_config.get("dataset", ""),
         "max_run_time": raw_config.get("maxRunTime", 300),
@@ -245,6 +242,9 @@ def transform_channel(raw_channel_config: dict):
     func_tags = raw_channel_config.get("funcTags", {})
     description = raw_channel_config.get("description", "")
 
+    backend = raw_channel_config.get(RAW_KEY_BACKEND, "")
+    broker_host = raw_channel_config.get(RAW_KEY_BROKER_HOST, "")
+
     return {
         "name": name,
         "pair": pair,
@@ -252,6 +252,8 @@ def transform_channel(raw_channel_config: dict):
         "group_by": group_by,
         "func_tags": func_tags,
         "description": description,
+        "backend": backend,
+        "broker_host": broker_host,
     }
 
 
@@ -284,14 +286,3 @@ def transform_brokers(raw_brokers_config: dict):
         sort_to_host[sort] = host
 
     return Broker(sort_to_host=sort_to_host)
-
-
-def transform_channel_configs(raw_channel_configs_config: dict):
-    backends = {}
-    channel_brokers = {}
-
-    for k, v in raw_channel_configs_config.items():
-        backends[k] = v["backend"]
-        channel_brokers[k] = transform_brokers(v["brokers"])
-
-    return backends, channel_brokers
