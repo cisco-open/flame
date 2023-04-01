@@ -20,6 +20,7 @@ from flame.mode.horizontal.syncfl.middle_aggregator import (
     TAG_DISTRIBUTE,
     TAG_FETCH,
     TAG_UPLOAD,
+    WAIT_TIME_FOR_TRAINER,
     MiddleAggregator,
 )
 

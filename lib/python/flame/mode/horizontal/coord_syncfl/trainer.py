@@ -41,11 +41,11 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         channel.await_join()
 
         end = channel.one_end()
-        msg = channel.recv(end)
+        msg, _ = channel.recv(end)
 
         if MessageType.COORDINATED_ENDS in msg:
             self.aggregator_id = msg[MessageType.COORDINATED_ENDS]
-            
+
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights")
         channel = self.cm.get_by_tag(tag)
@@ -56,7 +56,7 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         # this call waits for at least one peer joins this channel
         channel.await_join()
 
-        msg = channel.recv(self.aggregator_id)
+        msg, _ = channel.recv(self.aggregator_id)
 
         if MessageType.WEIGHTS in msg:
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)

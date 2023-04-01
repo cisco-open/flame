@@ -70,7 +70,7 @@
     "hyperparameters": {
         "batchSize": 32,
         "learningRate": 0.01,
-        "rounds": 5
+        "rounds": 10
     },
     "baseModel": {
         "name": "",
@@ -82,7 +82,7 @@
     },
     "registry": {
         "sort": "dummy",
-        "uri": "http://flame-mlflow:5000"
+        "uri": ""
     },
     "selector": {
         "sort": "default",

@@ -320,7 +320,7 @@ class Channel(object):
 
         runs = []
         for end_id in end_ids:
-            if end_id in self._active_recv_fifo_tasks:
+            if not self.has(end_id) or end_id in self._active_recv_fifo_tasks:
                 continue
             else:
                 runs.append(_get_inner(end_id))
