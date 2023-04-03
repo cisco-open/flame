@@ -1,0 +1,163 @@
+{
+    "name": "syncfl-hier-coord-mnist",
+    "description": "A schema for synchronous hierarchical FL with a coordinator",
+    "roles": [
+        {
+            "name": "coordinator",
+            "description": "It coordinates assigment between middle aggregators and trainers",
+            "groupAssociation": [
+                {
+                    "top-agg-coord-channel": "default",
+                    "middle-agg-coord-channel": "default",
+                    "trainer-coord-channel": "default"
+                }
+            ]
+        },
+        {
+            "name": "top-aggregator",
+            "description": "It aggregates the updates from middle-aggregator",
+            "groupAssociation": [
+                {
+                    "global-channel": "default"
+                }
+            ]
+        },
+        {
+            "name": "middle-aggregator",
+            "replica": 2,
+            "description": "It aggregates the updates from trainers",
+            "groupAssociation": [
+                {
+                    "param-channel": "default",
+                    "global-channel": "default"
+                }
+            ]
+        },
+        {
+            "name": "trainer",
+            "description": "It consumes the data and trains local model",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "default"
+                }
+            ]
+        }
+    ],
+    "channels": [
+        {
+            "name": "top-agg-coord-channel",
+            "description": "Channel between top aggregator and coordinator",
+            "pair": [
+                "top-aggregator",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "top-aggregator": [
+                    "notifyCoordinator"
+                ],
+                "coordinator": [
+                    "checkEOT"
+                ]
+            }
+        },
+        {
+            "name": "middle-agg-coord-channel",
+            "description": "Channel between middle aggregator and coordinator",
+            "pair": [
+                "middle-aggregator",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "getTrainers"
+                ],
+                "coordinator": [
+                    "selectTrainers"
+                ]
+            }
+        },
+        {
+            "name": "trainer-coord-channel",
+            "description": "Channel between trainer and coordinator",
+            "pair": [
+                "trainer",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "getAggregator"
+                ],
+                "coordinator": [
+                    "selectAggregator"
+                ]
+            }
+        },
+        {
+            "name": "global-channel",
+            "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "funcTags": {
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        },
+        {
+            "name": "param-channel",
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "pair": [
+                "middle-aggregator",
+                "trainer"
+            ],
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ]
+}
