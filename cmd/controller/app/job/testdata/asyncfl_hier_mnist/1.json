@@ -1,5 +1,15 @@
 {
     "backend": "mqtt",
+    "brokers": [
+        {
+            "sort": "mqtt",
+            "host": "localhost"
+        },
+        {
+	    "sort": "p2p",
+	    "host": "localhost:10104"
+        }
+    ],
     "registry": {
         "sort": "",
         "uri": ""

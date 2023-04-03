@@ -88,6 +88,10 @@ func (b *JobBuilder) GetTasks(jobSpec *openapi.JobSpec) (
 		return nil, nil, err
 	}
 
+	if err = b.perChannelBackendCheck(); err != nil {
+		return nil, nil, err
+	}
+
 	tasks, roles, err = b.build()
 	if err != nil {
 		return nil, nil, err
@@ -191,7 +195,16 @@ func (b *JobBuilder) setup() error {
 	return nil
 }
 
-// build is a function that builds an array of tasks, an array of roles and checks them for errors.
+func (b *JobBuilder) perChannelBackendCheck() error {
+	var backend = b.jobSpec.Backend
+
+	if backend == "" {
+		return fmt.Errorf("Validation failed! Invalid backend!")
+	}
+
+	return nil
+}
+
 func (b *JobBuilder) build() ([]objects.Task, []string, error) {
 	// Retrieve task templates and dataRoles.
 	dataRoles, templates := b.getTaskTemplates()
@@ -395,10 +408,10 @@ func (b *JobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) er
 
 			// Check number of times a particular role has been referenced across all the channels from the JobBuilder channels record:
 			// In case any role is connected to more than 2 roles, it'll throw an error.
-			if count, ok := roleFound[role]; ok && count > 2 {
-				// Returns an error indicating that the role is related to more than 2 roles.
-				return fmt.Errorf("role %s is connected to more than 2 roles", role)
-			}
+			// if count, ok := roleFound[role]; ok && count > 2 {
+			// 	// Returns an error indicating that the role is related to more than 2 roles.
+			// 	return fmt.Errorf("role %s is connected to more than 2 roles", role)
+			// }
 		}
 	}
 

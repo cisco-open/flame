@@ -159,6 +159,10 @@ Channel:
   properties:
     name:
       type: string
+    backend:
+      $ref: '#/components/schemas/CommBackend'
+    brokerHost:
+      type: string
     description:
       type: string
     pair:

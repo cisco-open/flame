@@ -47,6 +47,19 @@ const (
 	baseExampleFolder = rootFolder + "/examples"
 )
 
+var (
+	brokers = []config.Broker{
+		{
+			Sort: string(openapi.MQTT),
+			Host: "localhost",
+		},
+		{
+			Sort: string(openapi.P2P),
+			Host: "localhost:10104",
+		},
+	}
+)
+
 func Test_asyncfl_hier_mnist(t *testing.T) {
 	rootExample := baseExampleFolder + "/asyncfl_hier_mnist"
 
@@ -60,7 +73,9 @@ func Test_asyncfl_hier_mnist(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "asyncfl_hier_mnist"
@@ -135,7 +150,9 @@ func Test_distributed_training(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "distributed_training"
@@ -180,6 +197,7 @@ func Test_distributed_training(t *testing.T) {
 			},
 		},
 	}
+
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
 	assert.NoError(t, err)
 	assert.Equal(t, openapi.READY, jobStatus.State)
@@ -208,7 +226,9 @@ func Test_hier_mnist(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "hier_mnist"
@@ -257,6 +277,7 @@ func Test_hier_mnist(t *testing.T) {
 			},
 		},
 	}
+
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
 	assert.NoError(t, err)
 	assert.Equal(t, openapi.READY, jobStatus.State)
@@ -285,7 +306,9 @@ func Test_medmnist(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "medmnist"
@@ -355,6 +378,7 @@ func Test_medmnist(t *testing.T) {
 			},
 		},
 	}
+
 	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
 	assert.NoError(t, err)
 	assert.Equal(t, openapi.READY, jobStatus.State)
@@ -383,7 +407,9 @@ func Test_mnist(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "mnist"
@@ -449,7 +475,9 @@ func Test_parallel_experiment(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
 	designID := "parallel_experiment"
@@ -514,8 +542,8 @@ func Test_parallel_experiment(t *testing.T) {
 	validateTasks(t, exampleConfigPath, tasks)
 }
 
-func Test_asyncfl_hier_mnist_lb(t *testing.T) {
-	rootExample := baseExampleFolder + "/asyncfl_hier_mnist_lb"
+func Test_hybrid(t *testing.T) {
+	rootExample := baseExampleFolder + "/hybrid"
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -524,16 +552,18 @@ func Test_asyncfl_hier_mnist_lb(t *testing.T) {
 	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
 	assert.NoError(t, err)
 
-	builder := NewJobBuilder(dbService, config.JobParams{})
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
 	assert.NotNil(t, builder)
 
-	designID := "asyncfl_hier_mnist_lb"
+	designID := "hybrid"
 
 	err = dbService.CreateDesign(userID, openapi.Design{
 		Name:        userID,
 		UserId:      userID,
 		Id:          designID,
-		Description: "parallel exp",
+		Description: "hybrid example",
 		Schemas:     []openapi.DesignSchema{},
 	})
 	assert.NoError(t, err)
@@ -543,14 +573,26 @@ func Test_asyncfl_hier_mnist_lb(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/asyncfl_hier_mnist_lb.zip")
+	designCodeFile, err := os.Open(rootExample + "/hybrid.zip")
 	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "asyncfl_hier_mnist_lb", "zip", designCodeFile)
+	err = dbService.CreateDesignCode(userID, designID, "hybrid", "zip", designCodeFile)
 	assert.NoError(t, err)
 
-	var datasetRed openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset_red.json", &datasetRed)
-	datasetRedID, err := dbService.CreateDataset(userID, datasetRed)
+	var dataset openapi.DatasetInfo
+	readFileToStruct(t, rootExample+"/dataset1.json", &dataset)
+	datasetID1, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset2.json", &dataset)
+	datasetID2, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset3.json", &dataset)
+	datasetID3, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	readFileToStruct(t, rootExample+"/dataset4.json", &dataset)
+	datasetID4, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 
 	var jobSpecData openapi.JobSpec
@@ -559,7 +601,8 @@ func Test_asyncfl_hier_mnist_lb(t *testing.T) {
 		{
 			Role: "trainer",
 			DatasetGroups: map[string][]string{
-				"red": {datasetRedID},
+				"eu": {datasetID1, datasetID2},
+				"us": {datasetID3, datasetID4},
 			},
 		},
 	}
@@ -574,7 +617,7 @@ func Test_asyncfl_hier_mnist_lb(t *testing.T) {
 	assert.NoError(t, err)
 
 	sort.Strings(roles)
-	expectedRoles := []string{"middle-aggregator", "top-aggregator", "trainer"}
+	expectedRoles := []string{"aggregator", "trainer"}
 	assert.Equal(t, expectedRoles, roles)
 
 	exampleConfigPath := "testdata/" + designID
@@ -601,6 +644,17 @@ func compareJobConfig(t *testing.T, expected, received objects.JobConfig) {
 	assert.Equal(t, expected.Job.Name, received.Job.Name)
 	assert.Equal(t, expected.Role, received.Role)
 	assert.Equal(t, expected.Realm, received.Realm)
+
+	// NOTE: quick and dirty fix
+	sort.Slice(expected.Channels, func(i int, j int) bool {
+		return expected.Channels[i].Name < expected.Channels[j].Name
+	})
+
+	// NOTE: quick and dirty fix
+	sort.Slice(received.Channels, func(i int, j int) bool {
+		return received.Channels[i].Name < received.Channels[j].Name
+	})
+
 	assert.Equal(t, expected.Channels, received.Channels)
 
 	assert.Equal(t, len(expected.GroupAssociation), len(received.GroupAssociation))

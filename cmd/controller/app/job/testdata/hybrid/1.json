@@ -1,0 +1,50 @@
+{
+    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580371",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "global-channel": "default"
+    },
+    "channels": [
+        {
+            "backend": "mqtt",
+            "description": "Model update is sent from a trainer to an aggregator",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "global-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ],
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        }
+    ],
+    "job": {
+        "id": "622a358619ab59012eabeefc",
+        "name": "hybrid"
+    },
+    "maxRunTime": 300,
+    "role": "aggregator"
+}

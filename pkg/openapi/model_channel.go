@@ -29,6 +29,10 @@ package openapi
 type Channel struct {
 	Name string `json:"name"`
 
+	Backend CommBackend `json:"backend,omitempty"`
+
+	BrokerHost string `json:"brokerHost,omitempty"`
+
 	Description string `json:"description,omitempty"`
 
 	Pair []string `json:"pair"`
