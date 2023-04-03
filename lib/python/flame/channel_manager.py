@@ -44,8 +44,9 @@ def custom_excepthook(exc_type, exc_value, exc_traceback):
     A root-cause is not identified. As a workaround, this custom hook is
     implemented and set to sys.excepthook
     """
-    logger.critical("Uncaught exception:",
-                    exc_info=(exc_type, exc_value, exc_traceback))
+    logger.critical(
+        "Uncaught exception:", exc_info=(exc_type, exc_value, exc_traceback)
+    )
 
 
 sys.excepthook = custom_excepthook
@@ -71,7 +72,7 @@ class ChannelManager(object):
     def __new__(cls):
         """Create a singleton instance."""
         if cls._instance is None:
-            logger.info('creating a ChannelManager instance')
+            logger.info("creating a ChannelManager instance")
             cls._instance = super(ChannelManager, cls).__new__(cls)
         return cls._instance
 
@@ -89,13 +90,11 @@ class ChannelManager(object):
 
         self._setup_backends()
 
-        self._discovery_client = discovery_client_provider.get(
-            self._config.task)
+        self._discovery_client = discovery_client_provider.get(self._config.task)
 
         atexit.register(self.cleanup)
 
     def _setup_backends(self):
-
         async def inner(q: asyncio.Queue) -> None:
             # create a coroutine task
             coro = self._backend_eventq_task(q)
@@ -145,10 +144,13 @@ class ChannelManager(object):
             me = channel_config.pair[1]
             other = channel_config.pair[0]
 
-        groupby = channel_config.group_by.groupable_value(self._config.group_association.get(name))
+        groupby = channel_config.group_by.groupable_value(
+            self._config.group_association.get(name)
+        )
 
-        selector = selector_provider.get(self._config.selector.sort,
-                                         **self._config.selector.kwargs)
+        selector = selector_provider.get(
+            self._config.selector.sort, **self._config.selector.kwargs
+        )
 
         if name in self._backends:
             backend = self._backends[name]
@@ -156,8 +158,9 @@ class ChannelManager(object):
             logger.info(f"no backend found for channel {name}; use default")
             backend = self._backend
 
-        self._channels[name] = Channel(backend, selector, self._job_id, name,
-                                       me, other, groupby)
+        self._channels[name] = Channel(
+            backend, selector, self._job_id, name, me, other, groupby
+        )
         self._channels[name].join()
 
     def leave(self, name):
@@ -167,9 +170,9 @@ class ChannelManager(object):
 
         # TODO: reset_channel isn't implemented; the whole discovery module
         #       needs to be revisited.
-        coro = self._discovery_client.reset_channel(self._job_id, name,
-                                                    self._role,
-                                                    self._backend.uid())
+        coro = self._discovery_client.reset_channel(
+            self._job_id, name, self._role, self._backend.uid()
+        )
 
         _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
         if status:
