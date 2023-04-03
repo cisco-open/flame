@@ -109,14 +109,13 @@ class Trainer(DistTrainer):
         # one aggregator is sufficient
         end = channel.one_end()
 
-        self._update_weights()
-
         if not self.can_ring_allreduce():
             # ring was not formed; so, all-reduce didn't take a place.
             # in such a case, each worker should follow the conventional
             # fl procedure by sharing  their local model weights with
             # an aggregator.
             logger.debug("ring was not formed; each shares its weights")
+            self._update_weights()
             weights, size = self.weights, self.dataset_size
 
         # reaching here means that all-reduce took place. So, a committer
