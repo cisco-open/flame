@@ -40,6 +40,8 @@ TAG_GET_TRAINERS = "getTrainers"
 
 class MiddleAggregator(BaseMiddleAggregator):
     def _get_trainers(self, tag) -> None:
+        logger.debug("getting trainers from coordinator")
+
         channel = self.cm.get_by_tag(tag)
         if not channel:
             return
@@ -47,17 +49,26 @@ class MiddleAggregator(BaseMiddleAggregator):
         channel.await_join()
 
         end = channel.one_end()
-        msg = channel.recv(end)
+        msg, _ = channel.recv(end)
 
         if MessageType.COORDINATED_ENDS not in msg:
             raise ValueError("no coordinated ends message")
 
         self.trainers = msg[MessageType.COORDINATED_ENDS]
+        logger.debug("received trainers from coordinator")
 
     def _distribute_weights(self, tag: str) -> None:
+        logger.debug("distributing weights to trainers")
+
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found for tag {tag}")
+            return
+
+        if len(self.trainers) == 0:
+            logger.debug("no trainers found return dummy weights")
+            self.trainer_no_show = True
+            self._send_dummy_weights(TAG_UPLOAD)
             return
 
         # this call waits for at least one peer to join this channel
@@ -75,13 +86,18 @@ class MiddleAggregator(BaseMiddleAggregator):
             )
 
     def _aggregate_weights(self, tag: str) -> None:
+        logger.debug("aggregating weights from trainers")
         channel = self.cm.get_by_tag(tag)
         if not channel:
             return
 
         total = 0
         # receive local model parameters from trainers
-        for end, msg in channel.recv_fifo(self.trainers):
+        for msg, metadata in channel.recv_fifo(self.trainers):
+            end, _ = metadata
+
+            logger.debug(f"received a message from trainer {end}")
+
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue

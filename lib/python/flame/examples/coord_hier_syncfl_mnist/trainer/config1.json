@@ -82,7 +82,7 @@
     },
     "registry": {
         "sort": "dummy",
-        "uri": "http://flame-mlflow:5000"
+        "uri": ""
     },
     "selector": {
         "sort": "default",

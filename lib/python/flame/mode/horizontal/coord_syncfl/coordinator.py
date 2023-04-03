@@ -39,6 +39,8 @@ class Coordinator(Role):
 
         self._work_done = False
 
+        self._round = 0
+
         self.agg_to_trainer = dict()
         self.trainer_to_agg = dict()
 
@@ -58,12 +60,14 @@ class Coordinator(Role):
 
         top_agg_channel.await_join()
         end = top_agg_channel.one_end()
-        msg = top_agg_channel.recv(end)
+        msg, _ = top_agg_channel.recv(end)
 
         if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
 
         logger.info(f"work_done: {self._work_done}")
+
+        self._round += 1
 
     def await_mid_aggs_and_trainers(self):
         logger.info("waiting for mid aggs and trainers")
@@ -72,6 +76,10 @@ class Coordinator(Role):
 
         trainer_channel.await_join()
         aggregator_channel.await_join()
+
+        # set necessary properties to help channel decide how to select ends
+        trainer_channel.set_property("round", self._round)
+        aggregator_channel.set_property("round", self._round)
 
         logger.info("both mid aggs and trainers joined")
 
@@ -163,7 +171,7 @@ class Coordinator(Role):
             task_check_eot = Tasklet(self.check_eot)
 
             task_await = Tasklet(self.await_mid_aggs_and_trainers)
-            
+
             task_pairing = Tasklet(self.pair_mid_aggs_and_trainers)
 
             task_send_trainers_to_agg = Tasklet(self.send_selected_trainers)
