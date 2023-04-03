@@ -161,6 +161,10 @@ class Channel(object):
 
         result, _ = run_async(inner(), self._backend.loop())
         return result
+    
+    def all_ends(self):
+        """Return a list of all end ids (needed in FedDyn to compute alpha values)."""
+        return list(self._ends.keys())
 
     def ends_digest(self) -> str:
         """Compute a digest of ends."""

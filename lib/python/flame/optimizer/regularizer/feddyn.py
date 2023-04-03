@@ -16,7 +16,7 @@
 """FedDyn Regularizer."""
 import logging
 
-from flame.common.constants import TrainerState
+from flame.common.constants import TrainState
 from flame.common.util import (get_params_detached_pytorch, get_params_as_vector_pytorch)
 from .default import Regularizer
 
@@ -26,10 +26,11 @@ logger = logging.getLogger(__name__)
 class FedDynRegularizer(Regularizer):
     """FedDyn Regularizer class."""
 
-    def __init__(self, alpha):
+    def __init__(self, alpha, weight_decay):
         """Initialize FedDynRegularizer instance."""
         super().__init__()
         self.alpha = alpha
+        self.weight_decay = weight_decay
         
         # save states in dictionary
         self.state_dict = dict()
@@ -51,18 +52,18 @@ class FedDynRegularizer(Regularizer):
         w_vector = get_params_as_vector_pytorch(w)
         w_t_vector = get_params_as_vector_pytorch(w_t)
         
-        # proximal term
-        norm_sq = (self.alpha / 2) * torch.sum(torch.pow(w_vector - w_t_vector, 2))
+        # weight decay term using alpha parameter
+        w_decay_term = ((self.alpha + self.weight_decay) / 2) * torch.sum(torch.pow(w_vector, 2))
         
-        # grad term
-        inner_prod = torch.sum(self.prev_grad * w_vector)
+        # remaining loss term
+        loss_algo = self.alpha * torch.sum(w_vector * (-w_t_vector + self.prev_grad))
         
-        return - inner_prod + norm_sq
-    
-    def save_state(self, state: TrainerState, **kwargs):
-        if state == TrainerState.PRE_TRAIN:
+        return loss_algo + w_decay_term
+        
+    def save_state(self, state: TrainState, **kwargs):
+        if state == TrainState.PRE:
             self.state_dict['glob_model'] = get_params_detached_pytorch(kwargs['glob_model'])
-        elif state == TrainerState.POST_TRAIN:
+        elif state == TrainState.POST:
             self.state_dict['loc_model'] = get_params_detached_pytorch(kwargs['loc_model'])
 
     def update(self):
@@ -75,4 +76,4 @@ class FedDynRegularizer(Regularizer):
         w_t_vector = get_params_as_vector_pytorch(w_t)
         
         # adjust prev_grad
-        self.prev_grad = self.prev_grad - self.alpha * (w_vector - w_t_vector)
+        self.prev_grad += (w_vector - w_t_vector)

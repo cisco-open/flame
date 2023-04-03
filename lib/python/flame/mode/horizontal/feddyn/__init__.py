@@ -13,29 +13,4 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""Dummy Regularizer."""
-import logging
 
-from flame.common.constants import TrainState
-
-logger = logging.getLogger(__name__)
-
-
-class Regularizer:
-    """Regularizer class."""
-
-    def __init__(self):
-        """Initialize Regularizer instance."""
-        pass
-
-    def get_term(self, **kwargs):
-        """No regularizer term for dummy regularizer."""
-        return 0.0
-    
-    def save_state(self, state: TrainState, **kwargs):
-        """No states saved in dummy regularizer."""
-        pass
-
-    def update(self):
-        """No need for update in dummy regularizer."""
-        pass

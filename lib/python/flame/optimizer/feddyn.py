@@ -18,6 +18,7 @@
 """https://arxiv.org/abs/2111.04263"""
 
 import logging
+from flame.common.constants import TrainState
 from diskcache import Cache
 from ..common.typing import ModelWeights
 from ..common.util import (MLFramework, get_ml_framework_in_use)
@@ -30,7 +31,7 @@ logger = logging.getLogger(__name__)
 class FedDyn(FedAvg):
     """FedDyn class."""
 
-    def __init__(self, alpha):
+    def __init__(self, alpha, weight_decay):
         """Initialize FedDyn instance."""
         ml_framework_in_use = get_ml_framework_in_use()
         
@@ -43,11 +44,28 @@ class FedDyn(FedAvg):
         super().__init__()
         
         self.alpha = alpha
-        self.h_t = None
+        self.weight_decay = weight_decay
+        self.local_param_dict = dict()
         
         # override parent's self.regularizer
-        self.regularizer = FedDynRegularizer(self.alpha)
+        self.regularizer = FedDynRegularizer(self.alpha, self.weight_decay)
         logger.debug("Initializing feddyn")
+    
+    def save_state(self, state: TrainState, **kwargs):
+        if state == TrainState.PRE:
+            active_ends = kwargs['active_ends']
+            
+            # adjust history terms to fit active trainers
+            new_local_param_dict = dict()
+            for end in active_ends:
+                if end in self.local_param_dict:
+                    new_local_param_dict[end] = self.local_param_dict[end]
+                else:
+                    # default value for no diff history so far
+                    new_local_param_dict[end] = None
+            
+            self.local_param_dict = new_local_param_dict
+        
     
     def do(self,
            base_weights: ModelWeights,
@@ -71,35 +89,44 @@ class FedDyn(FedAvg):
         """
         logger.debug("calling feddyn")
         
-        num_trainers = kwargs['num_trainers']
-        num_selected = len(cache)
-        
-        # populate h_t
-        if self.h_t is None:
-            self.h_t = dict()
-            for k in base_weights:
-                self.h_t[k] = 0.0
+        assert (base_weights is not None)
 
-        self.agg_weights = super().do(base_weights,
-                                      cache,
-                                      total=total,
-                                      version=version)
+        # reset global weights before aggregation
+        self.agg_weights = base_weights
+
+        if len(cache) == 0 or total == 0:
+            return None
         
-        self.adapt_fn(self.agg_weights, base_weights, num_trainers, num_selected)
+        # get unweighted mean of selected trainers
+        rate = 1 / len(cache)
+        for k in list(cache.iterkeys()):
+            tres = cache.pop(k)
+            self.add_to_hist(k, tres)
+            self.aggregate_fn(tres, rate)
         
-        return self.current_weights
+        avg_model = self.agg_weights
+        
+        # perform unweighted mean on all hist terms
+        mean_local_param = {k:0.0 for k in avg_model}
+        rate = 1 / len(self.local_param_dict)
+        for end in self.local_param_dict:
+            if self.local_param_dict[end] != None:
+                h = self.local_param_dict[end]
+                mean_local_param = {k:v + rate*h[k] for (k,v) in mean_local_param.items()}
+        
+        
+        self.cld_model = {k:avg_model[k]+mean_local_param[k] for k in avg_model}
+        
+        return self.cld_model
     
-    def adapt_fn(self, average, base, num_trainers, num_selected):
-        
-        # get delta from averaging which we use as (1/|P_t|) * sum_{k in P_t}[theta^t_k - theta^{t-1}]
-        self.d_t = {k: average[k] - base[k] for k in average.keys()}
-        
-        # (num_selected / num_trainers) = (|P_t| / m) 
-        # this acts as a conversion factor for d_t to be averaged among all active trainers
-        d_mult = self.alpha * (num_selected / num_trainers)
-        self.h_t = {k:self.h_t[k] - d_mult * self.d_t[k] for k in self.h_t.keys()}
-        
-        # here h_t needs to be multiplied by (1/alpha) before it is subtracted from the averaged model
-        # although the averaged model is weighted by dataset, we take this to be the same as (1/|P_t|) * sum_{k in P_t}[theta^t_k]
-        h_mult = 1.0 / self.alpha
-        self.current_weights = {k:average[k] - h_mult * self.h_t[k] for k in self.h_t.keys()}
+    def add_to_hist(self, end, tres):
+        if end in self.local_param_dict:
+            if self.local_param_dict[end] == None:
+                self.local_param_dict[end] = tres.weights
+            else:
+                # aggregate diffs
+                self.local_param_dict[end] = {k:v+tres.weights[k] for (k,v)  in self.local_param_dict[end].items()}
+        else:
+            # case: end was not previously recorded as active trainer
+            logger.debug(f"adding untracked end {end} to hist terms")
+            self.local_param_dict[end] = tres.weights

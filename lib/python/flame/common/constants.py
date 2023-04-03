@@ -48,9 +48,9 @@ class DeviceType(Enum):
     CPU = 1
     GPU = 2
 
-class TrainerState(Enum):
-    """Enum class for trainer state."""
+class TrainState(Enum):
+    """Enum class for train state."""
 
-    PRE_TRAIN = 'pre_train'
-    DURING_TRAIN = 'during_train'
-    POST_TRAIN = 'post_train'
+    PRE = 'pre'
+    DURING = 'during'
+    POST = 'post'

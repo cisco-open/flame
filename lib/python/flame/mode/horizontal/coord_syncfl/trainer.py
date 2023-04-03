@@ -17,7 +17,7 @@
 import logging
 from abc import ABCMeta
 
-from flame.common.constants import DeviceType, TrainerState
+from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
 from flame.mode.composer import Composer
 from flame.mode.horizontal.syncfl.trainer import TAG_FETCH, TAG_UPLOAD
@@ -74,7 +74,6 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
-        self.regularizer.save_state(TrainerState.PRE_TRAIN, glob_model=self.model)
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
     def _send_weights(self, tag: str) -> None:
@@ -88,12 +87,8 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         channel.await_join()
 
         self._update_weights()
-        self.regularizer.save_state(TrainerState.POST_TRAIN, loc_model=self.model)
 
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
-
-        # send delta_weights to regularizer
-        self.regularizer.update()
 
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
