@@ -21,13 +21,13 @@ import logging
 import sys
 from typing import Optional
 
-from .backends import backend_provider
-from .channel import Channel
-from .common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
-from .common.util import background_thread_loop, run_async
-from .config import Config
-from .discovery_clients import discovery_client_provider
-from .selectors import selector_provider
+from flame.backends import backend_provider
+from flame.channel import Channel
+from flame.common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
+from flame.common.util import background_thread_loop, run_async
+from flame.config import Config
+from flame.discovery_clients import discovery_client_provider
+from flame.selectors import selector_provider
 
 logger = logging.getLogger(__name__)
 
@@ -100,22 +100,33 @@ class ChannelManager(object):
             coro = self._backend_eventq_task(q)
             _ = asyncio.create_task(coro)
 
-        if not self._config.channel_configs.backends:
-            self._backend = backend_provider.get(self._config.backend)
-            broker = self._config.brokers.sort_to_host[self._config.backend]
-            self._backend.configure(broker, self._job_id, self._task_id)
-            _ = run_async(inner(self._backend.eventq()), self._backend.loop())
-            return
+        for ch_name, channel in self._config.channels.items():
+            # rename backend in channel config as sort to avoid confusion
+            sort = channel.backend
+            if not sort:
+                # channel doesn't have its own backend, notthing to do
+                continue
 
-        # if there are per-channel configs
-        for k, v in self._config.channel_configs.backends.items():
-            channel_brokers = self._config.channel_configs.channel_brokers
-            broker = channel_brokers[k].sort_to_host[v]
-            backend = backend_provider.get(v)
-            backend.configure(broker, self._job_id, self._task_id)
+            # get a backend instance
+            backend = backend_provider.get(sort)
+            broker_host = channel.broker_host or self._config.brokers.sort_to_host[sort]
+
+            backend.configure(broker_host, self._job_id, self._task_id)
             _ = run_async(inner(backend.eventq()), backend.loop())
 
-            self._backends[k] = backend
+            self._backends[ch_name] = backend
+
+        if len(self._backends) == len(self._config.channels):
+            # every channel has its own backend
+            # no need to have a default backend
+            return
+
+        # set up a default backend
+        sort = self._config.backend
+        self._backend = backend_provider.get(sort)
+        broker_host = self._config.brokers.sort_to_host[sort]
+        self._backend.configure(broker_host, self._job_id, self._task_id)
+        _ = run_async(inner(self._backend.eventq()), self._backend.loop())
 
     async def _backend_eventq_task(self, eventq):
         while True:
