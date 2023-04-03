@@ -20,8 +20,8 @@ from abc import ABCMeta
 from flame.common.constants import DeviceType, TrainerState
 from flame.common.util import weights_to_device, weights_to_model_device
 from flame.mode.composer import Composer
-from flame.mode.horizontal.trainer import TAG_FETCH, TAG_UPLOAD
-from flame.mode.horizontal.trainer import Trainer as BaseTrainer
+from flame.mode.horizontal.syncfl.trainer import TAG_FETCH, TAG_UPLOAD
+from flame.mode.horizontal.syncfl.trainer import Trainer as BaseTrainer
 from flame.mode.message import MessageType
 from flame.mode.tasklet import Loop, Tasklet
 
@@ -101,23 +101,23 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_get_aggregator = Tasklet(self._get_aggregator)
+            task_get_aggregator = Tasklet("", self._get_aggregator)
 
-            task_get = Tasklet(self.get, TAG_FETCH)
+            task_get = Tasklet("", self.get, TAG_FETCH)
 
-            task_train = Tasklet(self.train)
+            task_train = Tasklet("", self.train)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_put = Tasklet(self.put, TAG_UPLOAD)
+            task_put = Tasklet("", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet(self.save_metrics)
+            task_save_metrics = Tasklet("", self.save_metrics)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

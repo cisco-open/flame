@@ -17,8 +17,10 @@
 import logging
 
 from flame.mode.composer import Composer
-from flame.mode.horizontal.top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
-from flame.mode.horizontal.top_aggregator import TopAggregator as BaseTopAggregator
+from flame.mode.horizontal.syncfl.top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
+from flame.mode.horizontal.syncfl.top_aggregator import (
+    TopAggregator as BaseTopAggregator,
+)
 from flame.mode.message import MessageType
 from flame.mode.tasklet import Loop, Tasklet
 
@@ -56,33 +58,33 @@ class TopAggregator(BaseTopAggregator):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_notify_coord = Tasklet(self.notify_coordinator)
+            task_notify_coord = Tasklet("", self.notify_coordinator)
 
-            task_put = Tasklet(self.put, TAG_DISTRIBUTE)
+            task_put = Tasklet("", self.put, TAG_DISTRIBUTE)
 
-            task_get = Tasklet(self.get, TAG_AGGREGATE)
+            task_get = Tasklet("", self.get, TAG_AGGREGATE)
 
-            task_train = Tasklet(self.train)
+            task_train = Tasklet("", self.train)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_analysis = Tasklet(self.run_analysis)
+            task_analysis = Tasklet("", self.run_analysis)
 
-            task_save_metrics = Tasklet(self.save_metrics)
+            task_save_metrics = Tasklet("", self.save_metrics)
 
-            task_increment_round = Tasklet(self.increment_round)
+            task_increment_round = Tasklet("", self.increment_round)
 
-            task_end_of_training = Tasklet(self.inform_end_of_training)
+            task_end_of_training = Tasklet("", self.inform_end_of_training)
 
-            task_save_params = Tasklet(self.save_params)
+            task_save_params = Tasklet("", self.save_params)
 
-            task_save_model = Tasklet(self.save_model)
+            task_save_model = Tasklet("", self.save_model)
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)

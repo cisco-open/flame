@@ -20,9 +20,10 @@ import logging
 from collections import OrderedDict
 from copy import deepcopy
 
-from ...channel_manager import ChannelManager
-from ...common.custom_abcmeta import ABCMeta, abstract_attribute
-from ...common.util import (
+from flame.channel_manager import ChannelManager
+from flame.common.constants import DeviceType
+from flame.common.custom_abcmeta import ABCMeta, abstract_attribute
+from flame.common.util import (
     MLFramework,
     delta_weights_pytorch,
     delta_weights_tensorflow,
@@ -32,13 +33,12 @@ from ...common.util import (
     weights_to_device,
     weights_to_model_device,
 )
-from ...common.constants import DeviceType
-from ...registries import registry_provider
-from ..composer import Composer
-from ..message import MessageType
-from ..role import Role
-from ..tasklet import Loop, Tasklet
-from ...config import Config
+from flame.config import Config
+from flame.mode.composer import Composer
+from flame.mode.message import MessageType
+from flame.mode.role import Role
+from flame.mode.tasklet import Loop, Tasklet
+from flame.registries import registry_provider
 
 logger = logging.getLogger(__name__)
 
@@ -489,27 +489,27 @@ class Trainer(Role, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
-            task_init_cm = Tasklet(self.init_cm)
+            task_init_cm = Tasklet("", self.init_cm)
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_allreduce = Tasklet(self._ring_allreduce, TAG_RING_ALLREDUCE)
+            task_allreduce = Tasklet("", self._ring_allreduce, TAG_RING_ALLREDUCE)
 
-            task_train = Tasklet(self.train)
+            task_train = Tasklet("", self.train)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_increment_round = Tasklet(self.increment_round)
+            task_increment_round = Tasklet("", self.increment_round)
 
-            task_save_metrics = Tasklet(self.save_metrics)
+            task_save_metrics = Tasklet("", self.save_metrics)
 
-            task_save_params = Tasklet(self.save_params)
+            task_save_params = Tasklet("", self.save_params)
 
-            task_save_model = Tasklet(self.save_model)
+            task_save_model = Tasklet("", self.save_model)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

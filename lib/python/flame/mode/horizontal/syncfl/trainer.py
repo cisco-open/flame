@@ -192,21 +192,21 @@ class Trainer(Role, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_get = Tasklet(self.get, TAG_FETCH)
+            task_get = Tasklet("", self.get, TAG_FETCH)
 
-            task_train = Tasklet(self.train)
+            task_train = Tasklet("", self.train)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_put = Tasklet(self.put, TAG_UPLOAD)
+            task_put = Tasklet("", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet(self.save_metrics)
+            task_save_metrics = Tasklet("", self.save_metrics)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

@@ -168,17 +168,17 @@ class Coordinator(Role):
         with Composer() as composer:
             self.composer = composer
 
-            task_check_eot = Tasklet(self.check_eot)
+            task_check_eot = Tasklet("", self.check_eot)
 
-            task_await = Tasklet(self.await_mid_aggs_and_trainers)
+            task_await = Tasklet("", self.await_mid_aggs_and_trainers)
 
-            task_pairing = Tasklet(self.pair_mid_aggs_and_trainers)
+            task_pairing = Tasklet("", self.pair_mid_aggs_and_trainers)
 
-            task_send_trainers_to_agg = Tasklet(self.send_selected_trainers)
+            task_send_trainers_to_agg = Tasklet("", self.send_selected_trainers)
 
-            task_send_agg_to_trainer = Tasklet(self.send_selected_aggregator)
+            task_send_agg_to_trainer = Tasklet("", self.send_selected_aggregator)
 
-            task_graceful_exit = Tasklet(self.graceful_exit)
+            task_graceful_exit = Tasklet("", self.graceful_exit)
 
         loop = Loop(loop_check_fn=lambda: self._work_done)
         (
