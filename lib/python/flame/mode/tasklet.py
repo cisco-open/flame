@@ -22,7 +22,7 @@ from enum import Flag, auto
 from queue import Queue
 from typing import Callable
 
-from .composer import ComposerContext
+from flame.mode.composer import ComposerContext
 
 logger = logging.getLogger(__name__)
 
@@ -38,11 +38,12 @@ class LoopIndicator(Flag):
 class Tasklet(object):
     """Tasklet is a class for defining a unit of work."""
 
-    def __init__(self, func: Callable, *args, **kwargs) -> None:
+    def __init__(self, alias: str, func: Callable, *args, **kwargs) -> None:
         """Initialize the class.
 
         Parameters
         ----------
+        alias: an alias; should be unique within child class of Role class
         func: a method that will be executed as a tasklet
         *args: positional arguments for method func
         **kwargs: keyword arguments for method func
@@ -50,25 +51,26 @@ class Tasklet(object):
         if not callable(func):
             raise TypeError(f"{func} is not callable")
 
+        self.alias = alias
         self.func = func
         self.args = args
         self.kwargs = kwargs
-        self.cont_fn = None
-        self.loop_check_fn = None
+
         self.composer = ComposerContext.get_composer()
-        self.loop_starter = None
-        self.loop_ender = None
-        self.loop_state = LoopIndicator.NONE
+
+        self.reset()
 
     def __str__(self):
         """Return tasklet details."""
         starter = self.loop_starter.func.__name__ if self.loop_starter else ""
         ender = self.loop_ender.func.__name__ if self.loop_ender else ""
 
-        return f"func: {self.func.__name__}" + \
-            f"\nloop_state: {self.loop_state}" + \
-            f"\nloop_starter: {starter}" + \
-            f"\nloop_ender: {ender}"
+        return (
+            f"func: {self.func.__name__}"
+            + f"\nloop_state: {self.loop_state}"
+            + f"\nloop_starter: {starter}"
+            + f"\nloop_ender: {ender}"
+        )
 
     def __rshift__(self, other: Tasklet) -> Tasklet:
         """Set up connection."""
@@ -101,7 +103,18 @@ class Tasklet(object):
             self.composer.chain[self].add(other)
             self.composer.reverse_chain[other].add(self)
 
+        # clear the unlinked state of this tasklet
+        self.composer.clear_unlinked_tasklet_state(self.alias)
+
         return other
+
+    def reset(self):
+        """Reset the tasklet's state."""
+        self.cont_fn = None
+        self.loop_check_fn = None
+        self.loop_starter = None
+        self.loop_ender = None
+        self.loop_state = LoopIndicator.NONE
 
     def set_continue_fn(self, cont_fn: Callable) -> None:
         """Set continue function."""

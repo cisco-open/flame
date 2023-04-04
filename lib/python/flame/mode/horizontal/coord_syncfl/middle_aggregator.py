@@ -19,14 +19,14 @@ import time
 from copy import deepcopy
 
 from flame.mode.composer import Composer
-from flame.mode.horizontal.middle_aggregator import (
+from flame.mode.horizontal.syncfl.middle_aggregator import (
     TAG_AGGREGATE,
     TAG_DISTRIBUTE,
     TAG_FETCH,
     TAG_UPLOAD,
     WAIT_TIME_FOR_TRAINER,
 )
-from flame.mode.horizontal.middle_aggregator import (
+from flame.mode.horizontal.syncfl.middle_aggregator import (
     MiddleAggregator as BaseMiddleAggregator,
 )
 from flame.mode.message import MessageType
@@ -146,28 +146,28 @@ class MiddleAggregator(BaseMiddleAggregator):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_get_trainers = Tasklet(self.get, TAG_GET_TRAINERS)
+            task_get_trainers = Tasklet("", self.get, TAG_GET_TRAINERS)
 
-            task_put_dist = Tasklet(self.put, TAG_DISTRIBUTE)
+            task_put_dist = Tasklet("", self.put, TAG_DISTRIBUTE)
             task_put_dist.set_continue_fn(cont_fn=lambda: self.trainer_no_show)
 
-            task_put_upload = Tasklet(self.put, TAG_UPLOAD)
+            task_put_upload = Tasklet("", self.put, TAG_UPLOAD)
 
-            task_get_aggr = Tasklet(self.get, TAG_AGGREGATE)
+            task_get_aggr = Tasklet("", self.get, TAG_AGGREGATE)
 
-            task_get_fetch = Tasklet(self.get, TAG_FETCH)
+            task_get_fetch = Tasklet("", self.get, TAG_FETCH)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_update_round = Tasklet(self.update_round)
+            task_update_round = Tasklet("", self.update_round)
 
-            task_end_of_training = Tasklet(self.inform_end_of_training)
+            task_end_of_training = Tasklet("", self.inform_end_of_training)
 
         loop = Loop(loop_check_fn=lambda: self._work_done)
         (

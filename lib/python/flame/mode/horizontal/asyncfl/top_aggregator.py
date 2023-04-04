@@ -19,15 +19,15 @@ import logging
 import time
 from copy import deepcopy
 
-from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
-from ....common.constants import DeviceType
-from ....common.util import weights_to_device, weights_to_model_device
-from ....optimizer.train_result import TrainResult
-from ...composer import Composer
-from ...message import MessageType
-from ...tasklet import Loop, Tasklet
-from ..top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
-from ..top_aggregator import TopAggregator as SyncTopAgg
+from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
+from flame.common.constants import DeviceType
+from flame.common.util import weights_to_device, weights_to_model_device
+from flame.mode.composer import CloneComposer
+from flame.mode.horizontal.syncfl.top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
+from flame.mode.horizontal.syncfl.top_aggregator import TopAggregator as SyncTopAgg
+from flame.mode.message import MessageType
+from flame.mode.tasklet import Loop, Tasklet
+from flame.optimizer.train_result import TrainResult
 
 logger = logging.getLogger(__name__)
 
@@ -149,60 +149,52 @@ class TopAggregator(SyncTopAgg):
 
     def compose(self) -> None:
         """Compose role with tasklets."""
-        with Composer() as composer:
-            self.composer = composer
+        super().compose()
 
-            task_internal_init = Tasklet(self.internal_init)
+        with CloneComposer(self.composer) as _:
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_init = Tasklet(self.initialize)
+            task_reset_agg_goal_vars = Tasklet(
+                "reset_agg_goal_vars", self._reset_agg_goal_variables
+            )
 
-            task_load_data = Tasklet(self.load_data)
+            task_put = Tasklet("distribute", self.put, TAG_DISTRIBUTE)
 
-            task_reset_agg_goal_vars = Tasklet(self._reset_agg_goal_variables)
+            task_get = Tasklet("aggregate", self.get, TAG_AGGREGATE)
 
-            task_put = Tasklet(self.put, TAG_DISTRIBUTE)
+        c = self.composer
+        # unlink tasklets that are chained from the parent class
+        # (i.e., super().compose()).
+        #
+        # unlink() internally calls tasklet.reset(), which in turn
+        # initialize all loop related state, which includes cont_fn.
+        # therefore, if cont_fn is needed for a tasklet, set_continue_fn()
+        # in Tasklet class should be used.
+        c.unlink()
 
-            task_get = Tasklet(self.get, TAG_AGGREGATE)
-
-            task_train = Tasklet(self.train)
-
-            task_eval = Tasklet(self.evaluate)
-
-            task_analysis = Tasklet(self.run_analysis)
-
-            task_save_metrics = Tasklet(self.save_metrics)
-
-            task_increment_round = Tasklet(self.increment_round)
-
-            task_end_of_training = Tasklet(self.inform_end_of_training)
-
-            task_save_params = Tasklet(self.save_params)
-
-            task_save_model = Tasklet(self.save_model)
-
-        # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
 
         # create a loop object for asyncfl to manage concurrency as well as
         # aggregation goal
         asyncfl_loop = Loop(loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
 
+        # chain them again with new tasklets introduced in this class
         (
             task_internal_init
-            >> task_load_data
-            >> task_init
+            >> c.tasklet("load_data")
+            >> c.tasklet("initialize")
             >> loop(
                 task_reset_agg_goal_vars
                 >> asyncfl_loop(task_put >> task_get)
-                >> task_train
-                >> task_eval
-                >> task_analysis
-                >> task_save_metrics
-                >> task_increment_round
+                >> c.tasklet("train")
+                >> c.tasklet("evaluate")
+                >> c.tasklet("analysis")
+                >> c.tasklet("save_metrics")
+                >> c.tasklet("inc_round")
             )
-            >> task_end_of_training
-            >> task_save_params
-            >> task_save_model
+            >> c.tasklet("inform_end_of_training")
+            >> c.tasklet("save_params")
+            >> c.tasklet("save_model")
         )
 
     @classmethod

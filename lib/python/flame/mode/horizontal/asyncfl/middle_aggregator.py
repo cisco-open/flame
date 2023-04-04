@@ -19,20 +19,27 @@ import logging
 import time
 from copy import deepcopy
 
-from ....channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
-from ....common.util import (
+from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
+from flame.common.util import (
     MLFramework,
     delta_weights_pytorch,
     delta_weights_tensorflow,
     get_ml_framework_in_use,
     valid_frameworks,
 )
-from ....optimizer.train_result import TrainResult
-from ...composer import Composer
-from ...message import MessageType
-from ...tasklet import Loop, Tasklet
-from ..middle_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE, TAG_FETCH, TAG_UPLOAD
-from ..middle_aggregator import MiddleAggregator as SyncMidAgg
+from flame.mode.composer import Composer
+from flame.mode.horizontal.syncfl.middle_aggregator import (
+    TAG_AGGREGATE,
+    TAG_DISTRIBUTE,
+    TAG_FETCH,
+    TAG_UPLOAD,
+)
+from flame.mode.horizontal.syncfl.middle_aggregator import (
+    MiddleAggregator as SyncMidAgg,
+)
+from flame.mode.message import MessageType
+from flame.mode.tasklet import Loop, Tasklet
+from flame.optimizer.train_result import TrainResult
 
 logger = logging.getLogger(__name__)
 
@@ -237,28 +244,28 @@ class MiddleAggregator(SyncMidAgg):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet(self.internal_init)
+            task_internal_init = Tasklet("", self.internal_init)
 
-            task_init = Tasklet(self.initialize)
+            task_init = Tasklet("", self.initialize)
 
-            task_load_data = Tasklet(self.load_data)
+            task_load_data = Tasklet("", self.load_data)
 
-            task_reset_agg_goal_vars = Tasklet(self._reset_agg_goal_variables)
+            task_reset_agg_goal_vars = Tasklet("", self._reset_agg_goal_variables)
 
-            task_put_dist = Tasklet(self.put, TAG_DISTRIBUTE)
+            task_put_dist = Tasklet("", self.put, TAG_DISTRIBUTE)
             task_put_dist.set_continue_fn(cont_fn=lambda: self.trainer_no_show)
 
-            task_put_upload = Tasklet(self.put, TAG_UPLOAD)
+            task_put_upload = Tasklet("", self.put, TAG_UPLOAD)
 
-            task_get_aggr = Tasklet(self.get, TAG_AGGREGATE)
+            task_get_aggr = Tasklet("", self.get, TAG_AGGREGATE)
 
-            task_get_fetch = Tasklet(self.get, TAG_FETCH)
+            task_get_fetch = Tasklet("", self.get, TAG_FETCH)
 
-            task_eval = Tasklet(self.evaluate)
+            task_eval = Tasklet("", self.evaluate)
 
-            task_update_round = Tasklet(self.update_round)
+            task_update_round = Tasklet("", self.update_round)
 
-            task_end_of_training = Tasklet(self.inform_end_of_training)
+            task_end_of_training = Tasklet("", self.inform_end_of_training)
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)

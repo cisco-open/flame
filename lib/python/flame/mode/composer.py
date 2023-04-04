@@ -32,14 +32,19 @@ class Composer(object):
         self.chain = dict()
         self.reverse_chain = dict()
 
+        self.unlinked_tasklets = dict()
+
     def __enter__(self):
         """Enter custom context."""
         ComposerContext.set_composer(self)
         return self
 
-    def __exit__(self, exc_type: Optional[Type[BaseException]],
-                 exc_value: Optional[BaseException],
-                 exc_traceback: Optional[TracebackType]) -> bool:
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        exc_traceback: Optional[TracebackType],
+    ) -> bool:
         """Exit custom context."""
         ComposerContext.reset_composer()
 
@@ -98,8 +103,9 @@ class Composer(object):
             # execute tasklet
             tasklet.do()
 
-            if tasklet.is_continue() or (tasklet.is_last_in_loop()
-                                         and not tasklet.is_loop_done()):
+            if tasklet.is_continue() or (
+                tasklet.is_last_in_loop() and not tasklet.is_loop_done()
+            ):
                 # we are here due to one of the following conditions:
                 #
                 # contition 1: tasklet's continue condition is met;
@@ -134,6 +140,58 @@ class Composer(object):
 
         logger.debug("end of run")
 
+    def unlink(self):
+        """Unlink the chain of tasklets and save them in unlinked_tasklets.
+
+        Also, reset chain and reverse_chain.
+        """
+        # empty unlinked tasklets dictionary; this initialization is imporant.
+        # calling super().compose() in a child class means the consturction of
+        # tasklet chain from the parent class.
+        #
+        # without this initialization, unlinked tasklets can be visiable beyond
+        # the direct child class, which can cause a bug when a grand child
+        # class attempts to chain tasklets.
+        self.unlinked_tasklets = dict()
+
+        tasklet = next(iter(self.chain))
+        # get the first tasklet in the chain
+        root = tasklet.get_root()
+
+        # traverse tasklets
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            tasklet = q.get()
+
+            self.unlinked_tasklets[tasklet.alias] = tasklet
+
+            # put unvisited children of a selected tasklet
+            for child in self.chain[tasklet]:
+                q.put(child)
+
+        for _, tasklet in self.unlinked_tasklets.items():
+            tasklet.reset()
+
+        self.chain = dict()
+        self.reverse_chain = dict()
+
+    def tasklet(self, alias: str):
+        """Return an unlinked tasklet of a given alias."""
+        # We don't intentionally use dict.get(); hence, KeyError can be raised.
+        # The intention is to prevent returning None, which can cause an issue
+        # later when tasklets are chained again.
+        return self.unlinked_tasklets[alias]
+
+    def clear_unlinked_tasklet_state(self, alias: str) -> None:
+        """Clear the unlinked state of a tasklet of alias.
+
+        The unlinked tasklet state is cleared if the taslket of a given alias
+        is removed from the unlinked_taskets dictionary.
+        """
+        if alias in self.unlinked_tasklets:
+            del self.unlinked_tasklets[alias]
+
     def print(self):
         """Print the chain of tasklets.
 
@@ -157,6 +215,29 @@ class Composer(object):
                 q.put(child)
         print("=====")
         print("done with printing chain")
+
+
+class CloneComposer(object):
+    """CloneComposer clones composer object."""
+
+    def __init__(self, composer: Composer) -> None:
+        """Initialize the class."""
+        self.composer = composer
+
+    def __enter__(self) -> Composer:
+        """Enter custom context."""
+        ComposerContext.set_composer(self.composer)
+
+        return self.composer
+
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_value: Optional[BaseException],
+        exc_traceback: Optional[TracebackType],
+    ) -> bool:
+        """Exit custom context."""
+        ComposerContext.reset_composer()
 
 
 class ComposerContext(object):
