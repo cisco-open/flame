@@ -23,10 +23,9 @@ from typing import Optional
 
 from flame.backends import backend_provider
 from flame.channel import Channel
-from flame.common.constants import DEFAULT_RUN_ASYNC_WAIT_TIME, BackendEvent
+from flame.common.constants import BackendEvent
 from flame.common.util import background_thread_loop, run_async
 from flame.config import Config
-from flame.discovery_clients import discovery_client_provider
 from flame.selectors import selector_provider
 
 logger = logging.getLogger(__name__)
@@ -67,7 +66,6 @@ class ChannelManager(object):
 
     _backend = None  # default backend in case there is no per-channel backend
     _backends = dict()  # backend per channel
-    _discovery_client = None
 
     def __new__(cls):
         """Create a singleton instance."""
@@ -85,12 +83,7 @@ class ChannelManager(object):
 
         self._channels = {}
 
-        with background_thread_loop() as loop:
-            self._loop = loop
-
         self._setup_backends()
-
-        self._discovery_client = discovery_client_provider.get(self._config.task)
 
         atexit.register(self.cleanup)
 
@@ -178,18 +171,7 @@ class ChannelManager(object):
         """Leave a channel."""
         if not self.is_joined(name):
             return
-
-        # TODO: reset_channel isn't implemented; the whole discovery module
-        #       needs to be revisited.
-        coro = self._discovery_client.reset_channel(
-            self._job_id, name, self._role, self._backend.uid()
-        )
-
-        _, status = run_async(coro, self._loop, DEFAULT_RUN_ASYNC_WAIT_TIME)
-        if status:
-            del self._channels[name]
-
-        return status
+        # TODO: reset_channel isn't implemented yet
 
     def get_by_tag(self, tag: str) -> Optional[Channel]:
         """Return a channel object that matches a given function tag."""
