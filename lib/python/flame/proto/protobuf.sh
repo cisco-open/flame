@@ -15,8 +15,6 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
-protoc -I=./ --python_out=./ ./registry_msg.proto
 # To run the following command, grpcio-tools is needed.
 # if it's not installed, run "pip install grpcio-tools"
 python -m grpc_tools.protoc -I=./ --python_out=./ --grpc_python_out=./ ./backend_msg.proto
