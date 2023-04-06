@@ -20,9 +20,9 @@ from typing import Union
 
 from .common.typing import Scalar
 
-KEY_END_STATE = 'state'
-VAL_END_STATE_RECVD = 'recvd'
-VAL_END_STATE_NONE = ''
+KEY_END_STATE = "state"
+VAL_END_STATE_RECVD = "recvd"
+VAL_END_STATE_NONE = ""
 
 
 class End(object):

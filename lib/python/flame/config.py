@@ -75,6 +75,13 @@ class SelectorType(str, Enum):
     OORT = "oort"
 
 
+class DataSamplerType(str, Enum):
+    """Define datasampler types."""
+
+    DEFAULT = "default"
+    FEDBALANCER = "fedbalancer"
+
+
 class Job(FlameSchema):
     job_id: str = Field(alias="id")
     name: str
@@ -87,6 +94,11 @@ class Registry(FlameSchema):
 
 class Selector(FlameSchema):
     sort: SelectorType = Field(default=SelectorType.DEFAULT)
+    kwargs: dict = Field(default={})
+
+
+class DataSampler(FlameSchema):
+    sort: DataSamplerType = Field(default=DataSamplerType.DEFAULT)
     kwargs: dict = Field(default={})
 
 
@@ -172,6 +184,7 @@ class Config(FlameSchema):
     job: Job
     registry: t.Optional[Registry]
     selector: t.Optional[Selector]
+    datasampler: t.Optional[DataSampler] = Field(default=DataSampler())
     optimizer: t.Optional[Optimizer] = Field(default=Optimizer())
     dataset: str
     max_run_time: int
@@ -223,6 +236,10 @@ def transform_config(raw_config: dict) -> dict:
 
     if raw_config.get("optimizer", None):
         config_data = config_data | {"optimizer": raw_config.get("optimizer")}
+
+    if raw_config.get("datasampler", None):
+        raw_config["datasampler"]["kwargs"].update(hyperparameters)
+        config_data = config_data | {"datasampler": raw_config.get("datasampler")}
 
     config_data = config_data | {
         "dataset": raw_config.get("dataset", ""),
