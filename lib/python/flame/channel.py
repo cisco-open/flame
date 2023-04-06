@@ -17,7 +17,8 @@
 
 import asyncio
 import logging
-from typing import Any, Tuple, Union
+from datetime import datetime
+from typing import Any, Union
 
 import cloudpickle
 from aiostream import stream
@@ -199,7 +200,7 @@ class Channel(object):
 
         return status
 
-    def recv(self, end_id) -> Any:
+    def recv(self, end_id) -> tuple[Any, datetime]:
         """Receive a message from an end in a blocking call fashion."""
         logger.debug(f"will receive data from {end_id}")
 
@@ -231,7 +232,9 @@ class Channel(object):
 
         return msg, timestamp
 
-    def recv_fifo(self, end_ids: list[str], first_k: int = 0) -> Tuple[str, Any]:
+    def recv_fifo(
+        self, end_ids: list[str], first_k: int = 0
+    ) -> tuple[Any, tuple[str, datetime]]:
         """Receive a message per end from a list of ends.
 
         The message arrival order among ends is not fixed.
@@ -305,7 +308,7 @@ class Channel(object):
         of their corresponding end so that they can be read later.
         """
 
-        async def _get_inner(end_id) -> Tuple[str, Any]:
+        async def _get_inner(end_id) -> tuple[str, Any]:
             if not self.has(end_id):
                 # can't receive message from end_id
                 yield end_id, None

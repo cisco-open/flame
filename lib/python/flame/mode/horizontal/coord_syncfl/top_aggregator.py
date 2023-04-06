@@ -26,32 +26,39 @@ from flame.mode.tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
-TAG_NOTIFY_COORDINATOR = "notifyCoordinator"  # notify orchestrator of EOT
+TAG_COORDINATE = "coordinate"  # coordinate with the coordinator
 
 
 class TopAggregator(BaseTopAggregator):
-    def notify_coordinator(self) -> None:
-        """Notify coordinator of the status of work."""
-        coordinator_channel = self.cm.get_by_tag(TAG_NOTIFY_COORDINATOR)
-        if not coordinator_channel:
-            logger.debug(f"channel not found for tag {TAG_NOTIFY_COORDINATOR}")
-            return
-
-        coordinator_channel.await_join()
-        end = coordinator_channel.one_end()
-        coordinator_channel.send(end, {MessageType.EOT: self._work_done})
-
-    def inform_end_of_training(self) -> None:
-        """Inform all trainers and the orchestrator that the training is finished."""
-        channel = self.cm.get_by_tag(self.dist_tag)
+    def get_channel(self, tag: str):
+        """Return channel of a given tag when it is ready to use."""
+        channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"channel not found for tag {self.dist_tag}")
+            raise ValueError(f"channel not found for tag {tag}")
+
+        channel.await_join()
+
+        return channel
+
+    def get_coordinated_ends(self):
+        """Receive the ends of middle aggregators."""
+        logger.debug("calling get_coordinate_ends()")
+        channel = self.get_channel(TAG_COORDINATE)
+
+        end = channel.one_end()
+        msg, _ = channel.recv(end)
+        logger.debug(f"received message = {msg} from {end}")
+
+        self._work_done = msg[MessageType.EOT]
+        if self._work_done:
+            logger.debug("work is done")
             return
 
-        channel.broadcast({MessageType.EOT: self._work_done})
-        logger.debug("done broadcasting end-of-training")
+        dist_channel = self.cm.get_by_tag(TAG_DISTRIBUTE)
+        # overide distribute channel's ends method
+        dist_channel.ends = lambda: msg[MessageType.COORDINATED_ENDS]
 
-        self.notify_coordinator()
+        logger.debug("exited get_coordinate_ends()")
 
     def compose(self) -> None:
         """Compose role with tasklets."""
@@ -64,7 +71,7 @@ class TopAggregator(BaseTopAggregator):
 
             task_load_data = Tasklet("", self.load_data)
 
-            task_notify_coord = Tasklet("", self.notify_coordinator)
+            task_get_coord_ends = Tasklet("", self.get_coordinated_ends)
 
             task_put = Tasklet("", self.put, TAG_DISTRIBUTE)
 
@@ -80,8 +87,6 @@ class TopAggregator(BaseTopAggregator):
 
             task_increment_round = Tasklet("", self.increment_round)
 
-            task_end_of_training = Tasklet("", self.inform_end_of_training)
-
             task_save_params = Tasklet("", self.save_params)
 
             task_save_model = Tasklet("", self.save_model)
@@ -93,7 +98,7 @@ class TopAggregator(BaseTopAggregator):
             >> task_load_data
             >> task_init
             >> loop(
-                task_notify_coord
+                task_get_coord_ends
                 >> task_put
                 >> task_get
                 >> task_train
@@ -102,7 +107,6 @@ class TopAggregator(BaseTopAggregator):
                 >> task_save_metrics
                 >> task_increment_round
             )
-            >> task_end_of_training
             >> task_save_params
             >> task_save_model
         )
@@ -110,4 +114,4 @@ class TopAggregator(BaseTopAggregator):
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the top level aggregator role."""
-        return [TAG_AGGREGATE, TAG_DISTRIBUTE, TAG_NOTIFY_COORDINATOR]
+        return [TAG_AGGREGATE, TAG_DISTRIBUTE, TAG_COORDINATE]
