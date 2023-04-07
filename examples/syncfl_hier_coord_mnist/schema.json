@@ -60,10 +60,10 @@
             },
             "funcTags": {
                 "top-aggregator": [
-                    "notifyCoordinator"
+                    "coordinate"
                 ],
                 "coordinator": [
-                    "checkEOT"
+                    "coordinateWithTopAgg"
                 ]
             }
         },
@@ -82,10 +82,10 @@
             },
             "funcTags": {
                 "middle-aggregator": [
-                    "getTrainers"
+                    "coordinate"
                 ],
                 "coordinator": [
-                    "selectTrainers"
+                    "coordinateWithMidAgg"
                 ]
             }
         },
@@ -104,10 +104,10 @@
             },
             "funcTags": {
                 "trainer": [
-                    "getAggregator"
+                    "coordinate"
                 ],
                 "coordinator": [
-                    "selectAggregator"
+                    "coordinateWithTrainer"
                 ]
             }
         },
