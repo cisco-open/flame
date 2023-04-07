@@ -1,0 +1,10 @@
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site1.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site2.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site3.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site4.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site5.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site6.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site7.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site8.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site9.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/site10.npz
