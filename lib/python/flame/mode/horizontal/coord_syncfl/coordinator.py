@@ -26,9 +26,9 @@ from flame.mode.tasklet import Loop, Tasklet
 
 logger = logging.getLogger(__name__)
 
-TAG_SELECT_TRAINERS = "selectTrainers"
-TAG_SELECT_AGGREGATOR = "selectAggregator"
-TAG_CHECK_EOT = "checkEOT"
+TAG_COORDINATE_WITH_TOP_AGG = "coordinateWithTopAgg"
+TAG_COORDINATE_WITH_MID_AGG = "coordinateWithMidAgg"
+TAG_COORDINATE_WITH_TRAINER = "coordinateWithTrainer"
 
 
 class Coordinator(Role):
@@ -37,9 +37,9 @@ class Coordinator(Role):
 
         self.channel_manager = self.build_channel_manager()
 
+        self._rounds = self.config.hyperparameters.rounds
+        self._round = 1
         self._work_done = False
-
-        self._round = 0
 
         self.agg_to_trainer = dict()
         self.trainer_to_agg = dict()
@@ -51,31 +51,22 @@ class Coordinator(Role):
 
         return channel_manager
 
-    def check_eot(self):
-        logger.info("calling check_eot")
+    def get_channel(self, tag: str):
+        """Return channel of a given tag when it is ready to use."""
+        channel = self.channel_manager.get_by_tag(tag)
+        if not channel:
+            raise ValueError(f"channel not found for tag {tag}")
 
-        top_agg_channel = self.channel_manager.get_by_tag(TAG_CHECK_EOT)
-        if not top_agg_channel:
-            raise ValueError("top aggregator channel not found")
+        channel.await_join()
 
-        top_agg_channel.await_join()
-        end = top_agg_channel.one_end()
-        msg, _ = top_agg_channel.recv(end)
-
-        if MessageType.EOT in msg:
-            self._work_done = msg[MessageType.EOT]
-
-        logger.info(f"work_done: {self._work_done}")
-
-        self._round += 1
+        return channel
 
     def await_mid_aggs_and_trainers(self):
+        """Wait for middle aggregators and trainers to join."""
         logger.info("waiting for mid aggs and trainers")
-        trainer_channel = self.channel_manager.get_by_tag(TAG_SELECT_AGGREGATOR)
-        aggregator_channel = self.channel_manager.get_by_tag(TAG_SELECT_TRAINERS)
 
-        trainer_channel.await_join()
-        aggregator_channel.await_join()
+        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
+        aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
 
         # set necessary properties to help channel decide how to select ends
         trainer_channel.set_property("round", self._round)
@@ -84,11 +75,34 @@ class Coordinator(Role):
         logger.info("both mid aggs and trainers joined")
 
     def pair_mid_aggs_and_trainers(self):
-        trainer_channel = self.channel_manager.get_by_tag(TAG_SELECT_AGGREGATOR)
-        aggregator_channel = self.channel_manager.get_by_tag(TAG_SELECT_TRAINERS)
+        """Pair middle aggregators with trainers."""
+        logger.debug("paring mid aggs and trainers")
+        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
+        aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
 
         trainer_ends = trainer_channel.ends()
         agg_ends = aggregator_channel.ends()
+
+        # send meta information request
+        for agg_end in agg_ends:
+            logger.debug(f"sending meta info req to {agg_end}")
+            aggregator_channel.send(agg_end, {MessageType.META_INFO_REQ: ""})
+
+        bad_ends = set()
+        for msg, metadata in aggregator_channel.recv_fifo(agg_ends):
+            end, _ = metadata
+            if not msg or MessageType.META_INFO_RES not in msg:
+                bad_ends.add(end)
+                logger.debug(f"No meta info response from {end}; skipping it")
+                continue
+
+            # meta info can be used to mapping middle aggregators to trainers
+            # TODO: implement necessary logic
+            logger.info(f"got {msg[MessageType.META_INFO_RES]} from {end}")
+
+        agg_ends = [end for end in agg_ends if end not in bad_ends]
+
+        logger.debug(f"good mid agg ends: {agg_ends}")
 
         # reset
         self.agg_to_trainer = dict()
@@ -106,28 +120,71 @@ class Coordinator(Role):
 
             self.agg_to_trainer[agg_end].append(trainer_end)
 
+        logger.debug("finished paring mid aggs and trainers")
+
+    def send_selected_middle_aggregators(self):
+        """Send selected middle aggregator list to top aggregator."""
+        logger.debug("sending selected mid aggs to top agg")
+        top_agg_channel = self.get_channel(TAG_COORDINATE_WITH_TOP_AGG)
+
+        mid_aggs = list()
+        for agg, trainers in self.agg_to_trainer.items():
+            if len(trainers) == 0:
+                logger.debug(f"no trainer assigned for mid agg {agg}")
+                continue
+
+            mid_aggs.append(agg)
+
+        msg = {MessageType.COORDINATED_ENDS: mid_aggs, MessageType.EOT: self._work_done}
+        end = top_agg_channel.one_end()
+        top_agg_channel.send(end, msg)
+
+        logger.debug("finished sending selected mid aggs to top agg")
+
     def send_selected_trainers(self):
-        aggregator_channel = self.channel_manager.get_by_tag(TAG_SELECT_TRAINERS)
-        if not aggregator_channel:
-            return
+        """Send selected trainer list to middle aggregator."""
+        logger.debug("calling send_selected_trainers()")
+        mid_agg_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
 
         for agg, trainers in self.agg_to_trainer.items():
-            msg = {MessageType.COORDINATED_ENDS: trainers}
-            aggregator_channel.send(agg, msg)
+            msg = {
+                MessageType.COORDINATED_ENDS: trainers,
+                MessageType.EOT: self._work_done,
+            }
+            mid_agg_channel.send(agg, msg)
+        logger.debug("exited send_selected_trainers()")
 
-    def send_selected_aggregator(self):
-        trainer_channel = self.channel_manager.get_by_tag(TAG_SELECT_AGGREGATOR)
+    def send_selected_middle_aggregator(self):
+        """Send selected middle aggregator ID to each trainer."""
+        logger.debug("calling send_selected_middle_aggregator()")
+        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
 
         for trainer, agg in self.trainer_to_agg.items():
-            msg = {MessageType.COORDINATED_ENDS: agg}
+            msg = {MessageType.COORDINATED_ENDS: agg, MessageType.EOT: self._work_done}
             trainer_channel.send(trainer, msg)
+        logger.debug("exited send_selected_middle_aggregator()")
 
-    def graceful_exit(self):
-        logger.info("help mid aggs and trainers to receive EOT")
-        self.await_mid_aggs_and_trainers()
-        self.pair_mid_aggs_and_trainers()
-        self.send_selected_trainers()
-        self.send_selected_aggregator()
+    def increment_round(self) -> None:
+        """Increment the round counter."""
+        logger.debug(f"incrementing current round: {self._round}")
+        logger.debug(f"total rounds: {self._rounds}")
+        self._round += 1
+        self._work_done = self._round > self._rounds
+
+        logger.debug(f"incremented round to {self._round}")
+
+    def inform_end_of_training(self) -> None:
+        """Inform the end of training."""
+        top_agg_channel = self.get_channel(TAG_COORDINATE_WITH_TOP_AGG)
+        top_agg_channel.broadcast({MessageType.EOT: self._work_done})
+
+        mid_agg_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
+        mid_agg_channel.broadcast({MessageType.EOT: self._work_done})
+
+        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
+        trainer_channel.broadcast({MessageType.EOT: self._work_done})
+
+        logger.debug("done broadcasting end-of-training")
 
     ###
     # Functions  in the following are defined as abstraction functions in Role
@@ -168,28 +225,33 @@ class Coordinator(Role):
         with Composer() as composer:
             self.composer = composer
 
-            task_check_eot = Tasklet("", self.check_eot)
-
             task_await = Tasklet("", self.await_mid_aggs_and_trainers)
 
             task_pairing = Tasklet("", self.pair_mid_aggs_and_trainers)
 
+            task_send_mid_aggs_to_top_agg = Tasklet(
+                "", self.send_selected_middle_aggregators
+            )
+
             task_send_trainers_to_agg = Tasklet("", self.send_selected_trainers)
 
-            task_send_agg_to_trainer = Tasklet("", self.send_selected_aggregator)
+            task_send_agg_to_trainer = Tasklet("", self.send_selected_middle_aggregator)
 
-            task_graceful_exit = Tasklet("", self.graceful_exit)
+            task_increment_round = Tasklet("", self.increment_round)
+
+            task_inform_eot = Tasklet("", self.inform_end_of_training)
 
         loop = Loop(loop_check_fn=lambda: self._work_done)
         (
             loop(
-                task_check_eot
-                >> task_await
+                task_await
                 >> task_pairing
+                >> task_send_mid_aggs_to_top_agg
                 >> task_send_trainers_to_agg
                 >> task_send_agg_to_trainer
+                >> task_increment_round
             )
-            >> task_graceful_exit
+            >> task_inform_eot
         )
 
     def run(self) -> None:
@@ -199,4 +261,8 @@ class Coordinator(Role):
     @classmethod
     def get_func_tags(cls) -> list[str]:
         """Return a list of function tags defined in the top level aggregator role."""
-        return [TAG_SELECT_TRAINERS, TAG_SELECT_AGGREGATOR, TAG_CHECK_EOT]
+        return [
+            TAG_COORDINATE_WITH_TOP_AGG,
+            TAG_COORDINATE_WITH_MID_AGG,
+            TAG_COORDINATE_WITH_TRAINER,
+        ]

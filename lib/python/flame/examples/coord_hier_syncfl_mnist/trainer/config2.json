@@ -1,6 +1,6 @@
 {
     "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa746",
-    "backend": "mqtt",
+    "backend": "p2p",
     "brokers": [
         {
             "host": "localhost",
@@ -31,10 +31,10 @@
             },
             "funcTags": {
                 "trainer": [
-                    "getAggregator"
+                    "coordinate"
                 ],
                 "coordinator": [
-                    "selectAggregator"
+                    "coordinateWithTrainer"
                 ]
             }
         },
