@@ -9,7 +9,7 @@ We use MNIST for an example of FedBalancer, which is a trainer (client) sample s
 
 
 This example runs within the `conda` environment.
-After installing Flame SDK into `flame` environment, change directory to `lib/python/flame/examples/fedbalancer_mnist`, and run the following command.
+After installing Flame SDK into `flame` environment, change directory to `lib/python/examples/fedbalancer_mnist`, and run the following command.
 
 ```bash
 $ conda activate flame
@@ -33,4 +33,3 @@ You can track the progress by running the following commands:
 ```bash
 $ cat output/aggregator/aggregator.log
 ```
-

@@ -104,7 +104,7 @@ In the first terminal, run the following commands:
 
 ```bash
 conda activate flame
-cd examples/mnist/trainer
+cd ../examples/mnist/trainer
 
 python keras/main.py config.json
 ```
@@ -113,7 +113,7 @@ Open another terminal and run:
 
 ```bash
 conda activate flame
-cd examples/mnist/aggregator
+cd ../examples/mnist/aggregator
 
 python keras/main.py config.json
 ```
