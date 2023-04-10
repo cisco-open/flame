@@ -15,9 +15,9 @@ flamectl create schema schema.json --design mnist
 ### Step 3: create (i.e., add) mnist code to the design
 
 ```bash
-flamectl create code mnist.zip --design mnist
+flamectl create code ./src --design mnist
 ```
-Note: to understand relationship between schema and code, unzip mnist.zip and check the folder structure in it.
+Note: to understand relationship between schema and code, look at the example in the lib directory and check the folder structure in it.
 
 
 ### Step 4: create a dataset

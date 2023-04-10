@@ -48,10 +48,20 @@ func Create(params Params) error {
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.CreateDesignCodeEndPoint, uriMap)
 
+	err := util.CreateZipFile(params.CodePath)
+
+	if err != nil {
+		fmt.Printf("Failed to create the ZIP file: %v\n", err)
+		return nil
+	}
+
+	var zipFileName = params.CodePath + ".zip"
+	defer os.Remove(zipFileName)
+
 	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
 	kv := map[string]io.Reader{
-		"fileName": strings.NewReader(filepath.Base(params.CodePath)),
-		"fileData": mustOpen(params.CodePath),
+		"fileName": strings.NewReader(filepath.Base(zipFileName)),
+		"fileData": mustOpen(zipFileName),
 	}
 
 	// create multipart/form-data

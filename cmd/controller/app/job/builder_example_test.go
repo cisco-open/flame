@@ -39,6 +39,7 @@ import (
 	"github.com/cisco-open/flame/cmd/controller/app/objects"
 	"github.com/cisco-open/flame/cmd/controller/config"
 	"github.com/cisco-open/flame/pkg/openapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
 const (
@@ -61,9 +62,13 @@ var (
 )
 
 func Test_asyncfl_hier_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/asyncfl_hier_mnist"
+	exampleName := "asyncfl_hier_mnist"
+	rootExample := baseExampleFolder + "/" + exampleName
 
-	designCodeFile, err := os.Open(rootExample + "/asyncfl_hier_mnist.zip")
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
+
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 
 	db := connect(t)
@@ -141,7 +146,11 @@ func Test_asyncfl_hier_mnist(t *testing.T) {
 }
 
 func Test_distributed_training(t *testing.T) {
-	rootExample := baseExampleFolder + "/distributed_training"
+	exampleName := "distributed_training"
+	rootExample := baseExampleFolder + "/" + exampleName
+
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -171,7 +180,7 @@ func Test_distributed_training(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/distributed_training.zip")
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 	err = dbService.CreateDesignCode(userID, designID, "distributed_training", "zip", designCodeFile)
 	assert.NoError(t, err)
@@ -217,7 +226,11 @@ func Test_distributed_training(t *testing.T) {
 }
 
 func Test_hier_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/hier_mnist"
+	exampleName := "hier_mnist"
+	rootExample := baseExampleFolder + "/" + exampleName
+
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -247,7 +260,7 @@ func Test_hier_mnist(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/hier_mnist.zip")
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 	err = dbService.CreateDesignCode(userID, designID, "hier_mnist", "zip", designCodeFile)
 	assert.NoError(t, err)
@@ -297,7 +310,11 @@ func Test_hier_mnist(t *testing.T) {
 }
 
 func Test_medmnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/medmnist"
+	exampleName := "medmnist"
+	rootExample := baseExampleFolder + "/" + exampleName
+
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -327,7 +344,7 @@ func Test_medmnist(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/medmnist.zip")
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 	err = dbService.CreateDesignCode(userID, designID, "medmnist", "zip", designCodeFile)
 	assert.NoError(t, err)
@@ -398,7 +415,11 @@ func Test_medmnist(t *testing.T) {
 }
 
 func Test_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/mnist"
+	exampleName := "mnist"
+	rootExample := baseExampleFolder + "/" + exampleName
+
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -428,7 +449,7 @@ func Test_mnist(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/mnist.zip")
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 	err = dbService.CreateDesignCode(userID, designID, "mnist", "zip", designCodeFile)
 	assert.NoError(t, err)
@@ -543,7 +564,11 @@ func Test_parallel_experiment(t *testing.T) {
 }
 
 func Test_hybrid(t *testing.T) {
-	rootExample := baseExampleFolder + "/hybrid"
+	exampleName := "hybrid"
+	rootExample := baseExampleFolder + "/" + exampleName
+
+	util.CreateZipFile(fmt.Sprintf("../../../../examples/%s/src", exampleName))
+	defer os.Remove("code.zip")
 
 	db := connect(t)
 	userID := uuid.NewString()
@@ -573,7 +598,7 @@ func Test_hybrid(t *testing.T) {
 	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
 	assert.NoError(t, err)
 
-	designCodeFile, err := os.Open(rootExample + "/hybrid.zip")
+	designCodeFile, err := os.Open("code.zip")
 	assert.NoError(t, err)
 	err = dbService.CreateDesignCode(userID, designID, "hybrid", "zip", designCodeFile)
 	assert.NoError(t, err)

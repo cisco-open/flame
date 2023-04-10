@@ -26,7 +26,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code asyncfl_hier_mnist.zip --design asyncfl_hier_mnist
+flamectl create code ./src --design asyncfl_hier_mnist
 ```
 
 ### Step 4: create datasets
