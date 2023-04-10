@@ -21,7 +21,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code distributed_training.zip --design distributed_training
+flamectl create code ./src --design distributed_training
 ```
 
 ### Step 4: create datasets

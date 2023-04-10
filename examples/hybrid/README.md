@@ -15,10 +15,9 @@ flamectl create schema schema.json --design hybrid
 ### Step 3: create (i.e., add) hybrid code to the design
 
 ```bash
-flamectl create code hybrid.zip --design hybrid
+flamectl create code ./src --design hybrid
 ```
-Note: to understand relationship between schema and code, unzip hybrid.zip and check the folder structure in it.
-
+Note: to understand relationship between schema and code, look at the example in the lib directory and check the folder structure in it.
 
 ### Step 4: create a dataset
 

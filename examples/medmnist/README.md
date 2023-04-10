@@ -21,7 +21,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code medmnist.zip --design medmnist
+flamectl create code ./src --design medmnist
 ```
 
 ### Step 4: create datasets
