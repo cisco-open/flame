@@ -16,7 +16,7 @@
 
 import logging
 
-from flame.mode.composer import Composer
+from flame.mode.composer import CloneComposer
 from flame.mode.horizontal.syncfl.top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
 from flame.mode.horizontal.syncfl.top_aggregator import (
     TopAggregator as BaseTopAggregator,
@@ -62,54 +62,16 @@ class TopAggregator(BaseTopAggregator):
 
     def compose(self) -> None:
         """Compose role with tasklets."""
-        with Composer() as composer:
+        super().compose()
+
+        with CloneComposer(self.composer) as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_get_coord_ends = Tasklet("get_coord_ends", self.get_coordinated_ends)
 
-            task_init = Tasklet("", self.initialize)
 
-            task_load_data = Tasklet("", self.load_data)
-
-            task_get_coord_ends = Tasklet("", self.get_coordinated_ends)
-
-            task_put = Tasklet("", self.put, TAG_DISTRIBUTE)
-
-            task_get = Tasklet("", self.get, TAG_AGGREGATE)
-
-            task_train = Tasklet("", self.train)
-
-            task_eval = Tasklet("", self.evaluate)
-
-            task_analysis = Tasklet("", self.run_analysis)
-
-            task_save_metrics = Tasklet("", self.save_metrics)
-
-            task_increment_round = Tasklet("", self.increment_round)
-
-            task_save_params = Tasklet("", self.save_params)
-
-            task_save_model = Tasklet("", self.save_model)
-
-        # create a loop object with loop exit condition function
-        loop = Loop(loop_check_fn=lambda: self._work_done)
-        (
-            task_internal_init
-            >> task_load_data
-            >> task_init
-            >> loop(
-                task_get_coord_ends
-                >> task_put
-                >> task_get
-                >> task_train
-                >> task_eval
-                >> task_analysis
-                >> task_save_metrics
-                >> task_increment_round
-            )
-            >> task_save_params
-            >> task_save_model
-        )
+        self.composer.get_tasklet("distribute").insert_before(task_get_coord_ends)
+        self.composer.get_tasklet("inform_end_of_training").remove()
 
     @classmethod
     def get_func_tags(cls) -> list[str]:

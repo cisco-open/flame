@@ -148,7 +148,11 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         for end in channel.ends():
             logger.debug(f"sending weights to {end}")
             channel.send(
-                end, {MessageType.WEIGHTS: self.weights, MessageType.ROUND: self._round}
+                end,
+                {
+                    MessageType.WEIGHTS: self.weights,
+                    MessageType.ROUND: self._round,
+                },
             )
 
     def _aggregate_weights(self, tag: str) -> None:
@@ -274,7 +278,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
             task_get_aggr = Tasklet("", self.get, TAG_AGGREGATE)
 
-            task_get_fetch = Tasklet("", self.get, TAG_FETCH)
+            task_get_fetch = Tasklet("fetch", self.get, TAG_FETCH)
 
             task_eval = Tasklet("", self.evaluate)
 
@@ -305,5 +309,7 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
-        """Return a list of function tags defined in the middle level aggregator role."""
+        """Return a list of function tags defined in the middle
+        level aggregator role.
+        """
         return [TAG_DISTRIBUTE, TAG_AGGREGATE, TAG_FETCH, TAG_UPLOAD]

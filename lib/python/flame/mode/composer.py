@@ -19,6 +19,7 @@ import logging
 from queue import Queue
 from types import TracebackType
 from typing import Optional, Type
+from flame.mode.enums import LoopIndicator
 
 logger = logging.getLogger(__name__)
 
@@ -215,6 +216,202 @@ class Composer(object):
                 q.put(child)
         print("=====")
         print("done with printing chain")
+
+    def get_tasklet(self, alias: str):
+        """Get a tasklet from the composer by alias."""
+        tasklet = next(iter(self.chain))
+        root = tasklet.get_root()
+
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            tasklet = q.get()
+            if tasklet.alias == alias:
+                return tasklet
+            for t in self.chain[tasklet]:
+                q.put(t)
+        else:
+            raise ValueError(f"Tasklet with alias {alias} not found")
+
+    def remove_tasklet(self, alias: str):
+        """Remove a tasklet from the composer and stitches the chain."""
+        # throw on tasklet is loop starter or ender
+        tasklet = self.get_tasklet(alias)
+        if tasklet.loop_state:
+            raise NotImplementedError("Can't handle loop ends removal yet")
+        
+        tasklet = next(iter(self.chain))
+        root = tasklet.get_root()
+
+        if root.alias == alias:
+            self.chain.pop(root)
+            return None
+
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            parent_t = q.get()
+
+            for child_t in self.chain[parent_t]:
+                if child_t.alias == alias: # if child for removal
+                    # stitch the chain
+                    self.chain[parent_t].remove(child_t)
+                    self.chain[parent_t].update(self.chain[child_t])
+                    # remove the child from the chain
+                    self.chain.pop(child_t)
+
+                    self.reverse_chain = self.get_reverse_chain()
+
+                    return None
+
+            for child in self.chain[parent_t]:
+                q.put(child)
+        else:
+            raise ValueError(f"Tasklet with alias {alias} not found")
+
+    def _update_chain(self, new_order):
+        self.chain = {k: self.chain[k] for k in new_order}
+        self.reverse_chain = self.get_reverse_chain()
+
+    def insert(self, alias, new_tasklet, after=False):
+        """Insert a new tasklet before a given tasklet. If after is True, insert after the given tasklet.
+        """
+
+        if after:
+            self._insert_after(alias, new_tasklet)
+        else:
+            self._insert_before(alias, new_tasklet)
+
+    def _insert_before(self, alias, new_tasklet):
+        initial_chain_order = list(self.chain)
+        tasklet = next(iter(self.chain))
+        root = tasklet.get_root()
+
+        for t in self.chain:
+            if t.alias == new_tasklet.alias:
+                raise ValueError(f"Tasklet with alias '{new_tasklet.alias}' already exists")
+
+        if root.alias == alias:
+            self.chain[new_tasklet] = {root}
+            # update the chain order
+            updated_chain_order = initial_chain_order.copy()
+            updated_chain_order.insert(initial_chain_order.index(root), new_tasklet)
+            self._update_chain(updated_chain_order)
+            
+            return None
+
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            parent_t = q.get()
+
+            for child_t in self.chain[parent_t]:
+                if child_t.alias == alias:
+                    # handle new_tasklet loop insertion
+                    if child_t is child_t.loop_starter: # new_tasklet is new loop starter
+                        new_tasklet.update_loop_attrs(
+                            check_fn=child_t.loop_check_fn,
+                            state=child_t.loop_state,
+                            starter=new_tasklet,
+                            ender=child_t.loop_ender
+                        )
+                        child_t.update_loop_attrs(state=LoopIndicator.NONE)
+                    elif child_t is child_t.loop_ender:
+                        new_tasklet.update_loop_attrs(
+                            check_fn=child_t.loop_check_fn,
+                            state=LoopIndicator.NONE,
+                            starter=child_t.loop_starter,
+                            ender=child_t
+                        )
+
+                    # relink the chain
+                    self.chain[parent_t].remove(child_t)
+                    self.chain[parent_t].add(new_tasklet)
+                    # insert the new tasklet
+                    self.chain[new_tasklet] = {child_t}
+                    # update the chain order
+                    updated_chain_order = initial_chain_order.copy()
+                    updated_chain_order.insert(initial_chain_order.index(child_t), new_tasklet)
+                    self._update_chain(updated_chain_order)
+
+                    # update the loop if new_tasklet is in a loop
+                    if new_tasklet.loop_state:
+                        start, end = new_tasklet, new_tasklet.loop_ender
+                        tasklets_in_loop = self.get_tasklets_in_loop(start, end)
+
+                        for t in tasklets_in_loop:
+                            t.update_loop_attrs(
+                                starter=new_tasklet, 
+                                ender=new_tasklet.loop_ender
+                            )
+
+                    return None
+
+            for child in self.chain[parent_t]:
+                q.put(child)
+
+    def _insert_after(self, alias, new_tasklet):
+        initial_chain_order = list(self.chain)
+        tasklet = next(iter(self.chain))
+        root = tasklet.get_root()
+
+        for t in self.chain:
+            if t.alias == new_tasklet.alias:
+                raise ValueError(f"Tasklet with alias '{new_tasklet.alias}' already exists")
+            
+        q = Queue()
+        q.put(root)
+        while not q.empty():
+            parent_t = q.get()
+
+            if parent_t.alias == alias:
+                # handle new_tasklet loop insertion
+                if parent_t is parent_t.loop_ender: # new_tasklet is new loop ender
+                    new_tasklet.update_loop_attrs(
+                        check_fn=parent_t.loop_check_fn,
+                        state=parent_t.loop_state,
+                        starter=parent_t.loop_starter,
+                        ender=new_tasklet
+                    )
+                    parent_t.update_loop_attrs(state=LoopIndicator.NONE)
+                elif parent_t is parent_t.loop_starter:
+                    new_tasklet.update_loop_attrs(
+                        check_fn=parent_t.loop_check_fn,
+                        state=LoopIndicator.NONE,
+                        starter=parent_t.loop_ender,
+                        ender=parent_t.loop_ender
+                    )
+
+                self.chain[new_tasklet] = {child_t for child_t in self.chain[parent_t]}
+                self.chain[parent_t] = {new_tasklet}
+                # update the chain order
+                updated_chain_order = initial_chain_order.copy()
+                updated_chain_order.insert(initial_chain_order.index(parent_t) + 1, new_tasklet)
+                self._update_chain(updated_chain_order)
+
+                # update the loop if new_tasklet is in a loop
+                if new_tasklet.loop_state:
+                    start, end = new_tasklet.loop_starter, new_tasklet.loop_ender
+                    tasklets_in_loop = self.get_tasklets_in_loop(start, end)
+
+                    for t in tasklets_in_loop:
+                        t.update_loop_attrs(
+                            starter=new_tasklet.loop_starter, 
+                            ender=new_tasklet.loop_ender
+                        )
+
+                return None
+            
+            for child in self.chain[parent_t]:
+                q.put(child)
+
+    def get_reverse_chain(self):
+        niahc = {k: set() for k in self.chain}
+        for k, v in self.chain.items():
+            for t in v:
+                niahc[t].add(k)
+
+        return niahc
 
 
 class CloneComposer(object):
