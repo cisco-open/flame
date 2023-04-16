@@ -57,6 +57,8 @@ class MiddleAggregator(SyncMidAgg):
         """Initialize internal state for role."""
         super().internal_init()
 
+        self.trainer_no_show = False
+
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
         self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
@@ -74,6 +76,8 @@ class MiddleAggregator(SyncMidAgg):
         elif self.framework == MLFramework.TENSORFLOW:
             self._delta_weights_fn = delta_weights_tensorflow
 
+        self.fetch_success = False
+
     def _reset_agg_goal_variables(self):
         logger.debug("reset agg goal variables")
         # reset agg goal count
@@ -84,9 +88,14 @@ class MiddleAggregator(SyncMidAgg):
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights")
+
+        self.fetch_success = False
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found with tag {tag}")
+            # we don't want to keep calling this too fast
+            # so let's sleep 1 second
+            time.sleep(1)
             return
 
         # this call waits for at least one peer to join this channel
@@ -95,6 +104,17 @@ class MiddleAggregator(SyncMidAgg):
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_RECV)
         msg, _ = channel.recv(end)
+
+        if not msg:
+            logger.debug("no message received")
+            if self._work_done:
+                # when the work is done, we cancel continue condition
+                # (i.e., we set fetch_success to True)
+                self.fetch_success = True
+            # we don't want to keep calling this too fast
+            # so let's sleep 1 second
+            time.sleep(1)
+            return
 
         if MessageType.WEIGHTS in msg:
             self.weights = msg[MessageType.WEIGHTS]
@@ -105,21 +125,32 @@ class MiddleAggregator(SyncMidAgg):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
+        self.fetch_success = True
+
     def _distribute_weights(self, tag: str) -> None:
+        self.trainer_no_show = False
+
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        # this call waits for at least one peer to join this channel
-        self.trainer_no_show = channel.await_join(WAIT_TIME_FOR_TRAINER)
-        if self.trainer_no_show:
-            logger.debug("channel await join timeouted")
-            # send dummy weights to unblock top aggregator
-            self._send_dummy_weights(TAG_UPLOAD)
+        ends = channel.ends(VAL_CH_STATE_SEND)
+        if self._work_done:
+            logger.debug("work is done")
             return
 
-        for end in channel.ends(VAL_CH_STATE_SEND):
+        # This is unlikely but it can happen, especially in coordinated
+        # asynchronous fl as the coordinator can return an empty list of ends
+        if len(ends) == 0:
+            logger.debug("no end is in the channel")
+            self.trainer_no_show = True
+            # we don't want to keep calling this too fast
+            # so let's sleep 1 second
+            time.sleep(1)
+            return
+
+        for end in ends:
             logger.debug(f"sending weights to {end}")
             channel.send(
                 end,
@@ -145,10 +176,13 @@ class MiddleAggregator(SyncMidAgg):
             self._agg_goal_weights = deepcopy(self.weights)
 
         # receive local model parameters from a trainer who arrives first
-        msg, metadata = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
+        ends = channel.ends(VAL_CH_STATE_RECV)
+        logger.debug(f"ends: {ends}")
+        msg, metadata = next(channel.recv_fifo(ends, 1))
         end, _ = metadata
         if not msg:
             logger.debug(f"No data from {end}; skipping it")
+            time.sleep(1)
             return
 
         logger.debug(f"received data from {end}")
@@ -196,6 +230,9 @@ class MiddleAggregator(SyncMidAgg):
 
     def _send_weights(self, tag: str) -> None:
         logger.debug("calling _send_weights")
+        if self._work_done:
+            return
+
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found with {tag}")
@@ -244,35 +281,41 @@ class MiddleAggregator(SyncMidAgg):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("init", self.initialize)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_reset_agg_goal_vars = Tasklet("", self._reset_agg_goal_variables)
+            task_reset_agg_goal_vars = Tasklet(
+                "reset_vars", self._reset_agg_goal_variables
+            )
 
-            task_put_dist = Tasklet("", self.put, TAG_DISTRIBUTE)
+            task_put_dist = Tasklet("distribute", self.put, TAG_DISTRIBUTE)
             task_put_dist.set_continue_fn(cont_fn=lambda: self.trainer_no_show)
 
-            task_put_upload = Tasklet("", self.put, TAG_UPLOAD)
+            task_put_upload = Tasklet("upload", self.put, TAG_UPLOAD)
 
-            task_get_aggr = Tasklet("", self.get, TAG_AGGREGATE)
+            task_get_aggr = Tasklet("aggregate", self.get, TAG_AGGREGATE)
 
-            task_get_fetch = Tasklet("", self.get, TAG_FETCH)
+            task_get_fetch = Tasklet("fetch", self.get, TAG_FETCH)
+            task_get_fetch.set_continue_fn(cont_fn=lambda: not self.fetch_success)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_update_round = Tasklet("", self.update_round)
+            task_update_round = Tasklet("update_round", self.update_round)
 
-            task_end_of_training = Tasklet("", self.inform_end_of_training)
+            task_end_of_training = Tasklet("inform_eot", self.inform_end_of_training)
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
 
         # create a loop object for asyncfl to manage concurrency as well as
         # aggregation goal
-        asyncfl_loop = Loop(loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
+        asyncfl_loop = Loop(
+            loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal
+            or self._work_done
+        )
 
         (
             task_internal_init

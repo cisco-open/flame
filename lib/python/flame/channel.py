@@ -35,6 +35,8 @@ KEY_CH_STATE = "state"
 VAL_CH_STATE_RECV = "recv"
 VAL_CH_STATE_SEND = "send"
 
+KEY_CH_SELECT_REQUESTER = "requester"
+
 
 class Channel(object):
     """Channel class."""
@@ -113,11 +115,15 @@ class Channel(object):
 
     def set_end_property(self, end_id: str, key: str, value: Scalar) -> None:
         """Set property of an end."""
-        self._ends[end_id].set_property(key, value)
+        if self.has(end_id):
+            self._ends[end_id].set_property(key, value)
 
     def get_end_property(self, end_id, key) -> Scalar:
         """Get property of an end."""
-        return self._ends[end_id].get_property(key)
+        if self.has(end_id):
+            return self._ends[end_id].get_property(key)
+        else:
+            return None
 
     """
     ### The following are not asyncio methods
@@ -136,14 +142,17 @@ class Channel(object):
 
         return result
 
-    def one_end(self, state: Union[None, str] = None) -> str:
+    def one_end(self, state: Union[None, str] = None) -> Union[None, str]:
         """Return one end out of all ends."""
-        return self.ends(state)[0]
+        end_list = self.ends(state)
+        return end_list[0] if len(end_list) > 0 else None
 
     def ends(self, state: Union[None, str] = None) -> list[str]:
         """Return a list of end ids."""
         if state == VAL_CH_STATE_RECV or state == VAL_CH_STATE_SEND:
             self.properties[KEY_CH_STATE] = state
+
+        self.properties[KEY_CH_SELECT_REQUESTER] = self.get_backend_id()
 
         async def inner():
             selected = self._selector.select(self._ends, self.properties)
@@ -271,6 +280,10 @@ class Channel(object):
 
         self.first_k = first_k
 
+        if self.first_k == 0:
+            # we got an empty end id list
+            yield None, ("", datetime.now())
+
         async def _put_message_to_rxq_inner():
             _ = asyncio.create_task(self._streamer_for_recv_fifo(end_ids))
 
@@ -365,6 +378,9 @@ class Channel(object):
                     logger.debug(f"{str(self._active_recv_fifo_tasks)}")
                 else:
                     logger.debug(f"4) end id: {end_id}, cnt: {self.count}")
+                    if end_id not in self._ends:
+                        logger.debug(f"{end_id} not in _ends")
+                        continue
                     # We already put the first_k number of messages into
                     # a queue.
                     #
@@ -423,9 +439,13 @@ class Channel(object):
 
     def leave(self):
         """Clean up resources allocated in the channel and leave it."""
+        logger.debug(f"calling channel leave for {self._name}")
+
         self.drain_messages()
 
         self._backend.leave(self)
+
+        logger.debug(f" channel leave done for {self._name}")
 
     def await_join(self, timeout=None) -> bool:
         """Wait for at least one peer joins a channel.

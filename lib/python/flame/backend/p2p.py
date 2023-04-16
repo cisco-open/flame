@@ -594,6 +594,7 @@ class PointToPointBackend(AbstractBackend):
         This should be called in self._loop thread.
         """
         if end_id in self._cleanup_ready:
+            logger.debug(f"set _cleanup_ready event for {end_id}")
             self._cleanup_ready[end_id].set()
 
     def set_cleanup_ready(self, end_id: str) -> None:
@@ -661,6 +662,7 @@ class PointToPointBackend(AbstractBackend):
             self._livecheck[end_id].cancel()
             del self._livecheck[end_id]
 
+        logger.debug(f"waiting for _cleanup_ready for {end_id}")
         # wait for the cleanup ready event to be set for end_id
         # to ensure that all the msg in the rx queue of the end
         # is consumed
@@ -677,6 +679,8 @@ class PointToPointBackend(AbstractBackend):
 
         # stop the chunk thread responsible for handling messages from end_id
         self.chunk_mgr.stop(end_id)
+
+        logger.debug(f"cleanup {end_id} done")
 
     def _set_heart_beat(self, end_id) -> None:
         logger.debug(f"heart beat data message for {end_id}")
