@@ -23,11 +23,11 @@ from typing import Any, Union
 import cloudpickle
 from aiostream import stream
 
-from .common.constants import EMPTY_PAYLOAD, CommType
-from .common.typing import Scalar
-from .common.util import run_async
-from .config import GROUPBY_DEFAULT_GROUP
-from .end import KEY_END_STATE, VAL_END_STATE_RECVD, End
+from flame.common.constants import EMPTY_PAYLOAD, CommType
+from flame.common.typing import Scalar
+from flame.common.util import run_async
+from flame.config import GROUPBY_DEFAULT_GROUP
+from flame.end import KEY_END_STATE, VAL_END_STATE_RECVD, End
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ class Channel(object):
 
         result, _ = run_async(inner(), self._backend.loop())
         return result
-    
+
     def all_ends(self):
         """Return a list of all end ids (needed in FedDyn to compute alpha values)."""
         return list(self._ends.keys())
@@ -234,6 +234,9 @@ class Channel(object):
             else (None, None)
         )
 
+        # set cleanup ready event
+        self._backend.set_cleanup_ready(end_id)
+
         return msg, timestamp
 
     def recv_fifo(
@@ -300,6 +303,9 @@ class Channel(object):
                 else (None, None)
             )
             metadata = (end_id, timestamp)
+
+            # set cleanup ready event
+            self._backend.set_cleanup_ready(end_id)
 
             yield msg, metadata
 
@@ -400,9 +406,26 @@ class Channel(object):
 
         return msg, timestamp
 
+    def drain_messages(self):
+        """Drain messages from rx queues of ends."""
+        for end_id in list(self._ends.keys()):
+            while True:
+                msg, _ = self.peek(end_id)
+                if not msg:
+                    break
+
+                # drain message from end so that cleanup ready event is set
+                _ = self.recv(end_id)
+
     def join(self):
         """Join the channel."""
         self._backend.join(self)
+
+    def leave(self):
+        """Clean up resources allocated in the channel and leave it."""
+        self.drain_messages()
+
+        self._backend.leave(self)
 
     def await_join(self, timeout=None) -> bool:
         """Wait for at least one peer joins a channel.
@@ -438,21 +461,6 @@ class Channel(object):
         """Return true if txq is empty; otherwise, false."""
         return self._ends[end_id].is_txq_empty()
 
-    def cleanup(self):
-        """Clean up resources allocated for the channel."""
-
-        async def _inner():
-            # we use EMPTY_PAYLOAD as signal to finish tx tasks
-
-            # put EMPTY_PAYLOAD to broadcast queue
-            await self._bcast_queue.put(EMPTY_PAYLOAD)
-
-            for end_id, end in self._ends.items():
-                # put EMPTY_PAYLOAD to unicast queue for each end
-                await end.put(EMPTY_PAYLOAD)
-
-        _, _ = run_async(_inner(), self._backend.loop())
-
     """
     ### The following are asyncio methods of backend loop
     ### Therefore, they must be called in the backend loop
@@ -468,9 +476,9 @@ class Channel(object):
         # create tx task in the backend for the channel
         self._backend.create_tx_task(self._name, end_id)
 
-        if not self.await_join_event.is_set():
-            # set the event true
-            self.await_join_event.set()
+        # set the event true
+        # it's okay to call set() without checking its condition
+        self.await_join_event.set()
 
     async def remove(self, end_id):
         """Remove an end from the channel."""

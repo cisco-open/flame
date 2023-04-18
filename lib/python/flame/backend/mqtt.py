@@ -30,7 +30,6 @@ from flame.common.constants import (
     DEFAULT_RUN_ASYNC_WAIT_TIME,
     EMPTY_PAYLOAD,
     MQTT_TOPIC_PREFIX,
-    BackendEvent,
     CommType,
 )
 from flame.common.util import background_thread_loop, run_async
@@ -70,8 +69,6 @@ class MqttBackend(AbstractBackend):
         # variables for class initialization
         self._instance = None
         self._initialized = False
-        # queue to inform channel manager of backend's events
-        self._eventq = None
         self._loop = None
 
         # variables for functionality
@@ -91,11 +88,9 @@ class MqttBackend(AbstractBackend):
             self._loop = loop
 
         # initialize a chunk manager
-        self.chunk_mgr = ChunkManager(self._loop)
+        self.chunk_mgr = ChunkManager(self)
 
         async def _init_loop_stuff():
-            self._eventq = asyncio.Queue()
-
             coro = self._monitor_end_termination()
             _ = asyncio.create_task(coro)
 
@@ -114,7 +109,12 @@ class MqttBackend(AbstractBackend):
             for end_id, expiry in list(self._cleanup_waits.items()):
                 if time.time() >= expiry:
                     logger.debug(f"end termination check timed out: {end_id}")
-                    await self._eventq.put((BackendEvent.DISCONNECT, end_id))
+                    # linear iteration is okay because there are not many
+                    # channels per role in general
+                    for _, channel in self._channels.items():
+                        # remove the end id from the channel
+                        await channel.remove(end_id)
+
                     del self._cleanup_waits[end_id]
 
             await asyncio.sleep(period)
@@ -191,11 +191,13 @@ class MqttBackend(AbstractBackend):
 
         Send leave notify message and unsubscribe from topics.
         """
-        self.notify(channel.name(), msg_pb2.NotifyType.LEAVE)
+        # FIXME: the following doesn't work; hence commented out
+        # self.notify(channel.name(), msg_pb2.NotifyType.LEAVE)
 
-        # unsubscribe from topics after notify is finished
-        for topic in self._topics_for_notify(channel):
-            self.unsubscribe(topic)
+        # # unsubscribe from topics after notify is finished
+        # for topic in self._topics_for_notify(channel):
+        #     self.unsubscribe(topic)
+        pass
 
     def _handle_health_message(self, message):
         health_data = str(message.payload.decode("utf-8"))
@@ -235,9 +237,9 @@ class MqttBackend(AbstractBackend):
             # add end to the channel
             await channel.add(msg.end_id)
         elif msg.type == msg_pb2.NotifyType.LEAVE:
-            # it's sufficient to remove end from channel
-            # no extra action (e.g., unsubscribe) needed
-            await channel.remove(msg.end_id)
+            # FIXME: the following doesn't work; hence commented out
+            # await channel.remove(msg.end_id)
+            pass
 
     async def _handle_data(self, any_msg: Any) -> None:
         msg = msg_pb2.Data()
@@ -286,10 +288,6 @@ class MqttBackend(AbstractBackend):
     def uid(self):
         """Return backend id."""
         return self._id
-
-    def eventq(self):
-        """Return a event queue object."""
-        return self._eventq
 
     def on_connect(self, client, userdata, flags, rc, properties=None):
         """on_connect publishes a health check message to a mqtt broker."""
@@ -476,6 +474,22 @@ class MqttBackend(AbstractBackend):
 
     async def cleanup(self):
         """Clean up resources in backend."""
+        pass
+
+    def set_cleanup_ready_async(self, end_id: str) -> None:
+        """Set cleanup ready event for a given end id.
+
+        This should be called in self._loop thread.
+        This is not yet implemented.
+        """
+        pass
+
+    def set_cleanup_ready(self, end_id: str) -> None:
+        """Set cleanup ready event for a given end id.
+
+        This should be called non self._loop thread.
+        This is not yet implemented.
+        """
         pass
 
 

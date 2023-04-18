@@ -23,8 +23,7 @@ from typing import Optional
 
 from flame.backends import backend_provider
 from flame.channel import Channel
-from flame.common.constants import BackendEvent
-from flame.common.util import background_thread_loop, run_async
+from flame.common.util import run_async
 from flame.config import Config
 from flame.selectors import selector_provider
 
@@ -88,11 +87,6 @@ class ChannelManager(object):
         atexit.register(self.cleanup)
 
     def _setup_backends(self):
-        async def inner(q: asyncio.Queue) -> None:
-            # create a coroutine task
-            coro = self._backend_eventq_task(q)
-            _ = asyncio.create_task(coro)
-
         for ch_name, channel in self._config.channels.items():
             # rename backend in channel config as sort to avoid confusion
             sort = channel.backend
@@ -105,7 +99,6 @@ class ChannelManager(object):
             broker_host = channel.broker_host or self._config.brokers.sort_to_host[sort]
 
             backend.configure(broker_host, self._job_id, self._task_id)
-            _ = run_async(inner(backend.eventq()), backend.loop())
 
             self._backends[ch_name] = backend
 
@@ -119,15 +112,6 @@ class ChannelManager(object):
         self._backend = backend_provider.get(sort)
         broker_host = self._config.brokers.sort_to_host[sort]
         self._backend.configure(broker_host, self._job_id, self._task_id)
-        _ = run_async(inner(self._backend.eventq()), self._backend.loop())
-
-    async def _backend_eventq_task(self, eventq):
-        while True:
-            (event_type, info) = await eventq.get()
-
-            if event_type == BackendEvent.DISCONNECT:
-                for _, channel in self._channels.items():
-                    await channel.remove(info)
 
     def join_all(self) -> None:
         """join_all ensures that a role joins all of its channels."""
@@ -171,7 +155,11 @@ class ChannelManager(object):
         """Leave a channel."""
         if not self.is_joined(name):
             return
-        # TODO: reset_channel isn't implemented yet
+
+        # TODO: leave() is only implemented for p2p backend;
+        #       implement it completely for mqtt backend
+        self._channels[name].leave()
+        del self._channels[name]
 
     def get_by_tag(self, tag: str) -> Optional[Channel]:
         """Return a channel object that matches a given function tag."""
@@ -197,16 +185,9 @@ class ChannelManager(object):
     def cleanup(self):
         """Clean up pending asyncio tasks."""
         for _, ch in self._channels.items():
-            ch.cleanup()
+            ch.leave()
 
         async def _inner(backend):
-            # TODO: need better mechanism to wait tx completion
-            # as a temporary measure, sleep 5 seconds
-            await asyncio.sleep(5)
-
-            # clean up backend
-            await backend.cleanup()
-
             for task in asyncio.all_tasks():
                 task.cancel()
                 try:

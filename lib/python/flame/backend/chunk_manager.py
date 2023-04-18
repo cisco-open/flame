@@ -16,19 +16,19 @@
 """Chunk Manager."""
 
 import logging
+from datetime import datetime
 from queue import Queue
 from threading import Thread
-from datetime import datetime
 
-from ..channel import Channel
-from ..common.util import run_async
-from ..proto import backend_msg_pb2 as msg_pb2
-from .chunk_store import ChunkStore
+from flame.backend.chunk_store import ChunkStore
+from flame.channel import Channel
+from flame.common.util import run_async
+from flame.proto import backend_msg_pb2 as msg_pb2
 
 logger = logging.getLogger(__name__)
 
+KEY_BACKEND = "backend"
 KEY_CHANNEL = "channel"
-KEY_LOOP = "loop"
 
 
 class ChunkThread(Thread):
@@ -41,7 +41,7 @@ class ChunkThread(Thread):
         # call parent constructure method
         super().__init__(group, target, name, daemon=daemon)
 
-        self._loop = kwargs[KEY_LOOP]
+        self._backend = kwargs[KEY_BACKEND]
         self._channel = kwargs[KEY_CHANNEL]
 
         self.queue = Queue()
@@ -64,6 +64,9 @@ class ChunkThread(Thread):
             rxq = self._channel.get_rxq(end_id)
             if rxq is None:
                 logger.debug(f"rxq not found for {end_id}")
+
+                # set cleanup ready event for a given end id
+                await self._backend.set_cleanup_ready_async(end_id)
                 return
 
             await rxq.put((data, timestamp))
@@ -78,15 +81,23 @@ class ChunkThread(Thread):
             if not status:
                 # reset chunk_store if message is wrong
                 self.chunk_store.reset()
+
+                # set cleanup ready event for a given end id
+                self._backend.set_cleanup_ready(msg.end_id)
             else:
                 if not self.chunk_store.eom:
                     # not an end of message, hence, can't get a payload
                     # out of chunk store yet
+
+                    # set cleanup ready event for a given end id
+                    self._backend.set_cleanup_ready(msg.end_id)
                     continue
 
                 payload = self.chunk_store.get_data()
                 # now push payload to a target receive queue.
-                _, status = run_async(inner(msg.end_id, payload, timestamp), self._loop)
+                _, status = run_async(
+                    inner(msg.end_id, payload, timestamp), self._backend.loop()
+                )
 
                 # message was completely assembled, reset the chunk store
                 self.chunk_store.reset()
@@ -95,15 +106,15 @@ class ChunkThread(Thread):
 class ChunkManager(object):
     """ChunkStore class."""
 
-    def __init__(self, loop):
+    def __init__(self, backend):
         """Initialize an instance."""
-        self._loop = loop
+        self._backend = backend
         self._chunk_threads: dict[str, ChunkThread] = {}
 
     def handle(self, msg: msg_pb2.Data, channel: Channel) -> None:
         """Process msg."""
         if msg.end_id not in self._chunk_threads:
-            kwargs = {KEY_LOOP: self._loop, KEY_CHANNEL: channel}
+            kwargs = {KEY_BACKEND: self._backend, KEY_CHANNEL: channel}
             chunk_thd = ChunkThread(kwargs=kwargs, daemon=True)
             self._chunk_threads[msg.end_id] = chunk_thd
             chunk_thd.start()

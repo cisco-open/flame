@@ -21,19 +21,13 @@ MSG_LEN_FIELD_SIZE = 4
 DEFAULT_RUN_ASYNC_WAIT_TIME = 10  # 10 seconds
 
 # backend related constants
-MQTT_TOPIC_PREFIX = '/flame'
-UNIX_SOCKET_PATH = '/tmp/local_registry.socket'
+MQTT_TOPIC_PREFIX = "/flame"
+UNIX_SOCKET_PATH = "/tmp/local_registry.socket"
 
 # default data folder
-DATA_FOLDER_PATH = '/flame/data'
+DATA_FOLDER_PATH = "/flame/data"
 
-EMPTY_PAYLOAD = b''
-
-
-class BackendEvent(Enum):
-    """Enum class for BackendEvent."""
-
-    DISCONNECT = 1
+EMPTY_PAYLOAD = b""
 
 
 class CommType(Enum):
@@ -42,15 +36,17 @@ class CommType(Enum):
     BROADCAST = 1
     UNICAST = 2
 
+
 class DeviceType(Enum):
     """Enum class for device."""
 
     CPU = 1
     GPU = 2
 
+
 class TrainState(Enum):
     """Enum class for train state."""
 
-    PRE = 'pre'
-    DURING = 'during'
-    POST = 'post'
+    PRE = "pre"
+    DURING = "during"
+    POST = "post"

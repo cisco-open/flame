@@ -14,12 +14,10 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-
-from .backend.local import LocalBackend
-from .backend.mqtt import MqttBackend
-from .backend.p2p import PointToPointBackend
-from .config import BackendType
-from .object_factory import ObjectFactory
+from flame.backend.mqtt import MqttBackend
+from flame.backend.p2p import PointToPointBackend
+from flame.config import BackendType
+from flame.object_factory import ObjectFactory
 
 
 class BackendProvider(ObjectFactory):
@@ -31,6 +29,5 @@ class BackendProvider(ObjectFactory):
 
 
 backend_provider = BackendProvider()
-backend_provider.register(BackendType.LOCAL, LocalBackend)
 backend_provider.register(BackendType.P2P, PointToPointBackend)
 backend_provider.register(BackendType.MQTT, MqttBackend)
