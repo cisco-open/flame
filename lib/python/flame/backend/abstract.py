@@ -17,7 +17,7 @@
 
 from abc import ABC, abstractmethod
 
-from ..common.constants import CommType
+from flame.common.constants import CommType
 
 
 class AbstractBackend(ABC):
@@ -26,11 +26,6 @@ class AbstractBackend(ABC):
     @abstractmethod
     def configure(self, broker: str, job_id: str, task_id: str):
         """Configure the backend."""
-        pass
-
-    @abstractmethod
-    def eventq(self):
-        """Return a event queue object."""
         pass
 
     @abstractmethod
@@ -49,10 +44,9 @@ class AbstractBackend(ABC):
         pass
 
     @abstractmethod
-    def create_tx_task(self,
-                       channel_name: str,
-                       end_id: str,
-                       comm_type=CommType.UNICAST) -> bool:
+    def create_tx_task(
+        self, channel_name: str, end_id: str, comm_type=CommType.UNICAST
+    ) -> bool:
         """Create asyncio task for transmission."""
         pass
 
