@@ -17,7 +17,7 @@
 
 import logging
 from datetime import datetime
-from queue import Queue
+from queue import Empty, Queue
 from threading import Thread
 
 from flame.backend.chunk_store import ChunkStore
@@ -29,6 +29,9 @@ logger = logging.getLogger(__name__)
 
 KEY_BACKEND = "backend"
 KEY_CHANNEL = "channel"
+KEY_END_ID = "end_id"
+
+QUEUE_TIMEOUT = 5  # 5 seconds
 
 
 class ChunkThread(Thread):
@@ -43,9 +46,15 @@ class ChunkThread(Thread):
 
         self._backend = kwargs[KEY_BACKEND]
         self._channel = kwargs[KEY_CHANNEL]
+        self._end_id = kwargs[KEY_END_ID]
 
         self.queue = Queue()
         self.chunk_store = ChunkStore()
+        self._done = False
+
+    def stop(self):
+        """Set a flag to stop the thread."""
+        self._done = True
 
     def insert(self, msg: msg_pb2.Data) -> None:
         """Put a message into queue in the chunk thread."""
@@ -71,8 +80,12 @@ class ChunkThread(Thread):
 
             await rxq.put((data, timestamp))
 
-        while True:
-            msg = self.queue.get()
+        while not self._done:
+            try:
+                msg = self.queue.get(timeout=QUEUE_TIMEOUT)
+            except Empty:
+                continue
+
             timestamp = datetime.now()
 
             # assemble is done in a chunk thread so that it won't block
@@ -102,6 +115,8 @@ class ChunkThread(Thread):
                 # message was completely assembled, reset the chunk store
                 self.chunk_store.reset()
 
+        logger.debug(f"finished chunk thread for {self._end_id}")
+
 
 class ChunkManager(object):
     """ChunkStore class."""
@@ -114,10 +129,21 @@ class ChunkManager(object):
     def handle(self, msg: msg_pb2.Data, channel: Channel) -> None:
         """Process msg."""
         if msg.end_id not in self._chunk_threads:
-            kwargs = {KEY_BACKEND: self._backend, KEY_CHANNEL: channel}
+            kwargs = {
+                KEY_BACKEND: self._backend,
+                KEY_CHANNEL: channel,
+                KEY_END_ID: msg.end_id,
+            }
             chunk_thd = ChunkThread(kwargs=kwargs, daemon=True)
             self._chunk_threads[msg.end_id] = chunk_thd
             chunk_thd.start()
 
         chunk_thd = self._chunk_threads[msg.end_id]
         chunk_thd.insert(msg)
+
+    def stop(self, end_id):
+        """Stop chunk thread associated with end id."""
+        if end_id in self._chunk_threads:
+            chunk_thd = self._chunk_threads[end_id]
+            chunk_thd.stop()
+            del self._chunk_threads[end_id]
