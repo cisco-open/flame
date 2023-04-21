@@ -16,7 +16,7 @@
 
 import logging
 
-from flame.mode.composer import Composer
+from flame.mode.composer import CloneComposer
 from flame.mode.horizontal.syncfl.middle_aggregator import (
     TAG_AGGREGATE,
     TAG_DISTRIBUTE,
@@ -27,7 +27,7 @@ from flame.mode.horizontal.syncfl.middle_aggregator import (
     MiddleAggregator as BaseMiddleAggregator,
 )
 from flame.mode.message import MessageType
-from flame.mode.tasklet import Loop, Tasklet
+from flame.mode.tasklet import Tasklet
 
 logger = logging.getLogger(__name__)
 
@@ -99,53 +99,28 @@ class MiddleAggregator(BaseMiddleAggregator):
 
     def compose(self) -> None:
         """Compose role with tasklets."""
-        with Composer() as composer:
+        super().compose()
+
+        with CloneComposer(self.composer) as composer:
             self.composer = composer
-
-            task_internal_init = Tasklet("", self.internal_init)
-
-            task_init = Tasklet("", self.initialize)
-
-            task_load_data = Tasklet("", self.load_data)
 
             task_get_trainers = Tasklet("", self._get_trainers)
 
             task_no_trainer = Tasklet("", self._handle_no_trainer)
             task_no_trainer.set_continue_fn(cont_fn=lambda: self.no_trainer)
 
-            task_put_dist = Tasklet("", self.put, TAG_DISTRIBUTE)
-
-            task_put_upload = Tasklet("", self.put, TAG_UPLOAD)
-
-            task_get_aggr = Tasklet("", self.get, TAG_AGGREGATE)
-
-            task_get_fetch = Tasklet("", self.get, TAG_FETCH)
-
-            task_eval = Tasklet("", self.evaluate)
-
-            task_update_round = Tasklet("", self.update_round)
-
-            task_end_of_training = Tasklet("", self.inform_end_of_training)
-
-        loop = Loop(loop_check_fn=lambda: self._work_done)
-        (
-            task_internal_init
-            >> task_load_data
-            >> task_init
-            >> loop(
-                task_get_trainers
-                >> task_no_trainer
-                >> task_get_fetch
-                >> task_put_dist
-                >> task_get_aggr
-                >> task_put_upload
-                >> task_eval
-                >> task_update_round
-            )
-            >> task_end_of_training
-        )
+        self.composer.get_tasklet("fetch").insert_before(task_no_trainer)
+        task_no_trainer.insert_before(task_get_trainers)
 
     @classmethod
     def get_func_tags(cls) -> list[str]:
-        """Return a list of function tags defined in the top level aggregator role."""
-        return [TAG_AGGREGATE, TAG_DISTRIBUTE, TAG_FETCH, TAG_UPLOAD, TAG_COORDINATE]
+        """Return a list of function tags defined in the top level
+        aggregator role.
+        """
+        return [
+            TAG_AGGREGATE,
+            TAG_DISTRIBUTE,
+            TAG_FETCH,
+            TAG_UPLOAD,
+            TAG_COORDINATE,
+        ]

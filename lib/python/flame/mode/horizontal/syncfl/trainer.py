@@ -32,13 +32,13 @@ from flame.common.util import (
     weights_to_model_device,
 )
 from flame.config import Config
+from flame.datasamplers import datasampler_provider
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
 from flame.mode.role import Role
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizers import optimizer_provider
 from flame.registries import registry_provider
-from flame.datasamplers import datasampler_provider
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,9 @@ class Trainer(Role, metaclass=ABCMeta):
         msg, _ = channel.recv(end)
 
         if MessageType.WEIGHTS in msg:
-            self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+            self.weights = weights_to_model_device(
+                msg[MessageType.WEIGHTS], self.model
+            )
             self._update_model()
 
         if MessageType.EOT in msg:
@@ -159,7 +161,9 @@ class Trainer(Role, metaclass=ABCMeta):
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
         msg = {
-            MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
+            MessageType.WEIGHTS: weights_to_device(
+                delta_weights, DeviceType.CPU
+            ),
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.MODEL_VERSION: self._round,
             MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),
@@ -204,7 +208,7 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_init = Tasklet("", self.initialize)
 
-            task_get = Tasklet("", self.get, TAG_FETCH)
+            task_get = Tasklet("fetch", self.get, TAG_FETCH)
 
             task_train = Tasklet("", self.train)
 
@@ -221,7 +225,11 @@ class Trainer(Role, metaclass=ABCMeta):
                 >> task_load_data
                 >> task_init
                 >> loop(
-                    task_get >> task_train >> task_eval >> task_put >> task_save_metrics
+                    task_get
+                    >> task_train
+                    >> task_eval
+                    >> task_put
+                    >> task_save_metrics
                 )
             )
 

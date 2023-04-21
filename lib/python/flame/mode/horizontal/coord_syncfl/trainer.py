@@ -19,11 +19,11 @@ from abc import ABCMeta
 
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
-from flame.mode.composer import Composer
+from flame.mode.composer import CloneComposer
 from flame.mode.horizontal.syncfl.trainer import TAG_FETCH, TAG_UPLOAD
 from flame.mode.horizontal.syncfl.trainer import Trainer as BaseTrainer
 from flame.mode.message import MessageType
-from flame.mode.tasklet import Loop, Tasklet
+from flame.mode.tasklet import Tasklet
 
 logger = logging.getLogger(__name__)
 
@@ -65,7 +65,9 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         msg, _ = channel.recv(self.aggregator_id)
 
         if MessageType.WEIGHTS in msg:
-            self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+            self.weights = weights_to_model_device(
+                msg[MessageType.WEIGHTS], self.model
+            )
             self._update_model()
 
         if MessageType.EOT in msg:
@@ -91,7 +93,9 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
         msg = {
-            MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
+            MessageType.WEIGHTS: weights_to_device(
+                delta_weights, DeviceType.CPU
+            ),
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.MODEL_VERSION: self._round,
         }
@@ -99,42 +103,14 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         logger.debug("sending weights done")
 
     def compose(self) -> None:
-        with Composer() as composer:
+        super().compose()
+
+        with CloneComposer(self.composer) as composer:
             self.composer = composer
-
-            task_internal_init = Tasklet("", self.internal_init)
-
-            task_load_data = Tasklet("", self.load_data)
-
-            task_init = Tasklet("", self.initialize)
 
             task_get_aggregator = Tasklet("", self._get_aggregator)
 
-            task_get = Tasklet("", self.get, TAG_FETCH)
-
-            task_train = Tasklet("", self.train)
-
-            task_eval = Tasklet("", self.evaluate)
-
-            task_put = Tasklet("", self.put, TAG_UPLOAD)
-
-            task_save_metrics = Tasklet("", self.save_metrics)
-
-            # create a loop object with loop exit condition function
-            loop = Loop(loop_check_fn=lambda: self._work_done)
-            (
-                task_internal_init
-                >> task_load_data
-                >> task_init
-                >> loop(
-                    task_get_aggregator
-                    >> task_get
-                    >> task_train
-                    >> task_eval
-                    >> task_put
-                    >> task_save_metrics
-                )
-            )
+        self.composer.get_tasklet("fetch").insert_before(task_get_aggregator)
 
     @classmethod
     def get_func_tags(cls) -> list[str]:

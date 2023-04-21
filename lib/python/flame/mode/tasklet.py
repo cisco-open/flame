@@ -18,21 +18,14 @@
 from __future__ import annotations
 
 import logging
-from enum import Flag, auto
 from queue import Queue
 from typing import Callable
 
 from flame.mode.composer import ComposerContext
+from flame.mode.enums import LoopIndicator
 
 logger = logging.getLogger(__name__)
 
-
-class LoopIndicator(Flag):
-    """LoopIndicator is a flag class that contains loog begin and end flags."""
-
-    NONE = 0
-    BEGIN = auto()
-    END = auto()
 
 
 class Tasklet(object):
@@ -179,6 +172,35 @@ class Tasklet(object):
             return False
 
         return self.cont_fn()
+    
+    def update_loop_attrs(self, check_fn=None, state=None, starter=None, ender=None):
+        if check_fn:
+            self.loop_check_fn = check_fn
+        if state is not None:
+            self.loop_state = state
+        if starter:
+            self.loop_starter = starter
+        if ender:
+            self.loop_ender = ender
+
+    def insert_before(self, tasklet: Tasklet) -> None:
+        """Insert a tasklet before another tasklet in the composer."""
+        self.composer.insert(self.alias, tasklet, after=False)
+
+    def insert_after(self, tasklet: Tasklet) -> None:
+        """Insert a tasklet before another tasklet in the composer."""
+        self.composer.insert(self.alias, tasklet, after=True)
+
+    def replace_with(self, tasklet: Tasklet) -> None:
+        """Replace a tasklet with another tasklet in the composer."""
+        self.alias = tasklet.alias
+        self.func = tasklet.func
+        self.args = tasklet.args
+        self.kwargs = tasklet.kwargs
+
+    def remove(self) -> None:
+        """Remove a tasklet from the composer."""
+        self.composer.remove_tasklet(self.alias)
 
 
 class Loop(object):
