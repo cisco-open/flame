@@ -8,7 +8,7 @@ We use MNIST for an example of Oort, which is a client (trainer) selection frame
 
 
 This example runs within the `conda` environment.
-After installing Flame SDK into `flame` environment, change directory to `lib/python/flame/examples/oort_mnist`, and run the following command.
+After installing Flame SDK into `flame` environment, change directory to `lib/python/examples/oort_mnist`, and run the following command.
 
 ```bash
 $ conda activate flame
