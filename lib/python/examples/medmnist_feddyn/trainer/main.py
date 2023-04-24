@@ -13,10 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""MedMNIST FedProx trainer for PyTorch Using Proximal Term."""
-
-
-
+"""MedMNIST FedDyn trainer for PyTorch."""
 
 import logging
 
@@ -72,8 +69,6 @@ class PathMNISTDataset(torch.utils.data.Dataset):
         elif self.split == 'test':
             self.imgs = npz_file['test_images']
             self.labels = npz_file['test_labels']
-        else:
-            raise ValueError
 
     def __len__(self):
         return self.imgs.shape[0]
@@ -99,13 +94,14 @@ class PyTorchMedMNistTrainer(Trainer):
         self.dataset_size = 0
 
         self.model = None
-        self.device = torch.device("cpu")
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.train_loader = None
         self.val_loader = None
 
         self.epochs = self.config.hyperparameters.epochs
         self.batch_size = self.config.hyperparameters.batch_size
+        self.lr = self.config.hyperparameters.learning_rate
         self._round = 1
         self._rounds = self.config.hyperparameters.rounds
 
@@ -113,8 +109,8 @@ class PyTorchMedMNistTrainer(Trainer):
         """Initialize role."""
 
         self.model = CNN(num_classes=9).to(self.device)
-        # ensure that weight_decay = 0 for FedDyn
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=0.0)
+        # ensure that weight_decay = 0 for FedDyn if this parameter is specified in config file
+        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0)
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def load_data(self) -> None:
@@ -170,10 +166,9 @@ class PyTorchMedMNistTrainer(Trainer):
                 self.optimizer.zero_grad()
                 output = self.model(data)
                 
-                # proximal term included in loss
-                loss = self.criterion(output, label.squeeze()) + self.regularizer.get_term(curr_model = self.model, prev_model = prev_model)
+                # regularizer term included in loss
+                loss = self.criterion(output, label.reshape(-1).long()) + self.regularizer.get_term(curr_model = self.model, prev_model = prev_model)
                 
-                # back to normal stuff
                 loss_lst.append(loss.item())
                 loss.backward()
                 self.optimizer.step()
@@ -191,7 +186,7 @@ class PyTorchMedMNistTrainer(Trainer):
             for data, label in self.val_loader:
                 data, label = data.to(self.device), label.to(self.device)
                 output = self.model(data)
-                loss = self.criterion(output, label.squeeze())
+                loss = self.criterion(output, label.reshape(-1).long())
                 loss_lst.append(loss.item())
                 labels_pred = torch.cat([labels_pred, output.argmax(dim=1)], dim=0)
                 labels = torch.cat([labels, label], dim=0)

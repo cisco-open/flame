@@ -46,6 +46,7 @@ class FedDyn(FedAvg):
         self.alpha = alpha
         self.weight_decay = weight_decay
         self.local_param_dict = dict()
+        self.cld_model = None
         
         # override parent's self.regularizer
         self.regularizer = FedDynRegularizer(self.alpha, self.weight_decay)
@@ -114,10 +115,10 @@ class FedDyn(FedAvg):
                 h = self.local_param_dict[end]
                 mean_local_param = {k:v + rate*h[k] for (k,v) in mean_local_param.items()}
         
-        
+        # keep this model as the initial model for the next round of training
         self.cld_model = {k:avg_model[k]+mean_local_param[k] for k in avg_model}
         
-        return self.cld_model
+        return avg_model
     
     def add_to_hist(self, end, tres):
         if end in self.local_param_dict:
@@ -130,3 +131,4 @@ class FedDyn(FedAvg):
             # case: end was not previously recorded as active trainer
             logger.debug(f"adding untracked end {end} to hist terms")
             self.local_param_dict[end] = tres.weights
+

@@ -77,3 +77,20 @@ class FedDynRegularizer(Regularizer):
         
         # adjust prev_grad
         self.prev_grad += (w_vector - w_t_vector)
+    
+    def to(self, device):
+        """Returns a new Regularizer that has been moved to the specified device."""
+        import torch
+        new_regularizer = FedDynRegularizer(self.alpha, self.weight_decay)
+        # state_dict
+        for key in self.state_dict:
+            new_regularizer.state_dict[key] = [param.to(device) for param in self.state_dict[key]]
+        
+        # prev_grad
+        if isinstance(self.prev_grad, torch.Tensor):
+            new_regularizer.prev_grad = self.prev_grad.to(device)
+        else:
+            new_regularizer.prev_grad = self.prev_grad
+        
+        return new_regularizer
+        
