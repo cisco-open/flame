@@ -13,7 +13,7 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""MedMNIST FedProx aggregator for PyTorch."""
+"""MedMNIST FedDyn aggregator for PyTorch."""
 
 import logging
 
@@ -131,7 +131,7 @@ class PyTorchMedMNistAggregator(TopAggregator):
         pass
 
     def evaluate(self) -> None:
-        """Evaluate (test) a model."""
+        """Evaluate a model."""
         self.model.eval()
         loss_lst = list()
         labels = torch.tensor([],device=self.device)
@@ -140,7 +140,7 @@ class PyTorchMedMNistAggregator(TopAggregator):
             for data, label in self.loader:
                 data, label = data.to(self.device), label.to(self.device)
                 output = self.model(data)
-                loss = self.criterion(output, label.squeeze())
+                loss = self.criterion(output, label.reshape(-1).long())
                 loss_lst.append(loss.item())
                 labels_pred = torch.cat([labels_pred, output.argmax(dim=1)], dim=0)
                 labels = torch.cat([labels, label], dim=0)
