@@ -194,8 +194,10 @@ class PointToPointBackend(AbstractBackend):
         - for each end id in end ids in the channel, call _cleanup_end(end_id),
           which terminates rx task, releases data in _endpoints, _livecheck,
           delayed_channel_add and _context_keeper, and calls channel.remove()
+          Note: channel.remove() terminates tx queue by putting EMPTY_PAYLOAD
+          in tx queue of the given end
 
-        - terminate tx tasks by putting EMPTY_PAYLOAD in tx queue of each task
+        - terminate broadcast tx task by putting EMPTY_PAYLOAD in tx queue
         """
 
         async def _leave_inner():
@@ -241,12 +243,9 @@ class PointToPointBackend(AbstractBackend):
                 # removed this channel from self._channels
                 await channel.remove(end_id)
 
-            # we use EMPTY_PAYLOAD as signal to finish tx tasks
+            # we use EMPTY_PAYLOAD as signal to finish broadcast tx task
             # put EMPTY_PAYLOAD to broadcast queue
             await channel._bcast_queue.put(EMPTY_PAYLOAD)
-            for _, end in channel._ends.items():
-                # put EMPTY_PAYLOAD to unicast queue for each end
-                await end.put(EMPTY_PAYLOAD)
 
             await self.await_tx_tasks_done(channel.name())
 

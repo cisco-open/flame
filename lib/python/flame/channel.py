@@ -486,10 +486,14 @@ class Channel(object):
             return
 
         rxq = self._ends[end_id].get_rxq()
+        txq = self._ends[end_id].get_txq()
         del self._ends[end_id]
 
         # put bogus data to unblock a get() call
         await rxq.put(EMPTY_PAYLOAD)
+
+        # put bogus data to let tx_task finish
+        await txq.put(EMPTY_PAYLOAD)
 
         if len(self._ends) == 0:
             # clear (or unset) the event
