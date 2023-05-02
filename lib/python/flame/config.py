@@ -82,6 +82,13 @@ class DataSamplerType(str, Enum):
     FEDBALANCER = "fedbalancer"
 
 
+class PrivacyType(str, Enum):
+    """Define privacy policy types."""
+
+    DEFAULT = "default"
+    DP = "dp"
+
+
 class Job(FlameSchema):
     job_id: str = Field(alias="id")
     name: str
@@ -99,6 +106,11 @@ class Selector(FlameSchema):
 
 class DataSampler(FlameSchema):
     sort: DataSamplerType = Field(default=DataSamplerType.DEFAULT)
+    kwargs: dict = Field(default={})
+
+
+class Privacy(FlameSchema):
+    sort: PrivacyType = Field(default=PrivacyType.DEFAULT)
     kwargs: dict = Field(default={})
 
 
@@ -185,6 +197,7 @@ class Config(FlameSchema):
     registry: t.Optional[Registry]
     selector: t.Optional[Selector]
     datasampler: t.Optional[DataSampler] = Field(default=DataSampler())
+    privacy: t.Optional[Privacy] = Field(default=Privacy())
     optimizer: t.Optional[Optimizer] = Field(default=Optimizer())
     dataset: str
     max_run_time: int
@@ -240,6 +253,9 @@ def transform_config(raw_config: dict) -> dict:
     if raw_config.get("datasampler", None):
         raw_config["datasampler"]["kwargs"].update(hyperparameters)
         config_data = config_data | {"datasampler": raw_config.get("datasampler")}
+
+    if raw_config.get("privacy", None):
+        config_data = config_data | {"privacy": raw_config.get("privacy")}
 
     config_data = config_data | {
         "dataset": raw_config.get("dataset", ""),
