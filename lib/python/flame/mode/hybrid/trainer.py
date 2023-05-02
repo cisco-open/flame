@@ -16,7 +16,6 @@
 """hybrid FL trainer."""
 
 import logging
-import time
 
 from flame.channel_manager import ChannelManager
 from flame.common.constants import DeviceType

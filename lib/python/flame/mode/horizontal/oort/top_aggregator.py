@@ -21,11 +21,11 @@ from datetime import datetime
 from copy import deepcopy
 from typing import Any, Tuple
 
-from ....common.util import weights_to_device, weights_to_model_device
-from ....common.constants import DeviceType
-from ....optimizer.train_result import TrainResult
-from ...message import MessageType
-from ....selector.oort import (
+from flame.common.util import weights_to_device, weights_to_model_device
+from flame.common.constants import DeviceType
+from flame.optimizer.train_result import TrainResult
+from flame.mode.message import MessageType
+from flame.selector.oort import (
     PROP_ROUND_DURATION,
     PROP_ROUND_START_TIME,
     PROP_STAT_UTILITY,

@@ -22,7 +22,7 @@ from flame.mode.horizontal.syncfl.top_aggregator import (
     TopAggregator as BaseTopAggregator,
 )
 from flame.mode.message import MessageType
-from flame.mode.tasklet import Loop, Tasklet
+from flame.mode.tasklet import Tasklet
 
 logger = logging.getLogger(__name__)
 
