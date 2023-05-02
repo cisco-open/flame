@@ -17,23 +17,45 @@
 package deployer
 
 import (
+	"context"
+	"fmt"
 	"os"
+	"sort"
+	"time"
 
 	"go.uber.org/zap"
 	"helm.sh/helm/v3/pkg/action"
 	"helm.sh/helm/v3/pkg/chart/loader"
 	"helm.sh/helm/v3/pkg/cli"
+	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+const podTimeout = time.Second * 5
+
+type TaskHealthDetails struct {
+	JobID        string       `json:"job"`
+	TaskID       string       `json:"task"`
+	Status       v1.PodStatus `json:"status"`
+	JobName      string       `json:"job_name"`
+	CreationTime time.Time    `json:"creation_time"`
+}
 
 type K8sDeployer struct {
 	clusterName string // Currently not in use
 	namespace   string
 
 	actionConfig action.Configuration
+
+	// Pods to monitor that are running until it's finished
+	// taskID => task details
+	DeployedTasks map[string]TaskHealthDetails
 }
 
 func NewK8sDeployer() (*K8sDeployer, error) {
-	return &K8sDeployer{}, nil
+	return &K8sDeployer{
+		DeployedTasks: make(map[string]TaskHealthDetails),
+	}, nil
 }
 
 func (deployer *K8sDeployer) getEnvSettings(namespace string) (*cli.EnvSettings, error) {
@@ -114,4 +136,77 @@ func (deployer *K8sDeployer) List() error {
 	listObj.Run()
 
 	return nil
+}
+
+func (deployer *K8sDeployer) MonitorTask(jobId, taskId string) {
+	jobName := fmt.Sprintf("%s-agent-%s", deployer.namespace, taskId)
+
+	zap.S().Debugf("start monitoring pod of job %s", jobName)
+
+	deployer.DeployedTasks[taskId] = TaskHealthDetails{
+		JobID:   jobId,
+		TaskID:  taskId,
+		JobName: jobName,
+	}
+}
+
+func (deployer *K8sDeployer) DeleteTaskFromMonitoring(taskId string) {
+	if task, ok := deployer.DeployedTasks[taskId]; ok {
+		zap.S().Debugf("Stop monitoring pod of job %s", task.JobName)
+
+		delete(deployer.DeployedTasks, taskId)
+	}
+}
+
+func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDetails, error) {
+	ctx := context.Background()
+
+	for _, pod := range deployer.DeployedTasks {
+		client, err := deployer.actionConfig.KubernetesClientSet()
+		if err != nil {
+			zap.S().Errorf("Failed to set kubernetes client: %v", err)
+			return nil, err
+		}
+
+		timeout := int64(podTimeout)
+		out, err := client.CoreV1().Pods(deployer.namespace).List(ctx, metav1.ListOptions{
+			LabelSelector:  fmt.Sprintf("job-name=%s", pod.JobName),
+			TimeoutSeconds: &timeout,
+		})
+		if err != nil {
+			zap.S().Errorf("error getting pods")
+			return nil, err
+		} else if len(out.Items) == 0 {
+			pod.Status = v1.PodStatus{Phase: v1.PodUnknown}
+		} else {
+			if len(out.Items) > 1 {
+				sort.Slice(out.Items, func(i, j int) bool {
+					firstPodTime := out.Items[i].ObjectMeta.CreationTimestamp.Time
+					secondPodTime := out.Items[j].ObjectMeta.CreationTimestamp.Time
+					return firstPodTime.After(secondPodTime)
+				})
+			}
+
+			lastPod := out.Items[0]
+
+			podCreationTime := lastPod.ObjectMeta.CreationTimestamp.Time
+
+			if podCreationTime.After(pod.CreationTime) {
+				pod.CreationTime = podCreationTime
+
+				if lastPod.Status.Phase == v1.PodPending || lastPod.Status.Phase == v1.PodRunning {
+					pod.Status = lastPod.Status
+				} else if lastPod.Status.Phase == v1.PodSucceeded {
+					deployer.DeleteTaskFromMonitoring(pod.TaskID)
+				} else {
+					pod.Status = lastPod.Status
+				}
+			}
+		}
+
+		// update the pod status
+		deployer.DeployedTasks[pod.TaskID] = pod
+	}
+
+	return deployer.DeployedTasks, nil
 }

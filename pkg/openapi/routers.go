@@ -176,3 +176,21 @@ func parseInt32Parameter(param string, required bool) (int32, error) {
 
 	return int32(val), nil
 }
+
+// parseBoolParameter parses a string parameter to an boolean.
+func parseBoolParameter(param string, required bool) (bool, error) {
+	if param == "" {
+		if required {
+			return false, errors.New(errMsgRequiredMissing)
+		}
+
+		return false, nil
+	}
+
+	val, err := strconv.ParseBool(param)
+	if err != nil {
+		return false, err
+	}
+
+	return val, nil
+}

@@ -101,6 +101,12 @@ func (c *JobsApiController) Routes() Routes {
 			c.GetJobs,
 		},
 		{
+			"GetJobsByCompute",
+			strings.ToUpper("Get"),
+			"/jobs/{computeId}",
+			c.GetJobsByCompute,
+		},
+		{
 			"GetTask",
 			strings.ToUpper("Get"),
 			"/jobs/{jobId}/{taskId}/task",
@@ -237,6 +243,22 @@ func (c *JobsApiController) GetJobs(w http.ResponseWriter, r *http.Request) {
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
+// GetJobsByCompute - Get status info on all the jobs by compute
+func (c *JobsApiController) GetJobsByCompute(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+
+	computeId := params[constants.ParamComputeID]
+
+	result, err := c.service.GetJobsByCompute(r.Context(), computeId)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
 // GetTask - Get a job task for a given job and task
 func (c *JobsApiController) GetTask(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
@@ -330,7 +352,19 @@ func (c *JobsApiController) GetTasksInfo(w http.ResponseWriter, r *http.Request)
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.GetTasksInfo(r.Context(), userParam, jobIdParam, limitParam)
+
+	genericParam, err := parseBoolParameter(query.Get(constants.ParamGeneric), false)
+	if err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+
+	var result ImplResponse
+	if genericParam {
+		result, err = c.service.GetTasksInfoGeneric(r.Context(), userParam, jobIdParam, limitParam)
+	} else {
+		result, err = c.service.GetTasksInfo(r.Context(), userParam, jobIdParam, limitParam)
+	}
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)

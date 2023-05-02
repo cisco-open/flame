@@ -149,6 +149,69 @@ func (db *MongoService) GetJobs(userId string, limit int32) ([]openapi.JobStatus
 	return jobStatusList, nil
 }
 
+func (db *MongoService) GetJobsByCompute(computeId string) ([]openapi.JobStatus, error) {
+	zap.S().Infof("get status of all jobs by compute that have finished")
+
+	ctx := context.Background()
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{
+				"state": bson.M{
+					"$eq": "running",
+				},
+			},
+		},
+		{
+			"$lookup": bson.M{
+				"from": "t_task",
+				"let":  bson.M{"id": "$id"},
+				"pipeline": []bson.M{
+					{
+						"$match": bson.M{"$expr": bson.M{"$eq": []string{"$jobid", "$$id"}}},
+					},
+					{
+						"$match": bson.M{"$expr": bson.M{"$eq": []string{"$jobid", computeId}}},
+					},
+					{
+						"$project": bson.M{"computeid": 1},
+					},
+				},
+				"as": "tasks",
+			},
+		},
+		{
+			"$match": bson.M{
+				"tasks.1": bson.M{
+					"$exists": true,
+				},
+			},
+		},
+	}
+
+	cursor, err := db.jobCollection.Aggregate(ctx, pipeline)
+	if err != nil {
+		zap.S().Warnf("failed to fetch jobs' status: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	defer cursor.Close(ctx)
+	var jobStatusList []openapi.JobStatus
+
+	for cursor.Next(ctx) {
+		var jobStatus openapi.JobStatus
+		if err = cursor.Decode(&jobStatus); err != nil {
+			zap.S().Errorf("Failed to decode job status: %v", err)
+
+			return nil, ErrorCheck(err)
+		}
+
+		jobStatusList = append(jobStatusList, jobStatus)
+	}
+
+	return jobStatusList, nil
+}
+
 func (db *MongoService) UpdateJob(userId string, jobId string, jobSpec openapi.JobSpec) error {
 	jobStatus, err := db.GetJobStatus(userId, jobId)
 	if err != nil {

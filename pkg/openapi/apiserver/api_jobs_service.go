@@ -173,6 +173,29 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	return openapi.Response(http.StatusOK, jobStatusList), err
 }
 
+// GetJobsByCompute - Get status info on all the jobs by compute
+func (s *JobsApiService) GetJobsByCompute(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Get status of all jobs for compute: %s", computeId)
+
+	//create controller request
+	uriMap := map[string]string{
+		constants.ParamComputeID: computeId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetJobsByComputeEndPoint, uriMap)
+
+	// send get request
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	var jobStatusList []openapi.JobStatus
+	err = util.ByteToStruct(body, &jobStatusList)
+
+	return openapi.Response(http.StatusOK, jobStatusList), err
+}
+
 // GetTask - Get a job task for a given job and task
 func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId string, key string) (openapi.ImplResponse, error) {
 	if key == "" {
@@ -221,6 +244,27 @@ func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId str
 
 // GetTasksInfo - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
+	uriMap := map[string]string{
+		constants.ParamUser:  user,
+		constants.ParamJobID: jobId,
+		constants.ParamLimit: strconv.Itoa(int(limit)),
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
+
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	var taskInfoList []openapi.TaskInfo
+	err = util.ByteToStruct(body, &taskInfoList)
+
+	return openapi.Response(http.StatusOK, taskInfoList), err
+}
+
+// GetTasksInfoGeneric - Get the info of tasks in a job
+func (s *JobsApiService) GetTasksInfoGeneric(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
 	uriMap := map[string]string{
 		constants.ParamUser:  user,
 		constants.ParamJobID: jobId,

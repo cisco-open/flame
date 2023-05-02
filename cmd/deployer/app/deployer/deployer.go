@@ -38,6 +38,9 @@ type Deployer interface {
 	Install(string, string) error
 	Uninstall(string) error
 	List() error
+	MonitorTask(jobId, taskId string)
+	DeleteTaskFromMonitoring(taskId string)
+	GetMonitoredPodStatuses() (map[string]TaskHealthDetails, error)
 }
 
 func NewDeployer(platform string) (Deployer, error) {

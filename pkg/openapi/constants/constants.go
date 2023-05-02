@@ -26,4 +26,5 @@ const (
 	ParamLimit     = "limit"
 	ParamTaskID    = "taskId"
 	ParamKey       = "key"
+	ParamGeneric   = "generic"
 )

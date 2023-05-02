@@ -52,3 +52,17 @@ func (deployer *DockerDeployer) List() error {
 
 	return nil
 }
+
+func (deployer *DockerDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDetails, error) {
+	zap.S().Infof("not supported")
+
+	return nil, nil
+}
+
+func (deployer *DockerDeployer) MonitorTask(jobId, taskId string) {
+	zap.S().Infof("not supported")
+}
+
+func (deployer *DockerDeployer) DeleteTaskFromMonitoring(taskId string) {
+	zap.S().Infof("not supported")
+}

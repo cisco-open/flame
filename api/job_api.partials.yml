@@ -497,3 +497,44 @@
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+
+/jobs/{computeId}:
+  ########################################
+  # Get status of jobs by compute id
+  ########################################
+  get:
+    operationId: getJobsByCompute
+    summary: Get status info on all the jobs by compute
+    tags:
+      - jobs
+    parameters:
+      - name: computeId
+        description: compute id
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/JobStatus'
+        description: A paged array of status on jobs
+        headers:
+          x-next:
+            description: A link to the next page of responses
+            explode: false
+            schema:
+              type: string
+            style: simple
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
