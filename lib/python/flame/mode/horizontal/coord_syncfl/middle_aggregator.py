@@ -104,9 +104,9 @@ class MiddleAggregator(BaseMiddleAggregator):
         with CloneComposer(self.composer) as composer:
             self.composer = composer
 
-            task_get_trainers = Tasklet("", self._get_trainers)
+            task_get_trainers = Tasklet("get_trainers", self._get_trainers)
 
-            task_no_trainer = Tasklet("", self._handle_no_trainer)
+            task_no_trainer = Tasklet("handle_no_trainer", self._handle_no_trainer)
             task_no_trainer.set_continue_fn(cont_fn=lambda: self.no_trainer)
 
         self.composer.get_tasklet("fetch").insert_before(task_no_trainer)
