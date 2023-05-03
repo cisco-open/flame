@@ -108,7 +108,7 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         with CloneComposer(self.composer) as composer:
             self.composer = composer
 
-            task_get_aggregator = Tasklet("", self._get_aggregator)
+            task_get_aggregator = Tasklet("get_aggregator", self._get_aggregator)
 
         self.composer.get_tasklet("fetch").insert_before(task_get_aggregator)
 
