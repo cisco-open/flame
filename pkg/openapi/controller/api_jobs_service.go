@@ -149,6 +149,18 @@ func (s *JobsApiService) GetJobs(ctx context.Context, user string, limit int32) 
 	return openapi.Response(http.StatusOK, jobsStatus), nil
 }
 
+// GetJobsByCompute - Get status info on all the jobs by compute
+func (s *JobsApiService) GetJobsByCompute(ctx context.Context, computeId string) (openapi.ImplResponse, error) {
+	jobsStatus, err := s.dbService.GetJobsByCompute(computeId)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get status of all jobs for computeId %s: %v", computeId, err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusOK, jobsStatus), nil
+}
+
 // GetTask - Get a job task for a given job and task
 func (s *JobsApiService) GetTask(ctx context.Context, jobId string, taskId string, key string) (openapi.ImplResponse, error) {
 	if key == "" {
@@ -178,6 +190,18 @@ func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId str
 // GetTasksInfo - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
 	tasksInfo, err := s.dbService.GetTasksInfo(user, jobId, limit, false)
+	if err != nil {
+		errMsg := fmt.Sprintf("failed to get info of all tasks in a job %s: %v", jobId, err)
+		zap.S().Debug(errMsg)
+		return openapi.Response(http.StatusInternalServerError, err), fmt.Errorf(errMsg)
+	}
+
+	return openapi.Response(http.StatusOK, tasksInfo), nil
+}
+
+// GetTasksInfoGeneric - Get the info of tasks in a job
+func (s *JobsApiService) GetTasksInfoGeneric(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
+	tasksInfo, err := s.dbService.GetTasksInfoGeneric(user, jobId, limit, false, true)
 	if err != nil {
 		errMsg := fmt.Sprintf("failed to get info of all tasks in a job %s: %v", jobId, err)
 		zap.S().Debug(errMsg)

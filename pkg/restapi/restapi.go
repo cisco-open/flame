@@ -59,16 +59,17 @@ const (
 	DeleteDesignCodeEndPoint = "DELETE_DESIGN_CODE"
 
 	// Keys for job endpoints
-	CreateJobEndpoint       = "CREATE_JOB"
-	GetJobEndPoint          = "GET_JOB"
-	GetJobsEndPoint         = "GET_JOBS"
-	GetJobStatusEndPoint    = "GET_JOB_STATUS"
-	GetTasksInfoEndpoint    = "GET_TASKS_INFO"
-	GetTaskInfoEndpoint     = "GET_TASK_INFO"
-	DeleteJobEndPoint       = "DELETE_JOB"
-	UpdateJobEndPoint       = "UPDATE_JOB"
-	ChangeJobSchemaEndPoint = "CHANGE_SCHEMA_JOB"
-	UpdateJobStatusEndPoint = "UPDATE_JOB_STATUS"
+	CreateJobEndpoint        = "CREATE_JOB"
+	GetJobEndPoint           = "GET_JOB"
+	GetJobsEndPoint          = "GET_JOBS"
+	GetJobsByComputeEndPoint = "GET_JOBS_BY_COMPUTE"
+	GetJobStatusEndPoint     = "GET_JOB_STATUS"
+	GetTasksInfoEndpoint     = "GET_TASKS_INFO"
+	GetTaskInfoEndpoint      = "GET_TASK_INFO"
+	DeleteJobEndPoint        = "DELETE_JOB"
+	UpdateJobEndPoint        = "UPDATE_JOB"
+	ChangeJobSchemaEndPoint  = "CHANGE_SCHEMA_JOB"
+	UpdateJobStatusEndPoint  = "UPDATE_JOB_STATUS"
 
 	// Keys for task
 	GetTaskEndpoint          = "GET_TASK"
@@ -113,16 +114,17 @@ var URI = map[string]string{
 	DeleteDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
 
 	// Job
-	CreateJobEndpoint:       "/users/{{.user}}/jobs",
-	GetJobEndPoint:          "/users/{{.user}}/jobs/{{.jobId}}",
-	GetJobsEndPoint:         "/users/{{.user}}/jobs/?limit={{.limit}}",
-	GetJobStatusEndPoint:    "/users/{{.user}}/jobs/{{.jobId}}/status",
-	GetTasksInfoEndpoint:    "/users/{{.user}}/jobs/{{.jobId}}/tasks/?limit={{.limit}}",
-	GetTaskInfoEndpoint:     "/users/{{.user}}/jobs/{{.jobId}}/tasks/{{.taskId}}",
-	UpdateJobEndPoint:       "/users/{{.user}}/jobs/{{.jobId}}",
-	DeleteJobEndPoint:       "/users/{{.user}}/jobs/{{.jobId}}",
-	ChangeJobSchemaEndPoint: "/users/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
-	UpdateJobStatusEndPoint: "/users/{{.user}}/jobs/{{.jobId}}/status",
+	GetJobsByComputeEndPoint: "/jobs/{{.computeId}}",
+	CreateJobEndpoint:        "/users/{{.user}}/jobs",
+	GetJobEndPoint:           "/users/{{.user}}/jobs/{{.jobId}}",
+	GetJobsEndPoint:          "/users/{{.user}}/jobs/?limit={{.limit}}",
+	GetJobStatusEndPoint:     "/users/{{.user}}/jobs/{{.jobId}}/status",
+	GetTasksInfoEndpoint:     "/users/{{.user}}/jobs/{{.jobId}}/tasks/?limit={{.limit}}&generic={{.generic}}",
+	GetTaskInfoEndpoint:      "/users/{{.user}}/jobs/{{.jobId}}/tasks/{{.taskId}}",
+	UpdateJobEndPoint:        "/users/{{.user}}/jobs/{{.jobId}}",
+	DeleteJobEndPoint:        "/users/{{.user}}/jobs/{{.jobId}}",
+	ChangeJobSchemaEndPoint:  "/users/{{.user}}/jobs/{{.jobId}}/schema/{{.schemaId}}/design/{{.designId}}",
+	UpdateJobStatusEndPoint:  "/users/{{.user}}/jobs/{{.jobId}}/status",
 
 	// Task
 	GetTaskEndpoint:          "/jobs/{{.jobId}}/{{.taskId}}/task/?key={{.key}}",

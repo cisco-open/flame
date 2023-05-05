@@ -118,6 +118,8 @@ func NewResourceHandler(cfg *config.Config, computeSpec openapi.ComputeSpec, bIn
 // start connects to the notifier via grpc and handles notifications from the notifier
 func (r *resourceHandler) Start() {
 	go r.doStart()
+
+	r.monitorJobs()
 }
 
 func (r *resourceHandler) doStart() {
@@ -381,13 +383,16 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		}
 
 		//using short id of task as label name does not support more than 35 characters
-		installErr := r.dplyr.Install("job-"+deploymentConfig.JobId+"-"+taskId[:k8sShortLabelLength], deploymentChartPath)
+		releaseName := "job-" + deploymentConfig.JobId + "-" + taskId[:k8sShortLabelLength]
+		installErr := r.dplyr.Install(releaseName, deploymentChartPath)
 		if installErr != nil {
 			errMsg := fmt.Sprintf("failed to deploy tasks: %v", installErr)
 			err = fmt.Errorf("%v; %v", err, errMsg)
 			agentStatuses[taskId] = openapi.AGENT_DEPLOY_FAILED
 			continue
 		}
+
+		r.dplyr.MonitorTask(deploymentConfig.JobId, taskId)
 
 		agentStatuses[taskId] = openapi.AGENT_DEPLOY_SUCCESS
 	}

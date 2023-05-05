@@ -104,6 +104,9 @@ type JobService interface {
 	// GetJobs returns the list of jobs associated with a user
 	GetJobs(userId string, limit int32) ([]openapi.JobStatus, error)
 
+	// GetJobsByCompute returns the list of jobs for a given computeId that have not been finished yet
+	GetJobsByCompute(computeId string) ([]openapi.JobStatus, error)
+
 	// UpdateJob updates the job with the given jobId
 	UpdateJob(userId string, jobId string, spec openapi.JobSpec) error
 
