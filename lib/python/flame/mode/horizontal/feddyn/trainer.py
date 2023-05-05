@@ -19,8 +19,12 @@ import logging
 
 from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.common.constants import TrainState, DeviceType
-from flame.common.util import (MLFramework, get_ml_framework_in_use,
-                            weights_to_model_device, weights_to_device)
+from flame.common.util import (
+    MLFramework,
+    get_ml_framework_in_use,
+    weights_to_model_device,
+    weights_to_device,
+)
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
 from flame.mode.tasklet import Loop, Tasklet
@@ -28,9 +32,10 @@ from flame.mode.horizontal.trainer import Trainer as BaseTrainer
 
 logger = logging.getLogger(__name__)
 
-TAG_FETCH = 'fetch'
-TAG_UPLOAD = 'upload'
-TAG_UPLOAD_DATASET_SIZE = 'uploadDatasetSize'
+TAG_FETCH = "fetch"
+TAG_UPLOAD = "upload"
+TAG_UPLOAD_DATASET_SIZE = "uploadDatasetSize"
+
 
 class Trainer(BaseTrainer):
     """FedDyn Trainer implements an ML training role."""
@@ -39,13 +44,14 @@ class Trainer(BaseTrainer):
         """Initialize internal state for role."""
         logger.debug("in internal_init")
         ml_framework_in_use = get_ml_framework_in_use()
-        
+
         # only support pytorch
         if ml_framework_in_use != MLFramework.PYTORCH:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks (for feddyn) are: {[MLFramework.PYTORCH.name.lower()]}")
-        
+                f"supported frameworks (for feddyn) are: {[MLFramework.PYTORCH.name.lower()]}"
+            )
+
         super().internal_init()
 
     def get(self, tag: str) -> None:
@@ -70,7 +76,7 @@ class Trainer(BaseTrainer):
         if MessageType.WEIGHTS in msg:
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
-        
+
         # adjust alpha based on aggregator computation
         if MessageType.ALPHA_ADPT in msg:
             logger.debug("got alpha_adpt")
@@ -82,7 +88,7 @@ class Trainer(BaseTrainer):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
-        self.regularizer.save_state(TrainState.PRE, glob_model = self.model)
+        self.regularizer.save_state(TrainState.PRE, glob_model=self.model)
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
     def put(self, tag: str) -> None:
@@ -91,7 +97,7 @@ class Trainer(BaseTrainer):
             self._send_weights(tag)
         elif tag == TAG_UPLOAD_DATASET_SIZE:
             self._send_dataset_size(tag)
-    
+
     def _send_weights(self, tag: str) -> None:
         logger.debug("calling _send_weights")
         channel = self.cm.get_by_tag(tag)
@@ -110,6 +116,8 @@ class Trainer(BaseTrainer):
 
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
+        delta_weights = self.privacy.apply_dp_fn(delta_weights)
+
         # send delta_weights to regularizer
         self.regularizer.update()
 
@@ -121,7 +129,7 @@ class Trainer(BaseTrainer):
         }
         channel.send(end, msg)
         logger.debug("sending weights done")
-    
+
     def _send_dataset_size(self, tag: str) -> None:
         logger.debug("calling _send_dataset_size")
         channel = self.cm.get_by_tag(tag)
@@ -135,9 +143,7 @@ class Trainer(BaseTrainer):
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_SEND)
 
-        msg = {
-            MessageType.DATASET_SIZE: self.dataset_size
-        }
+        msg = {MessageType.DATASET_SIZE: self.dataset_size}
         channel.send(end, msg)
         logger.debug("sending dataset size done")
 
@@ -167,9 +173,19 @@ class Trainer(BaseTrainer):
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
-            task_internal_init >> task_load_data >> task_init >> loop(
-                task_put_dataset_size >> task_get >> task_train >> task_eval >>
-                task_put >> task_save_metrics)
+            (
+                task_internal_init
+                >> task_load_data
+                >> task_init
+                >> loop(
+                    task_put_dataset_size
+                    >> task_get
+                    >> task_train
+                    >> task_eval
+                    >> task_put
+                    >> task_save_metrics
+                )
+            )
 
     @classmethod
     def get_func_tags(cls) -> list[str]:

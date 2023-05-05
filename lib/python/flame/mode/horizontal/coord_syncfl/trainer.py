@@ -65,9 +65,7 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         msg, _ = channel.recv(self.aggregator_id)
 
         if MessageType.WEIGHTS in msg:
-            self.weights = weights_to_model_device(
-                msg[MessageType.WEIGHTS], self.model
-            )
+            self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
         if MessageType.EOT in msg:
@@ -92,10 +90,10 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
 
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
+        delta_weights = self.privacy.apply_dp_fn(delta_weights)
+
         msg = {
-            MessageType.WEIGHTS: weights_to_device(
-                delta_weights, DeviceType.CPU
-            ),
+            MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,
             MessageType.MODEL_VERSION: self._round,
         }

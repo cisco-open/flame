@@ -59,6 +59,8 @@ class Trainer(BaseTrainer):
 
         delta_weights = self._delta_weights_fn(self.weights, self.prev_weights)
 
+        delta_weights = self.privacy.apply_dp_fn(delta_weights)
+
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,
