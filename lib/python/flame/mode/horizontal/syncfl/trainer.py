@@ -16,6 +16,7 @@
 """horizontal FL trainer."""
 
 import logging
+import time
 
 from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.channel_manager import ChannelManager
@@ -105,6 +106,8 @@ class Trainer(Role, metaclass=ABCMeta):
         elif self.framework == MLFramework.TENSORFLOW:
             self._delta_weights_fn = delta_weights_tensorflow
 
+        self.fetch_success = False
+
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
         if tag == TAG_FETCH:
@@ -112,9 +115,14 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights")
+
+        self.fetch_success = False
         channel = self.cm.get_by_tag(tag)
         if not channel:
-            logger.debug(f"[_fetch_weights] channel not found with tag {tag}")
+            logger.debug(f"channel not found with tag {tag}")
+            # we don't want to keep calling this too fast
+            # so let's sleep 1 second
+            time.sleep(1)
             return
 
         # this call waits for at least one peer joins this channel
@@ -123,6 +131,17 @@ class Trainer(Role, metaclass=ABCMeta):
         # one aggregator is sufficient
         end = channel.one_end(VAL_CH_STATE_RECV)
         msg, _ = channel.recv(end)
+
+        if not msg:
+            logger.debug("no message received")
+            if self._work_done:
+                # when the work is done, we cancel continue condition
+                # (i.e., we set fetch_success to True)
+                self.fetch_success = True
+            # we don't want to keep calling this too fast
+            # so let's sleep 1 second
+            time.sleep(1)
+            return
 
         if MessageType.WEIGHTS in msg:
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
@@ -139,6 +158,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 msg[MessageType.DATASAMPLER_METADATA]
             )
 
+        self.fetch_success = True
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
     def put(self, tag: str) -> None:
@@ -205,21 +225,22 @@ class Trainer(Role, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("init", self.initialize)
 
             task_get = Tasklet("fetch", self.get, TAG_FETCH)
+            task_get.set_continue_fn(cont_fn=lambda: not self.fetch_success)
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_put = Tasklet("", self.put, TAG_UPLOAD)
+            task_put = Tasklet("upload", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

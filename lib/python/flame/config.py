@@ -130,6 +130,12 @@ class Hyperparameters(FlameSchema):
     rounds: int
     epochs: int
     aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
+    # TODO: concurrency is for coordinator in coordinated asyncfl
+    #       this is a workaround since there is no per-role config
+    #       mechanism in the control plane.
+    #       This needs to be revisited (perhaps removed) once per-role config
+    #       functionality is in place in the control plane.
+    concurrency: t.Optional[int] = Field(alias="concurrency", default=None)
 
 
 class Groups(FlameSchema):

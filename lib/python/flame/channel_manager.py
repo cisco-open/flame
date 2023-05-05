@@ -184,7 +184,9 @@ class ChannelManager(object):
 
     def cleanup(self):
         """Clean up pending asyncio tasks."""
+        logger.debug("calling cleanup")
         for _, ch in self._channels.items():
+            logger.debug(f"calling leave for channel {ch.name()}")
             ch.leave()
 
         async def _inner(backend):

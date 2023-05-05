@@ -46,5 +46,7 @@ class MessageType(Enum):
     META_INFO_REQ = 13  # Request for meta information
     META_INFO_RES = 14  # Response that contains meta information
 
-    ALPHA_ADPT = 15 # adaptive hyperparameter used in FedDyn implementation
+    ALPHA_ADPT = 15  # adaptive hyperparameter used in FedDyn implementation
 
+    REQ_COORDINATED_ENDS = 16  # request ends coordinated by a coordinator
+    RES_COORDINATED_ENDS = 17  # get ends coordinated by a coordinator
