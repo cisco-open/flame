@@ -579,19 +579,19 @@ func Test_hybrid(t *testing.T) {
 	assert.NoError(t, err)
 
 	var dataset openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset1.json", &dataset)
+	readFileToStruct(t, rootExample+"/dataset_eu_org1.json", &dataset)
 	datasetID1, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 
-	readFileToStruct(t, rootExample+"/dataset2.json", &dataset)
+	readFileToStruct(t, rootExample+"/dataset_eu_org2.json", &dataset)
 	datasetID2, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 
-	readFileToStruct(t, rootExample+"/dataset3.json", &dataset)
+	readFileToStruct(t, rootExample+"/dataset_us_org1.json", &dataset)
 	datasetID3, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 
-	readFileToStruct(t, rootExample+"/dataset4.json", &dataset)
+	readFileToStruct(t, rootExample+"/dataset_us_org2.json", &dataset)
 	datasetID4, err := dbService.CreateDataset(userID, dataset)
 	assert.NoError(t, err)
 

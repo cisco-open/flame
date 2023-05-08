@@ -26,9 +26,17 @@ Note: This step is independent of other prior steps. Here the only assumption is
 is registered in the flame system. Hence, as long as this step is executed before step 5, the Hybrid job can be executed
 successfully.
 ```bash
-flamectl create dataset dataset.json
+flamectl create dataset dataset_eu_org1.json
 ```
 The last command returns the dataset's ID if successful.
+
+Copy the Dataset ID into `dataSpec.json`, and repeat for other datasets.
+
+```bash
+flamectl create dataset dataset_eu_org2.json
+flamectl create dataset dataset_us_org1.json
+flamectl create dataset dataset_us_org2.json
+```
 
 ### Step 5: modify a job specification
 
