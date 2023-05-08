@@ -5,7 +5,7 @@
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment. This section describes how to set up a development environment in macOS (Intel chip) and Ubuntu.
 
 The following tools and packages are needed as minimum:
-- go 1.16+
+- go 1.18+
 - golangci-lint
 - python 3.9+
 
