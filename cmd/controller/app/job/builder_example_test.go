@@ -42,9 +42,10 @@ import (
 )
 
 const (
-	mongoVersion      = "6.0.3"
-	rootFolder        = "../../../../"
-	baseExampleFolder = rootFolder + "/examples"
+	mongoVersion        = "6.0.3"
+	testFolder          = "testdata"
+	baseExampleFolder   = testFolder + "/examples"
+	expectedtasksfolder = testFolder + "/expected_tasks/"
 )
 
 var (
@@ -60,568 +61,120 @@ var (
 	}
 )
 
-func Test_asyncfl_hier_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/asyncfl_hier_mnist"
+func Test_examples(t *testing.T) {
 
-	designCodeFile, err := os.Open(rootExample + "/asyncfl_hier_mnist.zip")
-	assert.NoError(t, err)
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "asyncfl_hier_mnist"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "asynchronous hierarchical FL mnist example",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	err = dbService.CreateDesignCode(userID, designID, "asyncfl_hier_mnist", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var datasetEuGermany, datasetEuUk, datasetNaCanada, datasetNaUs openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset_eu_germany.json", &datasetEuGermany)
-	readFileToStruct(t, rootExample+"/dataset_eu_uk.json", &datasetEuUk)
-	readFileToStruct(t, rootExample+"/dataset_na_canada.json", &datasetNaCanada)
-	readFileToStruct(t, rootExample+"/dataset_na_us.json", &datasetNaUs)
-	datasetEuGermanyID, err := dbService.CreateDataset(userID, datasetEuGermany)
-	assert.NoError(t, err)
-	datasetEuUkID, err := dbService.CreateDataset(userID, datasetEuUk)
-	assert.NoError(t, err)
-	datasetNaCanadaID, err := dbService.CreateDataset(userID, datasetNaCanada)
-	assert.NoError(t, err)
-	datasetNaUsID, err := dbService.CreateDataset(userID, datasetNaUs)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+	testData := []struct {
+		designID            string
+		expectedRoles       []string
+		datasetNamesByGroup map[string][]string
+	}{
 		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"eu": {datasetEuGermanyID, datasetEuUkID},
-				"na": {datasetNaCanadaID, datasetNaUsID},
+			designID:      "asyncfl_hier_mnist",
+			expectedRoles: []string{"middle-aggregator", "top-aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"eu": {
+					"dataset_eu_germany.json",
+					"dataset_eu_uk.json",
+				},
+				"na": {
+					"dataset_na_canada.json",
+					"dataset_na_us.json",
+				},
 			},
 		},
-	}
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"middle-aggregator", "top-aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-
-func Test_distributed_training(t *testing.T) {
-	rootExample := baseExampleFolder + "/distributed_training"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "distributed_training"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "distributed training",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/distributed_training.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "distributed_training", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var dataset1, dataset2, dataset3 openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset_1.json", &dataset1)
-	readFileToStruct(t, rootExample+"/dataset_2.json", &dataset2)
-	readFileToStruct(t, rootExample+"/dataset_3.json", &dataset3)
-	dataset1ID, err := dbService.CreateDataset(userID, dataset1)
-	assert.NoError(t, err)
-	dataset2ID, err := dbService.CreateDataset(userID, dataset2)
-	assert.NoError(t, err)
-	dataset3ID, err := dbService.CreateDataset(userID, dataset3)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
 		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"us": {dataset1ID, dataset2ID, dataset3ID},
-			},
-		},
-	}
-
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-
-func Test_hier_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/hier_mnist"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "hier_mnist"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "hierarchical FL mnist example",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/hier_mnist.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "hier_mnist", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var datasetEuGermany, datasetEuUk, datasetNaCanada, datasetNaUs openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset_eu_germany.json", &datasetEuGermany)
-	readFileToStruct(t, rootExample+"/dataset_eu_uk.json", &datasetEuUk)
-	readFileToStruct(t, rootExample+"/dataset_na_canada.json", &datasetNaCanada)
-	readFileToStruct(t, rootExample+"/dataset_na_us.json", &datasetNaUs)
-	datasetEuGermanyID, err := dbService.CreateDataset(userID, datasetEuGermany)
-	assert.NoError(t, err)
-	datasetEuUkID, err := dbService.CreateDataset(userID, datasetEuUk)
-	assert.NoError(t, err)
-	datasetNaCanadaID, err := dbService.CreateDataset(userID, datasetNaCanada)
-	assert.NoError(t, err)
-	datasetNaUsID, err := dbService.CreateDataset(userID, datasetNaUs)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
-		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"eu": {datasetEuGermanyID, datasetEuUkID},
-				"na": {datasetNaCanadaID, datasetNaUsID},
-			},
-		},
-	}
-
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"middle-aggregator", "top-aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-
-func Test_medmnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/medmnist"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "medmnist"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "MedMNIST",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/medmnist.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "medmnist", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var dataset1, dataset2, dataset3, dataset4, dataset5,
-		dataset6, dataset7, dataset8, dataset9, dataset10 openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset1.json", &dataset1)
-	readFileToStruct(t, rootExample+"/dataset2.json", &dataset2)
-	readFileToStruct(t, rootExample+"/dataset3.json", &dataset3)
-	readFileToStruct(t, rootExample+"/dataset4.json", &dataset4)
-	readFileToStruct(t, rootExample+"/dataset5.json", &dataset5)
-	readFileToStruct(t, rootExample+"/dataset6.json", &dataset6)
-	readFileToStruct(t, rootExample+"/dataset7.json", &dataset7)
-	readFileToStruct(t, rootExample+"/dataset8.json", &dataset8)
-	readFileToStruct(t, rootExample+"/dataset9.json", &dataset9)
-	readFileToStruct(t, rootExample+"/dataset10.json", &dataset10)
-	dataset1ID, err := dbService.CreateDataset(userID, dataset1)
-	assert.NoError(t, err)
-	dataset2ID, err := dbService.CreateDataset(userID, dataset2)
-	assert.NoError(t, err)
-	dataset3ID, err := dbService.CreateDataset(userID, dataset3)
-	assert.NoError(t, err)
-	dataset4ID, err := dbService.CreateDataset(userID, dataset4)
-	assert.NoError(t, err)
-	dataset5ID, err := dbService.CreateDataset(userID, dataset5)
-	assert.NoError(t, err)
-	dataset6ID, err := dbService.CreateDataset(userID, dataset6)
-	assert.NoError(t, err)
-	dataset7ID, err := dbService.CreateDataset(userID, dataset7)
-	assert.NoError(t, err)
-	dataset8ID, err := dbService.CreateDataset(userID, dataset8)
-	assert.NoError(t, err)
-	dataset9ID, err := dbService.CreateDataset(userID, dataset9)
-	assert.NoError(t, err)
-	dataset10ID, err := dbService.CreateDataset(userID, dataset10)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
-		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
+			designID:      "distributed_training",
+			expectedRoles: []string{"trainer"},
+			datasetNamesByGroup: map[string][]string{
 				"us": {
-					dataset1ID, dataset2ID, dataset3ID, dataset4ID, dataset5ID,
-					dataset6ID, dataset7ID, dataset8ID, dataset9ID, dataset10ID,
+					"dataset_1.json",
+					"dataset_2.json",
+					"dataset_3.json",
+				},
+			},
+		},
+		{
+			designID:      "hier_mnist",
+			expectedRoles: []string{"middle-aggregator", "top-aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"eu": {
+					"dataset_eu_germany.json",
+					"dataset_eu_uk.json",
+				},
+				"na": {
+					"dataset_na_canada.json",
+					"dataset_na_us.json",
+				},
+			},
+		},
+		{
+			designID:      "medmnist",
+			expectedRoles: []string{"aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"us": {
+					"dataset1.json",
+					"dataset2.json",
+					"dataset3.json",
+					"dataset4.json",
+					"dataset5.json",
+					"dataset6.json",
+					"dataset7.json",
+					"dataset8.json",
+					"dataset9.json",
+					"dataset10.json",
+				},
+			},
+		},
+		{
+			designID:      "mnist",
+			expectedRoles: []string{"aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"us": {
+					"dataset.json",
+				},
+			},
+		},
+		{
+			designID:      "parallel_experiment",
+			expectedRoles: []string{"aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"asia": {"dataset_asia_china.json"},
+				"uk":   {"dataset_eu_uk.json"},
+				"us":   {"dataset_us_west.json"},
+			},
+		},
+		{
+			designID:      "hybrid",
+			expectedRoles: []string{"aggregator", "trainer"},
+			datasetNamesByGroup: map[string][]string{
+				"eu": {
+					"dataset1.json",
+					"dataset2.json",
+				},
+				"us": {
+					"dataset3.json",
+					"dataset4.json",
 				},
 			},
 		},
 	}
 
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
+	for _, td := range testData {
+		dbService := getDbService(t)
+		userID := uuid.NewString()
 
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
+		t.Run(td.designID, func(t *testing.T) {
+			designID := td.designID
 
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
+			createDesign(t, dbService, userID, designID)
+			createDesignSchema(t, dbService, userID, designID)
+			createDesignCode(t, dbService, userID, designID)
+			datasetGroups := createDatasets(t, dbService, userID, designID, td.datasetNamesByGroup)
+			jobSpec := createJob(t, dbService, userID, designID, datasetGroups)
 
-	sort.Strings(roles)
-	expectedRoles := []string{"aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-
-func Test_mnist(t *testing.T) {
-	rootExample := baseExampleFolder + "/mnist"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "mnist"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "mnist example",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/mnist.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "mnist", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var dataset openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset.json", &dataset)
-	datasetID, err := dbService.CreateDataset(userID, dataset)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
-		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"us": {datasetID},
-			},
-		},
+			validateJob(t, dbService, userID, designID, jobSpec, td.expectedRoles)
+		})
 	}
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-func Test_parallel_experiment(t *testing.T) {
-	rootExample := baseExampleFolder + "/parallel_experiment"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "parallel_experiment"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "parallel exp",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/parallel_experiment.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "parallel_experiment", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var datasetAsia, datasetEuUk, datasetUsWest openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset_asia_china.json", &datasetAsia)
-	readFileToStruct(t, rootExample+"/dataset_eu_uk.json", &datasetEuUk)
-	readFileToStruct(t, rootExample+"/dataset_us_west.json", &datasetUsWest)
-	datasetAsiaID, err := dbService.CreateDataset(userID, datasetAsia)
-	assert.NoError(t, err)
-	datasetEuUkID, err := dbService.CreateDataset(userID, datasetEuUk)
-	assert.NoError(t, err)
-	datasetUsWestID, err := dbService.CreateDataset(userID, datasetUsWest)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
-		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"asia": {datasetAsiaID},
-				"uk":   {datasetEuUkID},
-				"us":   {datasetUsWestID},
-			},
-		},
-	}
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
-}
-
-func Test_hybrid(t *testing.T) {
-	rootExample := baseExampleFolder + "/hybrid"
-
-	db := connect(t)
-	userID := uuid.NewString()
-	ctx := context.Background()
-
-	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
-	assert.NoError(t, err)
-
-	builder := NewJobBuilder(dbService, config.JobParams{
-		Brokers: brokers,
-	})
-	assert.NotNil(t, builder)
-
-	designID := "hybrid"
-
-	err = dbService.CreateDesign(userID, openapi.Design{
-		Name:        userID,
-		UserId:      userID,
-		Id:          designID,
-		Description: "hybrid example",
-		Schemas:     []openapi.DesignSchema{},
-	})
-	assert.NoError(t, err)
-
-	var designSchemaData openapi.DesignSchema
-	readFileToStruct(t, rootExample+"/schema.json", &designSchemaData)
-	err = dbService.CreateDesignSchema(userID, designID, designSchemaData)
-	assert.NoError(t, err)
-
-	designCodeFile, err := os.Open(rootExample + "/hybrid.zip")
-	assert.NoError(t, err)
-	err = dbService.CreateDesignCode(userID, designID, "hybrid", "zip", designCodeFile)
-	assert.NoError(t, err)
-
-	var dataset openapi.DatasetInfo
-	readFileToStruct(t, rootExample+"/dataset1.json", &dataset)
-	datasetID1, err := dbService.CreateDataset(userID, dataset)
-	assert.NoError(t, err)
-
-	readFileToStruct(t, rootExample+"/dataset2.json", &dataset)
-	datasetID2, err := dbService.CreateDataset(userID, dataset)
-	assert.NoError(t, err)
-
-	readFileToStruct(t, rootExample+"/dataset3.json", &dataset)
-	datasetID3, err := dbService.CreateDataset(userID, dataset)
-	assert.NoError(t, err)
-
-	readFileToStruct(t, rootExample+"/dataset4.json", &dataset)
-	datasetID4, err := dbService.CreateDataset(userID, dataset)
-	assert.NoError(t, err)
-
-	var jobSpecData openapi.JobSpec
-	readFileToStruct(t, rootExample+"/job.json", &jobSpecData)
-	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
-		{
-			Role: "trainer",
-			DatasetGroups: map[string][]string{
-				"eu": {datasetID1, datasetID2},
-				"us": {datasetID3, datasetID4},
-			},
-		},
-	}
-	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
-	assert.NoError(t, err)
-	assert.Equal(t, openapi.READY, jobStatus.State)
-
-	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
-	assert.NoError(t, err)
-
-	tasks, roles, err := builder.GetTasks(&jobSpec)
-	assert.NoError(t, err)
-
-	sort.Strings(roles)
-	expectedRoles := []string{"aggregator", "trainer"}
-	assert.Equal(t, expectedRoles, roles)
-
-	exampleConfigPath := "testdata/" + designID
-	validateTasks(t, exampleConfigPath, tasks)
 }
 
 func validateTasks(t *testing.T, testDataPath string, tasks []objects.Task) {
@@ -728,4 +281,117 @@ func newMongoServer(t *testing.T) (*memongo.Server, error) {
 	}
 
 	return memongo.StartWithOptions(opts)
+}
+
+func createDesignCode(t *testing.T, dbService *mongodb.MongoService, userID string, designID string) {
+	designCodeFile, err := os.Open(fmt.Sprintf("%s/%s/%s.zip", baseExampleFolder, designID, designID))
+	assert.NoError(t, err)
+
+	err = dbService.CreateDesignCode(userID, designID, designID, "zip", designCodeFile)
+	assert.NoError(t, err)
+}
+
+func getDbService(t *testing.T) *mongodb.MongoService {
+	ctx := context.Background()
+	db := connect(t)
+
+	dbService, err := mongodb.NewMongoServiceWithClient(ctx, db)
+	assert.NoError(t, err)
+
+	return dbService
+}
+
+func createDesign(t *testing.T, dbService *mongodb.MongoService, userID string, designID string) {
+	err := dbService.CreateDesign(userID, openapi.Design{
+		Name:        userID,
+		UserId:      userID,
+		Id:          designID,
+		Description: designID + " example",
+		Schemas:     []openapi.DesignSchema{},
+	})
+	assert.NoError(t, err)
+}
+
+func createDesignSchema(t *testing.T, dbService *mongodb.MongoService, userID, designID string) {
+	schemaFilePath := fmt.Sprintf("%s/%s/schema.json", baseExampleFolder, designID)
+
+	var designSchemaData openapi.DesignSchema
+	readFileToStruct(t, schemaFilePath, &designSchemaData)
+
+	err := dbService.CreateDesignSchema(userID, designID, designSchemaData)
+	assert.NoError(t, err)
+}
+
+func createDataset(t *testing.T, dbService *mongodb.MongoService, userID, designID, fileName string) string {
+	datasetFilePath := fmt.Sprintf("%s/%s/%s", baseExampleFolder, designID, fileName)
+	var dataset openapi.DatasetInfo
+	readFileToStruct(t, datasetFilePath, &dataset)
+
+	id, err := dbService.CreateDataset(userID, dataset)
+	assert.NoError(t, err)
+
+	return id
+}
+
+func createDatasets(
+	t *testing.T,
+	dbService *mongodb.MongoService,
+	userID, designID string,
+	datasetNamesByGroup map[string][]string) map[string][]string {
+	m := make(map[string][]string)
+
+	for group, datasetNames := range datasetNamesByGroup {
+		for _, datasetName := range datasetNames {
+			m[group] = append(m[group], createDataset(t, dbService, userID, designID, datasetName))
+		}
+	}
+
+	return m
+}
+
+func createJob(
+	t *testing.T,
+	dbService *mongodb.MongoService,
+	userID, designID string,
+	datasetGroups map[string][]string,
+) openapi.JobSpec {
+	jobFilePath := fmt.Sprintf("%s/%s/job.json", baseExampleFolder, designID)
+
+	var jobSpecData openapi.JobSpec
+	readFileToStruct(t, jobFilePath, &jobSpecData)
+	jobSpecData.DataSpec = []openapi.RoleDatasetGroups{
+		{
+			Role:          "trainer",
+			DatasetGroups: datasetGroups,
+		},
+	}
+	jobStatus, err := dbService.CreateJob(userID, jobSpecData)
+	assert.NoError(t, err)
+	assert.Equal(t, openapi.READY, jobStatus.State)
+
+	jobSpec, err := dbService.GetJob(userID, jobStatus.Id)
+	assert.NoError(t, err)
+
+	return jobSpec
+}
+
+func validateJob(
+	t *testing.T,
+	dbService *mongodb.MongoService,
+	userID, designID string,
+	jobSpec openapi.JobSpec,
+	expectedRoles []string,
+) {
+	builder := NewJobBuilder(dbService, config.JobParams{
+		Brokers: brokers,
+	})
+	assert.NotNil(t, builder)
+	tasks, roles, err := builder.GetTasks(&jobSpec)
+	assert.NoError(t, err)
+
+	sort.Strings(roles)
+	assert.Equal(t, expectedRoles, roles)
+
+	exampleConfigPath := expectedtasksfolder + designID
+	validateTasks(t, exampleConfigPath, tasks)
 }

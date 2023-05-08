@@ -1,0 +1,25 @@
+{
+    "baseModel": {
+        "name": "",
+        "version": 0
+    },
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 10,
+        "aggGoal": 1
+    },
+    "dependencies" : [
+        "numpy >= 1.2.0"
+    ],
+    "selector": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "c": 2
+        }
+    },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    }
+}

@@ -1,0 +1,11 @@
+{
+    "designId": "hybrid",
+    "schemaVersion": "1",
+    "codeVersion": "1",
+    "priority": "low",
+    "maxRunTime": 300,
+    "backend": "mqtt",
+
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
+}

@@ -1,0 +1,11 @@
+{
+    "designId": "medmnist",
+    "schemaVersion": "1",
+    "codeVersion": "1",
+    "priority": "low",
+    "maxRunTime": 86400,
+    "backend": "mqtt",
+
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
+}
