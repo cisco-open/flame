@@ -245,9 +245,10 @@ func (s *JobsApiService) GetTaskInfo(ctx context.Context, user string, jobId str
 // GetTasksInfo - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
 	uriMap := map[string]string{
-		constants.ParamUser:  user,
-		constants.ParamJobID: jobId,
-		constants.ParamLimit: strconv.Itoa(int(limit)),
+		constants.ParamUser:    user,
+		constants.ParamJobID:   jobId,
+		constants.ParamLimit:   strconv.Itoa(int(limit)),
+		constants.ParamGeneric: "false",
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
@@ -266,9 +267,10 @@ func (s *JobsApiService) GetTasksInfo(ctx context.Context, user string, jobId st
 // GetTasksInfoGeneric - Get the info of tasks in a job
 func (s *JobsApiService) GetTasksInfoGeneric(ctx context.Context, user string, jobId string, limit int32) (openapi.ImplResponse, error) {
 	uriMap := map[string]string{
-		constants.ParamUser:  user,
-		constants.ParamJobID: jobId,
-		constants.ParamLimit: strconv.Itoa(int(limit)),
+		constants.ParamUser:    user,
+		constants.ParamJobID:   jobId,
+		constants.ParamLimit:   strconv.Itoa(int(limit)),
+		constants.ParamGeneric: "false",
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
