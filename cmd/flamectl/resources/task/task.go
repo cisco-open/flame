@@ -69,9 +69,10 @@ func Get(params Params) error {
 func GetMany(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		constants.ParamUser:  params.User,
-		constants.ParamJobID: params.JobId,
-		constants.ParamLimit: params.Limit,
+		constants.ParamUser:    params.User,
+		constants.ParamJobID:   params.JobId,
+		constants.ParamLimit:   params.Limit,
+		constants.ParamGeneric: "false",
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetTasksInfoEndpoint, uriMap)
 
