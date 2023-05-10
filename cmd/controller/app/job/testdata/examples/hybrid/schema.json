@@ -1,0 +1,79 @@
+{
+    "name": "a schema for hybrid topology",
+    "description": "a sample schema to demonstrate a hybrid topology",
+    "roles": [
+        {
+            "name": "trainer",
+            "description": "It consumes the data and trains local model",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "us",
+                    "global-channel": "default"
+                },
+                {
+                    "param-channel": "eu",
+                    "global-channel": "default"
+                }
+            ]
+        },
+        {
+            "name": "aggregator",
+            "description": "It aggregates the updates from trainers",
+            "replica": 1,
+            "groupAssociation": [
+                {
+                    "global-channel": "default"
+                }
+            ]
+        }
+    ],
+    "channels": [
+    {
+            "backend": "p2p",
+            "description": "Model update is sent from a trainer to another trainer",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "eu",
+                    "us"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "trainer"
+            ],
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
+            }
+        },
+        {
+            "backend": "mqtt",
+            "description": "Model update is sent from a trainer to an aggregator",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "global-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ],
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        }
+    ]
+}

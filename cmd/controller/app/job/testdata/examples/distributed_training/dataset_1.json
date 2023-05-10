@@ -1,0 +1,15 @@
+{
+    "name": "MNIST dataset",
+
+    "description": "This dataset contains handwritten digits",
+
+    "url": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_1.npz",
+
+    "//": "the url is a fake url, serving as a placeholder. Data-loading are hard-coded by users in trainer's python script for simplicity and demonstration purpose.",
+
+    "dataFormat": "npy",
+
+    "realm": "default/us/org",
+
+    "isPublic": true
+}
