@@ -153,23 +153,23 @@ class Trainer(BaseTrainer):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("init", self.initialize)
 
-            task_put_dataset_size = Tasklet("", self.put, TAG_UPLOAD_DATASET_SIZE)
+            task_put_dataset_size = Tasklet("upload_dataset_size", self.put, TAG_UPLOAD_DATASET_SIZE)
 
-            task_get = Tasklet("", self.get, TAG_FETCH)
+            task_get = Tasklet("fetch", self.get, TAG_FETCH)
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_put = Tasklet("", self.put, TAG_UPLOAD)
+            task_put = Tasklet("upload", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

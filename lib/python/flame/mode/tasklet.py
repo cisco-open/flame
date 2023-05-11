@@ -23,6 +23,7 @@ from typing import Callable
 
 from flame.mode.composer import ComposerContext
 from flame.mode.enums import LoopIndicator
+from flame.monitor.runtime import time_tasklet
 
 logger = logging.getLogger(__name__)
 
@@ -151,6 +152,7 @@ class Tasklet(object):
 
         return self.loop_ender
 
+    @time_tasklet
     def do(self) -> None:
         """Execute tasklet."""
         self.func(*self.args, **self.kwargs)

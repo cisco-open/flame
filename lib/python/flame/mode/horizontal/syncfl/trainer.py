@@ -196,6 +196,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def save_metrics(self):
         """Save metrics in a model registry."""
+        # update self.metrics with metrics from MetricCollector instance
+        self.metrics = self.metrics | self.mc.get()
         logger.debug(f"saving metrics: {self.metrics}")
         if self.metrics:
             self.registry_client.save_metrics(self._round - 1, self.metrics)

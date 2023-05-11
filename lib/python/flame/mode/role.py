@@ -17,10 +17,12 @@
 """role abstract class."""
 
 from abc import ABC, abstractmethod
+from flame.monitor.metric_collector import MetricCollector
 
 
 class Role(ABC):
     """Abstract base class for role implementation."""
+    mc = MetricCollector()
 
     ###########################################################################
     # The following functions need to be implemented the child class
