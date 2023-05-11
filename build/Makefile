@@ -31,7 +31,7 @@ fmt:
 	@go fmt ./...
 
 build:
-	@docker build -f build/Dockerfile --tag ${uri} .
+	@docker build -f Dockerfile --tag ${uri} .
 
 push: build
 	@docker image tag ${uri} ${registry}/${uri}
