@@ -3,12 +3,12 @@
         "role": "trainer",
         "datasetGroups": {
             "eu": [
-                "645909bc304e647459667b72",
-                "645909bc304e647459667b73"
+                "645baa8fae8632e96ee4dd82",
+                "645baa8fae8632e96ee4dd83"
             ],
             "us": [
-                "645909bc304e647459667b74",
-                "645909bc304e647459667b75"
+                "645baa8fae8632e96ee4dd84",
+                "645baa8fae8632e96ee4dd85"
             ]
         }
     }

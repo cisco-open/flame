@@ -3,7 +3,7 @@
     "schemaVersion": "1",
     "codeVersion": "1",
     "priority": "low",
-    "maxRunTime": 300,
+    "maxRunTime": 120,
     "backend": "mqtt",
 
     "dataSpecPath": "dataSpec.json",

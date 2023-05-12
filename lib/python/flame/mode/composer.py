@@ -20,6 +20,7 @@ from queue import Queue
 from types import TracebackType
 from typing import Optional, Type
 from flame.mode.enums import LoopIndicator
+from flame.mode.role import Role
 
 logger = logging.getLogger(__name__)
 
@@ -34,6 +35,8 @@ class Composer(object):
         self.reverse_chain = dict()
 
         self.unlinked_tasklets = dict()
+        
+        self.mc = Role.mc
 
     def __enter__(self):
         """Enter custom context."""

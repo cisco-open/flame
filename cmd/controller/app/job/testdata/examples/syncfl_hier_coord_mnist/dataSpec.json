@@ -1,0 +1,12 @@
+[
+    {
+        "role": "trainer",
+        "datasetGroups": {
+            "default": [
+                "642a3918b8cf45525b13481c",
+                "642a391cb8cf45525b13481d",
+                "642a391eb8cf45525b13481e"
+            ]
+        }
+    }
+]

@@ -1,0 +1,13 @@
+{
+    "designId": "parallel_experiment",
+    "schemaVersion": "1",
+    "codeVersion": "1",
+
+    "priority": "low",
+
+    "backend": "mqtt",
+    "maxRunTime": 1800,
+
+    "dataSpecPath": "dataSpec.json",
+    "modelSpecPath": "modelSpec.json"
+}

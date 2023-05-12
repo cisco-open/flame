@@ -1,0 +1,82 @@
+{
+    "name": "A simple hierarchical FL MNIST example schema",
+    "description": "a sample schema to demostrate the hierarchical FL setting",
+    "roles": [
+        {
+            "name": "trainer",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "red"
+                }
+            ]
+        },
+        {
+            "name": "middle-aggregator",
+            "replica": 2,
+            "groupAssociation": [
+                {
+                    "param-channel": "red",
+                    "global-channel": "black"
+                }
+            ]
+        },
+        {
+            "name": "top-aggregator",
+            "replica": 1,
+            "groupAssociation": [
+                {
+                    "global-channel": "black"
+                }
+            ]
+        }
+    ],
+    "channels": [
+        {
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "red"
+                ]
+            },
+            "funcTags": {
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ],
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ]
+            }
+        },
+        {
+            "name": "global-channel",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "black"
+                ]
+            },
+            "funcTags": {
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ]
+}

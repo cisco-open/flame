@@ -176,33 +176,35 @@ class TopAggregator(BaseTopAggregator):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("initialize", self.initialize)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_get_dataset = Tasklet("", self.get, TAG_GET_DATATSET_SIZE)
+            task_get_dataset = Tasklet("get_dataset_size", self.get, TAG_GET_DATATSET_SIZE)
 
-            task_put = Tasklet("", self.put, TAG_DISTRIBUTE)
+            task_put = Tasklet("distribute", self.put, TAG_DISTRIBUTE)
 
-            task_get = Tasklet("", self.get, TAG_AGGREGATE)
+            task_get = Tasklet("aggregate", self.get, TAG_AGGREGATE)
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_analysis = Tasklet("", self.run_analysis)
+            task_analysis = Tasklet("analysis", self.run_analysis)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
-            task_increment_round = Tasklet("", self.increment_round)
+            task_increment_round = Tasklet("inc_round", self.increment_round)
 
-            task_end_of_training = Tasklet("", self.inform_end_of_training)
+            task_end_of_training = Tasklet(
+                "inform_end_of_training", self.inform_end_of_training
+            )
 
-            task_save_params = Tasklet("", self.save_params)
+            task_save_params = Tasklet("save_params", self.save_params)
 
-            task_save_model = Tasklet("", self.save_model)
+            task_save_model = Tasklet("save_model", self.save_model)
 
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
