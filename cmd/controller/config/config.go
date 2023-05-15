@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/afero"
+	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 
 	"github.com/cisco-open/flame/pkg/util"
@@ -62,6 +63,10 @@ func LoadConfig(configPath string) (*Config, error) {
 	}
 
 	cfg := &Config{}
+
+	zap.S().Info("Output config file")
+
+	zap.S().Info(string(data))
 
 	err = yaml.Unmarshal(data, cfg)
 	if err != nil {

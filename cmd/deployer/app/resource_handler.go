@@ -21,6 +21,7 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -28,6 +29,7 @@ import (
 
 	"github.com/cbroglie/mustache"
 	"github.com/cenkalti/backoff/v4"
+	"github.com/davecgh/go-spew/spew"
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -322,6 +324,20 @@ func copyHelmCharts(chartFiles []string, src, dst string) error {
 	for _, chartFile := range chartFiles {
 		srcFilePath := filepath.Join(src, chartFile)
 		dstFilePath := filepath.Join(dst, chartFile)
+
+		in, err := os.Open(srcFilePath)
+		if err != nil {
+			return err
+		}
+		b, err := io.ReadAll(in)
+		if err != nil {
+			spew.Dump(err)
+		} else {
+			spew.Dump(srcFilePath)
+			spew.Dump(string(b))
+		}
+		in.Close()
+
 		if err := util.CopyFile(srcFilePath, dstFilePath); err != nil {
 			return fmt.Errorf("failed to copy a deployment chart file %s: %v", chartFile, err)
 		}
@@ -334,6 +350,9 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 		errMsg := fmt.Sprintf("failed to initialize a job deployer: %v", err)
 		return fmt.Errorf(errMsg)
 	}
+
+	spew.Dump("dump deploymentConfig")
+	spew.Dump(deploymentConfig)
 
 	agentStatuses := map[string]openapi.AgentState{}
 	defer r.postDeploymentStatus(deploymentConfig.JobId, agentStatuses)
@@ -370,6 +389,9 @@ func (r *resourceHandler) deployResources(deploymentConfig openapi.DeploymentCon
 			agentStatuses[taskId] = openapi.AGENT_DEPLOY_FAILED
 			continue
 		}
+		spew.Dump("RenderFile filename")
+		spew.Dump(r.jobTemplatePath)
+		spew.Dump(rendered)
 
 		deploymentFileName := fmt.Sprintf("task-%s.yaml", taskId)
 		deploymentFilePath := filepath.Join(targetTemplateDirPath, deploymentFileName)

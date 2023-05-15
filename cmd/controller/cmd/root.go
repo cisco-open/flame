@@ -81,6 +81,8 @@ func initConfig() {
 
 	var err error
 
+	zap.S().Infof("Start to load the configuration file: %s", cfgFile)
+
 	cfg, err = config.LoadConfig(cfgFile)
 	if err != nil {
 		zap.S().Fatalf("Failed to load config %s: %v", cfgFile, err)
