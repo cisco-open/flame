@@ -28,6 +28,7 @@ from flame.common.typing import Scalar
 from flame.common.util import run_async
 from flame.config import GROUPBY_DEFAULT_GROUP
 from flame.end import KEY_END_STATE, VAL_END_STATE_RECVD, End
+from flame.mode.role import Role
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ class Channel(object):
         self._groupby = groupby
         self.properties = dict()
         self.await_join_event = None
+        self.mc = Role.mc
 
         # access _ends with caution.
         # in many cases, _ends must be accessed within a backend's loop
@@ -193,6 +195,7 @@ class Channel(object):
 
         async def _put():
             payload = cloudpickle.dumps(message)
+            self.mc.accumulate("bytes", "broadcast", len(payload))
             await self._bcast_queue.put(payload)
 
         _, status = run_async(_put(), self._backend.loop())
@@ -206,6 +209,7 @@ class Channel(object):
                 return
 
             payload = cloudpickle.dumps(message)
+            self.mc.accumulate("bytes", "send", len(payload))
             logger.debug(f"length of payload = {len(payload)}")
             await self._ends[end_id].put(payload)
 
@@ -225,6 +229,8 @@ class Channel(object):
             payload = None
             try:
                 payload = await self._ends[end_id].get()
+                # ignore timestamp for measuring bytes received
+                self.mc.accumulate("bytes", "recv", len(payload[0]))
             except KeyError:
                 return None
 
@@ -339,6 +345,8 @@ class Channel(object):
             payload = None
             try:
                 payload = await self._ends[end_id].get()
+                # ignore timestamp for measuring bytes received
+                self.mc.accumulate("bytes", "recv", len(payload[0]))
             except KeyError:
                 yield end_id, None
 
