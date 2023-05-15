@@ -1,7 +1,7 @@
-# Fiab installation in linux
-This guideline is mainly for Ubuntu in a x86 machine and steps can be followed for other linux distributions with their respective package managers.
+# Fiab installation in Linux
+This guideline is mainly for Ubuntu in a x86 machine and steps can be followed for other Linux distributions with their respective package managers.
 ## Prerequisites
-For linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`.
+For Linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`.
 These tools can be installed by either running an automation script or by running manual steps.
 
 To run an automation script, run the following commands:
@@ -195,7 +195,7 @@ ping -c 1 apiserver.flame.test
 ping -c 1 notifier.flame.test
 ping -c 1 mlflow.flame.test
 ```
-These ping commands should run successfully without any error. As another alternative, open a browser and go to `mlflow.flame.test`.
+These ping commands should run successfully without any errors. As another alternative, open a browser and go to `mlflow.flame.test`.
 That should return a mlflow's web page.
 
 ## Stopping flame
