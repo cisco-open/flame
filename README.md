@@ -48,7 +48,7 @@ flame
 | FedAdaGrad      | https://arxiv.org/pdf/2003.00295.pdf                                                                                               |
 | FedProx         | https://arxiv.org/pdf/1812.06127.pdf                                                                                               |
 | FedBuff         | Asynchronous FL (https://arxiv.org/pdf/2106.06639.pdf and https://arxiv.org/pdf/2111.04877.pdf); secure aggregation is excluded    |
-| FedDyn          | https://arxiv.org/pdf/2111.04263.pdf; under development                                                                            |
+| FedDyn          | https://arxiv.org/pdf/2111.04263.pdf                                                                                               |
 | OORT            | https://arxiv.org/pdf/2010.06081.pdf; client selection algorithm / mechanism; experimental release                                 |
 | Hierarchical FL | https://arxiv.org/pdf/1905.06641.pdf; a simplified version where k<sub>2</sub> = 1; support both synchronous and asynchronous FL   |
 | Hybrid FL       | A hybrid approach to combine federated learning with ring-reduce; topology motivated from https://openreview.net/pdf?id=H0oaWl6THa |
@@ -64,3 +64,16 @@ We welcome feedback, questions, and issue reports.
 
 * Maintainers' email address: <flame-github-owners@cisco.com>
 * [GitHub Issues](https://github.com/cisco-open/flame/issues/new/choose)
+
+## Citation
+
+```
+@misc{flame2023,
+      title={Federated Learning Operations Made Simple with Flame}, 
+      author={Harshit Daga and Jaemin Shin and Dhruv Garg and Ada Gavrilovska and Myungjin Lee and Ramana Rao Kompella},
+      year={2023},
+      eprint={2305.05118},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG}
+}
+```
