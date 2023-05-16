@@ -24,11 +24,19 @@ class MetricCollector:
         """Initialize Metric Collector."""
         self.state_dict = dict()
     
+    def get_key(self, mtype, alias):
+        return f'{mtype}-{alias}'
+    
     def save(self, mtype, alias, value):
         """Saves key-value pair for metric."""
-        key = f'{mtype}-{alias}'
+        key = self.get_key(mtype, alias)
         self.state_dict[key] = value
         logger.debug(f"Saving state_dict[{key}] = {value}")
+    
+    def accumulate(self, mtype, alias, value):
+        key = self.get_key(mtype, alias)
+        self.state_dict[key] = value + self.state_dict.get(key, 0)
+        logger.debug(f"Accumulating metric state_dict[{key}] = {self.state_dict[key]}")
     
     def get(self):
         """Returns the current metrics that were collected and clears the saved dictionary."""
