@@ -1,12 +1,12 @@
 # Fiab installation in Amazon Linux 2
-This guideline is for configuring fiab in amazon linux 2 with GPU supported instance types (e.g., p2).
+This guideline is for configuring fiab in Amazon Linux 2 with GPU supported instance types (e.g., p2).
 
 ## Prerequisites
-This section is specifically for AWS EC2 instance with amazon linux 2 image and GPU.
-For other linux distributions without GPU (regardless of VM or baremetal machine), refer to [Ubuntu](03-a-ubuntu.md);
+This section is specifically for AWS EC2 instance with Amazon Linux 2 image and GPU.
+For other Linux distributions without GPU (regardless of VM or baremetal machine), refer to [Ubuntu](03-a-ubuntu.md);
 with their respective package manager, the guideline for Ubuntu can be easily followed.
 
-For Amazon linux 2 image (amzn2), the following tools are necessary: `minikube`, `kubectl`, `helm`, `cri-dockerd`, `crictl` , `docker` and `jq`.
+For Amazon Linux 2 image (amzn2), the following tools are necessary: `minikube`, `kubectl`, `helm`, `cri-dockerd`, `crictl` , `docker` and `jq`.
 The image was tested under an ec2 instance with GPU (e.g., p2 instances).
 
 To set up fiab, run `install.sh` under the fiab folder.
@@ -259,7 +259,7 @@ flame-notifier-cf4854cd9-g27wj      1/1     Running   0              7m5s
 postgres-7fd96c847c-6qdpv           1/1     Running   0              7m5s
 ```
 
-In amazon ec2, `flame.test` domain needs to be added to Route 53 with the minikube IP address,
+In Amazon ec2, `flame.test` domain needs to be added to Route 53 with the minikube IP address,
 which can be obtained by running `minikube ip`. Without route 53 configuration, the following
 ping test will fail.
 

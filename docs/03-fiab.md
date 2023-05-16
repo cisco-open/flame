@@ -10,8 +10,8 @@ It also includes mongodb as backend state store.
 The `flame/fiab` folder contains several scripts to configure and set up the fiab environment.
 Thus, the working directory for this guideline is `flame/fiab`.
 
-This development environment is mainly tested under MacOS.
-The fiab env is also tested under linux distributions such as Ubuntu, Amazon Linux 2, Archlinux, etc.
+This development environment is mainly tested under Mac OS.
+The fiab env is also tested under Linux distributions such as Ubuntu, Amazon Linux 2, Archlinux, etc.
 
 ## Fiab installation guideline
 Follow one of the links below that matches operating system under consideration:

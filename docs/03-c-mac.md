@@ -1,6 +1,6 @@
 # Fiab installation in MAC OS
 This guideline is primarily based on MacOS.
-However, this dev environment doesn't work under latest Apple machines with M1 chip set because hyperkit is not yet supported for M1 Mac.
+However, this dev environment doesn't work under latest Apple machines with M1 chipset because hyperkit is not yet supported for M1 Mac.
 
 ## Prerequisites
 fiab relies on `minikube`, `kubectl`, `helm`, `docker` and `jq`.
@@ -192,7 +192,7 @@ During the configuration by `flame.sh`, it asks a password for sudo permission.
 The reason for this is to add a dns configuration in `/etc/resolver/flame-test`.
 When stopping flame, the script asks again a password to delete `/etc/resolver/flame-test`.
 
-The file may look like the following on MacOS:
+The file may look like the following on Mac OS:
 ```
 domain flame.test
 nameserver 192.168.64.62

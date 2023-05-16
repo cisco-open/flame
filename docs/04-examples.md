@@ -90,7 +90,7 @@ flamectl get jobs
 ```
 
 ### Step 7: start a job
-Before staring your job, you can always use `flamectl get` to check each step is set up correctly. For more info, check 
+Before starting your job, you can always use `flamectl get` to check each step is set up correctly. For more info, check 
 ```bash
 flamectl get --help
 ```
@@ -167,7 +167,7 @@ Open a browser and go to http://mlflow.flame.test.
 
 For other examples, please visit their particular example directories:
 - [Medical Image Multi-class Classification with PyTorch](../examples/medmnist/README.md)
-- [Binary Income Classifcation with Tabular Dataset](../examples/adult/README.md) 
+- [Binary Income Classification with Tabular Dataset](../examples/adult/README.md) 
 - [Toy Example of Hierarchical FL](../examples/hier_mnist/README.md)
 - [Toy Example of Parallel Experiments](../examples/parallel_experiment/README.md)
 - [Toy Example of Distributed Training](../examples/distributed_training/README.md)
