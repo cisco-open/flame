@@ -53,7 +53,7 @@ PROP_ROUND_END_TIME = "round_end_time"
 
 class TopAggregator(Role, metaclass=ABCMeta):
     """Top level Aggregator implements an ML aggregation role."""
-    
+
     @abstract_attribute
     def config(self) -> Config:
         """Abstract attribute for config object."""
@@ -105,7 +105,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         self.datasampler = datasampler_provider.get(
             self.config.datasampler.sort, **self.config.datasampler.kwargs
         ).aggregator_data_sampler
-        
+
         self._round = 1
         self._rounds = 1
         self._rounds = self.config.hyperparameters.rounds
@@ -248,6 +248,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         """Save metrics in a model registry."""
         # update metrics with metrics from metric collector
         self.metrics = self.metrics | self.mc.get()
+        self.mc.clear()
         logger.debug(f"saving metrics: {self.metrics}")
         if self.metrics:
             self.registry_client.save_metrics(self._round - 1, self.metrics)
