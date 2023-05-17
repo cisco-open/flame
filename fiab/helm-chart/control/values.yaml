@@ -84,6 +84,10 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     cert-manager.io/cluster-issuer: selfsigned
+    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60000"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60000"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60000"
   annotationsGrpc:
     nginx.ingress.kubernetes.io/ssl-redirect: "true"
     nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
