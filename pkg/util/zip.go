@@ -21,7 +21,9 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 )
@@ -133,4 +135,77 @@ func ZipFileByTopLevelDir(fdList []FileData) (map[string][]byte, error) {
 	}
 
 	return zipFiles, nil
+}
+
+func CreateZipFile(codePath string) error {
+	var err error
+	var zipArchivePath = fmt.Sprintf("%s.zip", codePath)
+
+	zipArchive, err := os.Create(zipArchivePath)
+
+	if err != nil {
+		return err
+	}
+
+	defer zipArchive.Close()
+
+	zipWriter := zip.NewWriter(zipArchive)
+
+	var zipFiles = map[string][]string{}
+
+	if err != nil {
+		return err
+	}
+
+	filepath.WalkDir(codePath, func(filePath string, dir fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if dir.IsDir() {
+			return nil
+		}
+
+		var cleanPathToFile = strings.Split(filePath, filepath.Base(codePath))[1][1:]
+		dirPath, _ := path.Split(cleanPathToFile)
+		var pathToDir = dirPath
+
+		if zipFiles[pathToDir] == nil {
+			zipFiles[pathToDir] = make([]string, 0)
+		}
+
+		zipFiles[pathToDir] = append(zipFiles[pathToDir], filePath)
+		return nil
+	})
+
+	var fileWriter io.Writer
+	var fileData []byte
+
+	for fileType, filePaths := range zipFiles {
+		for _, filePath := range filePaths {
+			fileWriter, err = zipWriter.Create(fmt.Sprintf("%s/%s", fileType, filepath.Base(filePath)))
+
+			if err != nil {
+				return err
+			}
+
+			fileData, err = os.ReadFile(filePath)
+
+			if err != nil {
+				return err
+			}
+
+			_, err = fileWriter.Write(fileData)
+
+			if err != nil {
+				return err
+			}
+		}
+	}
+
+	err = zipWriter.Close()
+	if err != nil {
+		return err
+	}
+	return nil
 }

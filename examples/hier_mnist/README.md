@@ -22,7 +22,7 @@ The schema defines the topology of this FL job. For more info, please refer to [
 ### Step 3: add code to the design
 
 ```bash
-flamectl create code hier_mnist.zip --design hier_mnist
+flamectl create code ./src --design hier_mnist
 ```
 
 ### Step 4: create datasets
