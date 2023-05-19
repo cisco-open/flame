@@ -96,6 +96,8 @@ class TopAggregator(BaseTopAggregator):
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
 
+        logger.debug(f"received {len(self.cache)} trainer updates in cache")
+
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(
             deepcopy(self.cld_weights),

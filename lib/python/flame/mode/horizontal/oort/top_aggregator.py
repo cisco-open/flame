@@ -105,6 +105,8 @@ class TopAggregator(BaseTopAggregator):
                 if received_end_count == aggr_num:
                     break
 
+        logger.debug(f"received {len(self.cache)} trainer updates in cache")
+
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(
             deepcopy(self.weights), self.cache, total=total

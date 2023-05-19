@@ -75,7 +75,12 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
         self._round = 1
         self._work_done = False
 
+        # disk cache is used for saving memory in case model is large
+        # automatic eviction of disk cache is disabled with cull_limit 0
         self.cache = Cache()
+        self.cache.reset("size_limit", 1e15)
+        self.cache.reset("cull_limit", 0)
+
         self.dataset_size = 0
 
         # save distribute tag in an instance variable
@@ -181,6 +186,8 @@ class MiddleAggregator(Role, metaclass=ABCMeta):
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
+
+        logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(

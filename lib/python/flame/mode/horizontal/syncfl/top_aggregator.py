@@ -93,7 +93,11 @@ class TopAggregator(Role, metaclass=ABCMeta):
         self.metrics = dict()
 
         # disk cache is used for saving memory in case model is large
+        # automatic eviction of disk cache is disabled with cull_limit 0
         self.cache = Cache()
+        self.cache.reset('size_limit', 1e15)
+        self.cache.reset('cull_limit', 0)
+
         self.optimizer = optimizer_provider.get(
             self.config.optimizer.sort, **self.config.optimizer.kwargs
         )
@@ -156,6 +160,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
+
+        logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
         # optimizer conducts optimization (in this case, aggregation)
         global_weights = self.optimizer.do(
