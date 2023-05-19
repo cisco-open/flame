@@ -89,6 +89,7 @@ class TopAggregator(SyncTopAgg):
             tres = TrainResult(weights, count, version)
             # save training result from trainer in a disk cache
             self.cache[end] = tres
+            logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
             self._agg_goal_weights = self.optimizer.do(
                 self._agg_goal_weights, self.cache, total=count, version=self._round
