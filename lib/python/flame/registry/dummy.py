@@ -17,26 +17,26 @@
 
 from typing import Any, Optional
 
-from .abstract import AbstractRegistryClient
+from flame.config import Hyperparameters, Config
+from flame.registry.abstract import AbstractRegistryClient
 
 
 class DummyRegistryClient(AbstractRegistryClient):
     """Dummy registry client."""
 
-    def __call__(self, uri: str, job_id: str) -> None:
+    def __call__(self, config: Config) -> None:
         """Initialize the instance."""
         pass
 
-    def setup_run(self, name: str) -> None:
+    def setup_run(self) -> None:
         """Set up a run."""
         pass
 
-    def save_metrics(self, epoch: int, metrics: Optional[dict[str,
-                                                              float]]) -> None:
+    def save_metrics(self, epoch: int, metrics: Optional[dict[str, float]]) -> None:
         """Save metrics in a model registry."""
         pass
 
-    def save_params(self, hyperparameters: Optional[dict[str, float]]) -> None:
+    def save_params(self, hyperparameters: Optional[Hyperparameters]) -> None:
         """Save hyperparameters in a model registry."""
         pass
 

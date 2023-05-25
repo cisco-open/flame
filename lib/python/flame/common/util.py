@@ -25,9 +25,8 @@ from typing import List, Union
 
 from pip._internal.cli.main import main as pipmain
 
-from ..config import Config
-from .typing import ModelWeights
-from .constants import DeviceType
+from flame.common.typing import ModelWeights
+from flame.common.constants import DeviceType
 
 PYTORCH = "torch"
 TENSORFLOW = "tensorflow"
@@ -148,16 +147,6 @@ def install_package(package: str) -> bool:
         return True
 
     return False
-
-
-def mlflow_runname(config: Config) -> str:
-    groupby_value = ""
-    for v in config.channels.values():
-        for val in v.group_by.value:
-            if val in config.realm:
-                groupby_value = groupby_value + val + "-"
-
-    return config.role + "-" + groupby_value + config.task_id[:8]
 
 
 def delta_weights_pytorch(

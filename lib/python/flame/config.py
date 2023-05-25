@@ -47,6 +47,7 @@ class RegistryType(str, Enum):
     """Define model registry types."""
 
     DUMMY = "dummy"
+    LOCAL = "local"
     MLFLOW = "mlflow"
 
 
