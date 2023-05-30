@@ -35,10 +35,12 @@ class MetricCollector:
 
         # CPU monitoring
         cpu_thread = threading.Thread(target=self.gather_cpu_stats)
+        cpu_thread.daemon = True
         cpu_thread.start()
 
         # GPU monitoring
         gpu_thread = threading.Thread(target=self.gather_gpu_stats)
+        gpu_thread.daemon = True
         gpu_thread.start()
 
     def gather_gpu_stats(self, interval=1):
