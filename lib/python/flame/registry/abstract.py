@@ -18,25 +18,26 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional
 
+from flame.config import Hyperparameters, Config
+
 
 class AbstractRegistryClient(ABC):
     """Abstract registry client."""
 
     @abstractmethod
-    def __call__(self, uri: str, job_id: str) -> None:
+    def __call__(self, config: Config) -> None:
         """Abstract method for initializing a registry client."""
 
     @abstractmethod
-    def setup_run(self, name: str) -> None:
+    def setup_run(self) -> None:
         """Abstract method for setup a run."""
 
     @abstractmethod
-    def save_metrics(self, epoch: int, metrics: Optional[dict[str,
-                                                              float]]) -> None:
+    def save_metrics(self, epoch: int, metrics: Optional[dict[str, float]]) -> None:
         """Abstract method for saving metrics in a model registry."""
 
     @abstractmethod
-    def save_params(self, hyperparameters: Optional[dict[str, float]]) -> None:
+    def save_params(self, hyperparameters: Optional[Hyperparameters]) -> None:
         """Abstract method for saving hyperparameters in a model registry."""
 
     @abstractmethod

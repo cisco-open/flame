@@ -28,7 +28,6 @@ from flame.common.util import (
     delta_weights_pytorch,
     delta_weights_tensorflow,
     get_ml_framework_in_use,
-    mlflow_runname,
     valid_frameworks,
     weights_to_device,
     weights_to_model_device,
@@ -70,7 +69,7 @@ class Trainer(Role, metaclass=ABCMeta):
         """Initialize internal state for role."""
         self.registry_client = registry_provider.get(self.config.registry.sort)
         # initialize registry client
-        self.registry_client(self.config.registry.uri, self.config.job.job_id)
+        self.registry_client(self.config)
 
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
@@ -80,7 +79,7 @@ class Trainer(Role, metaclass=ABCMeta):
         self.ring_weights = None  # latest model weights from ring all-reduce
         self.weights = None
 
-        self.registry_client.setup_run(mlflow_runname(self.config))
+        self.registry_client.setup_run()
         self.metrics = dict()
 
         self._round = 1

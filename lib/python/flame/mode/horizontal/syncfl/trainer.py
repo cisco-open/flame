@@ -27,7 +27,6 @@ from flame.common.util import (
     delta_weights_pytorch,
     delta_weights_tensorflow,
     get_ml_framework_in_use,
-    mlflow_runname,
     valid_frameworks,
     weights_to_device,
     weights_to_model_device,
@@ -71,9 +70,9 @@ class Trainer(Role, metaclass=ABCMeta):
 
         self.registry_client = registry_provider.get(self.config.registry.sort)
         # initialize registry client
-        self.registry_client(self.config.registry.uri, self.config.job.job_id)
+        self.registry_client(self.config)
 
-        self.registry_client.setup_run(mlflow_runname(self.config))
+        self.registry_client.setup_run()
         self.metrics = dict()
 
         # needed for trainer-side optimization algorithms such as fedprox

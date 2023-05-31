@@ -23,8 +23,8 @@ import mlflow
 from mlflow.exceptions import MlflowException
 from mlflow.protos.databricks_pb2 import RESOURCE_ALREADY_EXISTS, ErrorCode
 
-from ..config import Hyperparameters
-from .abstract import AbstractRegistryClient
+from flame.config import Hyperparameters, Config
+from flame.registry.abstract import AbstractRegistryClient
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +36,7 @@ module_to_flavor: dict[str, str] = {
     "keras": "tensorflow",
     "sklearn": "sklearn",
     "tensorflow": "tensorflow",
-    "torch": "pytorch"
+    "torch": "pytorch",
 }
 
 
@@ -52,37 +52,43 @@ class MLflowRegistryClient(AbstractRegistryClient):
             cls._instance = super().__new__(cls)
         return cls._instance
 
-    def __call__(self, uri: str, experiment: str) -> None:
+    def __call__(self, config: Config) -> None:
         """Initialize the instance."""
-        mlflow.set_tracking_uri(uri)
+        mlflow.set_tracking_uri(config.registry.uri)
+        job_id = config.job.job_id
         try:
-            exp = mlflow.set_experiment(experiment)
+            exp = mlflow.set_experiment(job_id)
             logger.info(f"Set experiment {exp.name}")
         except MlflowException as e:
             if e.error_code == ErrorCode.Name(RESOURCE_ALREADY_EXISTS):
                 logger.info("resource already exists; trying to set again")
-                exp = mlflow.set_experiment(experiment)
+                exp = mlflow.set_experiment(job_id)
                 logger.info(f"successfully set experiment {exp.name}")
             else:
                 raise e
 
-        self.experiment = experiment
+        self.experiment = job_id
+        self.config = config
 
-    def setup_run(self, name: str) -> None:
+    def mlflow_runname(self) -> str:
+        groupby_value = ""
+        for v in self.config.channels.values():
+            for val in v.group_by.value:
+                if val in self.config.realm:
+                    groupby_value = groupby_value + val + "-"
+
+        return self.config.role + "-" + groupby_value + self.config.task_id[:8]
+
+    def setup_run(self) -> None:
         """
         Set up a run for logging parameters, metrics and model.
 
         As start_run() is called without ``with'' block, the self.cleanup()
         method (containing mlflow.end_run()) must be called at the end.
-
-        Parameters
-        ----------
-        name: a string for run's name
         """
-        mlflow.start_run(run_name=name)
+        mlflow.start_run(run_name=self.mlflow_runname())
 
-    def save_metrics(self, epoch: int, metrics: Optional[dict[str,
-                                                              float]]) -> None:
+    def save_metrics(self, epoch: int, metrics: Optional[dict[str, float]]) -> None:
         """Save metrics in a model registry."""
         if not metrics:
             return
@@ -113,9 +119,7 @@ class MLflowRegistryClient(AbstractRegistryClient):
         """Save a model in a model registry."""
         flavor = self._get_ml_framework_flavor()
 
-        flavor.log_model(model,
-                         artifact_path="models",
-                         registered_model_name=name)
+        flavor.log_model(model, artifact_path="models", registered_model_name=name)
 
     def load_model(self, name: str, version: int) -> object:
         """

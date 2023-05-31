@@ -27,7 +27,6 @@ from flame.common.custom_abcmeta import ABCMeta, abstract_attribute
 from flame.common.util import (
     MLFramework,
     get_ml_framework_in_use,
-    mlflow_runname,
     valid_frameworks,
     weights_to_device,
     weights_to_model_device,
@@ -81,7 +80,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         self.registry_client = registry_provider.get(self.config.registry.sort)
         # initialize registry client
-        self.registry_client(self.config.registry.uri, self.config.job.job_id)
+        self.registry_client(self.config)
 
         base_model = self.config.base_model
         if base_model and base_model.name != "" and base_model.version > 0:
@@ -89,14 +88,14 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 base_model.name, base_model.version
             )
 
-        self.registry_client.setup_run(mlflow_runname(self.config))
+        self.registry_client.setup_run()
         self.metrics = dict()
 
         # disk cache is used for saving memory in case model is large
         # automatic eviction of disk cache is disabled with cull_limit 0
         self.cache = Cache()
-        self.cache.reset('size_limit', 1e15)
-        self.cache.reset('cull_limit', 0)
+        self.cache.reset("size_limit", 1e15)
+        self.cache.reset("cull_limit", 0)
 
         self.optimizer = optimizer_provider.get(
             self.config.optimizer.sort, **self.config.optimizer.kwargs

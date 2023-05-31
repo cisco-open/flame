@@ -44,6 +44,7 @@ setup(
         "gpustat",
         "psutil",
         "numpy",
+        "pathlib",
     ],
     extras_require={
         "dev": ["pre-commit", "black", "flake8", "bandit", "mypy", "isort",],

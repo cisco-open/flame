@@ -17,17 +17,19 @@
 
 from typing import Union
 
-from .config import RegistryType
-from .object_factory import ObjectFactory
-from .registry.dummy import DummyRegistryClient
-from .registry.mlflow import MLflowRegistryClient
+from flame.config import RegistryType
+from flame.object_factory import ObjectFactory
+from flame.registry.dummy import DummyRegistryClient
+from flame.registry.mlflow import MLflowRegistryClient
+from flame.registry.local import LocalRegistryClient
 
 
 class RegistryProvider(ObjectFactory):
     """Model registry provider."""
 
-    def get(self, registry_name,
-            **kwargs) -> Union[DummyRegistryClient, MLflowRegistryClient]:
+    def get(
+        self, registry_name, **kwargs
+    ) -> Union[DummyRegistryClient, MLflowRegistryClient]:
         """Return a registry client for a given registry name."""
         return self.create(registry_name, **kwargs)
 
@@ -35,3 +37,4 @@ class RegistryProvider(ObjectFactory):
 registry_provider = RegistryProvider()
 registry_provider.register(RegistryType.DUMMY, DummyRegistryClient)
 registry_provider.register(RegistryType.MLFLOW, MLflowRegistryClient)
+registry_provider.register(RegistryType.LOCAL, LocalRegistryClient)
