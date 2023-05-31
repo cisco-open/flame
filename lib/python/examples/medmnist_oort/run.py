@@ -19,14 +19,13 @@ import sys
 import json
 
 # get trial
-if len(sys.argv) != 3:
+if len(sys.argv) != 2:
     # logger?
     raise Exception(
-        "Wrong number of arguments; expected 2\nExample usage: python run.py (num of trainers to select) (num of total trainers)"
+        "Wrong number of arguments; expected 1\nExample usage: python run.py (num of trainers to aggregate per round)"
     )
 
 aggr_num = int(sys.argv[1])
-total_trainer_num = int(sys.argv[2])
 
 # generate json files
 job_id = "622a358619ab59012eabeefb"
@@ -41,7 +40,8 @@ def generate_config(filename, num):
     if not num:
         data["selector"]["kwargs"]["aggr_num"] = aggr_num
     data["job"]["id"] = job_id
-
+    base = "https://github.com/GustavBaumgart/flame-datasets/raw/main/medmnist/"
+    data["dataset"] = f"{base}site{num}.npz" if num else f"{base}all_val.npz"
     data["taskid"] = f"{str(task_id+num)}" if num else str(task_id)
 
     # save json data
@@ -51,19 +51,22 @@ def generate_config(filename, num):
 
 
 # make directory for output files
-os.system("mkdir output")
-os.system("mkdir output/aggregator")
-os.system("mkdir output/trainer")
+os.makedirs("output", exist_ok=True)
+os.makedirs("output/aggregator", exist_ok=True)
+os.makedirs("output/trainer", exist_ok=True)
 
-for i in range(1, total_trainer_num + 1):
+num_trainers = 10
+for i in range(1, num_trainers + 1):
     filename = f"config/trainer{i}.json"
     generate_config(filename, i)
-
     os.chdir("trainer")
+    os.system(f"rm -rf trainer{i}")
+    os.system(f"mkdir trainer{i}")
+    os.chdir(f"trainer{i}")
     os.system(
-        f"python main.py ../config/trainer{i}.json > ../output/trainer/trainer{i}.log 2>&1 &"
+        f"python ../main.py ../../config/trainer{i}.json > ../../output/trainer/trainer{i}.log 2>&1 &"
     )
-    os.chdir("..")
+    os.chdir("../..")
 
 filename = "config/aggregator.json"
 generate_config(filename, 0)

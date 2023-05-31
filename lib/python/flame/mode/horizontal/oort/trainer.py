@@ -17,12 +17,13 @@
 
 import logging
 import math
-from typing import Callable
+import inspect
 
 import torch
 from flame.channel import VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device
+from flame.common.custom_abcmeta import abstract_attribute
 from flame.mode.composer import Composer
 from flame.mode.horizontal.syncfl.trainer import TAG_FETCH, TAG_UPLOAD
 from flame.mode.horizontal.syncfl.trainer import Trainer as BaseTrainer
@@ -34,6 +35,10 @@ logger = logging.getLogger(__name__)
 
 class Trainer(BaseTrainer):
     """Oort Trainer implements an ML training role."""
+
+    @abstract_attribute
+    def loss_fn(self):
+        """Abstract attribute for loss function."""
 
     def _send_weights(self, tag: str) -> None:
         """
@@ -74,23 +79,41 @@ class Trainer(BaseTrainer):
         """Initialize Oort variables."""
         self._stat_utility = 0
 
+        if 'reduction' not in inspect.signature(self.loss_fn).parameters:
+            msg = "Parameter 'reduction' not found in loss function "
+            msg += f"'{self.loss_fn.__name__}', which is required for Oort"
+            raise TypeError(msg)
+
     def oort_loss(
         self,
-        loss_fn: Callable[..., torch.Tensor],
         output: torch.Tensor,
         target: torch.Tensor,
         epoch: int,
+        batch_idx: int,
+        **kwargs
     ) -> torch.Tensor:
         """
         Measure the loss of a trainer during training.
         The trainer's statistical utility is measured at epoch 1.
         """
-        if epoch == 1:
-            loss_list = loss_fn(output, target, reduction="none")
+        if epoch == 1 and batch_idx == 0:
+            if 'reduction' in kwargs.keys():
+                reduction = kwargs['reduction']
+            else:
+                reduction = 'mean' # default reduction policy is mean
+            kwargs_wo_reduction = {key: value for key, value in kwargs.items() if key != 'reduction'}
+
+            criterion = self.loss_fn(reduction='none', **kwargs_wo_reduction)
+            loss_list = criterion(output, target)
             self._stat_utility += torch.square(loss_list).sum()
-            loss = loss_list.mean()
+            
+            if reduction == 'mean':
+                loss = loss_list.mean()
+            elif reduction == 'sum':
+                loss = loss_list.sum()
         else:
-            loss = loss_fn(output, target)
+            criterion = self.loss_fn(**kwargs)
+            loss = criterion(output, target)
 
         return loss
 

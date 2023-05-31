@@ -20,9 +20,10 @@ import random
 import math
 import numpy as np
 
-from ..common.typing import Scalar
-from ..end import End
-from . import AbstractSelector, SelectorReturnType
+from flame.common.util import MLFramework, get_ml_framework_in_use
+from flame.common.typing import Scalar
+from flame.end import End
+from flame.selector import AbstractSelector, SelectorReturnType
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,12 @@ class OortSelector(AbstractSelector):
     def __init__(self, **kwargs):
         """Initailize instance."""
         super().__init__(**kwargs)
+
+        ml_framework_in_use = get_ml_framework_in_use()
+        if ml_framework_in_use != MLFramework.PYTORCH:
+            raise NotImplementedError(
+                "FedBalancer is currently only implemented in PyTorch;"
+            )
 
         try:
             self.aggr_num = kwargs["aggr_num"]
@@ -85,7 +92,7 @@ class OortSelector(AbstractSelector):
         logger.debug(f"let's select {num_of_ends} ends for new round {round}")
 
         # Return existing selected end_ids if the round did not proceed
-        if round <= self.round:
+        if round <= self.round and len(self.selected_ends) != 0:
             return {key: None for key in self.selected_ends}
 
         # Run pacer that controls round_threshold
@@ -142,7 +149,7 @@ class OortSelector(AbstractSelector):
             explore_end_ids = self.sample_by_speed(unexplored_end_ids, exploration_len)
         logger.debug(f"explore-selected ends: {explore_end_ids}")
 
-        self.selected_ends = [*exploit_end_ids, *explore_end_ids]
+        self.selected_ends = [*explore_end_ids, *exploit_end_ids]
 
         # save the history of exploited utility at this round for pacer
         self.save_exploited_utility_history(ends, exploit_end_ids)
@@ -225,7 +232,7 @@ class OortSelector(AbstractSelector):
 
         if (
             len(self.exploitation_util_history) >= 2 * self.pacer_step
-            and self.round % self.args.pacer_step == 0
+            and self.round % self.pacer_step == 0
         ):
             last_pacer_step_util = sum(
                 self.exploitation_util_history[-2 * self.pacer_step : -self.pacer_step]
