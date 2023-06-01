@@ -17,9 +17,6 @@
 package app
 
 import (
-	"encoding/json"
-	"fmt"
-	"strconv"
 	"time"
 
 	"go.uber.org/zap"
@@ -29,69 +26,6 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
 )
-
-const taskLimit = 10
-
-func (r *resourceHandler) monitorJobs() {
-	go r.monitorRunningJobs()
-	go r.monitorPods()
-}
-
-func (r *resourceHandler) monitorRunningJobs() error {
-	for {
-		jobs, err := r.getJobs()
-		if err != nil {
-			zap.S().Errorf("failed to get jobs: %v", err)
-			continue
-		}
-
-		for _, job := range jobs {
-			if job.State == openapi.RUNNING {
-				taskInfo, err := r.getTasks(job.Id, taskLimit)
-				if err != nil {
-					zap.S().Errorf("failed to get tasks: %v", err)
-					continue
-				}
-				for _, task := range taskInfo {
-					if task.State != openapi.RUNNING {
-						continue
-					}
-
-					r.dplyr.MonitorTask(task.JobId, task.TaskId)
-				}
-			}
-		}
-
-		// wait for some time before checking the status of pods again
-		time.Sleep(time.Minute)
-	}
-}
-
-func (r *resourceHandler) getJobs() ([]openapi.JobStatus, error) {
-	// construct URL
-	uriMap := map[string]string{
-		constants.ParamComputeID: r.spec.ComputeId,
-	}
-	url := restapi.CreateURL(r.apiserverEp, restapi.GetJobsByComputeEndPoint, uriMap)
-
-	code, body, err := restapi.HTTPGet(url)
-	if err != nil || restapi.CheckStatusCode(code) != nil {
-		var msg string
-		_ = json.Unmarshal(body, &msg)
-		zap.S().Errorf("Failed to retrieve jobs' status - code: %d; %s\n", code, msg)
-		return nil, nil
-	}
-
-	// convert the response into list of struct
-	var infoList []openapi.JobStatus
-	err = json.Unmarshal(body, &infoList)
-	if err != nil {
-		zap.S().Errorf("Failed to unmarshal job status: %v\n", err)
-		return nil, err
-	}
-
-	return infoList, nil
-}
 
 func (r *resourceHandler) monitorPods() {
 	if err := r.dplyr.Initialize("", r.namespace); err != nil {
@@ -121,16 +55,8 @@ func (r *resourceHandler) monitorPods() {
 					continue
 				}
 
-				err = r.updateJobStatus(pod.JobID, openapi.JobStatus{
-					Id:    pod.JobID,
-					State: openapi.FAILED,
-				})
-				if err != nil {
-					zap.S().Errorf("failed to update job status: %v", err)
-					continue
-				}
-
 				r.dplyr.DeleteTaskFromMonitoring(pod.TaskID)
+				zap.S().Info("task % failed", pod.TaskID)
 			}
 		}
 
@@ -158,53 +84,4 @@ func (r *resourceHandler) updateTaskStatus(jobId, taskId string, taskStatus open
 	}
 
 	return nil
-}
-
-func (r *resourceHandler) updateJobStatus(jobId string, status openapi.JobStatus) error {
-	zap.S().Debugf("Updating task status for job %s", jobId)
-
-	// create controller request
-	uriMap := map[string]string{
-		constants.ParamJobID: jobId,
-	}
-	url := restapi.CreateURL(r.apiserverEp, restapi.UpdateJobStatusEndPoint, uriMap)
-
-	// send put request
-	code, _, err := restapi.HTTPPut(url, status, "application/json")
-	if err != nil || restapi.CheckStatusCode(code) != nil {
-		zap.S().Errorf("Failed to update job status %v for job %s - code: %d, error: %v\n",
-			status, jobId, code, err)
-		return err
-	}
-
-	return nil
-}
-
-func (r *resourceHandler) getTasks(jobId string, limit int) ([]openapi.TaskInfo, error) {
-	uriMap := map[string]string{
-		constants.ParamUser:    r.spec.ComputeId,
-		constants.ParamJobID:   jobId,
-		constants.ParamLimit:   strconv.Itoa(limit),
-		constants.ParamGeneric: "true",
-	}
-	url := restapi.CreateURL(r.apiserverEp, restapi.GetTasksInfoEndpoint, uriMap)
-
-	code, body, err := restapi.HTTPGet(url)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch task")
-	}
-
-	if err = restapi.CheckStatusCode(code); err != nil {
-		return nil, err
-	}
-
-	// convert the response into list of struct
-	var taskInfo []openapi.TaskInfo
-	err = json.Unmarshal(body, &taskInfo)
-	if err != nil {
-		fmt.Printf("Failed to unmarshal job status: %v\n", err)
-		return nil, err
-	}
-
-	return taskInfo, nil
 }
