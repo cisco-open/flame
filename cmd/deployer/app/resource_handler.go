@@ -119,7 +119,7 @@ func NewResourceHandler(cfg *config.Config, computeSpec openapi.ComputeSpec, bIn
 func (r *resourceHandler) Start() {
 	go r.doStart()
 
-	r.monitorJobs()
+	go r.monitorPods()
 }
 
 func (r *resourceHandler) doStart() {
