@@ -23,7 +23,7 @@ import pickle
 from collections import defaultdict
 from pathlib import Path
 import shutil
-
+import time
 
 from flame.common.util import get_ml_framework_in_use, MLFramework
 from flame.config import Hyperparameters
@@ -75,13 +75,14 @@ class LocalRegistryClient(AbstractRegistryClient):
 
     def save_metrics(self, epoch: int, metrics: Optional[dict[str, float]]) -> None:
         """Save metrics in a model registry."""
+        curr_time = time.time()
         for metric in metrics:
             filename = os.path.join(self.registry_path, METRICS, metric)
             exists = os.path.exists(filename)
             with open(filename, "a+") as file:
                 csv_writer = csv.writer(file)
-                csv_writer.writerow(["round", metric]) if not exists else None
-                csv_writer.writerow([epoch, metrics[metric]])
+                csv_writer.writerow(["round", "time", metric]) if not exists else None
+                csv_writer.writerow([epoch, curr_time, metrics[metric]])
 
     def save_params(self, hyperparameters: Optional[Hyperparameters]) -> None:
         """Save hyperparameters in a model registry."""
