@@ -465,10 +465,6 @@ func (b *JobBuilder) isTemplatesConnected(templates map[string]*taskTemplate) er
 	// If no error is thrown during the executiom of this function, then it returns a nil value.
 }
 
-func (b *JobBuilder) isConverging(dataRoles []string, templates map[string]*taskTemplate) bool {
-	return true
-}
-
 func (b *JobBuilder) postCheck(dataRoles []string, templates map[string]*taskTemplate) error {
 	// This function will evolve as more invariants are defined
 	// At the end of processing templates, the following invariants should be met:
