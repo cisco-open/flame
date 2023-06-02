@@ -56,7 +56,7 @@ func (r *resourceHandler) monitorPods() {
 				}
 
 				r.dplyr.DeleteTaskFromMonitoring(pod.TaskID)
-				zap.S().Info("task % failed", pod.TaskID)
+				zap.S().Info("task %s failed; pod status: %s", pod.TaskID, pod.Status.Phase)
 			}
 		}
 

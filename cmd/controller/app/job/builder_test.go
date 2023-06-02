@@ -193,52 +193,52 @@ func TestIsTemplatesConnected(t *testing.T) {
 	builder.schema.Channels[0].Pair = savedPair
 }
 
-func TestIsConverging(t *testing.T) {
-	t.Skipf("Skip for now")
+// func TestIsConverging(t *testing.T) {
+// 	t.Skipf("Skip for now")
 
-	builder := NewJobBuilder(nil, config.JobParams{})
-	assert.NotNil(t, builder)
-	builder.jobSpec = &testJobSpec
+// 	builder := NewJobBuilder(nil, config.JobParams{})
+// 	assert.NotNil(t, builder)
+// 	builder.jobSpec = &testJobSpec
 
-	// success case
-	builder.schema = testSchema
-	builder.datasets["trainer"][composeGroup(defaultGroup, "uk")] = testDatasets
-	builder.roleCode = testRoleCode
-	dataRoles, templates := builder.getTaskTemplates()
-	res := builder.isConverging(dataRoles, templates)
-	assert.True(t, res)
+// 	// success case
+// 	builder.schema = testSchema
+// 	builder.datasets["trainer"][composeGroup(defaultGroup, "uk")] = testDatasets
+// 	builder.roleCode = testRoleCode
+// 	dataRoles, templates := builder.getTaskTemplates()
+// 	res := builder.isConverging(dataRoles, templates)
+// 	assert.True(t, res)
 
-	// failure case
-	testSchema.Channels[1].GroupBy.Type = "tag"
-	testSchema.Channels[1].GroupBy.Value = []string{
-		composeGroup(defaultGroup, "uk"),
-		composeGroup(defaultGroup, "us"),
-	}
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.False(t, res)
-	// reset the changes
-	testSchema.Channels[1].GroupBy.Type = ""
-	testSchema.Channels[1].GroupBy.Value = nil
+// 	// failure case
+// 	testSchema.Channels[1].GroupBy.Type = "tag"
+// 	testSchema.Channels[1].GroupBy.Value = []string{
+// 		composeGroup(defaultGroup, "uk"),
+// 		composeGroup(defaultGroup, "us"),
+// 	}
+// 	dataRoles, templates = builder.getTaskTemplates()
+// 	res = builder.isConverging(dataRoles, templates)
+// 	assert.False(t, res)
+// 	// reset the changes
+// 	testSchema.Channels[1].GroupBy.Type = ""
+// 	testSchema.Channels[1].GroupBy.Value = nil
 
-	// success case
-	builder.schema = testSchemaWithTwoDataConsumers
-	builder.datasets["trainer"][composeGroup(defaultGroup, "uk")] = testDatasets
-	builder.roleCode = testRoleCodeWithTwoDataConsumers
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.True(t, res)
+// 	// success case
+// 	builder.schema = testSchemaWithTwoDataConsumers
+// 	builder.datasets["trainer"][composeGroup(defaultGroup, "uk")] = testDatasets
+// 	builder.roleCode = testRoleCodeWithTwoDataConsumers
+// 	dataRoles, templates = builder.getTaskTemplates()
+// 	res = builder.isConverging(dataRoles, templates)
+// 	assert.True(t, res)
 
-	// failure case
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = "tag"
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{
-		composeGroup(defaultGroup, "uk"),
-		composeGroup(defaultGroup, "us"),
-	}
-	dataRoles, templates = builder.getTaskTemplates()
-	res = builder.isConverging(dataRoles, templates)
-	assert.False(t, res)
-	// reset the changes
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = ""
-	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = nil
-}
+// 	// failure case
+// 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = "tag"
+// 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = []string{
+// 		composeGroup(defaultGroup, "uk"),
+// 		composeGroup(defaultGroup, "us"),
+// 	}
+// 	dataRoles, templates = builder.getTaskTemplates()
+// 	res = builder.isConverging(dataRoles, templates)
+// 	assert.False(t, res)
+// 	// reset the changes
+// 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Type = ""
+// 	testSchemaWithTwoDataConsumers.Channels[2].GroupBy.Value = nil
+// }
