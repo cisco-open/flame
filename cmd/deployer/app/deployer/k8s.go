@@ -39,6 +39,7 @@ type TaskHealthDetails struct {
 	Status       v1.PodStatus `json:"status"`
 	JobName      string       `json:"job_name"`
 	CreationTime time.Time    `json:"creation_time"`
+	UnknownCount int
 }
 
 type K8sDeployer struct {
@@ -178,6 +179,7 @@ func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDet
 			return nil, err
 		} else if len(out.Items) == 0 {
 			pod.Status = v1.PodStatus{Phase: v1.PodUnknown}
+			pod.UnknownCount++
 		} else {
 			if len(out.Items) > 1 {
 				sort.Slice(out.Items, func(i, j int) bool {
@@ -196,8 +198,12 @@ func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDet
 
 				if lastPod.Status.Phase == v1.PodPending || lastPod.Status.Phase == v1.PodRunning {
 					pod.Status = lastPod.Status
+					// reset unknown count
+					pod.UnknownCount = 0
 				} else if lastPod.Status.Phase == v1.PodSucceeded {
 					deployer.DeleteTaskFromMonitoring(pod.TaskID)
+				} else if lastPod.Status.Phase == v1.PodUnknown {
+					pod.UnknownCount++
 				} else {
 					pod.Status = lastPod.Status
 				}
@@ -206,6 +212,7 @@ func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDet
 
 		// update the pod status
 		deployer.DeployedTasks[pod.TaskID] = pod
+		zap.S().Infof("Pod status of task %s = %s", pod.TaskID, pod.Status.Phase)
 	}
 
 	return deployer.DeployedTasks, nil

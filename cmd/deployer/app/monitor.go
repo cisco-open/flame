@@ -27,6 +27,11 @@ import (
 	"github.com/cisco-open/flame/pkg/restapi"
 )
 
+const (
+	tolerateCount    = 5
+	monitorFrequency = time.Minute
+)
+
 func (r *resourceHandler) monitorPods() {
 	if err := r.dplyr.Initialize("", r.namespace); err != nil {
 		zap.S().Errorf("failed to initialize a job deployer: %v", err)
@@ -40,7 +45,10 @@ func (r *resourceHandler) monitorPods() {
 		} else if len(taskHealthDetails) > 0 {
 			for _, pod := range taskHealthDetails {
 				if pod.Status.Phase == v1.PodPending ||
-					pod.Status.Phase == v1.PodRunning {
+					pod.Status.Phase == v1.PodRunning ||
+					pod.UnknownCount <= tolerateCount {
+					// we will tolerate up to "tolerateCount" number of unknown phases
+					// The total time to tolerate is "monitorFrequency" * "tolerateCount"
 					continue
 				}
 
@@ -56,12 +64,12 @@ func (r *resourceHandler) monitorPods() {
 				}
 
 				r.dplyr.DeleteTaskFromMonitoring(pod.TaskID)
-				zap.S().Info("task %s failed; pod status: %s", pod.TaskID, pod.Status.Phase)
+				zap.S().Infof("task %s failed; pod status: %s", pod.TaskID, pod.Status.Phase)
 			}
 		}
 
 		// wait for some time before checking the status of pods again
-		time.Sleep(time.Minute)
+		time.Sleep(monitorFrequency)
 	}
 }
 

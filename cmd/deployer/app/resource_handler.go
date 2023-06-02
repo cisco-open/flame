@@ -259,6 +259,10 @@ func (r *resourceHandler) revokeResource(jobId string) (err error) {
 				continue
 			}
 			taskStatuses[taskId] = openapi.AGENT_REVOKE_SUCCESS
+
+			// stop monitoring of task
+			r.dplyr.DeleteTaskFromMonitoring(taskId)
+
 			// 2.delete all the task resource specification files
 			deploymentChartPath := filepath.Join(r.deploymentDirPath, jobId, taskId)
 			removeErr := os.RemoveAll(deploymentChartPath)
