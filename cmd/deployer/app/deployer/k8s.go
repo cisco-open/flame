@@ -180,6 +180,7 @@ func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDet
 		} else if len(out.Items) == 0 {
 			pod.Status = v1.PodStatus{Phase: v1.PodUnknown}
 			pod.UnknownCount++
+			zap.S().Debugf("Items are empty")
 		} else {
 			if len(out.Items) > 1 {
 				sort.Slice(out.Items, func(i, j int) bool {
@@ -191,22 +192,28 @@ func (deployer *K8sDeployer) GetMonitoredPodStatuses() (map[string]TaskHealthDet
 
 			lastPod := out.Items[0]
 
-			podCreationTime := lastPod.ObjectMeta.CreationTimestamp.Time
+			pod.CreationTime = lastPod.ObjectMeta.CreationTimestamp.Time
 
-			if podCreationTime.After(pod.CreationTime) {
-				pod.CreationTime = podCreationTime
+			switch lastPod.Status.Phase {
+			case v1.PodPending:
+				fallthrough
 
-				if lastPod.Status.Phase == v1.PodPending || lastPod.Status.Phase == v1.PodRunning {
-					pod.Status = lastPod.Status
-					// reset unknown count
-					pod.UnknownCount = 0
-				} else if lastPod.Status.Phase == v1.PodSucceeded {
-					deployer.DeleteTaskFromMonitoring(pod.TaskID)
-				} else if lastPod.Status.Phase == v1.PodUnknown {
-					pod.UnknownCount++
-				} else {
-					pod.Status = lastPod.Status
-				}
+			case v1.PodRunning:
+				pod.Status = lastPod.Status
+				// reset unknown count
+				pod.UnknownCount = 0
+
+			case v1.PodSucceeded:
+				deployer.DeleteTaskFromMonitoring(pod.TaskID)
+
+			case v1.PodUnknown:
+				pod.UnknownCount++
+
+			case v1.PodFailed:
+				fallthrough
+
+			default:
+				pod.Status = lastPod.Status
 			}
 		}
 
