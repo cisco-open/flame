@@ -229,8 +229,9 @@ class Channel(object):
             payload = None
             try:
                 payload = await self._ends[end_id].get()
-                # ignore timestamp for measuring bytes received
-                self.mc.accumulate("bytes", "recv", len(payload[0]))
+                if payload:
+                    # ignore timestamp for measuring bytes received
+                    self.mc.accumulate("bytes", "recv", len(payload[0]))
             except KeyError:
                 return None
 
@@ -345,8 +346,9 @@ class Channel(object):
             payload = None
             try:
                 payload = await self._ends[end_id].get()
-                # ignore timestamp for measuring bytes received
-                self.mc.accumulate("bytes", "recv", len(payload[0]))
+                if payload:
+                    # ignore timestamp for measuring bytes received
+                    self.mc.accumulate("bytes", "recv", len(payload[0]))
             except KeyError:
                 yield end_id, None
 
