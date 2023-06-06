@@ -64,9 +64,9 @@ minio:
       - minio.flame.test
 
 imageName: ciscoresearch/flame
-imageTag: v0.2.2
+imageTag: v0.2.3
 workerImageName: ciscoresearch/flame
-workerImageTag: v0.2.2
+workerImageTag: v0.2.3
 
 broker:
   - sort: mqtt
