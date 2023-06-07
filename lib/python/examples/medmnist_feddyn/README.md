@@ -2,13 +2,8 @@
 
 We use the PathMNIST dataset from (MedMNIST)[https://medmnist.com/] to go over an example of FedDyn (alpha=0.01).
 Here, the alpha value can be specified in both `template.json` files in the `trainer` and `aggregator` folders.
-We chose the most commonly used value in the (Federated Learning Based on Dynamic Regularization)[https://arxiv.org/abs/2111.04263] paper, along with the same `weight_decay` value used (0.001). The learning rate was chosen to be 0.001, because a larger one did not allow the models to train well.
+We chose the most commonly used value in the (Federated Learning Based on Dynamic Regularization)[https://arxiv.org/abs/2111.04263] paper, along with the `weight_decay` value (0.00001). The learning rate was chosen to be 0.001, because a larger one did not allow the models to train well.
 
-Since we include the `weight_decay` value as a hyperparameter to the feddyn optimizer in the config file, we recommend setting the `self.optimizer`'s `weight_decay` value in `trainer/main.py` to be 0.0, as shown below.
-
-```python
-self.optimizer = torch.optim.Adam(self.model.parameters(), lr=1e-3, weight_decay=0.0)
-```
 
 This example is run within the conda environment, so we activate the environment first.
 Once you are in the `medmnist_feddyn` directory, run the following command.

@@ -17,8 +17,8 @@
 import logging
 
 from flame.common.constants import TrainState
-from flame.common.util import (get_params_detached_pytorch, get_params_as_vector_pytorch)
-from .default import Regularizer
+from flame.common.util import get_params_detached_pytorch, get_params_as_vector_pytorch
+from flame.optimizer.regularizer.default import Regularizer
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +26,14 @@ logger = logging.getLogger(__name__)
 class FedDynRegularizer(Regularizer):
     """FedDyn Regularizer class."""
 
-    def __init__(self, alpha, weight_decay):
+    def __init__(self, alpha):
         """Initialize FedDynRegularizer instance."""
         super().__init__()
         self.alpha = alpha
-        self.weight_decay = weight_decay
-        
+
         # save states in dictionary
         self.state_dict = dict()
-        
+
         # prev_grad is initialized to 0.0 for simplicity of implementation
         # this later becomes a tensor of length equal to the number of parameters
         self.prev_grad = 0.0
@@ -42,55 +41,62 @@ class FedDynRegularizer(Regularizer):
     def get_term(self, **kwargs):
         """Calculate extra terms for client-side regularization."""
         import torch
-        curr_model = kwargs['curr_model']
-        prev_model = kwargs['prev_model']
+
+        curr_model = kwargs["curr_model"]
+        prev_model = kwargs["prev_model"]
 
         w = [param for param in curr_model.parameters()]
         w_t = [param for param in prev_model.parameters()]
-        
+
         # concatenate weights into a vector
         w_vector = get_params_as_vector_pytorch(w)
         w_t_vector = get_params_as_vector_pytorch(w_t)
-        
+
         # weight decay term using alpha parameter
-        w_decay_term = ((self.alpha + self.weight_decay) / 2) * torch.sum(torch.pow(w_vector, 2))
-        
+        w_decay_term = (self.alpha / 2) * torch.sum(torch.pow(w_vector, 2))
+
         # remaining loss term
         loss_algo = self.alpha * torch.sum(w_vector * (-w_t_vector + self.prev_grad))
-        
+
         return loss_algo + w_decay_term
-        
+
     def save_state(self, state: TrainState, **kwargs):
         if state == TrainState.PRE:
-            self.state_dict['glob_model'] = get_params_detached_pytorch(kwargs['glob_model'])
+            self.state_dict["glob_model"] = get_params_detached_pytorch(
+                kwargs["glob_model"]
+            )
         elif state == TrainState.POST:
-            self.state_dict['loc_model'] = get_params_detached_pytorch(kwargs['loc_model'])
+            self.state_dict["loc_model"] = get_params_detached_pytorch(
+                kwargs["loc_model"]
+            )
 
     def update(self):
         """Update the previous gradient."""
-        w = self.state_dict['loc_model']
-        w_t = self.state_dict['glob_model']
-        
+        w = self.state_dict["loc_model"]
+        w_t = self.state_dict["glob_model"]
+
         # concatenate weights into a vector
         w_vector = get_params_as_vector_pytorch(w)
         w_t_vector = get_params_as_vector_pytorch(w_t)
-        
+
         # adjust prev_grad
-        self.prev_grad += (w_vector - w_t_vector)
-    
+        self.prev_grad += w_vector - w_t_vector
+
     def to(self, device):
         """Returns a new Regularizer that has been moved to the specified device."""
         import torch
-        new_regularizer = FedDynRegularizer(self.alpha, self.weight_decay)
+
+        new_regularizer = FedDynRegularizer(self.alpha)
         # state_dict
         for key in self.state_dict:
-            new_regularizer.state_dict[key] = [param.to(device) for param in self.state_dict[key]]
-        
+            new_regularizer.state_dict[key] = [
+                param.to(device) for param in self.state_dict[key]
+            ]
+
         # prev_grad
         if isinstance(self.prev_grad, torch.Tensor):
             new_regularizer.prev_grad = self.prev_grad.to(device)
         else:
             new_regularizer.prev_grad = self.prev_grad
-        
+
         return new_regularizer
-        
