@@ -29,6 +29,7 @@ from sklearn.metrics import accuracy_score
 
 logger = logging.getLogger(__name__)
 
+
 class CNN(torch.nn.Module):
     """CNN Class"""
 
@@ -38,11 +39,14 @@ class CNN(torch.nn.Module):
         self.num_classes = num_classes
         self.features = torch.nn.Sequential(
             torch.nn.Conv2d(3, 6, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(6), torch.nn.ReLU(),
+            torch.nn.BatchNorm2d(6),
+            torch.nn.ReLU(),
             torch.nn.MaxPool2d(kernel_size=2, stride=2),
             torch.nn.Conv2d(6, 16, kernel_size=3, padding=1),
-            torch.nn.BatchNorm2d(16), torch.nn.ReLU(),
-            torch.nn.MaxPool2d(kernel_size=2, stride=2))
+            torch.nn.BatchNorm2d(16),
+            torch.nn.ReLU(),
+            torch.nn.MaxPool2d(kernel_size=2, stride=2),
+        )
         self.fc = torch.nn.Linear(16 * 7 * 7, num_classes)
 
     def forward(self, x):
@@ -53,22 +57,21 @@ class CNN(torch.nn.Module):
 
 
 class PathMNISTDataset(torch.utils.data.Dataset):
-
     def __init__(self, split, filename, transform=None, as_rgb=False):
         npz_file = np.load(filename)
         self.split = split
         self.transform = transform
         self.as_rgb = as_rgb
 
-        if self.split == 'train':
-            self.imgs = npz_file['train_images']
-            self.labels = npz_file['train_labels']
-        elif self.split == 'val':
-            self.imgs = npz_file['val_images']
-            self.labels = npz_file['val_labels']
-        elif self.split == 'test':
-            self.imgs = npz_file['test_images']
-            self.labels = npz_file['test_labels']
+        if self.split == "train":
+            self.imgs = npz_file["train_images"]
+            self.labels = npz_file["train_labels"]
+        elif self.split == "val":
+            self.imgs = npz_file["val_images"]
+            self.labels = npz_file["val_labels"]
+        elif self.split == "test":
+            self.imgs = npz_file["test_images"]
+            self.labels = npz_file["test_labels"]
 
     def __len__(self):
         return self.imgs.shape[0]
@@ -78,7 +81,7 @@ class PathMNISTDataset(torch.utils.data.Dataset):
         img = Image.fromarray(img)
 
         if self.as_rgb:
-            img = img.convert('RGB')
+            img = img.convert("RGB")
 
         if self.transform is not None:
             img = self.transform(img)
@@ -102,6 +105,7 @@ class PyTorchMedMNistTrainer(Trainer):
         self.epochs = self.config.hyperparameters.epochs
         self.batch_size = self.config.hyperparameters.batch_size
         self.lr = self.config.hyperparameters.learning_rate
+        self.weight_decay = self.config.hyperparameters.weight_decay
         self._round = 1
         self._rounds = self.config.hyperparameters.rounds
 
@@ -109,8 +113,10 @@ class PyTorchMedMNistTrainer(Trainer):
         """Initialize role."""
 
         self.model = CNN(num_classes=9).to(self.device)
-        # ensure that weight_decay = 0 for FedDyn if this parameter is specified in config file
-        self.optimizer = torch.optim.Adam(self.model.parameters(), lr=self.lr, weight_decay=0.0)
+
+        self.optimizer = torch.optim.Adam(
+            self.model.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
         self.criterion = torch.nn.CrossEntropyLoss()
 
     def load_data(self) -> None:
@@ -123,22 +129,30 @@ class PyTorchMedMNistTrainer(Trainer):
         """
 
         filename = get_dataset_filename(self.config.dataset)
- 
-        data_transform = torchvision.transforms.Compose([
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize((0.485, 0.456, 0.406), (0.229, 0.224, 0.225))
-        ])
 
-        train_dataset = PathMNISTDataset(split='train', filename=filename, transform=data_transform)
-        val_dataset = PathMNISTDataset(split='val', filename=filename, transform=data_transform)
+        data_transform = torchvision.transforms.Compose(
+            [
+                torchvision.transforms.ToTensor(),
+                torchvision.transforms.Normalize(
+                    (0.485, 0.456, 0.406), (0.229, 0.224, 0.225)
+                ),
+            ]
+        )
+
+        train_dataset = PathMNISTDataset(
+            split="train", filename=filename, transform=data_transform
+        )
+        val_dataset = PathMNISTDataset(
+            split="val", filename=filename, transform=data_transform
+        )
 
         self.train_loader = torch.utils.data.DataLoader(
-            train_dataset, 
-            batch_size=self.batch_size, 
-            shuffle=True, 
+            train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
             num_workers=4 * torch.cuda.device_count(),
             pin_memory=True,
-            drop_last=True
+            drop_last=True,
         )
         self.val_loader = torch.utils.data.DataLoader(
             val_dataset,
@@ -146,14 +160,14 @@ class PyTorchMedMNistTrainer(Trainer):
             shuffle=True,
             num_workers=4 * torch.cuda.device_count(),
             pin_memory=True,
-            drop_last=True
+            drop_last=True,
         )
 
         self.dataset_size = len(train_dataset)
 
     def train(self) -> None:
         """Train a model."""
-        
+
         # save global model first
         prev_model = deepcopy(self.model)
 
@@ -165,10 +179,14 @@ class PyTorchMedMNistTrainer(Trainer):
                 data, label = data.to(self.device), label.to(self.device)
                 self.optimizer.zero_grad()
                 output = self.model(data)
-                
+
                 # regularizer term included in loss
-                loss = self.criterion(output, label.reshape(-1).long()) + self.regularizer.get_term(curr_model = self.model, prev_model = prev_model)
-                
+                loss = self.criterion(
+                    output, label.reshape(-1).long()
+                ) + self.regularizer.get_term(
+                    curr_model=self.model, prev_model=prev_model
+                )
+
                 loss_lst.append(loss.item())
                 loss.backward()
                 self.optimizer.step()
@@ -180,8 +198,8 @@ class PyTorchMedMNistTrainer(Trainer):
         """Evaluate a model."""
         self.model.eval()
         loss_lst = list()
-        labels = torch.tensor([],device=self.device)
-        labels_pred = torch.tensor([],device=self.device)
+        labels = torch.tensor([], device=self.device)
+        labels_pred = torch.tensor([], device=self.device)
         with torch.no_grad():
             for data, label in self.val_loader:
                 data, label = data.to(self.device), label.to(self.device)
@@ -196,17 +214,23 @@ class PyTorchMedMNistTrainer(Trainer):
         val_acc = accuracy_score(labels, labels_pred)
 
         val_loss = sum(loss_lst) / len(loss_lst)
-        self.update_metrics({"Val Loss": val_loss, "Val Accuracy": val_acc, "Testset Size": len(self.val_loader)})
+        self.update_metrics(
+            {
+                "Val Loss": val_loss,
+                "Val Accuracy": val_acc,
+                "Testset Size": len(self.val_loader),
+            }
+        )
         logger.info(f"Test Loss: {val_loss}")
         logger.info(f"Test Accuracy: {val_acc}")
         logger.info(f"Test Set Size: {len(self.val_loader)}")
-            
+
 
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description='')
-    parser.add_argument('config', nargs='?', default="./config.json")
+    parser = argparse.ArgumentParser(description="")
+    parser.add_argument("config", nargs="?", default="./config.json")
 
     args = parser.parse_args()
 

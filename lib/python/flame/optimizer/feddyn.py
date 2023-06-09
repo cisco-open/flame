@@ -20,10 +20,10 @@
 import logging
 from flame.common.constants import TrainState
 from diskcache import Cache
-from ..common.typing import ModelWeights
-from ..common.util import (MLFramework, get_ml_framework_in_use)
-from .regularizer.feddyn import FedDynRegularizer
-from .fedavg import FedAvg
+from flame.common.typing import ModelWeights
+from flame.common.util import MLFramework, get_ml_framework_in_use
+from flame.optimizer.regularizer.feddyn import FedDynRegularizer
+from flame.optimizer.fedavg import FedAvg
 
 logger = logging.getLogger(__name__)
 
@@ -31,31 +31,31 @@ logger = logging.getLogger(__name__)
 class FedDyn(FedAvg):
     """FedDyn class."""
 
-    def __init__(self, alpha, weight_decay):
+    def __init__(self, alpha):
         """Initialize FedDyn instance."""
         ml_framework_in_use = get_ml_framework_in_use()
-        
+
         # only support pytorch
         if ml_framework_in_use != MLFramework.PYTORCH:
             raise NotImplementedError(
                 "supported ml framework not found; "
-                f"supported frameworks (for feddyn) are: {[MLFramework.PYTORCH.name.lower()]}")
-        
+                f"supported frameworks (for feddyn) are: {[MLFramework.PYTORCH.name.lower()]}"
+            )
+
         super().__init__()
-        
+
         self.alpha = alpha
-        self.weight_decay = weight_decay
         self.local_param_dict = dict()
         self.cld_model = None
-        
+
         # override parent's self.regularizer
-        self.regularizer = FedDynRegularizer(self.alpha, self.weight_decay)
+        self.regularizer = FedDynRegularizer(self.alpha)
         logger.debug("Initializing feddyn")
-    
+
     def save_state(self, state: TrainState, **kwargs):
         if state == TrainState.PRE:
-            active_ends = kwargs['active_ends']
-            
+            active_ends = kwargs["active_ends"]
+
             # adjust history terms to fit active trainers
             new_local_param_dict = dict()
             for end in active_ends:
@@ -64,17 +64,18 @@ class FedDyn(FedAvg):
                 else:
                     # default value for no diff history so far
                     new_local_param_dict[end] = None
-            
+
             self.local_param_dict = new_local_param_dict
-        
-    
-    def do(self,
-           base_weights: ModelWeights,
-           cache: Cache,
-           *,
-           total: int = 0,
-           version: int = 0,
-           **kwargs) -> ModelWeights:
+
+    def do(
+        self,
+        base_weights: ModelWeights,
+        cache: Cache,
+        *,
+        total: int = 0,
+        version: int = 0,
+        **kwargs,
+    ) -> ModelWeights:
         """Do aggregates models of trainers.
 
         Parameters
@@ -89,46 +90,50 @@ class FedDyn(FedAvg):
         aggregated model: type dict (pytorch)
         """
         logger.debug("calling feddyn")
-        
-        assert (base_weights is not None)
+
+        assert base_weights is not None
 
         # reset global weights before aggregation
         self.agg_weights = base_weights
 
         if len(cache) == 0 or total == 0:
             return None
-        
+
         # get unweighted mean of selected trainers
         rate = 1 / len(cache)
         for k in list(cache.iterkeys()):
             tres = cache.pop(k)
             self.add_to_hist(k, tres)
             self.aggregate_fn(tres, rate)
-        
+
         avg_model = self.agg_weights
-        
+
         # perform unweighted mean on all hist terms
-        mean_local_param = {k:0.0 for k in avg_model}
+        mean_local_param = {k: 0.0 for k in avg_model}
         rate = 1 / len(self.local_param_dict)
         for end in self.local_param_dict:
             if self.local_param_dict[end] != None:
                 h = self.local_param_dict[end]
-                mean_local_param = {k:v + rate*h[k] for (k,v) in mean_local_param.items()}
-        
+                mean_local_param = {
+                    k: v + rate * h[k] for (k, v) in mean_local_param.items()
+                }
+
         # keep this model as the initial model for the next round of training
-        self.cld_model = {k:avg_model[k]+mean_local_param[k] for k in avg_model}
-        
+        self.cld_model = {k: avg_model[k] + mean_local_param[k] for k in avg_model}
+
         return avg_model
-    
+
     def add_to_hist(self, end, tres):
         if end in self.local_param_dict:
             if self.local_param_dict[end] == None:
                 self.local_param_dict[end] = tres.weights
             else:
                 # aggregate diffs
-                self.local_param_dict[end] = {k:v+tres.weights[k] for (k,v)  in self.local_param_dict[end].items()}
+                self.local_param_dict[end] = {
+                    k: v + tres.weights[k]
+                    for (k, v) in self.local_param_dict[end].items()
+                }
         else:
             # case: end was not previously recorded as active trainer
             logger.debug(f"adding untracked end {end} to hist terms")
             self.local_param_dict[end] = tres.weights
-

@@ -49,6 +49,7 @@
     "hyperparameters": {
         "batchSize": 50,
         "learningRate": 0.001,
+        "weightDecay": 0.00001,
         "rounds": 100,
         "epochs": 4
     },
@@ -71,8 +72,7 @@
     "optimizer": {
         "sort": "feddyn",
         "kwargs": {
-            "alpha": 0.01,
-            "weight_decay": 0.001
+            "alpha": 0.01
         }
     },
     "maxRunTime": 300,

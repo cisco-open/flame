@@ -128,6 +128,7 @@ class BaseModel(FlameSchema):
 class Hyperparameters(FlameSchema):
     batch_size: t.Optional[int] = Field(alias="batchSize")
     learning_rate: t.Optional[float] = Field(alias="learningRate")
+    weight_decay: t.Optional[float] = Field(alias="weightDecay")
     rounds: int
     epochs: int
     aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
