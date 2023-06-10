@@ -20,7 +20,7 @@ import typing as t
 from enum import Enum
 
 from pydantic import BaseModel as pydBaseModel
-from pydantic import Field
+from pydantic import Extra, Field
 
 
 class FlameSchema(pydBaseModel):
@@ -125,7 +125,7 @@ class BaseModel(FlameSchema):
     version: int = Field(default=0)
 
 
-class Hyperparameters(FlameSchema):
+class Hyperparameters(FlameSchema, extra=Extra.allow):
     batch_size: t.Optional[int] = Field(alias="batchSize")
     learning_rate: t.Optional[float] = Field(alias="learningRate")
     weight_decay: t.Optional[float] = Field(alias="weightDecay")
