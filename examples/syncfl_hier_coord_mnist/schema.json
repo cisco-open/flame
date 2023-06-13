@@ -18,6 +18,7 @@
             "description": "It aggregates the updates from middle-aggregator",
             "groupAssociation": [
                 {
+                    "top-agg-coord-channel": "default",
                     "global-channel": "default"
                 }
             ]
@@ -28,6 +29,7 @@
             "description": "It aggregates the updates from trainers",
             "groupAssociation": [
                 {
+                    "middle-agg-coord-channel": "default",
                     "param-channel": "default",
                     "global-channel": "default"
                 }
@@ -39,6 +41,7 @@
             "isDataConsumer": true,
             "groupAssociation": [
                 {
+                    "trainer-coord-channel": "default",
                     "param-channel": "default"
                 }
             ]
