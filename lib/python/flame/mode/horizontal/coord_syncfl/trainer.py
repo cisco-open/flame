@@ -30,7 +30,9 @@ logger = logging.getLogger(__name__)
 TAG_COORDINATE = "coordinate"
 
 
-class Trainer(BaseTrainer, metaclass=ABCMeta):
+class Trainer(BaseTrainer):
+    """A trainer class for coordinated synchronous FL."""
+
     def _get_aggregator(self):
         logger.debug("calling _get_aggregator")
         channel = self.cm.get_by_tag(TAG_COORDINATE)
@@ -54,6 +56,8 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug("calling _fetch_weights")
+
+        self.fetch_success = False
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found with tag {tag}")
@@ -65,6 +69,7 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         msg, _ = channel.recv(self.aggregator_id)
 
         if MessageType.WEIGHTS in msg:
+            logger.debug("received model weights")
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
@@ -74,6 +79,7 @@ class Trainer(BaseTrainer, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
+        self.fetch_success = True
         logger.debug(f"work_done: {self._work_done}, round: {self._round}")
 
     def _send_weights(self, tag: str) -> None:
