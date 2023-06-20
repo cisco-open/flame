@@ -109,6 +109,10 @@
         "sort": "dummy",
         "uri": "http://flame-mlflow:5000"
     },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
     "selector": {
         "sort": "default",
         "kwargs": {}
@@ -117,3 +121,4 @@
     "realm": "default-cluster",
     "role": "middle-aggregator"
 }
+

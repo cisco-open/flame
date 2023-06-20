@@ -61,10 +61,6 @@ class TopAggregator(SyncTopAgg):
         if not channel:
             return
 
-        if self._agg_goal_weights is None:
-            logger.debug(f"type of weights: {type(self.weights)}")
-            self._agg_goal_weights = deepcopy(self.weights)
-
         # receive local model parameters from a trainer who arrives first
         msg, metadata = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
         end, _ = metadata
@@ -108,8 +104,10 @@ class TopAggregator(SyncTopAgg):
             time.sleep(1)
             return
 
-        # set global weights
-        self.weights = self._agg_goal_weights
+        # set global weights, by adding scaled aggregated weights with aggregation goal
+        self.weights = self.optimizer.scale_add_agg_weights(
+            self.weights, self._agg_goal_weights, self._agg_goal
+        )
 
         # update model with global weights
         self._update_model()

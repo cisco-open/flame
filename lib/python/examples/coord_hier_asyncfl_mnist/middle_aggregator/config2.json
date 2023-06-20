@@ -109,6 +109,10 @@
         "sort": "dummy",
         "uri": ""
     },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
     "selector": {
         "sort": "default",
         "kwargs": {}
@@ -117,3 +121,4 @@
     "realm": "default-cluster",
     "role": "middle-aggregator"
 }
+
