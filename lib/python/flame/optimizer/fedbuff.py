@@ -40,32 +40,36 @@ class FedBuff(AbstractOptimizer):
 
     def __init__(self):
         """Initialize FedBuff instance."""
-        self.agg_weights = None
+        self.agg_goal_weights = None
 
         ml_framework_in_use = get_ml_framework_in_use()
         if ml_framework_in_use == MLFramework.PYTORCH:
             self.aggregate_fn = self._aggregate_pytorch
+            self.scale_add_fn = self._scale_add_agg_weights_pytorch
         elif ml_framework_in_use == MLFramework.TENSORFLOW:
-            self.aggregate_fn = self._aggregate_tesnorflow
+            self.aggregate_fn = self._aggregate_tensorflow
+            self.scale_add_fn = self._scale_add_agg_weights_tensorflow
         else:
             raise NotImplementedError(
                 "supported ml framework not found; "
                 f"supported frameworks are: {valid_frameworks}")
-        
+
         self.regularizer = Regularizer()
 
-    def do(self,
-           base_weights: ModelWeights,
-           cache: Cache,
-           *,
-           total: int = 0,
-           version: int = 0,
-           **kwargs) -> ModelWeights:
+    def do(
+        self,
+        agg_goal_weights: ModelWeights,
+        cache: Cache,
+        *,
+        total: int = 0,
+        version: int = 0,
+        **kwargs,
+    ) -> ModelWeights:
         """Do aggregates models of trainers.
 
         Parameters
         ----------
-        base_weights: weights to be used as base
+        agg_goal_weights: delta weights aggregated until agg goal
         cache: a container that includes a list of weights for aggregation
         total: a number of data samples used to train weights in cache
         version: a version number of base weights
@@ -76,10 +80,8 @@ class FedBuff(AbstractOptimizer):
         """
         logger.debug("calling fedbuff")
 
-        assert (base_weights is not None)
-
-        # reset global weights before aggregation
-        self.agg_weights = base_weights
+        self.agg_goal_weights = agg_goal_weights
+        self.is_agg_weights_none = self.agg_goal_weights is None
 
         if len(cache) == 0 or total == 0:
             return None
@@ -94,10 +96,48 @@ class FedBuff(AbstractOptimizer):
             rate = 1 / math.sqrt(1 + version - tres.version)
             self.aggregate_fn(tres, rate)
 
-        return self.agg_weights
+        return self.agg_goal_weights
+
+    def scale_add_agg_weights(
+        self,
+        base_weights: ModelWeights,
+        agg_goal_weights: ModelWeights,
+        agg_goal: int,
+    ) -> ModelWeights:
+        """Scale aggregated weights and add it to the original weights,
+        when aggregation goal is achieved.
+
+        Parameters
+        ----------
+        base_weights: original weights of the aggregator
+        agg_goal_weights: weights to be scaled and added
+        agg_goal: aggregation goal of FedBuff algorithm.
+
+        Returns
+        -------
+        updated weights
+        """
+        return self.scale_add_fn(base_weights, agg_goal_weights, agg_goal)
+
+    def _scale_add_agg_weights_pytorch(
+        self, base_weights: ModelWeights, agg_goal_weights: ModelWeights, agg_goal: int
+    ) -> ModelWeights:
+        for k in base_weights.keys():
+            base_weights[k] += agg_goal_weights[k] / agg_goal
+        return base_weights
+
+    def _scale_add_agg_weights_tensorflow(
+        self, base_weights: ModelWeights, agg_goal_weights: ModelWeights, agg_goal: int
+    ) -> ModelWeights:
+        for idx in range(len(base_weights)):
+            base_weights[idx] += agg_goal_weights[idx] / agg_goal
+        return base_weights
 
     def _aggregate_pytorch(self, tres, rate):
         logger.debug("calling _aggregate_pytorch")
+
+        if self.is_agg_weights_none:
+            self.agg_goal_weights = {}
 
         for k, v in tres.weights.items():
             tmp = v * rate
@@ -111,10 +151,19 @@ class FedBuff(AbstractOptimizer):
             # TODO: this may need to be revisited
             tmp = tmp.to(dtype=v.dtype) if tmp.dtype != v.dtype else tmp
 
-            self.agg_weights[k] += tmp
+            if self.is_agg_weights_none:
+                self.agg_goal_weights[k] = tmp
+            else:
+                self.agg_goal_weights[k] += tmp
 
-    def _aggregate_tesnorflow(self, tres, rate):
+    def _aggregate_tensorflow(self, tres, rate):
         logger.debug("calling _aggregate_tensorflow")
 
+        if self.is_agg_weights_none:
+            self.agg_goal_weights = []
+
         for idx in range(len(tres.weights)):
-            self.agg_weights[idx] += tres.weights[idx] * rate
+            if self.is_agg_weights_none:
+                self.agg_goal_weights.append(tres.weights[idx] * rate)
+            else:
+                self.agg_goal_weights[idx] += tres.weights[idx] * rate

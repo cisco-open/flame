@@ -85,6 +85,10 @@
         "sort": "dummy",
         "uri": ""
     },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {}
+    },
     "selector": {
         "sort": "default",
         "kwargs": {}
@@ -93,3 +97,4 @@
     "realm": "",
     "role": "top-aggregator"
 }
+

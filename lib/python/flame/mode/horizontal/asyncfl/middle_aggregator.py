@@ -171,10 +171,6 @@ class MiddleAggregator(SyncMidAgg):
         if not channel:
             return
 
-        if self._agg_goal_weights is None:
-            logger.debug(f"type of weights: {type(self.weights)}")
-            self._agg_goal_weights = deepcopy(self.weights)
-
         # receive local model parameters from a trainer who arrives first
         ends = channel.ends(VAL_CH_STATE_RECV)
         logger.debug(f"ends: {ends}")
@@ -222,10 +218,12 @@ class MiddleAggregator(SyncMidAgg):
             return
 
         # save global weights before updating it
-        self.prev_weights = self.weights
+        self.prev_weights = deepcopy(self.weights)
 
-        # set global weights
-        self.weights = self._agg_goal_weights
+        # set global weights, by adding scaled aggregated weights with aggregation goal
+        self.weights = self.optimizer.scale_add_agg_weights(
+            self.weights, self._agg_goal_weights, self._agg_goal
+        )
 
         self.dataset_size = count
 
