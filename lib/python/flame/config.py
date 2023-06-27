@@ -64,6 +64,7 @@ class OptimizerType(str, Enum):
     FEDPROX = "fedprox"  # FedProx
     FEDDYN = "feddyn"
     FEDGFT = "fedgft"
+    SCAFFOLD = "scaffold"
 
     DEFAULT = FEDAVG
 

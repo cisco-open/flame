@@ -54,3 +54,6 @@ class MessageType(Enum):
     HYBRID_METADATA = 18  # metadata for hybrid aggregation
 
     BIAS = 19  # bias matrix used in FedGFT
+
+    CONTROL_WEIGHTS = 20  # control variate weights used in SCAFFOLD
+    CLIENT_WEIGHT = 21  # client-side control variate weight used in SCAFFOLD
