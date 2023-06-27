@@ -179,6 +179,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
         delta_weights = self.privacy.apply_dp_fn(delta_weights)
 
+        self.regularizer.update()
+
         msg = {
             MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
             MessageType.DATASET_SIZE: self.dataset_size,

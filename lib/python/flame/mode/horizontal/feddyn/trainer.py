@@ -144,6 +144,7 @@ class Trainer(BaseTrainer):
         end = channel.one_end(VAL_CH_STATE_SEND)
 
         msg = {MessageType.DATASET_SIZE: self.dataset_size}
+        logger.debug(f"msg data : {msg}")
         channel.send(end, msg)
         logger.debug("sending dataset size done")
 

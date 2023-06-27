@@ -46,11 +46,16 @@ class FedDynRegularizer(Regularizer):
         prev_model = kwargs["prev_model"]
 
         w = [param for param in curr_model.parameters()]
-        w_t = [param for param in prev_model.parameters()]
 
         # concatenate weights into a vector
         w_vector = get_params_as_vector_pytorch(w)
-        w_t_vector = get_params_as_vector_pytorch(w_t)
+        
+        if 'w_t_vector' in self.state_dict:
+            w_t_vector = self.state_dict['w_t_vector']
+        else:
+            w_t = [param for param in prev_model.parameters()]
+            w_t_vector = get_params_as_vector_pytorch(w_t)
+            self.state_dict['w_t_vector'] = w_t_vector
 
         # weight decay term using alpha parameter
         w_decay_term = (self.alpha / 2) * torch.sum(torch.pow(w_vector, 2))
@@ -81,22 +86,5 @@ class FedDynRegularizer(Regularizer):
 
         # adjust prev_grad
         self.prev_grad += w_vector - w_t_vector
-
-    def to(self, device):
-        """Returns a new Regularizer that has been moved to the specified device."""
-        import torch
-
-        new_regularizer = FedDynRegularizer(self.alpha)
-        # state_dict
-        for key in self.state_dict:
-            new_regularizer.state_dict[key] = [
-                param.to(device) for param in self.state_dict[key]
-            ]
-
-        # prev_grad
-        if isinstance(self.prev_grad, torch.Tensor):
-            new_regularizer.prev_grad = self.prev_grad.to(device)
-        else:
-            new_regularizer.prev_grad = self.prev_grad
-
-        return new_regularizer
+        
+        del self.state_dict['w_t_vector']
