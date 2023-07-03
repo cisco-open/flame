@@ -40,13 +40,20 @@ setup(
         "paho-mqtt",
         "protobuf==3.20.3",
         "grpcio==1.51.1",
-        "pydantic",
+        "pydantic<2.0",
         "gpustat",
         "psutil",
         "numpy",
         "pathlib",
     ],
     extras_require={
-        "dev": ["pre-commit", "black", "flake8", "bandit", "mypy", "isort",],
+        "dev": [
+            "pre-commit",
+            "black",
+            "flake8",
+            "bandit",
+            "mypy",
+            "isort",
+        ],
     },
 )
