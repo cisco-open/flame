@@ -50,3 +50,5 @@ class MessageType(Enum):
 
     REQ_COORDINATED_ENDS = 16  # request ends coordinated by a coordinator
     RES_COORDINATED_ENDS = 17  # get ends coordinated by a coordinator
+
+    HYBRID_METADATA = 18  # metadata for hybrid aggregation
