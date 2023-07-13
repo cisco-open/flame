@@ -121,7 +121,6 @@ class Trainer(Role, metaclass=ABCMeta):
             logger.debug(f"channel not found with tag {tag}")
             return
 
-        self._member_check(channel)
         if not self.can_ring_allreduce():
             # members don't agree, we can't do ring-allreduce
             logger.debug("ring was not formed")
@@ -139,32 +138,22 @@ class Trainer(Role, metaclass=ABCMeta):
         # This method is implemented based on
         # https://github.com/baidu-research/baidu-allreduce/blob/master/collectives.cu
         logger.info("starting ring-allreduce")
-        my_id = channel.get_backend_id()
 
         # do all communication with weights on cpu
         self.weights = weights_to_device(self.weights, DeviceType.CPU)
 
-        rank = self.ends_of_ring.index(my_id)
-        size = len(self.ends_of_ring)
-
         logger.debug(f"weights length = {len(self.weights)}")
-        chunk_size = int(len(self.weights) / size)
-        chunk_sizes = [chunk_size] * size
+        chunk_size = int(len(self.weights) / self.group_size)
+        chunk_sizes = [chunk_size] * self.group_size
 
-        residual = len(self.weights) % size
+        residual = len(self.weights) % self.group_size
         for i in range(residual):
             chunk_sizes[i] += 1
 
-        chunk_ends = [0] * size
+        chunk_ends = [0] * self.group_size
         chunk_ends[0] = chunk_sizes[0]
         for i in range(1, len(chunk_ends)):
             chunk_ends[i] = chunk_sizes[i] + chunk_ends[i - 1]
-
-        recv_from = (rank - 1 + size) % size
-        send_to = (rank + 1) % size
-
-        recvfrom_id = self.ends_of_ring[recv_from]
-        sendto_id = self.ends_of_ring[send_to]
 
         # enable the following "digest" computation lines
         # to check if ring-allreduce work correctly.
@@ -173,26 +162,26 @@ class Trainer(Role, metaclass=ABCMeta):
         # logger.debug(f"initial: weight digest - {digest}")
 
         # allreduce
-        for i in range(size - 1):
-            send_chunk_idx = (rank - i + size) % size
+        for i in range(self.group_size - 1):
+            send_chunk_idx = (self.rank - i + self.group_size) % self.group_size
             from_idx = chunk_ends[send_chunk_idx] - chunk_sizes[send_chunk_idx]
             to_idx = chunk_ends[send_chunk_idx]
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
-            logger.debug(f"sending chunk: {len(send_chunk)} to {sendto_id}")
+            logger.debug(f"sending chunk: {len(send_chunk)} to {self.sendto_id}")
 
-            channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
+            channel.send(self.sendto_id, {MessageType.WEIGHTS: send_chunk})
 
-            recv_chunk_idx = (rank - i - 1 + size) % size
-            msg, _ = channel.recv(recvfrom_id)
+            recv_chunk_idx = (self.rank - i - 1 + self.group_size) % self.group_size
+            msg, _ = channel.recv(self.recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
-            logger.debug(f"recv'd chunk: {len(recv_chunk)} from {recvfrom_id}")
+            logger.debug(f"recv'd chunk: {len(recv_chunk)} from {self.recvfrom_id}")
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
-                logger.error(f"Assertion: got {recv_chunk} from {recvfrom_id}")
+                logger.error(f"Assertion: got {recv_chunk} from {self.recvfrom_id}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -203,22 +192,22 @@ class Trainer(Role, metaclass=ABCMeta):
         # logger.debug(f"after allreduce: weight digest - {digest}")
 
         # allgather
-        for i in range(size - 1):
-            send_chunk_idx = (rank - i + 1 + size) % size
+        for i in range(self.group_size - 1):
+            send_chunk_idx = (self.rank - i + 1 + self.group_size) % self.group_size
             from_idx = chunk_ends[send_chunk_idx] - chunk_sizes[send_chunk_idx]
             to_idx = chunk_ends[send_chunk_idx]
 
             send_chunk = self._get_send_chunk_fn(from_idx, to_idx)
-            channel.send(sendto_id, {MessageType.WEIGHTS: send_chunk})
+            channel.send(self.sendto_id, {MessageType.WEIGHTS: send_chunk})
 
-            recv_chunk_idx = (rank - i + size) % size
-            msg, _ = channel.recv(recvfrom_id)
+            recv_chunk_idx = (self.rank - i + self.group_size) % self.group_size
+            msg, _ = channel.recv(self.recvfrom_id)
             recv_chunk = msg[MessageType.WEIGHTS]
 
             try:
                 assert len(recv_chunk) == chunk_sizes[recv_chunk_idx]
             except AssertionError:
-                logger.error(f"Assertion: got {recv_chunk} from {recvfrom_id}")
+                logger.error(f"Assertion: got {recv_chunk} from {self.recvfrom_id}")
                 exit(1)
 
             from_idx = chunk_ends[recv_chunk_idx] - chunk_sizes[recv_chunk_idx]
@@ -360,11 +349,20 @@ class Trainer(Role, metaclass=ABCMeta):
 
         return True, dataset_size
 
-    def _member_check(self, channel) -> None:
+    def _member_check(self, tag: str) -> None:
+        if tag != TAG_RING_ALLREDUCE:
+            return
+
+        channel = self.cm.get_by_tag(tag)
+        if not channel:
+            logger.debug(f"channel not found with tag {tag}")
+            return
+
         # reset ends in the ring
         self.ends_of_ring = None
 
         digest = channel.ends_digest()
+
         if digest == "":
             # This means that there is no ends in the channel,
             # so there is no point of broadcasting digest.
@@ -411,6 +409,19 @@ class Trainer(Role, metaclass=ABCMeta):
 
         # save ends that agree to form a ring
         self.ends_of_ring = ends
+
+        # save communicating ends info / group info for ring-reduce,
+        my_id = channel.get_backend_id()
+
+        self.rank = self.ends_of_ring.index(my_id)
+        self.group_size = len(self.ends_of_ring)
+
+        recv_from = (self.rank - 1 + size) % self.group_size
+        send_to = (self.rank + 1) % self.group_size
+
+        self.recvfrom_id = self.ends_of_ring[recv_from]
+        self.sendto_id = self.ends_of_ring[send_to]
+
         return
 
     def can_ring_allreduce(self) -> bool:
@@ -498,6 +509,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
             task_init = Tasklet("", self.initialize)
 
+            task_member_check = Tasklet("", self._member_check, TAG_RING_ALLREDUCE)
+
             task_allreduce = Tasklet("", self._ring_allreduce, TAG_RING_ALLREDUCE)
 
             task_train = Tasklet("", self.train)
@@ -521,6 +534,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 >> task_init
                 >> loop(
                     task_train
+                    >> task_member_check
                     >> task_allreduce
                     >> task_eval
                     >> task_save_metrics

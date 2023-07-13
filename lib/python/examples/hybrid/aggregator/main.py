@@ -20,7 +20,7 @@ import logging
 
 from flame.config import Config
 from flame.dataset import Dataset
-from flame.mode.horizontal.top_aggregator import TopAggregator
+from flame.mode.hybrid.top_aggregator import TopAggregator
 from tensorflow import keras
 from tensorflow.keras import layers
 
