@@ -8,72 +8,89 @@ The service manages machine learning workloads, while the python library facilit
 And the library is also responsible for executing FL workloads.
 With extensibility of its library, Flame can support various experimentations and use cases.
 
-## Getting started
-The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
-One should first set up a development environment.
-For more details, refer to [here](docs/02-getting-started.md).
+## Environment Setup
+We recommend setting up your environment with `conda`. Run the following inside of the `flame/lib/python/flame` directory.
 
-Then, users can use a dev/test environment in a single machine on top of minikube.
-The detailed instructions are found [here](docs/03-fiab.md).
+```bash
+conda create -n flame python=3.9
+conda activate flame
 
-This repo has the following directory structure:
-```
-flame
- ├── CODE_OF_CONDUCT.md
- ├── CONTRIBUTING.md
- ├── LICENSE
- ├── Makefile -> build/Makefile
- ├── README.md
- ├── api (specification of REST API for flame apiserver)
- ├── build (configuration files for building flame binaries and container image)
- ├── cmd (source files for flame control plane)
- ├── docs (document folder)
- ├── examples (example folder)
- ├── fiab (dev/test env in a single box)
- ├── go.mod
- ├── go.sum
- ├── lib (python library for core flame data plane)
- ├── lint.sh
- ├── pkg (go packages for cmd)
- └── scripts (utility scripts)
+
+pip install google
+pip install tensorflow
+pip install torch
+pip install torchvision
+
+cd ..
+make install
 ```
 
-## Supported Algorithms/Mechanisms
+## Quickstart
 
-| Method          | Note                                                                                                                               |
-|-----------------|------------------------------------------------------------------------------------------------------------------------------------|
-| FedAvg          | https://arxiv.org/pdf/1602.05629.pdf                                                                                               |
-| FedYogi         | https://arxiv.org/pdf/2003.00295.pdf                                                                                               |
-| FedAdam         | https://arxiv.org/pdf/2003.00295.pdf                                                                                               |
-| FedAdaGrad      | https://arxiv.org/pdf/2003.00295.pdf                                                                                               |
-| FedProx         | https://arxiv.org/pdf/1812.06127.pdf                                                                                               |
-| FedBuff         | Asynchronous FL (https://arxiv.org/pdf/2106.06639.pdf and https://arxiv.org/pdf/2111.04877.pdf); secure aggregation is excluded    |
-| FedDyn          | https://arxiv.org/pdf/2111.04263.pdf                                                                                               |
-| OORT            | https://arxiv.org/pdf/2010.06081.pdf; client selection algorithm / mechanism; experimental release                                 |
-| Hierarchical FL | https://arxiv.org/pdf/1905.06641.pdf; a simplified version where k<sub>2</sub> = 1; support both synchronous and asynchronous FL   |
-| Hybrid FL       | A hybrid approach to combine federated learning with ring-reduce; topology motivated from https://openreview.net/pdf?id=H0oaWl6THa |
+### Local MQTT Broker
 
+Since the flame system uses MQTT brokers to exchange messages during federated learning, to run the python library locally, you may install a local MQTT broker as shown below.
 
-## Documentation
-
-A full document can be found [here](docs/README.md). The document will be updated on a regular basis.
-
-## Support
-
-We welcome feedback, questions, and issue reports.
-
-* Maintainers' email address: <flame-github-owners@cisco.com>
-* [GitHub Issues](https://github.com/cisco-open/flame/issues/new/choose)
-
-## Citation
-
+```bash
+sudo apt update
+sudo apt install -y mosquitto
+sudo systemctl status mosquitto
 ```
-@misc{flame2023,
-      title={Federated Learning Operations Made Simple with Flame}, 
-      author={Harshit Daga and Jaemin Shin and Dhruv Garg and Ada Gavrilovska and Myungjin Lee and Ramana Rao Kompella},
-      year={2023},
-      eprint={2305.05118},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
-}
+
+The last command should display something similar to this:
+
+```bash
+mosquitto.service - Mosquitto MQTT v3.1/v3.1.1 Broker
+     Loaded: loaded (/lib/systemd/system/mosquitto.service; enabled; vendor pre>
+     Active: active (running) since Fri 2023-02-03 14:05:55 PST; 1h 20min ago
+       Docs: man:mosquitto.conf(5)
+             man:mosquitto(8)
+   Main PID: 75525 (mosquitto)
+      Tasks: 3 (limit: 9449)
+     Memory: 1.9M
+     CGroup: /system.slice/mosquitto.service
+             └─75525 /usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
 ```
+
+That confirms that the mosquitto service is active.
+From now on, you may use `sudo systemctl stop mosquitto` to stop the mosquitto service, `sudo systemctl start mosquitto` to start the service, and `sudo systemctl restart mosquitto` to restart the service.
+
+Go ahead and change the two config files in `flame/lib/python/examples/mnist/trainer` and `flame/lib/python/examples/mnist/aggregator` to make sure `backend` is `mqtt`.
+
+```json
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+	{
+	    "host": "localhost:10104",
+	    "sort": "p2p"
+	}
+    ]
+```
+
+Note that if you also want to use the local `mqtt` broker for other examples you should make sure that the `mqtt` broker has `host` set to `localhost`.
+
+### Running an Example
+
+In order to run this example, you will need to open two terminals.
+
+In the first terminal, once you are in `flame/lib/python/examples/mnist/trainer`, run the following commands:
+
+```bash
+conda activate flame
+
+python keras/main.py config.json
+```
+
+Open another terminal in `flame/lib/python/examples/mnist/aggregator` and run:
+
+```bash
+conda activate flame
+
+python keras/main.py config.json
+```
+
+You will see the aggregator (second terminal) sending a global model to the trainer (first terminal), and the trainer sending the updated local model back to the aggregator!
