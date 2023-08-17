@@ -2,6 +2,8 @@
 
 ## [Introduction](01-introduction.md)
 
+## [Quickstart (Ubuntu)](quickstart-ubuntu.md)
+
 ## [Getting Started](02-getting-started.md)
 
 ## [Flame in a box (fiab)](03-fiab.md)
