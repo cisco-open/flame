@@ -2,6 +2,8 @@
 
 [![](https://img.shields.io/badge/Flame-Join%20Slack-brightgreen)](https://join.slack.com/t/flame-slack/shared_invite/zt-1mprreo9z-FmpGb1UPi43JOFJKyhIqAQ)
 
+[:fire: **Quickstart! (Ubuntu)** :fire:](docs/quickstart-ubuntu.md)
+
 Flame is a platform that enables developers to compose and deploy federated learning (FL) training workloads easily.
 The system is comprised of a service (control plane) and a python library (data plane).
 The service manages machine learning workloads, while the python library facilitates composition of ML workloads.

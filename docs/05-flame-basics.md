@@ -2,6 +2,25 @@
 
 This section presents key concepts and building blocks of Flame.
 
+## Organization
+
+In order to be compatible with real-world systems, flame runs different nodes in a federated learning graph as different processes.
+That is, if you are training on 10 separate client-side datasets with 1 server, you will need to run 11 different processes (10 client processes and 1 server process).
+We also use vocabulary like aggregator to describe, in a more general sense, the role of a server and trainer for the client role.
+
+Instead of creating separate `main.py` files for different trainers (or any other role), we only need to make one and create different configuration files which the same `main.py` file can take as input.
+
+In order to separate different federated learning systems, we use a unique identifier: a **job ID**.
+This ID is specified in all the configuration files under config['job']['id'].
+This keeps FL graphs disconnected from each other if we are running multiple different federated learning systems at once (such as training multiple global models for different datasets using mutually exclusive trainers).
+
+A second kind of ID is used in order to uniquely identify the processes within a job, a **task ID**.
+This is specified at the top of each configuration file under config['taskid'].
+This ID should be different for every configuration under the same job ID.
+
+Basically, each **configuration file** defines what one instance of a role (say, a trainer for example) is supposed to do.
+It can contain information such as the communication channels open between different process, and also parameters such as the learning rate, weight decay, and the number of rounds for the entire federated learning process to complete.
+
 ## Topology Abstraction Graph (TAG)
 
 The topology abstraction graph (TAG) is a simple graph, which allows users to express machine learning training workload declaratively
