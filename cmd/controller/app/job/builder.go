@@ -261,7 +261,6 @@ func (b *JobBuilder) buildTasks(templates map[string]*taskTemplate) []objects.Ta
 					task := tmpl.Task
 
 					task.ComputeId = util.DefaultRealm
-					task.Type = openapi.SYSTEM
 					task.Key = util.RandString(taskKeyLen)
 					task.JobConfig.GroupAssociation = associations
 
@@ -286,7 +285,6 @@ func (b *JobBuilder) buildTasks(templates map[string]*taskTemplate) []objects.Ta
 				task := tmpl.Task
 
 				task.ComputeId = dataset.ComputeId
-				task.Type = openapi.SYSTEM
 				task.Key = util.RandString(taskKeyLen)
 				task.JobConfig.DatasetUrl = dataset.Url
 				task.JobConfig.GroupAssociation = b.getGroupAssociationByGroup(roleName, groupName)

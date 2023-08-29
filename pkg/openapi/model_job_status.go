@@ -27,13 +27,13 @@ package openapi
 
 import (
 	"time"
-
-	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
 // JobStatus - Job status
 type JobStatus struct {
 	Id string `json:"id"`
+
+	Name string `json:"name,omitempty"`
 
 	State JobState `json:"state"`
 
@@ -49,8 +49,8 @@ type JobStatus struct {
 // AssertJobStatusRequired checks if the required fields are not zero-ed
 func AssertJobStatusRequired(obj JobStatus) error {
 	elements := map[string]interface{}{
-		"id":                 obj.Id,
-		constants.ParamState: obj.State,
+		"id":    obj.Id,
+		"state": obj.State,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

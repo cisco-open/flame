@@ -1,4 +1,5 @@
 {
+    "name": "hierarchical mnist example",
     "designId": "hier_mnist",
     "schemaVersion": "1",
     "codeVersion": "1",

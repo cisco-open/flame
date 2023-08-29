@@ -41,6 +41,7 @@ type Params struct {
 
 type CreateJobRequest struct {
 	Id            string              `json:"id,omitempty"`
+	Name          string              `json:"name"`
 	UserId        string              `json:"userId,omitempty"`
 	DesignId      string              `json:"designId"`
 	SchemaVersion string              `json:"schemaVersion"`
@@ -84,6 +85,7 @@ func createJobSpec(data []byte, jobFile string) (bool, openapi.JobSpec) {
 
 	jobSpec := openapi.JobSpec{
 		Id:            createJobRequest.Id,
+		Name:          createJobRequest.Name,
 		UserId:        createJobRequest.UserId,
 		DesignId:      createJobRequest.DesignId,
 		SchemaVersion: createJobRequest.SchemaVersion,
@@ -209,10 +211,10 @@ func GetMany(params Params) error {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Job ID", "State", "created At", "started At", "ended At"})
+	table.SetHeader([]string{"Job ID", "Name", "State", "created At", "started At", "ended At"})
 
 	for _, v := range infoList {
-		table.Append([]string{v.Id, string(v.State), v.CreatedAt.String(), v.StartedAt.String(), v.EndedAt.String()})
+		table.Append([]string{v.Id, v.Name, string(v.State), v.CreatedAt.String(), v.StartedAt.String(), v.EndedAt.String()})
 	}
 
 	table.Render() // Send output
@@ -300,7 +302,8 @@ func Remove(params Params) error {
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteJobEndPoint, uriMap)
 
 	jobStatus := openapi.JobStatus{
-		Id: params.JobId,
+		Id:    params.JobId,
+		State: openapi.READY, // state can't be empty; any state can be specified for remove
 	}
 
 	code, body, err := restapi.HTTPDelete(url, jobStatus, "application/json")

@@ -1,4 +1,5 @@
 {
+    "name": "synchronous hierarchical fl with coordinator",
     "designId": "syncfl_hier_coord_mnist",
     "schemaVersion": "1",
     "codeVersion": "1",

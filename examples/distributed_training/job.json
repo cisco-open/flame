@@ -1,4 +1,5 @@
 {
+    "name": "distributed learning example",
     "designId": "distributed_training",
     "schemaVersion": "1",
     "codeVersion": "1",
