@@ -58,15 +58,15 @@ func (db *MongoService) CreateTasks(tasks []objects.Task, dirty bool) error {
 		filter := bson.M{util.DBFieldJobId: task.JobId, util.DBFieldTaskId: task.TaskId}
 		update := bson.M{
 			"$set": bson.M{
-				util.DBFieldRole:      task.Role,
-				util.DBFieldTaskType:  task.Type,
-				"config":              cfgData,
-				"code":                task.ZippedCode,
-				util.DBFieldComputeId: task.ComputeId,
-				util.DBFieldTaskDirty: dirty,
-				util.DBFieldTaskKey:   task.Key,
-				util.DBFieldState:     openapi.READY,
-				util.DBFieldTimestamp: time.Now(),
+				util.DBFieldRole:             task.Role,
+				util.DBFieldGroupAssociation: task.JobConfig.GroupAssociation,
+				"config":                     cfgData,
+				"code":                       task.ZippedCode,
+				util.DBFieldComputeId:        task.ComputeId,
+				util.DBFieldTaskDirty:        dirty,
+				util.DBFieldTaskKey:          task.Key,
+				util.DBFieldState:            openapi.READY,
+				util.DBFieldTimestamp:        time.Now(),
 			},
 		}
 		zap.S().Debugf("taskID %s is assigned compute %s", task.TaskId, task.ComputeId)

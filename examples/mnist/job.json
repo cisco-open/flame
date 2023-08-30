@@ -1,4 +1,5 @@
 {
+    "name": "mnist example",
     "designId": "mnist",
     "schemaVersion": "1",
     "codeVersion": "1",

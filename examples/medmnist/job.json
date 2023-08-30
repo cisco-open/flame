@@ -1,4 +1,5 @@
 {
+    "name": "medical mnist example",
     "designId": "medmnist",
     "schemaVersion": "1",
     "codeVersion": "1",

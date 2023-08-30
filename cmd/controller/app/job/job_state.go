@@ -386,11 +386,10 @@ func setTerminated(h *DefaultHandler) {
 }
 
 func setTaskStateToTerminated(h *DefaultHandler) {
-	// For any tasks in running state and created by system,
+	// For any tasks in running state
 	// set them terminated as they will be deleted by the system
 	filter := map[string]interface{}{
-		util.DBFieldState:    openapi.RUNNING,
-		util.DBFieldTaskType: openapi.SYSTEM,
+		util.DBFieldState: openapi.RUNNING,
 	}
 	_ = h.dbService.UpdateTaskStateByFilter(h.jobId, openapi.TERMINATED, filter)
 }

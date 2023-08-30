@@ -98,10 +98,10 @@ func GetMany(params Params) error {
 	}
 
 	table := tablewriter.NewWriter(os.Stdout)
-	table.SetHeader([]string{"Job ID", "Task ID", "Type", "State", "Timestamp"})
+	table.SetHeader([]string{"Job ID", "Task ID", "State", "Timestamp"})
 
 	for _, v := range infoList {
-		table.Append([]string{v.JobId, v.TaskId, string(v.Type), string(v.State), v.Timestamp.String()})
+		table.Append([]string{v.JobId, v.TaskId, string(v.State), v.Timestamp.String()})
 	}
 
 	table.Render() // Send output

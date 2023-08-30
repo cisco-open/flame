@@ -25,30 +25,40 @@
 
 package openapi
 
-import "github.com/cisco-open/flame/pkg/openapi/constants"
-
 // JobSpec - Job specification
 type JobSpec struct {
-	Id            string      `json:"id,omitempty"`
-	UserId        string      `json:"userId,omitempty"`
-	DesignId      string      `json:"designId"`
-	SchemaVersion string      `json:"schemaVersion"`
-	CodeVersion   string      `json:"codeVersion"`
-	Priority      JobPriority `json:"priority,omitempty"`
-	Backend       CommBackend `json:"backend"`
-	MaxRunTime    int32       `json:"maxRunTime,omitempty"`
-	ModelSpec     ModelSpec   `json:"modelSpec,omitempty"`
+	Id string `json:"id,omitempty"`
+
+	Name string `json:"name"`
+
+	UserId string `json:"userId,omitempty"`
+
+	DesignId string `json:"designId"`
+
+	SchemaVersion string `json:"schemaVersion"`
+
+	CodeVersion string `json:"codeVersion"`
+
+	Priority JobPriority `json:"priority,omitempty"`
+
+	Backend CommBackend `json:"backend"`
+
+	MaxRunTime int32 `json:"maxRunTime,omitempty"`
 
 	// Dataset specification
 	DataSpec []RoleDatasetGroups `json:"dataSpec,omitempty"`
+
+	ModelSpec ModelSpec `json:"modelSpec,omitempty"`
 }
 
 // AssertJobSpecRequired checks if the required fields are not zero-ed
 func AssertJobSpecRequired(obj JobSpec) error {
 	elements := map[string]interface{}{
-		constants.ParamDesignID: obj.DesignId,
-		"schemaVersion":         obj.SchemaVersion,
-		"codeVersion":           obj.CodeVersion,
+		"name":          obj.Name,
+		"designId":      obj.DesignId,
+		"schemaVersion": obj.SchemaVersion,
+		"codeVersion":   obj.CodeVersion,
+		"backend":       obj.Backend,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {

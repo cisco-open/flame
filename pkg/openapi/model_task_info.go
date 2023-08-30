@@ -31,17 +31,17 @@ import (
 
 // TaskInfo - Task information
 type TaskInfo struct {
-	JobId string `json:"jobId,omitempty"`
+	JobId string `json:"jobId"`
 
-	TaskId string `json:"taskId,omitempty"`
+	TaskId string `json:"taskId"`
 
-	Role string `json:"role,omitempty"`
+	Role string `json:"role"`
 
-	Type TaskType `json:"type,omitempty"`
+	GroupAssociation map[string]string `json:"groupAssociation"`
 
 	Key string `json:"key,omitempty"`
 
-	State JobState `json:"state,omitempty"`
+	State JobState `json:"state"`
 
 	ComputeId string `json:"computeId,omitempty"`
 
@@ -52,6 +52,19 @@ type TaskInfo struct {
 
 // AssertTaskInfoRequired checks if the required fields are not zero-ed
 func AssertTaskInfoRequired(obj TaskInfo) error {
+	elements := map[string]interface{}{
+		"jobId":            obj.JobId,
+		"taskId":           obj.TaskId,
+		"role":             obj.Role,
+		"groupAssociation": obj.GroupAssociation,
+		"state":            obj.State,
+	}
+	for name, el := range elements {
+		if isZero := IsZeroValue(el); isZero {
+			return &RequiredError{Field: name}
+		}
+	}
+
 	return nil
 }
 

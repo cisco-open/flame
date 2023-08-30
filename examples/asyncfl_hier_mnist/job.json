@@ -1,4 +1,5 @@
 {
+    "name": "asynchronous hierachical fl example",
     "designId": "asyncfl_hier_mnist",
     "schemaVersion": "1",
     "codeVersion": "1",

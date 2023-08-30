@@ -34,6 +34,8 @@ BasicJobInfo:
   properties:
     id:
       type: string
+    name:
+      type: string
     userId:
       type: string
     designId:
@@ -51,11 +53,13 @@ BasicJobInfo:
       format: int32
       default: 600 # 600s = 10min
   required:
+    - name
     - designId
     - schemaVersion
     - codeVersion
     - backend
   example:
+    name: mnist
     userId: "john"
     designId: "60d0d66716af12b787d9ef0a"
     schemaVersion: "1"
@@ -190,6 +194,8 @@ JobStatus:
   properties:
     id:
       type: string
+    name:
+      type: string
     state:
       $ref: '#/components/schemas/JobState'
     createdAt:
@@ -253,8 +259,8 @@ TaskInfo:
       type: string
     role:
       type: string
-    type:
-      $ref: '#/components/schemas/TaskType'
+    groupAssociation:
+      $ref: '#/components/schemas/GroupAssociation'
     key:
       type: string
     state:
@@ -266,20 +272,12 @@ TaskInfo:
     timestamp:
       type: string
       format: date-time
-
-########################################
-# Task Type
-#
-# user: users bring compute resource and
-#       dataset
-# system: system allocates compute
-#         resource and configures
-#         dataset access
-########################################
-TaskType:
-  enum:
-    - user
-    - system
+  required:
+    - jobId
+    - taskId
+    - role
+    - groupAssociation
+    - state
 
 ########################################
 # Task Status
