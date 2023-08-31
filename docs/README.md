@@ -8,4 +8,4 @@ This document will go through regular revisions over time, e.g., once per quarte
 Therefore, the contents in the document may not perfectly be aligned with the codebase.
 For any discrepancy, broken contents or missing documentation details, please create an issue.
 
-To continue, please see the [table of contents](00-toc.md).
+To continue, please see the [Flame Introduction](introduction.md).

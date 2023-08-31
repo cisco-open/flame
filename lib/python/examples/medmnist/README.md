@@ -2,7 +2,7 @@
 
 We will use the PathMNIST dataset from (MedMNIST)[https://medmnist.com/] to go over an example of using an adaptive aggregator on a data heterogeneity setting.
 This example is run using `conda`.
-If the environment is not set up, you may follow the instructions for setup [here](../../../../../docs/08-flame-sdk.md).
+If the environment is not set up, you may follow the instructions for setup [here](../../../../../docs/sdk/flame-sdk.md).
 In the `medmnist` directory, we start by using the command `conda activate flame`.
 This needs to be done before the shell script is run in a terminal.
 

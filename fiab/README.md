@@ -1,1 +1,1 @@
-Refer to [this document](../docs/03-fiab.md).
+Refer to [this document](../docs/system/fiab.md).

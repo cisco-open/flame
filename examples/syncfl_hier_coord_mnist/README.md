@@ -5,7 +5,7 @@ The coordinator performs the mapping between middle aggregators and trainers for
 
 We use the MNIST dataset to walk through the example.
 
-We assume that a fiab environment is set up properly. To set it up, refer to [this document](../../docs/03-fiab.md).
+We assume that a fiab environment is set up properly. To set it up, refer to [this document](../../docs/system/fiab.md).
 
 
 **Note**: You need to add `--insecure` to all the `flamectl` command when the example is used in a fiab environment.
@@ -24,7 +24,7 @@ flamectl create schema schema.json --design syncfl_hier_coord_mnist
 
 The schema defines the topology of this FL job. The following figure visually represents the schema in schema.json.
 <p align="center"><img src="images/coordinator_schema.png" alt="Parallel Experiments" height="300px" /></p>
-For more info on the basic building blocks, please refer to [05-flame-basics](05-flame-basics.md).
+For more info on the basic building blocks, please refer to [flame-basics](../../docs/flame-basics.md).
 
 ### Step 3: add code to the design
 

@@ -5,7 +5,7 @@ You will find the instructions in the README.md file of each example folder.
 
 ## MNIST
 
-Here we go over how to run MNIST example with [fiab](03-fiab.md) environment.
+Here we go over how to run MNIST example with [fiab](fiab.md) environment.
 The MNIST example is under `flame/examples/mnist`.
 We assume that the current work directory is `flame`.
 Change the working directory to mnist by executing the following:
@@ -24,7 +24,7 @@ Failed to create a new design - code: -1, error: Post "https://apiserver.flame.t
 ```
 Note that `--insecure` flag should be used with caution and shouldn't be used in production.
 
-If you get an error saying that `flamectl not found`, please refer to [here](03-c-mac.md#Building-flamectl).
+If you get an error saying that `flamectl not found`, please refer to [here](fiab-mac.md#Building-flamectl).
 
 ### Step 1: create a design
 ```bash

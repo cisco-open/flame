@@ -1,6 +1,6 @@
 ## Hierarchical Federated Learning with MNIST
 
-Here we use the MNIST dataset to walk through a example of hierarchical federated learning with flame, within [fiab](../../docs/03-fiab.md) environment.
+Here we use the MNIST dataset to walk through a example of hierarchical federated learning with flame, within [fiab](../../docs/system/fiab.md) environment.
 
 
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
@@ -17,7 +17,7 @@ flamectl create design hier_mnist -d "hierarchical FL mnist example"
 flamectl create schema schema.json --design hier_mnist
 ```
 
-The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
+The schema defines the topology of this FL job. For more info, please refer to [flame-basics](../../docs/flame-basics.md).
 
 ### Step 3: add code to the design
 

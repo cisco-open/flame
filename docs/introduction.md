@@ -9,7 +9,7 @@ The vision of Flame is to democratize federated learning (FL). In that regard, i
 As FL is a fast evolving technology, Flame tries to decouple the development of a machine learning workload from its deployment and management.
 With Flame, a diverse of set of topologies (e.g., central, hierarchical, vertical, hybrid, etc.) can be easily composed
 and different backend communication protocols (e.g., mqtt) can be supported.
-We cover these core functionalities of Flame [here](05-flame-basics.md).
+We cover these core functionalities of Flame [here](flame-basics.md).
 
 ## Overview
 
@@ -30,7 +30,7 @@ That's why we use the term (data plane) for the library.
 The figure above provides an overview of the flame system.
 The control plane consists of four main components: apiserver, controller, notifier and flamelet.
 In addition, we rely on MongoDB to store state and information about the system and FL jobs.
-Explanation on the service components is found [here](#system-workflow).
+Explanation on the service components is found [here](system/workflow.md#system-workflow).
 
 A user (herein AI/ML engineer) interacts with the flame system in three ways.
 The user first uses the flame python library (Flame SDK from the figure)
@@ -44,32 +44,35 @@ The final interface available to the user is a model registry, which maintains a
 Currently, the flame system supports mlflow as its model registry.
 Future supports may include registry on top of object storages such as MinIO.
 
-## System Workflow
+---
+## Table of Contents
 
-As aforementioned, the control plane consists of three main components: apiserver, controller, notifier and flamelet.
-The apiserver is a front-end of the system; its responsibility is for user authentication, sanity check of requests, etc.
-The controller is a core component of the flame system and is responsible for handling user's requests.
-As the name stands for, the notifier is a service component that notifies events to flamelet.
-The last component, flamelet is an agent that assists the execution of a FL job. It is only executed when a task is deployed.
+### General
 
-We use two terms to define a FL job concretely.
-One is task and the other is worker. A FL job consists of tasks, which will be executed by workers.
-These concepts of task and worker are well established in systems like Apache Spark, MapReduce, etc. And we use them in the similar way.
+#### [Quickstart (Ubuntu)](quickstart-ubuntu.md)
 
-<p align="center"><img src="images/flame_workflow.png" alt="System workflow" width="600px"/></p>
+#### [Quickstart (macOS)](quickstart-mac.md)
 
-Given these components, the flame's workflow consists of several steps. The figure above is presented to aid the explanation of the steps.
+#### [Prerequisites](prerequisites.md)
 
-1. Step 1: A user creates a machine learning job and submits it to the system (e.g., by using `flamectl`).
-2. Step 2: The apiserver receives requests and forward it to the controller if requests appears to be valid.
-3. Step 3: The controller takes the requests, takes actions, update state in database and returns responses back to the user.
-4. Step 4: If the request is to start a job, the controller contacts a cluster orchestration manager(s) (e.g., kubernetes)
-and makes worker creation requests.
-5. Step 5: The worker (e.g., container or pod) contains flamelet. Then, flamelet in the worker contacts notifier and waits for events.
-6. Step 6: As soon as the worker creation is confirmed, the controllers send an event to each of the workers for the job via notifier.
-7. Step 7: Once each worker receives an event on a task being assigned to it, it contacts the apiserver and fetches a manifest for the task.
-8. Step 8: A manifest is comprised of two elements: ml code and configuration. The flamelet execute the task by creating a child process for the ml code.
-9. Step 9: The flamelet monitors the execution of the task and updates the state once the task execution is over.
-10. Step 10: In the meantime, the controller also monitors a job's status and take action when necessary (e.g., deallocating workers).
+#### [Flame Basics](flame-basics.md)
 
-Note that the flame system is in active development and not all the functionalities are supported yet.
+#### [Changelog](changelog.md)
+
+#### [Contributor Guide](contributor-guide.md)
+
+### Flame SDK (Data Plane) Docs
+
+#### [Flame SDK](sdk/flame-sdk.md)
+
+### Flame System (Control Plane) Docs
+
+#### [Flame in a box (fiab)](system/fiab.md)
+
+#### [System Workflow](system/workflow.md)
+
+#### [Examples](system/examples.md)
+
+#### [Flame CLI Tool](system/flamectl.md)
+
+#### [User Workflow](system/user-workflow.md)
