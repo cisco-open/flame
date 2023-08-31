@@ -2,8 +2,8 @@
 
 ### Prerequisites
 
-* Ubuntu 20.04
-* Install [anaconda](https://www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
+* Install [anaconda](www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
+* Install [homebrew] (https://docs.brew.sh/Installation) 
 * Clone repo (you could use `git clone https://github.com/cisco-open/flame.git`).
 
 ### Local MQTT Broker
@@ -11,24 +11,18 @@
 Since the flame system uses an MQTT broker to exchange messages during federated learning, to run the python library locally, you may install a local MQTT broker as shown below.
 
 ```bash
-sudo apt update
-sudo apt install -y mosquitto
-sudo systemctl status mosquitto
+brew install mosquitto
+brew services info mosquitto
 ```
 
 The last command should display something similar to this:
 
 ```bash
-mosquitto.service - Mosquitto MQTT v3.1/v3.1.1 Broker
-     Loaded: loaded (/lib/systemd/system/mosquitto.service; enabled; vendor pre>
-     Active: active (running) since Fri 2023-02-03 14:05:55 PST; 1h 20min ago
-       Docs: man:mosquitto.conf(5)
-             man:mosquitto(8)
-   Main PID: 75525 (mosquitto)
-      Tasks: 3 (limit: 9449)
-     Memory: 1.9M
-     CGroup: /system.slice/mosquitto.service
-             └─75525 /usr/sbin/mosquitto -c /etc/mosquitto/mosquitto.conf
+mosquitto (homebrew.mxcl.mosquitto)
+Running: ✔
+Loaded: ✔
+Schedulable: ✘
+...
 ```
 
 That confirms that the mosquitto service is active.
@@ -37,11 +31,11 @@ You can use the following commands to stop and start the mosquitto service:
 
 ```bash
 # start mosquitto
-sudo systemctl start mosquitto
+brew services start mosquitto
 # stop mosquitto
-sudo systemctl stop mosquitto
+brew services stop mosquitto
 # restart mosquitto
-sudo systemctl restart mosquitto
+brew services restart mosquitto
 ```
 
 Go ahead and change the two config files `flame/lib/python/examples/mnist/trainer/config.json` and `flame/lib/python/examples/mnist/aggregator/config.json` to set `backend` to `mqtt`.

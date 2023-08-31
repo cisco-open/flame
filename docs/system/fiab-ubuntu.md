@@ -1,59 +1,63 @@
-# Fiab installation in MAC OS
-This guideline is primarily based on MacOS.
-However, this dev environment doesn't work under latest Apple machines with M1 chipset because hyperkit is not yet supported for M1 Mac.
-
+# Fiab installation in Linux
+This guideline is mainly for Ubuntu in a x86 machine and steps can be followed for other Linux distributions with their respective package managers.
 ## Prerequisites
-fiab relies on `minikube`, `kubectl`, `helm`, `docker` and `jq`.
-
-
-fiab doesn't support docker driver (hence, docker desktop). fiab uses ingress and ingress-dns addons in minikube.
-When docker driver is chosen, these two addons are only supported on Linux (see [here](https://minikube.sigs.k8s.io/docs/drivers/docker/)
-and [here](https://github.com/kubernetes/minikube/issues/7332)). Note that while the issue 7332 is now closed and appears to be fixed,
-ingress and ingress-dns still don't work under fiab environment on MacOs.
-In addition, note that the docker subscription service agreement has been updated for `docker desktop`.
-Hence, `docker desktop` may not be free. Please check out the [agreement](https://www.docker.com/products/docker-desktop).
-
-Hence, fiab uses `hyperkit` as its default vm driver. Using `hyperkit` has some drawbacks.
-First, as of May 21, 2022, `hyperkit` driver doesn't support M1 chipset.
-Second, the `hyperkit` driver doesn't work with dnscrypt-proxy or dnsmasq well.
-Thus, if dnscrypt-proxy or dnsmasq is installed in the system, see [here](#fixing-docker-build-error) for details and a workaround.
-
-Note that other drivers such as `virtualbox` are not tested.
-
+For Linux, no VM hypervisor is needed. The following tools are sufficient: `minikube`, `kubectl`, `helm`, `docker` and `jq`.
 These tools can be installed by either running an automation script or by running manual steps.
 
 To run an automation script, run the following commands:
 
-  ```bash
-  cd fiab
-  ./install.sh macos
-  ```
+```bash
+cd fiab
+./install.sh ubuntu
+```
 
 Then, the following manual steps can be skipped; directly go to [starting minikube](#starting-minikube).
 
-### Step 1: Installing VM driver for minikube
-To install `hyperkit`,
-```bash
-brew install hyperkit docker
-```
-Here we need to install `docker` to make the docker cli tool available.
+### step 1: Installing minikube
+We install the latest minikube stable release on x86-64 Linux using binary downloaded from [here](https://minikube.sigs.k8s.io/docs/start/).
 
-### Step 2: Installing minikube and its related tools
-Now we install `minikube`, `kubectl` and `helm` as follows.
+### step 2: Installing kubectl, helm and jq
+To install [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-other-package-management).
 ```bash
-brew install minikube kubectl helm
+sudo snap install kubectl --classic
+kubectl version --client
 ```
-
-### Step 3: Miscellaneous tools
-`flame.sh` script uses `jq` to parse and update coredns's configmap in json format. Run the following to install the tool:
+To install [helm](https://helm.sh/docs/intro/install/).
 ```bash
-brew install jq
+sudo snap install helm --classic
 ```
-
-`robo-3t` is a GUI tool for MongoDB. This tool comes in handy when debugging mongodb-related issues in the flame system.
-This tool is optional.
+To install jq.
 ```bash
-brew install --cask robo-3t
+sudo apt update
+sudo apt install -y jq
+```
+### step3: Install docker
+1. Update the apt package index and install packages to allow apt to use a repository over  HTTPS.
+```bash
+sudo apt-get update
+sudo apt-get install \
+    ca-certificates \
+    curl \
+    gnupg \
+    lsb-release
+```
+2. Add Docker’s official GPG key.
+```bash
+sudo mkdir -p /etc/apt/keyrings
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+```
+3. Use the following command to set up the repository.
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu \
+  $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+```
+4. Update the apt package index, and install the latest version of Docker Engine.
+```bash
+sudo apt-get update
+sudo apt-get install docker-ce docker-ce-cli containerd.io docker-compose-plugin
+sudo groupadd docker
+sudo usermod -aG docker $USER && newgrp docker
 ```
 
 ## Starting minikube
@@ -70,9 +74,6 @@ Next, `ingress` and `ingress-dns` addons need to be installed with the following
 minikube addons enable ingress
 minikube addons enable ingress-dns
 ```
-When `hyperkit` driver is in use, enabling `ingress` addon may fail due to the same issue shown in [here](#fixing-docker-build-error),
-which explains a workaround. Once the workload is applied, come back here and rerun these commands.
-
 
 As a final step, a cert manager is needed to enable tls. The `setup-cert-manager.sh` script installs and configures a cert manager for
 selfsigned certificate creation. Run the following command:
@@ -123,40 +124,6 @@ gcr.io/k8s-minikube/storage-provisioner   v5        6e38f40d628d   8 months ago 
 k8s.gcr.io/pause                          3.5       ed210e3e4a5b   9 months ago     683kB
 ```
 
-
-### Fixing docker build error
-When `hyperkit` driver is in use, the `build-image.sh` command may fail with an error similar to the following:
-```bash
-Get "https://registry-1.docker.io/v2/": dial tcp: lookup registry-1.docker.io on 192.168.64.1:53: read udp 192.168.64.6:48076->192.168.64.1:53: read: connection refused
-```
-The error might be because of [this issue](https://github.com/kubernetes/minikube/issues/3036).
-If minikube is running on a machine with dnscrypt-proxy or dnsmasq, 
-refer to [here](https://gist.github.com/rscottwatson/e0e3c890b3d4aa81e46bf2993e3e216f) for more details.
-Especially, in case of dnscrypt-proxy, the following workaround is applied.
-
-First, log into the minikube VM with the following command.
-```bash
-minikube ssh
-```
-After logging into the VM, become a super user with the following command.
-```bash
-sudo su -
-```
-Now run the following:
-```bash
-cat << EOF >  /var/lib/boot2docker/bootlocal.sh
-echo "DNS=8.8.8.8" >> /etc/systemd/resolved.conf 
-systemctl restart systemd-resolved
-EOF
-chmod 755  /var/lib/boot2docker/bootlocal.sh
-```
-
-To apply the change, run the following after getting out of the minikube VM:
-```bash
-minikube stop && minikube start
-```
-**Note**: restarting the minikube VM may take a while. If the command hangs, press `Ctrl-C` and rerun the command.
-
 ## Starting flame
 Open a new terminal window and start the minikube tunnel with the following command:
 ```bash
@@ -188,11 +155,11 @@ Identifying the required image can be done by running a `kubectl describe` comma
 (e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`);
 the command's output will show details about the pod, including image name and its tag.
 
-During the configuration by `flame.sh`, it asks a password for sudo permission.
+During the configuration by `flame.sh`, it may ask a password for sudo permission.
 The reason for this is to add a dns configuration in `/etc/resolver/flame-test`.
 When stopping flame, the script asks again a password to delete `/etc/resolver/flame-test`.
 
-The file may look like the following on Mac OS:
+The file may look like the following:
 ```
 domain flame.test
 nameserver 192.168.64.62
@@ -228,7 +195,7 @@ ping -c 1 apiserver.flame.test
 ping -c 1 notifier.flame.test
 ping -c 1 mlflow.flame.test
 ```
-These ping commands should run successfully without any error. As another alternative, open a browser and go to `mlflow.flame.test`.
+These ping commands should run successfully without any errors. As another alternative, open a browser and go to `mlflow.flame.test`.
 That should return a mlflow's web page.
 
 ## Stopping flame
@@ -259,7 +226,7 @@ The flame CLI tool, `flamectl` uses the configuration file (`config.yaml`) to in
 In order to build `flamectl`, run `make install` from the level folder (i.e., `flame`).
 This command compiles source code and installs `flamectl` binary as well as other binaries into `$HOME/.flame/bin`.
 You may want to add `export PATH="$HOME/.flame/bin:$PATH"` to your shell config (e.g., `~/.zshrc`, `~/.bashrc`) and then reload your shell config (e.g., `source ~/.bashrc`).
-The examples in [here](04-examples.md) assume that `flamectl` is in `$HOME/.flame/bin` and the path (`$HOME/.flame/bin`) is exported.
+The examples in [here](examples.md) assume that `flamectl` is in `$HOME/.flame/bin` and the path (`$HOME/.flame/bin`) is exported.
 
 ## Cleanup
 To terminate the fiab environment, run the following:
@@ -272,4 +239,4 @@ Unless a fresh minikube instance is needed, simply stopping the minikube (i.e., 
 to save time for development and testing.
 
 ## Running a test ML job
-In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
+In order to run a sample mnist job, refer to instructions at [mnist example](examples.md#mnist).

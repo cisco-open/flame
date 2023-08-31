@@ -1,6 +1,6 @@
 ## Distributed Training
 
-We use the MNIST dataset to go over a distributed learning example, which sometimes people use as a baseline to compare with federated learning. This example is run within [fiab](../../docs/03-fiab.md) environment.
+We use the MNIST dataset to go over a distributed learning example, which sometimes people use as a baseline to compare with federated learning. This example is run within [fiab](../../docs/system/fiab.md) environment.
 
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
 
@@ -16,7 +16,7 @@ flamectl create design distributed_training -d "distributed training"
 flamectl create schema schema.json --design distributed_training
 ```
 
-The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
+The schema defines the topology of this FL job. For more info, please refer to [flame-basics](../../docs/flame-basics.md).
 
 ### Step 3: add code to the design
 

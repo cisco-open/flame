@@ -1,6 +1,6 @@
 ## MedMNIST
 
-We use the PathMNIST dataset from (MedMNIST)[https://medmnist.com/] to go over an example of using adaptive aggregator on a data heterogeneity setting, implemented in PyTorch. This example is run within [fiab](../../docs/03-fiab.md) environment.
+We use the PathMNIST dataset from (MedMNIST)[https://medmnist.com/] to go over an example of using adaptive aggregator on a data heterogeneity setting, implemented in PyTorch. This example is run within [fiab](../../docs/system/fiab.md) environment.
 
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
 
@@ -16,7 +16,7 @@ flamectl create design medmnist -d "MedMNIST"
 flamectl create schema schema.json --design medmnist
 ```
 
-The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md). Here the schema is the most classic federated learning setting with one server and multiple clients.
+The schema defines the topology of this FL job. For more info, please refer to [flame-basics](../../docs/flame-basics.md). Here the schema is the most classic federated learning setting with one server and multiple clients.
 
 ### Step 3: add code to the design
 

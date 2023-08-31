@@ -3,7 +3,7 @@ This guideline is for configuring fiab in Amazon Linux 2 with GPU supported inst
 
 ## Prerequisites
 This section is specifically for AWS EC2 instance with Amazon Linux 2 image and GPU.
-For other Linux distributions without GPU (regardless of VM or baremetal machine), refer to [Ubuntu](03-a-ubuntu.md);
+For other Linux distributions without GPU (regardless of VM or baremetal machine), refer to [Ubuntu](fiab-ubuntu.md);
 with their respective package manager, the guideline for Ubuntu can be easily followed.
 
 For Amazon Linux 2 image (amzn2), the following tools are necessary: `minikube`, `kubectl`, `helm`, `cri-dockerd`, `crictl` , `docker` and `jq`.
@@ -300,7 +300,7 @@ The flame CLI tool, `flamectl` uses the configuration file (`config.yaml`) to in
 In order to build `flamectl`, run `make install` from the level folder (i.e., `flame`).
 This command compiles source code and installs `flamectl` binary as well as other binaries into `$HOME/.flame/bin`.
 You may want to add `export PATH="$HOME/.flame/bin:$PATH"` to your shell config (e.g., `~/.zshrc`, `~/.bashrc`) and then reload your shell config (e.g., `source ~/.bashrc`).
-The examples in [here](04-examples.md) assume that `flamectl` is in `$HOME/.flame/bin` and the path (`$HOME/.flame/bin`) is exported.
+The examples in [here](examples.md) assume that `flamectl` is in `$HOME/.flame/bin` and the path (`$HOME/.flame/bin`) is exported.
 
 ## Cleanup
 To terminate the fiab environment, run the following:
@@ -313,4 +313,4 @@ Unless a fresh minikube instance is needed, simply stopping the minikube (i.e., 
 to save time for development and testing.
 
 ## Running a test ML job
-In order to run a sample mnist job, refer to instructions at [mnist example](04-examples.md#mnist).
+In order to run a sample mnist job, refer to instructions at [mnist example](examples.md#mnist).

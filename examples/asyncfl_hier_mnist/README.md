@@ -4,7 +4,7 @@ This example is based on asynchronous federated learning implementation in the F
 
 We use the MNIST dataset to walk through an example of asynchronous hierarchical federated learning with Flame.
 
-We assume that a fiab environment is set up properly. To set it up, refer to [this document](../../docs/03-fiab.md).
+We assume that a fiab environment is set up properly. To set it up, refer to [this document](../../docs/system/fiab.md).
 
 
 **Note**: You need to add `--insecure` to all the `flamectl` command when the example is used in a fiab environment.
@@ -21,7 +21,7 @@ flamectl create design asyncfl_hier_mnist -d "asynchronous hierarchical FL mnist
 flamectl create schema schema.json --design asyncfl_hier_mnist
 ```
 
-The schema defines the topology of this FL job. For more info, please refer to [05-flame-basics](05-flame-basics.md).
+The schema defines the topology of this FL job. For more info, please refer to [flame-basics](../../docs/flame-basics.md).
 
 ### Step 3: add code to the design
 

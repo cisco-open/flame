@@ -2,7 +2,7 @@
 
 In this example, we will use a MNIST digit recognition dataset and build a **parallel experiment** exmaple.
 
-We will run this example within [fiab](../../docs/03-fiab.md) environment.
+We will run this example within [fiab](../../docs/system/fiab.md) environment.
 
 Note: You may want to add `--insecure` to all the `flamectl` command if you plan to run the example on your local machine only.
 ### Step 1: create a design
