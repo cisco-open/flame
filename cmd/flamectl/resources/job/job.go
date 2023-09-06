@@ -265,7 +265,13 @@ func Update(params Params) error {
 	}
 
 	// encode the data
-	jobSpec := openapi.JobSpec{}
+	//validate the input - to ensure dataSpecPath and ModelSpecPath are correctly provide
+	isValid, jobSpec := createJobSpec(data, params.JobFile)
+	if !isValid {
+		fmt.Printf("Incorrect job specification provided %s\n", params.JobFile)
+		return nil
+	}
+
 	err = json.Unmarshal(data, &jobSpec)
 	if err != nil {
 		fmt.Printf("Failed to parse %s\n", params.JobFile)
