@@ -13,114 +13,129 @@
 # limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""HIRE_MNIST horizontal hierarchical FL trainer for Keras."""
+"""MNIST horizontal FL trainer for PyTorch.
+
+The example below is implemented based on the following example from pytorch:
+https://github.com/pytorch/examples/blob/master/mnist/main.py.
+"""
 
 import logging
-from random import randrange
-from statistics import mean
 
-import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+import torch.optim as optim
+import torch.utils.data as data_utils
 from flame.config import Config
 from flame.mode.horizontal.trainer import Trainer
-from tensorflow import keras
-from tensorflow.keras import layers
+from torchvision import datasets, transforms
 
 logger = logging.getLogger(__name__)
 
 
-class KerasMnistTrainer(Trainer):
-    """Keras Mnist Trainer."""
+class Net(nn.Module):
+    """Net class."""
+    def __init__(self):
+        """Initialize."""
+        super(Net, self).__init__()
+        self.conv1 = nn.Conv2d(1, 32, 3, 1)
+        self.conv2 = nn.Conv2d(32, 64, 3, 1)
+        self.dropout1 = nn.Dropout(0.25)
+        self.dropout2 = nn.Dropout(0.5)
+        self.fc1 = nn.Linear(9216, 128)
+        self.fc2 = nn.Linear(128, 10)
 
+    def forward(self, x):
+        """Forward."""
+        x = self.conv1(x)
+        x = F.relu(x)
+        x = self.conv2(x)
+        x = F.relu(x)
+        x = F.max_pool2d(x, 2)
+        x = self.dropout1(x)
+        x = torch.flatten(x, 1)
+        x = self.fc1(x)
+        x = F.relu(x)
+        x = self.dropout2(x)
+        x = self.fc2(x)
+        output = F.log_softmax(x, dim=1)
+        return output
+
+
+class PyTorchMnistTrainer(Trainer):
+    """PyTorch Mnist Trainer."""
     def __init__(self, config: Config) -> None:
         """Initialize a class instance."""
         self.config = config
         self.dataset_size = 0
-
-        self.num_classes = 10
-        self.input_shape = (28, 28, 1)
-
         self.model = None
-        self._x_train = None
-        self._y_train = None
-        self._x_test = None
-        self._y_test = None
+
+        self.device = None
+        self.train_loader = None
 
         self.epochs = self.config.hyperparameters.epochs
-        self.batch_size = self.config.hyperparameters.batch_size or 128
+        self.batch_size = self.config.hyperparameters.batch_size or 16
 
     def initialize(self) -> None:
         """Initialize role."""
-        model = keras.Sequential([
-            keras.Input(shape=self.input_shape),
-            layers.Conv2D(32, kernel_size=(3, 3), activation="relu"),
-            layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
-            layers.MaxPooling2D(pool_size=(2, 2)),
-            layers.Flatten(),
-            layers.Dropout(0.5),
-            layers.Dense(self.num_classes, activation="softmax"),
-        ])
+        self.device = torch.device(
+            "cuda" if torch.cuda.is_available() else "cpu"
+        )
 
-        model.compile(loss="categorical_crossentropy",
-                      optimizer="adam",
-                      metrics=["accuracy"])
-
-        self.model = model
+        self.model = Net().to(self.device)
 
     def load_data(self) -> None:
         """Load data."""
-        # the data, split between train and test sets
-        (x_train, y_train), (x_test, y_test) = keras.datasets.mnist.load_data()
+        transform = transforms.Compose(
+            [
+                transforms.ToTensor(),
+                transforms.Normalize((0.1307, ), (0.3081, ))
+            ]
+        )
 
-        split_n = 10
-        index = randrange(split_n)
-        # reduce train sample size to reduce the runtime
-        x_train = np.split(x_train, split_n)[index]
-        y_train = np.split(y_train, split_n)[index]
-        x_test = np.split(x_test, split_n)[index]
-        y_test = np.split(y_test, split_n)[index]
+        dataset = datasets.MNIST(
+            './data', train=True, download=True, transform=transform
+        )
 
-        # Scale images to the [0, 1] range
-        x_train = x_train.astype("float32") / 255
-        x_test = x_test.astype("float32") / 255
-        # Make sure images have shape (28, 28, 1)
-        x_train = np.expand_dims(x_train, -1)
-        x_test = np.expand_dims(x_test, -1)
+        indices = torch.arange(2000)
+        dataset = data_utils.Subset(dataset, indices)
+        train_kwargs = {'batch_size': self.batch_size}
 
-        # convert class vectors to binary class matrices
-        y_train = keras.utils.to_categorical(y_train, self.num_classes)
-        y_test = keras.utils.to_categorical(y_test, self.num_classes)
-
-        self._x_train = x_train
-        self._y_train = y_train
-        self._x_test = x_test
-        self._y_test = y_test
+        self.train_loader = torch.utils.data.DataLoader(dataset, **train_kwargs)
 
     def train(self) -> None:
         """Train a model."""
-        history = self.model.fit(self._x_train,
-                                 self._y_train,
-                                 batch_size=self.batch_size,
-                                 epochs=self.epochs,
-                                 validation_split=0.1)
+        self.optimizer = optim.Adadelta(self.model.parameters())
+
+        for epoch in range(1, self.epochs + 1):
+            self._train_epoch(epoch)
 
         # save dataset size so that the info can be shared with aggregator
-        self.dataset_size = len(self._x_train)
+        self.dataset_size = len(self.train_loader.dataset)
 
-        loss = mean(history.history['loss'])
-        accuracy = mean(history.history['accuracy'])
-        self.update_metrics({'loss': loss, 'accuracy': accuracy})
+    def _train_epoch(self, epoch):
+        self.model.train()
+
+        for batch_idx, (data, target) in enumerate(self.train_loader):
+            data, target = data.to(self.device), target.to(self.device)
+            self.optimizer.zero_grad()
+            output = self.model(data)
+            loss = F.nll_loss(output, target)
+            loss.backward()
+            self.optimizer.step()
+            if batch_idx % 10 == 0:
+                done = batch_idx * len(data)
+                total = len(self.train_loader.dataset)
+                percent = 100. * batch_idx / len(self.train_loader)
+                logger.info(
+                    f"epoch: {epoch} [{done}/{total} ({percent:.0f}%)]"
+                    f"\tloss: {loss.item():.6f}"
+                )
 
     def evaluate(self) -> None:
         """Evaluate a model."""
-        score = self.model.evaluate(self._x_test, self._y_test, verbose=0)
-
-        logger.info(f"Test loss: {score[0]}")
-        logger.info(f"Test accuracy: {score[1]}")
-
-        # update metrics after each evaluation so that the metrics can be
-        # logged in a model registry.
-        self.update_metrics({'test-loss': score[0], 'test-accuracy': score[1]})
+        # Implement this if testing is needed in trainer
+        pass
 
 
 if __name__ == "__main__":
@@ -130,9 +145,8 @@ if __name__ == "__main__":
     parser.add_argument('config', nargs='?', default="./config.json")
 
     args = parser.parse_args()
-
     config = Config(args.config)
 
-    t = KerasMnistTrainer(config)
+    t = PyTorchMnistTrainer(config)
     t.compose()
     t.run()
