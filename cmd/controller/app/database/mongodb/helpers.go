@@ -18,8 +18,6 @@ package mongodb
 
 import (
 	"errors"
-	"fmt"
-	"strconv"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -27,9 +25,7 @@ import (
 )
 
 const (
-	latestVersion  = "latest"
-	unknownVersion = "unknown"
-	updatedAt      = "updatedat"
+	updatedAt = "updatedat"
 )
 
 /*
@@ -62,13 +58,4 @@ func ErrorCheck(err error) error {
 	}
 
 	return err
-}
-
-func IncrementVersion(version string) string {
-	num, err := strconv.Atoi(version)
-	if err != nil {
-		return "1"
-	}
-
-	return fmt.Sprintf("%d", num+1)
 }

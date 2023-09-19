@@ -23,8 +23,8 @@ import (
 
 var removeDesignCmd = &cobra.Command{
 	Use:   "design <designId>",
-	Short: "Remove a design and it's nested objects",
-	Long:  "This command removes a design and all of it's nested schemas and codes",
+	Short: "Remove a design and its objects",
+	Long:  "This command removes a design, its schema and code",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)

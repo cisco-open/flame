@@ -287,7 +287,7 @@ func createDesignCode(t *testing.T, dbService *mongodb.MongoService, userID stri
 	designCodeFile, err := os.Open(fmt.Sprintf("%s/%s/%s.zip", baseExampleFolder, designID, designID))
 	assert.NoError(t, err)
 
-	err = dbService.CreateDesignCode(userID, designID, designID, "zip", designCodeFile)
+	err = dbService.CreateDesignCode(userID, designID, "zip", designCodeFile)
 	assert.NoError(t, err)
 }
 
@@ -307,7 +307,7 @@ func createDesign(t *testing.T, dbService *mongodb.MongoService, userID string, 
 		UserId:      userID,
 		Id:          designID,
 		Description: designID + " example",
-		Schemas:     []openapi.DesignSchema{},
+		Schema:      openapi.DesignSchema{},
 	})
 	assert.NoError(t, err)
 }

@@ -40,10 +40,12 @@ BasicJobInfo:
       type: string
     designId:
       type: string
-    schemaVersion:
-      type: string
-    codeVersion:
-      type: string
+    schemaRevision:
+      type: integer
+      format: int32
+    codeRevision:
+      type: integer
+      format: int32
     priority:
       $ref: '#/components/schemas/JobPriority'
     backend:
@@ -55,15 +57,11 @@ BasicJobInfo:
   required:
     - name
     - designId
-    - schemaVersion
-    - codeVersion
     - backend
   example:
     name: mnist
     userId: "john"
     designId: "60d0d66716af12b787d9ef0a"
-    schemaVersion: "1"
-    codeVersion: "1"
     priority: "low"
     backend: "mqtt"
     maxRunTime: 600

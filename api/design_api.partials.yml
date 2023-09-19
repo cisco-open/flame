@@ -191,46 +191,7 @@
     tags:
       - designs
 
-/users/{user}/designs/{designId}/schemas:
-  #------------------------------------#
-  # Get All Design Schemas
-  #------------------------------------#
-  get:
-    operationId: getDesignSchemas
-    parameters:
-      - name: user
-        description: user id
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-      - name: designId
-        description: design id
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
-    responses:
-      "200":
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DesignSchemas'
-        description: a design schema
-      default:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Error'
-        description: unexpected error
-    summary: Get all design schemas in a design
-    tags:
-      - designSchemas
-
+/users/{user}/designs/{designId}/schema:
   #------------------------------------#
   # Create Design Schema
   #------------------------------------#
@@ -269,9 +230,8 @@
         description: unexpected error
     summary: Update a design schema
     tags:
-      - designSchemas
+      - designSchema
 
-/users/{user}/designs/{designId}/schemas/{version}:
   #------------------------------------#
   # Get Design Schema
   #------------------------------------#
@@ -294,14 +254,6 @@
         style: simple
         explode: false
         required: true
-      - name: version
-        description: version string
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
     responses:
       "200":
         content:
@@ -317,7 +269,7 @@
         description: unexpected error
     summary: Get a design schema owned by user
     tags:
-      - designSchemas
+      - designSchema
 
   #------------------------------------#
   # Update Design Schema
@@ -341,14 +293,6 @@
         style: simple
         explode: false
         required: true
-      - name: version
-        description: version string
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
     requestBody:
       content:
         application/json:
@@ -365,7 +309,7 @@
         description: unexpected error
     summary: Update a schema for a given design
     tags:
-      - designSchemas
+      - designSchema
 
   #------------------------------------#
   # Delete Design Schema
@@ -389,14 +333,6 @@
         style: simple
         explode: false
         required: true
-      - name: version
-        description: version string
-        in: path
-        schema:
-          type: string
-        style: simple
-        explode: false
-        required: true
     responses:
       "200":
         description: Null response
@@ -408,9 +344,92 @@
         description: unexpected error
     summary: Delete a schema for a given design
     tags:
-      - designSchemas
+      - designSchema
 
-/users/{user}/designs/{designId}/codes:
+/users/{user}/designs/{designId}/code:
+  #------------------------------------#
+  # Delete code
+  #------------------------------------#
+  delete:
+    operationId: deleteDesignCode
+    summary: Delete code associated with a given design
+    tags:
+      - designCode
+    parameters:
+      - name: user
+        description: user name
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      "200":
+        description: Deleted
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeApiResponse'
+      "404":
+        description: Design id not found
+      "401":
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
+  #------------------------------------#
+  # Get Code Zip
+  #------------------------------------#
+  get:
+    operationId: getDesignCode
+    parameters:
+      - name: user
+        description: user name
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: designId
+        description: design id
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      "200":
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+        description: A design code file in zipped format
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Get a zipped design code file owned by user
+    tags:
+      - designCode
+
   #------------------------------------#
   # Upload Code Zip
   #------------------------------------#
@@ -440,7 +459,11 @@
             $ref: '#/components/schemas/File'
     responses:
       "201":
-        description: Null response
+        description: return revision number
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeApiResponse'
       default:
         content:
           application/json:
@@ -449,59 +472,10 @@
         description: unexpected error
     summary: Upload a new design code
     tags:
-      - designCodes
-
-/users/{user}/designs/{designId}/codes/{version}:
-  #------------------------------------#
-  # Get Code Zip
-  #------------------------------------#
-  get:
-    operationId: getDesignCode
-    parameters:
-      - name: user
-        description: user name
-        explode: false
-        in: path
-        required: true
-        schema:
-          type: string
-        style: simple
-      - name: designId
-        description: design id
-        explode: false
-        in: path
-        required: true
-        schema:
-          type: string
-        style: simple
-      - name: version
-        description: version string
-        explode: false
-        in: path
-        required: true
-        schema:
-          type: string
-        style: simple
-    responses:
-      "200":
-        content:
-          application/octet-stream:
-            schema:
-              type: string
-              format: binary
-        description: A design code file in zipped format
-      default:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Error'
-        description: unexpected error
-    summary: Get a zipped design code file owned by user
-    tags:
-      - designCodes
+      - designCode
 
   #------------------------------------#
-  # Update Code Zip For Particular Version
+  # Update code with a new zip file
   #------------------------------------#
   put:
     operationId: updateDesignCode
@@ -522,14 +496,6 @@
         schema:
           type: string
         style: simple
-      - name: version
-        description: version string
-        explode: false
-        in: path
-        required: true
-        schema:
-          type: string
-        style: simple
     requestBody:
       content:
         multipart/form-data:
@@ -537,7 +503,11 @@
             $ref: '#/components/schemas/File'
     responses:
       "200":
-        description: Null response
+        description: return revision number
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeApiResponse'
       default:
         content:
           application/json:
@@ -546,15 +516,14 @@
         description: unexpected error
     summary: Update a design code
     tags:
-      - designCodes
+      - designCode
+
+/users/{user}/designs/{designId}/code/revision:
   #------------------------------------#
-  # Delete Code Zip
+  # Get code revision number
   #------------------------------------#
-  delete:
-    operationId: deleteDesignCode
-    summary: Delete code of a specified version from a given design
-    tags:
-      - designCodes
+  get:
+    operationId: getDesignCodeRevision
     parameters:
       - name: user
         description: user name
@@ -572,24 +541,19 @@
         schema:
           type: string
         style: simple
-      - name: version
-        description: version string
-        explode: false
-        in: path
-        required: true
-        schema:
-          type: string
-        style: simple
     responses:
-      '200':
-        description: Deleted
-      '404':
-        description: Design id not found
-      '401':
-        description: Unauthorized
+      "200":
+        description: return revision number
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CodeApiResponse'
       default:
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/Error'
         description: unexpected error
+    summary: Get a revision number of design code
+    tags:
+      - designCode

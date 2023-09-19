@@ -1,4 +1,4 @@
-// Copyright 2022 Cisco Systems, Inc. and its affiliates
+// Copyright 2023 Cisco Systems, Inc. and its affiliates
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,15 +25,14 @@
 
 package openapi
 
-// DesignSchemas - A collection of design schemas related to design template
-type DesignSchemas struct {
-	Schemas []DesignSchema `json:"schemas"`
+type CodeApiResponse struct {
+	Revision int32 `json:"revision"`
 }
 
-// AssertDesignSchemasRequired checks if the required fields are not zero-ed
-func AssertDesignSchemasRequired(obj DesignSchemas) error {
+// AssertCodeApiResponseRequired checks if the required fields are not zero-ed
+func AssertCodeApiResponseRequired(obj CodeApiResponse) error {
 	elements := map[string]interface{}{
-		"schemas": obj.Schemas,
+		"revision": obj.Revision,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {
@@ -41,22 +40,10 @@ func AssertDesignSchemasRequired(obj DesignSchemas) error {
 		}
 	}
 
-	for _, el := range obj.Schemas {
-		if err := AssertDesignSchemaRequired(el); err != nil {
-			return err
-		}
-	}
 	return nil
 }
 
-// AssertRecurseDesignSchemasRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of DesignSchemas (e.g. [][]DesignSchemas), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseDesignSchemasRequired(objSlice interface{}) error {
-	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aDesignSchemas, ok := obj.(DesignSchemas)
-		if !ok {
-			return ErrTypeAssertionError
-		}
-		return AssertDesignSchemasRequired(aDesignSchemas)
-	})
+// AssertCodeApiResponseConstraints checks if the values respects the defined constraints
+func AssertCodeApiResponseConstraints(obj CodeApiResponse) error {
+	return nil
 }

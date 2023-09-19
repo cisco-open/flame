@@ -48,15 +48,15 @@ const (
 	// Keys for design schema endpoints
 	CreateDesignSchemaEndPoint = "CREATE_DESIGN_SCHEMA"
 	GetDesignSchemaEndPoint    = "GET_DESIGN_SCHEMA"
-	GetDesignSchemasEndPoint   = "GET_DESIGN_SCHEMAS"
 	UpdateDesignSchemaEndPoint = "UPDATE_DESIGN_SCHEMA"
 	DeleteDesignSchemaEndPoint = "DELETE_DESIGN_SCHEMA"
 
 	// Keys for design code endpoints
-	CreateDesignCodeEndPoint = "CREATE_DESIGN_CODE"
-	GetDesignCodeEndPoint    = "GET_DESIGN_CODE"
-	UpdateDesignCodeEndPoint = "UPDATE_DESIGN_CODE"
-	DeleteDesignCodeEndPoint = "DELETE_DESIGN_CODE"
+	CreateDesignCodeEndPoint      = "CREATE_DESIGN_CODE"
+	GetDesignCodeEndPoint         = "GET_DESIGN_CODE"
+	UpdateDesignCodeEndPoint      = "UPDATE_DESIGN_CODE"
+	DeleteDesignCodeEndPoint      = "DELETE_DESIGN_CODE"
+	GetDesignCodeRevisionEndPoint = "GET_DESIGN_CODE_REVISION"
 
 	// Keys for job endpoints
 	CreateJobEndpoint        = "CREATE_JOB"
@@ -101,17 +101,17 @@ var URI = map[string]string{
 	DeleteDesignEndPoint: "/users/{{.user}}/designs/{{.designId}}",
 
 	// Design schema
-	CreateDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schemas",
-	GetDesignSchemaEndPoint:    "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
-	GetDesignSchemasEndPoint:   "/users/{{.user}}/designs/{{.designId}}/schemas",
-	UpdateDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
-	DeleteDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schemas/{{.version}}",
+	CreateDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schema",
+	GetDesignSchemaEndPoint:    "/users/{{.user}}/designs/{{.designId}}/schema",
+	UpdateDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schema",
+	DeleteDesignSchemaEndPoint: "/users/{{.user}}/designs/{{.designId}}/schema",
 
 	// Design Code
-	CreateDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes",
-	GetDesignCodeEndPoint:    "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
-	UpdateDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
-	DeleteDesignCodeEndPoint: "/users/{{.user}}/designs/{{.designId}}/codes/{{.version}}",
+	CreateDesignCodeEndPoint:      "/users/{{.user}}/designs/{{.designId}}/code",
+	GetDesignCodeEndPoint:         "/users/{{.user}}/designs/{{.designId}}/code",
+	UpdateDesignCodeEndPoint:      "/users/{{.user}}/designs/{{.designId}}/code",
+	DeleteDesignCodeEndPoint:      "/users/{{.user}}/designs/{{.designId}}/code",
+	GetDesignCodeRevisionEndPoint: "/users/{{.user}}/designs/{{.designId}}/code/revision",
 
 	// Job
 	GetJobsByComputeEndPoint: "/jobs/{{.computeId}}",

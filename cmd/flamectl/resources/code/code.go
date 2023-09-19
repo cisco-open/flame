@@ -37,7 +37,6 @@ type Params struct {
 
 	DesignId string
 	CodePath string
-	CodeVer  string
 }
 
 func Create(params Params) error {
@@ -90,7 +89,6 @@ func Get(params Params) error {
 	uriMap := map[string]string{
 		constants.ParamUser:     params.User,
 		constants.ParamDesignID: params.DesignId,
-		constants.ParamVersion:  params.CodeVer,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
@@ -98,11 +96,11 @@ func Get(params Params) error {
 	if err != nil || restapi.CheckStatusCode(code) != nil {
 		var msg string
 		_ = json.Unmarshal(body, &msg)
-		fmt.Printf("Failed to retrieve a code of version '%s' - code: %d; %s\n", params.CodeVer, code, msg)
+		fmt.Printf("Failed to retrieve code of design '%s' - code: %d; %s\n", params.DesignId, code, msg)
 		return nil
 	}
 
-	fileName := params.DesignId + "_ver-" + params.CodeVer + ".zip"
+	fileName := params.DesignId + ".zip"
 	err = os.WriteFile(fileName, body, util.FilePerm0644)
 	if err != nil {
 		fmt.Printf("Failed to save %s: %v\n", fileName, err)
@@ -128,7 +126,6 @@ func Remove(params Params) error {
 	uriMap := map[string]string{
 		constants.ParamUser:     params.User,
 		constants.ParamDesignID: params.DesignId,
-		constants.ParamVersion:  params.CodeVer,
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 
@@ -136,11 +133,40 @@ func Remove(params Params) error {
 	if err != nil || restapi.CheckStatusCode(statusCode) != nil {
 		var msg string
 		_ = json.Unmarshal(body, &msg)
-		fmt.Printf("Failed to delete code version '%s' - code: %d; %s\n", params.CodeVer, statusCode, msg)
+		fmt.Printf("Failed to delete code for design '%s' - code: %d; %s\n", params.DesignId, statusCode, msg)
 		return nil
 	}
 
-	fmt.Printf("Deleted code version '%s' successfully\n", params.CodeVer)
+	fmt.Printf("Deleted code for design '%s' successfully\n", params.DesignId)
+
+	return nil
+}
+
+func GetRevision(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.GetDesignCodeRevisionEndPoint, uriMap)
+
+	code, body, err := restapi.HTTPGet(url)
+	if err != nil || restapi.CheckStatusCode(code) != nil {
+		var msg string
+		_ = json.Unmarshal(body, &msg)
+		fmt.Printf("Failed to retrieve code of design '%s' - code: %d; %s\n", params.DesignId, code, msg)
+		return nil
+	}
+
+	// format the output into prettyJson format
+	prettyJSON, err := util.FormatJSON(body)
+	if err != nil {
+		fmt.Printf("WARNING: error while formating json: %v\n\n", err)
+
+		fmt.Println(string(body))
+	} else {
+		fmt.Println(string(prettyJSON))
+	}
 
 	return nil
 }

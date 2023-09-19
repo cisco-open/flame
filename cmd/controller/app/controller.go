@@ -95,8 +95,8 @@ func (c *Controller) serveRestApi() {
 	apiRouters := []openapi.Router{
 		openapi.NewDatasetsApiController(controller.NewDatasetsApiService(c.dbService)),
 		openapi.NewDesignsApiController(controller.NewDesignsApiService(c.dbService)),
-		openapi.NewDesignCodesApiController(controller.NewDesignCodesApiService(c.dbService)),
-		openapi.NewDesignSchemasApiController(controller.NewDesignSchemasApiService(c.dbService)),
+		openapi.NewDesignCodeApiController(controller.NewDesignCodeApiService(c.dbService)),
+		openapi.NewDesignSchemaApiController(controller.NewDesignSchemaApiService(c.dbService)),
 		openapi.NewJobsApiController(controller.NewJobsApiService(c.dbService, c.jobEventQ, c.jobBuilder)),
 		openapi.NewComputesApiController(controller.NewComputesApiService(c.dbService, c.jobParams)),
 	}

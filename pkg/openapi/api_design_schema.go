@@ -35,25 +35,25 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
-// DesignSchemasApiController binds http requests to an api service and writes the service results to the http response
-type DesignSchemasApiController struct {
-	service      DesignSchemasApiServicer
+// DesignSchemaApiController binds http requests to an api service and writes the service results to the http response
+type DesignSchemaApiController struct {
+	service      DesignSchemaApiServicer
 	errorHandler ErrorHandler
 }
 
-// DesignSchemasApiOption for how the controller is set up.
-type DesignSchemasApiOption func(*DesignSchemasApiController)
+// DesignSchemaApiOption for how the controller is set up.
+type DesignSchemaApiOption func(*DesignSchemaApiController)
 
-// WithDesignSchemasApiErrorHandler inject ErrorHandler into controller
-func WithDesignSchemasApiErrorHandler(h ErrorHandler) DesignSchemasApiOption {
-	return func(c *DesignSchemasApiController) {
+// WithDesignSchemaApiErrorHandler inject ErrorHandler into controller
+func WithDesignSchemaApiErrorHandler(h ErrorHandler) DesignSchemaApiOption {
+	return func(c *DesignSchemaApiController) {
 		c.errorHandler = h
 	}
 }
 
-// NewDesignSchemasApiController creates a default api controller
-func NewDesignSchemasApiController(s DesignSchemasApiServicer, opts ...DesignSchemasApiOption) Router {
-	controller := &DesignSchemasApiController{
+// NewDesignSchemaApiController creates a default api controller
+func NewDesignSchemaApiController(s DesignSchemaApiServicer, opts ...DesignSchemaApiOption) Router {
+	controller := &DesignSchemaApiController{
 		service:      s,
 		errorHandler: DefaultErrorHandler,
 	}
@@ -65,44 +65,38 @@ func NewDesignSchemasApiController(s DesignSchemasApiServicer, opts ...DesignSch
 	return controller
 }
 
-// Routes returns all the api routes for the DesignSchemasApiController
-func (c *DesignSchemasApiController) Routes() Routes {
+// Routes returns all the api routes for the DesignSchemaApiController
+func (c *DesignSchemaApiController) Routes() Routes {
 	return Routes{
 		{
 			"CreateDesignSchema",
 			strings.ToUpper("Post"),
-			"/users/{user}/designs/{designId}/schemas",
+			"/users/{user}/designs/{designId}/schema",
 			c.CreateDesignSchema,
 		},
 		{
 			"DeleteDesignSchema",
 			strings.ToUpper("Delete"),
-			"/users/{user}/designs/{designId}/schemas/{version}",
+			"/users/{user}/designs/{designId}/schema",
 			c.DeleteDesignSchema,
 		},
 		{
 			"GetDesignSchema",
 			strings.ToUpper("Get"),
-			"/users/{user}/designs/{designId}/schemas/{version}",
+			"/users/{user}/designs/{designId}/schema",
 			c.GetDesignSchema,
-		},
-		{
-			"GetDesignSchemas",
-			strings.ToUpper("Get"),
-			"/users/{user}/designs/{designId}/schemas",
-			c.GetDesignSchemas,
 		},
 		{
 			"UpdateDesignSchema",
 			strings.ToUpper("Put"),
-			"/users/{user}/designs/{designId}/schemas/{version}",
+			"/users/{user}/designs/{designId}/schema",
 			c.UpdateDesignSchema,
 		},
 	}
 }
 
 // CreateDesignSchema - Update a design schema
-func (c *DesignSchemasApiController) CreateDesignSchema(w http.ResponseWriter, r *http.Request) {
+func (c *DesignSchemaApiController) CreateDesignSchema(w http.ResponseWriter, r *http.Request) {
 	designSchemaParam := DesignSchema{}
 
 	params := mux.Vars(r)
@@ -134,32 +128,11 @@ func (c *DesignSchemasApiController) CreateDesignSchema(w http.ResponseWriter, r
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (c *DesignSchemasApiController) GetDesignSchema(w http.ResponseWriter, r *http.Request) {
+func (c *DesignSchemaApiController) GetDesignSchema(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
-
 	designIdParam := params[constants.ParamDesignID]
-
-	versionParam := params["version"]
-
-	result, err := c.service.GetDesignSchema(r.Context(), userParam, designIdParam, versionParam)
-	// If an error occurred, encode the error with the status code
-	if err != nil {
-		c.errorHandler(w, r, err, &result)
-		return
-	}
-	// If no error, encode the body and the result code
-	EncodeJSONResponse(result.Body, &result.Code, w)
-}
-
-// GetDesignSchemas - Get all design schemas in a design
-func (c *DesignSchemasApiController) GetDesignSchemas(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	userParam := params[constants.ParamUser]
-
-	designIdParam := params[constants.ParamDesignID]
-
-	result, err := c.service.GetDesignSchemas(r.Context(), userParam, designIdParam)
+	result, err := c.service.GetDesignSchema(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -170,13 +143,13 @@ func (c *DesignSchemasApiController) GetDesignSchemas(w http.ResponseWriter, r *
 }
 
 // UpdateDesignSchema - Update a schema for a given design
-func (c *DesignSchemasApiController) UpdateDesignSchema(w http.ResponseWriter, r *http.Request) {
+//
+//nolint:dupl
+func (c *DesignSchemaApiController) UpdateDesignSchema(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
 
 	designIdParam := params[constants.ParamDesignID]
-
-	versionParam := params["version"]
 
 	designSchemaParam := DesignSchema{}
 	d := json.NewDecoder(r.Body)
@@ -189,7 +162,7 @@ func (c *DesignSchemasApiController) UpdateDesignSchema(w http.ResponseWriter, r
 		c.errorHandler(w, r, err, nil)
 		return
 	}
-	result, err := c.service.UpdateDesignSchema(r.Context(), userParam, designIdParam, versionParam, designSchemaParam)
+	result, err := c.service.UpdateDesignSchema(r.Context(), userParam, designIdParam, designSchemaParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -200,15 +173,13 @@ func (c *DesignSchemasApiController) UpdateDesignSchema(w http.ResponseWriter, r
 }
 
 // DeleteDesignSchema - Delete a schema for a given design
-func (c *DesignSchemasApiController) DeleteDesignSchema(w http.ResponseWriter, r *http.Request) {
+func (c *DesignSchemaApiController) DeleteDesignSchema(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
 
 	designIdParam := params[constants.ParamDesignID]
 
-	versionParam := params["version"]
-
-	result, err := c.service.DeleteDesignSchema(r.Context(), userParam, designIdParam, versionParam)
+	result, err := c.service.DeleteDesignSchema(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)

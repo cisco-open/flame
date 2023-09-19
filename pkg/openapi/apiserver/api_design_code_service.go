@@ -40,23 +40,24 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/cisco-open/flame/pkg/openapi/constants"
 	"github.com/cisco-open/flame/pkg/restapi"
+	"github.com/cisco-open/flame/pkg/util"
 )
 
-// DesignCodesApiService is a service that implements the logic for the DesignCodesApiServicer
-// This service should implement the business logic for every endpoint for the DesignCodesApi API.
+// DesignCodeApiService is a service that implements the logic for the DesignCodeApiServicer
+// This service should implement the business logic for every endpoint for the DesignCodeApi API.
 // Include any external packages or services that will be required by this service.
-type DesignCodesApiService struct {
+type DesignCodeApiService struct {
 }
 
-// NewDesignCodesApiService creates a default api service
-func NewDesignCodesApiService() openapi.DesignCodesApiServicer {
-	return &DesignCodesApiService{}
+// NewDesignCodeApiService creates a default api service
+func NewDesignCodeApiService() openapi.DesignCodeApiServicer {
+	return &DesignCodeApiService{}
 }
 
 // CreateDesignCode - Upload a new design code
-func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user string, designId string,
-	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
+func (s *DesignCodeApiService) CreateDesignCode(ctx context.Context, user string, designId string,
+	fileName string, fileData *os.File) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s", user, designId, fileName)
 
 	// Don't forget to close the temp file
 	defer fileData.Close()
@@ -70,7 +71,6 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 	// "fileName", "fileVer" and "fileData" are names of variables used in openapi specification
 	kv := map[string]io.Reader{
 		"fileName": strings.NewReader(fileName),
-		"fileVer":  strings.NewReader(fileVer),
 		"fileData": fileData,
 	}
 
@@ -103,13 +103,11 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 }
 
 // DeleteDesignCode - Delete a zipped design code file owned by user
-func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
+func (s *DesignCodeApiService) DeleteDesignCode(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
 	//create controller request
 	uriMap := map[string]string{
 		constants.ParamUser:     user,
 		constants.ParamDesignID: designId,
-		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignCodeEndPoint, uriMap)
 
@@ -124,15 +122,13 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
-func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Get design code for user: %s | designId: %s | version: %s", user, designId, version)
+func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Get design code for user: %s | designId: %s ", user, designId)
 
 	//create controller request
 	uriMap := map[string]string{
 		constants.ParamUser:     user,
 		constants.ParamDesignID: designId,
-		constants.ParamVersion:  version,
 	}
 	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignCodeEndPoint, uriMap)
 
@@ -146,11 +142,35 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	return openapi.Response(http.StatusOK, body), nil
 }
 
+// GetDesignCodeRevision - Get a revision number of design code
+func (s *DesignCodeApiService) GetDesignCodeRevision(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Get a revision number for design code of user: %s | designId: %s", user, designId)
+
+	//create controller request
+	uriMap := map[string]string{
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.GetDesignCodeRevisionEndPoint, uriMap)
+
+	//send get request
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	codeApiRes := openapi.CodeApiResponse{}
+	err = util.ByteToStruct(body, &codeApiRes)
+
+	return openapi.Response(http.StatusOK, codeApiRes), err
+}
+
 // UpdateDesignCode - Update a design code
-func (s *DesignCodesApiService) UpdateDesignCode(ctx context.Context, user string, designId string, version string,
-	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
+func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string,
+	fileName string, fileData *os.File) (openapi.ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
-	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
+	// Add api_design_code_service.go to the .openapi-generator-ignore to avoid overwriting this service
 	// implementation when updating open api generation.
 
 	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...

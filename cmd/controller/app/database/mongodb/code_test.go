@@ -33,7 +33,7 @@ func TestMongoService_DeleteDesignCode(t *testing.T) {
 		}
 		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
 			{"n", 1}, {"nModified", 1}})
-		err := db.DeleteDesignCode("userid", "designid", "version")
+		err := db.DeleteDesignCode("userid", "designid")
 		assert.Nil(t, err)
 	})
 
@@ -43,7 +43,7 @@ func TestMongoService_DeleteDesignCode(t *testing.T) {
 		}
 		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
 			{"n", 0}, {"nModified", 0}})
-		err := db.DeleteDesignCode("userid", "designid", "version")
+		err := db.DeleteDesignCode("userid", "designid")
 		assert.NotNil(t, err)
 	})
 }

@@ -37,29 +37,29 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi"
 )
 
-// DesignCodesApiService is a service that implents the logic for the DesignCodesApiServicer
-// This service should implement the business logic for every endpoint for the DesignCodesApi API.
+// DesignCodeApiService is a service that implents the logic for the DesignCodeApiServicer
+// This service should implement the business logic for every endpoint for the DesignCodeApi API.
 // Include any external packages or services that will be required by this service.
-type DesignCodesApiService struct {
+type DesignCodeApiService struct {
 	dbService database.DBService
 }
 
-// NewDesignCodesApiService creates a default api service
-func NewDesignCodesApiService(dbService database.DBService) openapi.DesignCodesApiServicer {
-	return &DesignCodesApiService{
+// NewDesignCodeApiService creates a default api service
+func NewDesignCodeApiService(dbService database.DBService) openapi.DesignCodeApiServicer {
+	return &DesignCodeApiService{
 		dbService: dbService,
 	}
 }
 
 // CreateDesignCode - Upload a new design code
-func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user string, designId string,
-	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", user, designId, fileName, fileVer)
+func (s *DesignCodeApiService) CreateDesignCode(ctx context.Context, user string, designId string,
+	fileName string, fileData *os.File) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s", user, designId, fileName)
 
 	// Don't forget to close the temp file
 	defer fileData.Close()
 
-	err := s.dbService.CreateDesignCode(user, designId, fileName, fileVer, fileData)
+	err := s.dbService.CreateDesignCode(user, designId, fileName, fileData)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -68,11 +68,10 @@ func (s *DesignCodesApiService) CreateDesignCode(ctx context.Context, user strin
 }
 
 // DeleteDesignCode - Delete a zipped design code file owned by user
-func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Received DeleteDesignCode Delete request: %s | %s | %s", user, designId, version)
+func (s *DesignCodeApiService) DeleteDesignCode(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received DeleteDesignCode Delete request: %s | %s", user, designId)
 
-	err := s.dbService.DeleteDesignCode(user, designId, version)
+	err := s.dbService.DeleteDesignCode(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -80,11 +79,10 @@ func (s *DesignCodesApiService) DeleteDesignCode(ctx context.Context, user strin
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
-func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Received GetDesignCode Get request: %s | %s | %s", user, designId, version)
+func (s *DesignCodeApiService) GetDesignCode(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received GetDesignCode Get request: %s | %s", user, designId)
 
-	fileData, err := s.dbService.GetDesignCode(user, designId, version)
+	fileData, err := s.dbService.GetDesignCode(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -92,9 +90,18 @@ func (s *DesignCodesApiService) GetDesignCode(ctx context.Context, user string, 
 	return openapi.Response(http.StatusOK, fileData), nil
 }
 
+// GetDesignCodeRevision - Get a revision number of design code
+func (s *DesignCodeApiService) GetDesignCodeRevision(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	info, err := s.dbService.GetDesignCodeRevision(user, designId)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
+	return openapi.Response(http.StatusOK, info), nil
+}
+
 // UpdateDesignCode - Update a design code
-func (s *DesignCodesApiService) UpdateDesignCode(ctx context.Context, user string, designId string, version string,
-	fileName string, fileVer string, fileData *os.File) (openapi.ImplResponse, error) {
+func (s *DesignCodeApiService) UpdateDesignCode(ctx context.Context, user string, designId string,
+	fileName string, fileData *os.File) (openapi.ImplResponse, error) {
 	// TODO - update UpdateDesignCode with the required logic for this service method.
 	// Add api_design_codes_service.go to the .openapi-generator-ignore to avoid overwriting this service
 	// implementation when updating open api generation.

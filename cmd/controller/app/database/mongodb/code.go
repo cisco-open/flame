@@ -29,13 +29,13 @@ import (
 )
 
 type FileInfo struct {
-	ZipName string          `json:"zipname"`
-	Version string          `json:"version"`
-	DataSet []util.FileData `json:"dataset"`
+	ZipName  string          `json:"zipname"`
+	DataSet  []util.FileData `json:"dataset"`
+	Revision int32           `json:"revision"`
 }
 
-func (db *MongoService) CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error {
-	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s | %s", userId, designId, fileName, fileVer)
+func (db *MongoService) CreateDesignCode(userId string, designId string, fileName string, fileData *os.File) error {
+	zap.S().Debugf("Received CreateDesignCode POST request: %s | %s | %s", userId, designId, fileName)
 
 	fdList, err := util.UnzipFile(fileData)
 	if err != nil {
@@ -43,17 +43,15 @@ func (db *MongoService) CreateDesignCode(userId string, designId string, fileNam
 		return err
 	}
 
-	curVer := db.GetLatestDesignCodeVersion(userId, designId)
-	nextVer := IncrementVersion(curVer)
 	fileInfo := FileInfo{
 		ZipName: fileName,
-		Version: nextVer,
 		DataSet: fdList,
 	}
+	db.incrementCodeRevision(userId, designId, &fileInfo)
 
 	var updatedDoc openapi.Design
 	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
-	update := bson.M{"$push": bson.M{"codes": fileInfo}}
+	update := bson.M{"$set": bson.M{"code": fileInfo}}
 
 	err = db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
 	if err != nil {
@@ -66,160 +64,130 @@ func (db *MongoService) CreateDesignCode(userId string, designId string, fileNam
 	return nil
 }
 
-func (db *MongoService) GetLatestDesignCodeVersion(userId string, designId string) string {
+func (db *MongoService) GetDesignCode(userId string, designId string) ([]byte, error) {
+	fileInfo, err := db.getDesignCodeFileInfo(userId, designId)
+	if err != nil {
+		zap.S().Debugf("Failed to get code for user: %s, design: %s", userId, designId)
+		return nil, err
+	}
+
+	zap.S().Debugf("Obtained code for user: %s, design: %s", userId, designId)
+	return util.ZipFile(fileInfo.DataSet)
+}
+
+func (db *MongoService) DeleteDesignCode(userId string, designId string) error {
+	zap.S().Debugf("delete design code: %v, %v", userId, designId)
+
+	emptyFileInfo := FileInfo{}
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
+	update := bson.M{"$set": bson.M{util.DBFieldCode: emptyFileInfo}}
+
+	updateRes, err := db.designCollection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		return fmt.Errorf("failed to delete design code: %v", err)
+	}
+
+	if updateRes.ModifiedCount == 0 {
+		return fmt.Errorf("code for design '%s' not found", designId)
+	}
+
+	zap.S().Debugf("Deleted design code for user: %s, design: %s", userId, designId)
+
+	return nil
+}
+
+func (db *MongoService) GetDesignCodeRevision(userId string, designId string) (openapi.CodeApiResponse, error) {
 	// match stage
-	stage1 := bson.M{
+	match := bson.M{
 		"$match": bson.M{
 			"userid": userId,
 			"id":     designId,
 		},
 	}
 
-	// unwind stage
-	stage2 := bson.M{"$unwind": "$codes"}
-
-	// choose last code
-	stage3 := bson.M{
-		"$group": bson.M{
-			"_id": "$_id",
-			"codes": bson.M{
-				"$last": "$codes",
-			},
-		},
-	}
-
-	// project zipname and version
-	stage4 := bson.M{
+	// project code
+	project := bson.M{
 		"$project": bson.M{
-			"zipname": "$codes.zipname",
-			"version": "$codes.version",
+			"revision": "$code.revision",
 		},
 	}
 
-	pipeline := []bson.M{stage1, stage2, stage3, stage4}
-
-	cursor, err := db.designCollection.Aggregate(context.TODO(), pipeline)
+	pipeline := []bson.M{match, project}
+	fileInfo := FileInfo{}
+	err := db.projectDesignCodeFileInfo(pipeline, &fileInfo)
 	if err != nil {
-		zap.S().Errorf("Failed to fetch design code info: %v", err)
-		return unknownVersion
+		zap.S().Errorf("Failed to get design code info: %v", err)
+		return openapi.CodeApiResponse{}, err
 	}
 
-	defer func() {
-		err = cursor.Close(context.TODO())
-		if err != nil {
-			zap.S().Warnf("Failed to close cursor: %v", err)
-		}
-	}()
+	zap.S().Debugf("code revision number: %d", fileInfo.Revision)
 
-	updatedDoc := FileInfo{}
-	for cursor.Next(context.TODO()) {
-		err = cursor.Decode(&updatedDoc)
-		if err != nil {
-			zap.S().Errorf("Failed to decode design code info: %v", err)
-			return unknownVersion
-		}
-	}
-
-	return updatedDoc.Version
+	return openapi.CodeApiResponse{Revision: fileInfo.Revision}, nil
 }
 
-func (db *MongoService) GetDesignCode(userId string, designId string, fileVer string) ([]byte, error) {
-	// match stage with a specific version
-	stage1 := bson.M{
+func (db *MongoService) getDesignCodeFileInfo(userId string, designId string) (FileInfo, error) {
+	// match stage
+	match := bson.M{
 		"$match": bson.M{
-			"userid":        userId,
-			"id":            designId,
-			"codes.version": fileVer,
+			"userid": userId,
+			"id":     designId,
 		},
 	}
 
-	// unwind stage
-	stage2 := bson.M{"$unwind": "$codes"}
-
-	// stage3 unneeded for specific version
-	var stage3 *bson.M
-
-	// project zipname, version and dataset
-	stage4 := bson.M{
+	// project code
+	project := bson.M{
 		"$project": bson.M{
-			"zipname": "$codes.zipname",
-			"version": "$codes.version",
-			"dataset": "$codes.dataset",
+			"zipname":  "$code.zipname",
+			"dataset":  "$code.dataset",
+			"revision": "$code.revision",
 		},
 	}
 
-	if fileVer == latestVersion {
-		// for latest version, match only with userId and designId
-		stage1 = bson.M{
-			"$match": bson.M{
-				"userid": userId,
-				"id":     designId,
-			},
-		}
-
-		// choose last code
-		stage3 = &bson.M{
-			"$group": bson.M{
-				"_id": "$_id",
-				"codes": bson.M{
-					"$last": "$codes",
-				},
-			},
-		}
-	}
-
-	pipeline := []bson.M{stage1, stage2}
-	if stage3 != nil {
-		pipeline = append(pipeline, *stage3)
-	}
-	pipeline = append(pipeline, stage4)
-
-	cursor, err := db.designCollection.Aggregate(context.TODO(), pipeline)
-	if err != nil {
-		zap.S().Errorf("Failed to fetch design code: %v", err)
-		return nil, err
-	}
-
-	defer func() {
-		err = cursor.Close(context.TODO())
-		if err != nil {
-			zap.S().Warnf("Failed to close cursor: %v", err)
-		}
-	}()
-
+	pipeline := []bson.M{match, project}
 	updatedDoc := FileInfo{}
-	for cursor.Next(context.TODO()) {
-		err = cursor.Decode(&updatedDoc)
-		if err != nil {
-			zap.S().Errorf("Failed to decode design code: %v", err)
-			return nil, err
-		}
+	err := db.projectDesignCodeFileInfo(pipeline, &updatedDoc)
+	if err != nil {
+		zap.S().Errorf("Failed to get design code: %v", err)
+		return FileInfo{}, err
 	}
 
 	if len(updatedDoc.DataSet) == 0 {
-		return nil, fmt.Errorf("no design code found")
+		return FileInfo{}, fmt.Errorf("no design code found")
 	}
 
-	return util.ZipFile(updatedDoc.DataSet)
+	return updatedDoc, nil
 }
 
-func (db *MongoService) DeleteDesignCode(userId string, designId string, version string) error {
-	zap.S().Debugf("delete design code: %v, %v,%v", userId, designId, version)
-
-	if version == latestVersion {
-		version = db.GetLatestDesignCodeVersion(userId, designId)
-	}
-	updateRes, err := db.designCollection.UpdateOne(context.TODO(),
-		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId},
-		bson.M{"$pull": bson.M{util.DBFieldCodes: bson.M{"version": version}}})
+func (db *MongoService) projectDesignCodeFileInfo(pipeline []bson.M, fileInfo *FileInfo) error {
+	cursor, err := db.designCollection.Aggregate(context.TODO(), pipeline)
 	if err != nil {
-		return fmt.Errorf("failed to delete design code: %v", err)
-	}
-	if updateRes.ModifiedCount == 0 {
-		return fmt.Errorf("code version '%s' not found", version)
+		zap.S().Errorf("Failed to fetch design code: %v", err)
+		return err
 	}
 
-	zap.S().Debugf("successfully deleted design code: %#v", updateRes)
+	defer func() {
+		err = cursor.Close(context.TODO())
+		if err != nil {
+			zap.S().Warnf("Failed to close cursor: %v", err)
+		}
+	}()
+
+	for cursor.Next(context.TODO()) {
+		err = cursor.Decode(fileInfo)
+		if err != nil {
+			zap.S().Errorf("Failed to decode design code: %v", err)
+			return err
+		}
+	}
 
 	return nil
+}
+
+func (db *MongoService) incrementCodeRevision(userId string, designId string, fi *FileInfo) {
+	curFileInfo, err := db.getDesignCodeFileInfo(userId, designId)
+	if err != nil {
+		fi.Revision = 1
+	} else {
+		fi.Revision = curFileInfo.Revision + 1
+	}
 }

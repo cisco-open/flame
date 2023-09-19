@@ -1,8 +1,6 @@
 {
     "name": "asynchronous hierarchical fl with coordinator",
     "designId": "asyncfl_hier_mnist_lb",
-    "schemaVersion": "1",
-    "codeVersion": "1",
     "priority": "low",
     "backend": "mqtt",
     "maxRunTime": 1800,

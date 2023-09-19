@@ -17,10 +17,11 @@
 package mongodb
 
 import (
+	"testing"
+
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/integration/mtest"
-	"testing"
 )
 
 func TestMongoService_DeleteDesignSchema(t *testing.T) {
@@ -30,9 +31,8 @@ func TestMongoService_DeleteDesignSchema(t *testing.T) {
 		db := &MongoService{
 			designCollection: mt.Coll,
 		}
-		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
-			{"n", 1}, {"nModified", 1}})
-		err := db.DeleteDesignSchema("userid", "designid", "version")
+		mt.AddMockResponses(bson.D{{"ok", 1}, {"value", bson.D{}}})
+		err := db.DeleteDesignSchema("userid", "designid")
 		assert.Nil(t, err)
 	})
 
@@ -40,9 +40,8 @@ func TestMongoService_DeleteDesignSchema(t *testing.T) {
 		db := &MongoService{
 			designCollection: mt.Coll,
 		}
-		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
-			{"n", 0}, {"nModified", 0}})
-		err := db.DeleteDesignSchema("userid", "designid", "version")
+		mt.AddMockResponses(bson.D{{"ok", 0}, {"value", bson.D{}}})
+		err := db.DeleteDesignSchema("userid", "designid")
 		assert.NotNil(t, err)
 	})
 }

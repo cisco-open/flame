@@ -35,22 +35,22 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi"
 )
 
-// DesignSchemasApiService is a service that implents the logic for the DesignSchemasApiServicer
-// This service should implement the business logic for every endpoint for the DesignSchemasApi API.
+// DesignSchemaApiService is a service that implents the logic for the DesignSchemaApiServicer
+// This service should implement the business logic for every endpoint for the DesignSchemaApi API.
 // Include any external packages or services that will be required by this service.
-type DesignSchemasApiService struct {
+type DesignSchemaApiService struct {
 	dbService database.DBService
 }
 
-// NewDesignSchemasApiService creates a default api service
-func NewDesignSchemasApiService(dbService database.DBService) openapi.DesignSchemasApiServicer {
-	return &DesignSchemasApiService{
+// NewDesignSchemaApiService creates a default api service
+func NewDesignSchemaApiService(dbService database.DBService) openapi.DesignSchemaApiServicer {
+	return &DesignSchemaApiService{
 		dbService: dbService,
 	}
 }
 
 // CreateDesignSchema - Update a design schema
-func (s *DesignSchemasApiService) CreateDesignSchema(_ context.Context, user string, designId string,
+func (s *DesignSchemaApiService) CreateDesignSchema(_ context.Context, user string, designId string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
 	err := s.dbService.CreateDesignSchema(user, designId, designSchema)
 	if err != nil {
@@ -61,18 +61,8 @@ func (s *DesignSchemasApiService) CreateDesignSchema(_ context.Context, user str
 }
 
 // GetDesignSchema - Get a design schema owned by user
-func (s *DesignSchemasApiService) GetDesignSchema(_ context.Context, user string, designId string,
-	version string) (openapi.ImplResponse, error) {
-	info, err := s.dbService.GetDesignSchema(user, designId, version)
-	if err != nil {
-		return openapi.Response(http.StatusInternalServerError, nil), err
-	}
-	return openapi.Response(http.StatusOK, info), nil
-}
-
-// GetDesignSchemas - Get all design schemas in a design
-func (s *DesignSchemasApiService) GetDesignSchemas(_ context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	info, err := s.dbService.GetDesignSchemas(user, designId)
+func (s *DesignSchemaApiService) GetDesignSchema(_ context.Context, user string, designId string) (openapi.ImplResponse, error) {
+	info, err := s.dbService.GetDesignSchema(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -80,9 +70,9 @@ func (s *DesignSchemasApiService) GetDesignSchemas(_ context.Context, user strin
 }
 
 // UpdateDesignSchema - Update a schema for a given design
-func (s *DesignSchemasApiService) UpdateDesignSchema(_ context.Context, user string, designId string, version string,
+func (s *DesignSchemaApiService) UpdateDesignSchema(_ context.Context, user string, designId string,
 	designSchema openapi.DesignSchema) (openapi.ImplResponse, error) {
-	err := s.dbService.UpdateDesignSchema(user, designId, version, designSchema)
+	err := s.dbService.UpdateDesignSchema(user, designId, designSchema)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}
@@ -90,12 +80,12 @@ func (s *DesignSchemasApiService) UpdateDesignSchema(_ context.Context, user str
 	return openapi.Response(http.StatusOK, nil), nil
 }
 
-func (s *DesignSchemasApiService) DeleteDesignSchema(_ context.Context, user string, designId string, version string) (
+func (s *DesignSchemaApiService) DeleteDesignSchema(_ context.Context, user string, designId string) (
 	openapi.ImplResponse, error,
 ) {
-	zap.S().Debugf("Received DeleteDesignSchema Delete request: %s | %s | %s", user, designId, version)
+	zap.S().Debugf("Received DeleteDesignSchema Delete request: user: %s | designId: %s ", user, designId)
 
-	err := s.dbService.DeleteDesignSchema(user, designId, version)
+	err := s.dbService.DeleteDesignSchema(user, designId)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}

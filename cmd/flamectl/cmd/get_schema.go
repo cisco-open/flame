@@ -23,60 +23,24 @@ import (
 )
 
 var getDesignSchemaCmd = &cobra.Command{
-	Use:   "schema <version>",
+	Use:   "schema <designId>",
 	Short: "Get a design schema",
 	Long:  "This comand retrieves a design schema",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		version := args[0]
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
 
 		params := schema.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
-		params.Version = version
 
 		return schema.Get(params)
 	},
 }
 
-var getDesignSchemasCmd = &cobra.Command{
-	Use:   "schemas",
-	Short: "Get design schemas",
-	Long:  "This comand retrieves schemas of a design",
-	Args:  cobra.RangeArgs(0, 0),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		checkInsecure(cmd)
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
-
-		params := schema.Params{}
-		params.Endpoint = config.ApiServer.Endpoint
-		params.User = config.User
-		params.DesignId = designId
-
-		return schema.GetMany(params)
-	},
-}
-
 func init() {
-	getDesignSchemaCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	getDesignSchemaCmd.MarkPersistentFlagRequired("design")
-	getDesignSchemasCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	getDesignSchemasCmd.MarkPersistentFlagRequired("design")
-	getCmd.AddCommand(getDesignSchemaCmd, getDesignSchemasCmd)
+	getCmd.AddCommand(getDesignSchemaCmd)
 }

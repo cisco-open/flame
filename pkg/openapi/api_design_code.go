@@ -36,25 +36,25 @@ import (
 	"github.com/cisco-open/flame/pkg/openapi/constants"
 )
 
-// DesignCodesApiController binds http requests to an api service and writes the service results to the http response
-type DesignCodesApiController struct {
-	service      DesignCodesApiServicer
+// DesignCodeApiController binds http requests to an api service and writes the service results to the http response
+type DesignCodeApiController struct {
+	service      DesignCodeApiServicer
 	errorHandler ErrorHandler
 }
 
-// DesignCodesApiOption for how the controller is set up.
-type DesignCodesApiOption func(*DesignCodesApiController)
+// DesignCodeApiOption for how the controller is set up.
+type DesignCodeApiOption func(*DesignCodeApiController)
 
-// WithDesignCodesApiErrorHandler inject ErrorHandler into controller
-func WithDesignCodesApiErrorHandler(h ErrorHandler) DesignCodesApiOption {
-	return func(c *DesignCodesApiController) {
+// WithDesignCodeApiErrorHandler inject ErrorHandler into controller
+func WithDesignCodeApiErrorHandler(h ErrorHandler) DesignCodeApiOption {
+	return func(c *DesignCodeApiController) {
 		c.errorHandler = h
 	}
 }
 
-// NewDesignCodesApiController creates a default api controller
-func NewDesignCodesApiController(s DesignCodesApiServicer, opts ...DesignCodesApiOption) Router {
-	controller := &DesignCodesApiController{
+// NewDesignCodeApiController creates a default api controller
+func NewDesignCodeApiController(s DesignCodeApiServicer, opts ...DesignCodeApiOption) Router {
+	controller := &DesignCodeApiController{
 		service:      s,
 		errorHandler: DefaultErrorHandler,
 	}
@@ -66,38 +66,46 @@ func NewDesignCodesApiController(s DesignCodesApiServicer, opts ...DesignCodesAp
 	return controller
 }
 
-// Routes returns all the api routes for the DesignCodesApiController
-func (c *DesignCodesApiController) Routes() Routes {
+// Routes returns all the api routes for the DesignCodeApiController
+func (c *DesignCodeApiController) Routes() Routes {
 	return Routes{
 		{
 			"CreateDesignCode",
 			strings.ToUpper("Post"),
-			"/users/{user}/designs/{designId}/codes",
+			"/users/{user}/designs/{designId}/code",
 			c.CreateDesignCode,
 		},
 		{
 			"DeleteDesignCode",
 			strings.ToUpper("Delete"),
-			"/users/{user}/designs/{designId}/codes/{version}",
+			"/users/{user}/designs/{designId}/code",
 			c.DeleteDesignCode,
 		},
 		{
 			"GetDesignCode",
 			strings.ToUpper("Get"),
-			"/users/{user}/designs/{designId}/codes/{version}",
+			"/users/{user}/designs/{designId}/code",
 			c.GetDesignCode,
+		},
+		{
+			"GetDesignCodeRevision",
+			strings.ToUpper("Get"),
+			"/users/{user}/designs/{designId}/code/revision",
+			c.GetDesignCodeRevision,
 		},
 		{
 			"UpdateDesignCode",
 			strings.ToUpper("Put"),
-			"/users/{user}/designs/{designId}/codes/{version}",
+			"/users/{user}/designs/{designId}/code",
 			c.UpdateDesignCode,
 		},
 	}
 }
 
 // CreateDesignCode - Upload a new design code
-func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *http.Request) {
+//
+//nolint:dupl
+func (c *DesignCodeApiController) CreateDesignCode(w http.ResponseWriter, r *http.Request) {
 	var maxMemory int64 = 32 << 20 // 32MB
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
@@ -109,14 +117,13 @@ func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *ht
 	designIdParam := params[constants.ParamDesignID]
 
 	fileNameParam := r.FormValue("fileName")
-	fileVerParam := r.FormValue("fileVer")
 
 	fileDataParam, err := ReadFormFileToTempFile(r, "fileData")
 	if err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.CreateDesignCode(r.Context(), userParam, designIdParam, fileNameParam, fileVerParam, fileDataParam)
+	result, err := c.service.CreateDesignCode(r.Context(), userParam, designIdParam, fileNameParam, fileDataParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -126,16 +133,14 @@ func (c *DesignCodesApiController) CreateDesignCode(w http.ResponseWriter, r *ht
 	EncodeJSONResponse(result.Body, &result.Code, w)
 }
 
-// DeleteDesignCode - Delete code of a specified version from a given design
-func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *http.Request) {
+// DeleteDesignCode - Delete code of a given design
+func (c *DesignCodeApiController) DeleteDesignCode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
 
 	designIdParam := params[constants.ParamDesignID]
 
-	versionParam := params["version"]
-
-	result, err := c.service.DeleteDesignCode(r.Context(), userParam, designIdParam, versionParam)
+	result, err := c.service.DeleteDesignCode(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -146,15 +151,13 @@ func (c *DesignCodesApiController) DeleteDesignCode(w http.ResponseWriter, r *ht
 }
 
 // GetDesignCode - Get a zipped design code file owned by user
-func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.Request) {
+func (c *DesignCodeApiController) GetDesignCode(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]
 
 	designIdParam := params[constants.ParamDesignID]
 
-	versionParam := params["version"]
-
-	result, err := c.service.GetDesignCode(r.Context(), userParam, designIdParam, versionParam)
+	result, err := c.service.GetDesignCode(r.Context(), userParam, designIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
@@ -166,8 +169,25 @@ func (c *DesignCodesApiController) GetDesignCode(w http.ResponseWriter, r *http.
 	http.ServeContent(w, r, "", time.Time{}, bytes.NewReader(result.Body.([]byte)))
 }
 
+// GetDesignCodeRevision - Get a revision number of design code
+func (c *DesignCodeApiController) GetDesignCodeRevision(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params["user"]
+	designIdParam := params["designId"]
+	result, err := c.service.GetDesignCodeRevision(r.Context(), userParam, designIdParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
 // UpdateDesignCode - Update a design code
-func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *http.Request) {
+//
+//nolint:dupl
+func (c *DesignCodeApiController) UpdateDesignCode(w http.ResponseWriter, r *http.Request) {
 	var maxMemory int64 = 32 << 20 // 32MB
 	if err := r.ParseMultipartForm(maxMemory); err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
@@ -178,17 +198,14 @@ func (c *DesignCodesApiController) UpdateDesignCode(w http.ResponseWriter, r *ht
 
 	designIdParam := params[constants.ParamDesignID]
 
-	versionParam := params["version"]
-
 	fileNameParam := r.FormValue("fileName")
-	fileVerParam := r.FormValue("fileVer")
 
 	fileDataParam, err := ReadFormFileToTempFile(r, "fileData")
 	if err != nil {
 		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
 		return
 	}
-	result, err := c.service.UpdateDesignCode(r.Context(), userParam, designIdParam, versionParam, fileNameParam, fileVerParam, fileDataParam)
+	result, err := c.service.UpdateDesignCode(r.Context(), userParam, designIdParam, fileNameParam, fileDataParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
