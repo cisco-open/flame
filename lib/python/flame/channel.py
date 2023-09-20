@@ -365,51 +365,13 @@ class Channel(object):
                 logger.debug(f"active task added for {end_id}")
                 logger.debug(f"{str(self._active_recv_fifo_tasks)}")
 
-        # DO NOT CHANGE self.count as a local variable
-        # with aiostream, local variable update looks incorrect.
-        # but with an instance variable , the variable update is
-        # done correctly.
-        self.count = 0
         merged = stream.merge(*runs)
         async with merged.stream() as streamer:
-            logger.debug(f"0) cnt: {self.count}, first_k: {self.first_k}")
             async for result in streamer:
-                (end_id, payload) = result
-                logger.debug(f"1) end id: {end_id}, cnt: {self.count}")
+                (end_id, _) = result
 
-                self.count += 1
-                logger.debug(f"2) end id: {end_id}, cnt: {self.count}")
-                if self.count <= self.first_k:
-                    logger.debug(f"3) end id: {end_id}, cnt: {self.count}")
-                    await self._rx_queue.put(result)
-                    self._active_recv_fifo_tasks.remove(end_id)
-
-                    logger.debug(f"active task removed for {end_id}")
-                    logger.debug(f"{str(self._active_recv_fifo_tasks)}")
-                else:
-                    logger.debug(f"4) end id: {end_id}, cnt: {self.count}")
-                    if end_id not in self._ends:
-                        logger.debug(f"{end_id} not in _ends")
-                        continue
-                    # We already put the first_k number of messages into
-                    # a queue.
-                    #
-                    # Now we need to save the remaining messages which
-                    # were already taken out from each end's rcv queue.
-                    # In order not to lose those messages, we use peek_buf
-                    # in end object.
-
-                    # WARNING: peek_buf must be none; if not, we called
-                    # peek() somewhere else and then called recv_fifo()
-                    # before recv() was called.
-                    # To detect this potential issue, assert is given here.
-                    assert self._ends[end_id].peek_buf is None
-
-                    self._ends[end_id].peek_buf = payload
-                    self._active_recv_fifo_tasks.remove(end_id)
-
-                    logger.debug(f"active task removed for {end_id}")
-                    logger.debug(f"{str(self._active_recv_fifo_tasks)}")
+                await self._rx_queue.put(result)
+                self._active_recv_fifo_tasks.remove(end_id)
 
     def peek(self, end_id):
         """Peek rxq of end_id and return data if queue is not empty."""
