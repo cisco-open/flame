@@ -29,13 +29,11 @@ import (
 
 var (
 	testJobSpec = openapi.JobSpec{
-		UserId:        "testUser",
-		Id:            "12345",
-		DesignId:      "test",
-		SchemaVersion: "1",
-		CodeVersion:   "1",
-		Backend:       "mqtt",
-		MaxRunTime:    300,
+		UserId:     "testUser",
+		Id:         "12345",
+		DesignId:   "test",
+		Backend:    "mqtt",
+		MaxRunTime: 300,
 		ModelSpec: openapi.ModelSpec{
 			Hyperparameters: map[string]interface{}{"batchSize": 32, "rounds": 5},
 			Dependencies:    []string{"numpy >= 1.2.0"},
@@ -43,7 +41,7 @@ var (
 	}
 
 	testSchema = openapi.DesignSchema{
-		Version: "1",
+		Revision: 1,
 		Roles: []openapi.Role{
 			{Name: "trainer", IsDataConsumer: true},
 			{Name: "aggregator"},
@@ -80,7 +78,7 @@ var (
 	}
 
 	testSchemaWithTwoDataConsumers = openapi.DesignSchema{
-		Version: "1",
+		Revision: 1,
 		Roles: []openapi.Role{
 			{Name: "trainer1", IsDataConsumer: true},
 			{Name: "trainer2", IsDataConsumer: true},

@@ -39,8 +39,8 @@ func RunServer(portNo uint16, ctlrEp string) error {
 	apiRouters := []openapi.Router{
 		openapi.NewDatasetsApiController(apiserver.NewDatasetsApiService()),
 		openapi.NewDesignsApiController(apiserver.NewDesignsApiService()),
-		openapi.NewDesignCodesApiController(apiserver.NewDesignCodesApiService()),
-		openapi.NewDesignSchemasApiController(apiserver.NewDesignSchemasApiService()),
+		openapi.NewDesignCodeApiController(apiserver.NewDesignCodeApiService()),
+		openapi.NewDesignSchemaApiController(apiserver.NewDesignSchemaApiService()),
 		openapi.NewJobsApiController(apiserver.NewJobsApiService()),
 		openapi.NewComputesApiController(apiserver.NewComputesApiService()),
 	}

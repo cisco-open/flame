@@ -185,7 +185,7 @@ func (s *StateReady) Start(event *JobEvent) {
 		s.hdlr.roleStateCount[taskInfo.Role][openapi.READY]++
 	}
 
-	schema, err := s.hdlr.dbService.GetDesignSchema(event.Requester, s.hdlr.jobSpec.DesignId, s.hdlr.jobSpec.SchemaVersion)
+	schema, err := s.hdlr.dbService.GetDesignSchema(event.Requester, s.hdlr.jobSpec.DesignId)
 	if err != nil {
 		event.ErrCh <- fmt.Errorf("failed to fetch schema: %v", err)
 		return

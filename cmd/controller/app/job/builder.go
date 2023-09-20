@@ -113,19 +113,19 @@ func (b *JobBuilder) reset() {
 func (b *JobBuilder) setup() error {
 	// Retrieving data from jobSpec field of the JobBuilder structure.
 	spec := b.jobSpec
-	// Extracting user ID, design ID, schema version and code version from the JobSpec structure.
-	userId, designId, schemaVersion, codeVersion := spec.UserId, spec.DesignId, spec.SchemaVersion, spec.CodeVersion
+	// Extracting user ID and design ID from the JobSpec structure.
+	userId, designId := spec.UserId, spec.DesignId
 
-	// Accessing database service to retrieve the design schema using user ID, design ID and schema version.
-	schema, err := b.dbService.GetDesignSchema(userId, designId, schemaVersion)
+	// Accessing database service to retrieve the design schema using user ID and design ID.
+	schema, err := b.dbService.GetDesignSchema(userId, designId)
 	if err != nil {
 		return err
 	}
 	// Assigning acquired schema into the schema field of JobBuilder.
 	b.schema = schema
 
-	// Getting zipped design code using the user ID, design ID and code version with the help of a database service
-	zippedCode, err := b.dbService.GetDesignCode(userId, designId, codeVersion)
+	// Getting zipped design code using the user ID and design ID with the help of a database service
+	zippedCode, err := b.dbService.GetDesignCode(userId, designId)
 	if err != nil {
 		return err
 	}

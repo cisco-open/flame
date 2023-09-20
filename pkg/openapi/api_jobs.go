@@ -406,6 +406,8 @@ func (c *JobsApiController) UpdateJob(w http.ResponseWriter, r *http.Request) {
 }
 
 // UpdateJobStatus - Update the status of a job
+//
+//nolint:dupl
 func (c *JobsApiController) UpdateJobStatus(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
 	userParam := params[constants.ParamUser]

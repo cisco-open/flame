@@ -37,31 +37,23 @@ DesignInfo:
     id: "diabete-predict"
 
 Design:
-  description: Design template details along with all the schemas.
+  description: Design template details along with a schema.
   type: object
+  properties:
+    schema:
+      $ref: '#/components/schemas/DesignSchema'
   allOf:
     - $ref: '#/components/schemas/DesignInfo'
-    - $ref: '#/components/schemas/DesignSchemas'
 
 #########################
-# Schema
+# Design Schema
 #########################
-DesignSchemas:
-  description: A collection of design schemas related to design template
-  type: object
-  properties:
-    schemas:
-      type: array
-      items:
-        $ref: '#/components/schemas/DesignSchema'
-  required:
-    - schemas
-
 DesignSchema:
-  description: Schema to define the roles and their connections
+  description: Design schema to define the roles and their connections
   properties:
-    version:
-      type: string
+    revision:
+      format: int32
+      type: integer
     name:
       type: string
     description:
@@ -246,13 +238,22 @@ File:
   properties:
     fileName:
       type: string
-    fileVer:
-      type: string
     fileData:
       type: string
       maxLength: 10485760 # 10MB
       format: binary
   required:
     - fileName
-    - fileVer
     - fileData
+
+#########################
+# Code API response
+#########################
+CodeApiResponse:
+  type: object
+  properties:
+    revision:
+      format: int32
+      type: integer
+  required:
+    - revision

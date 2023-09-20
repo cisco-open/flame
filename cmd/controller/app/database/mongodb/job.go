@@ -34,6 +34,25 @@ const (
 
 // CreateJob creates a new job specification and returns JobStatus
 func (db *MongoService) CreateJob(userId string, jobSpec openapi.JobSpec) (openapi.JobStatus, error) {
+	schema, err := db.GetDesignSchema(userId, jobSpec.DesignId)
+	if err != nil {
+		zap.S().Warnf("Failed to obtain design schema: %v", err)
+
+		return openapi.JobStatus{}, ErrorCheck(err)
+	}
+
+	codeApiRes, err := db.GetDesignCodeRevision(userId, jobSpec.DesignId)
+	if err != nil {
+		zap.S().Warnf("Failed to obtain code revision: %v", err)
+
+		return openapi.JobStatus{}, ErrorCheck(err)
+	}
+
+	// get schema's and code's revision numbers
+	// so that these numbers can be tracked
+	// for user's debugging purposes
+	jobSpec.SchemaRevision = schema.Revision
+	jobSpec.CodeRevision = codeApiRes.Revision
 	// override userId in jobSpec to prevent an incorrect record in the db
 	jobSpec.UserId = userId
 
@@ -243,6 +262,25 @@ func (db *MongoService) UpdateJob(userId string, jobId string, jobSpec openapi.J
 		return err
 	}
 
+	schema, err := db.GetDesignSchema(userId, jobSpec.DesignId)
+	if err != nil {
+		zap.S().Warnf("Failed to obtain design schema: %v", err)
+
+		return ErrorCheck(err)
+	}
+
+	codeApiRes, err := db.GetDesignCodeRevision(userId, jobSpec.DesignId)
+	if err != nil {
+		zap.S().Warnf("Failed to obtain code revision: %v", err)
+
+		return ErrorCheck(err)
+	}
+
+	// get schema's and code's revision numbers
+	// so that these numbers can be tracked
+	// for user's debugging purposes
+	jobSpec.SchemaRevision = schema.Revision
+	jobSpec.CodeRevision = codeApiRes.Revision
 	jobSpec.Id = jobId
 	jobSpec.UserId = userId
 

@@ -22,35 +22,31 @@ import (
 	"github.com/cisco-open/flame/cmd/flamectl/resources/code"
 )
 
+const (
+	createDesignCodeCmdArgNum = 2
+)
+
 var createDesignCodeCmd = &cobra.Command{
-	Use:   "code <zipped code file>",
+	Use:   "code <designId> <zipped code file>",
 	Short: "Create a new ML code for a design",
 	Long:  "Command to create a new ML code for a design",
-	Args:  cobra.RangeArgs(1, 1),
+	Args:  cobra.RangeArgs(createDesignCodeCmdArgNum, createDesignCodeCmdArgNum),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		codePath := args[0]
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
+		codePath := args[1]
 
 		params := code.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
 		params.CodePath = codePath
-		params.CodeVer = ""
 
 		return code.Create(params)
 	},
 }
 
 func init() {
-	createDesignCodeCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	createDesignCodeCmd.MarkPersistentFlagRequired("design")
 	createCmd.AddCommand(createDesignCodeCmd)
 }

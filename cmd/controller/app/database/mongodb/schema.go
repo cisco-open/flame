@@ -21,7 +21,6 @@ import (
 	"fmt"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/openapi"
@@ -32,18 +31,13 @@ import (
 func (db *MongoService) CreateDesignSchema(userId string, designId string, ds openapi.DesignSchema) error {
 	zap.S().Debugf("Creating design schema request for userId: %s | designId: %s", userId, designId)
 
-	latestSchema, err := db.GetDesignSchema(userId, designId, latestVersion)
-	if err != nil {
-		ds.Version = "1"
-	} else {
-		ds.Version = IncrementVersion(latestSchema.Version)
-	}
+	db.incrementSchemaRevision(userId, designId, &ds)
 
 	var updatedDoc openapi.Design
 	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
-	update := bson.M{"$push": bson.M{"schemas": ds}}
+	update := bson.M{"$set": bson.M{util.DBFieldSchema: ds}}
 
-	err = db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
+	err := db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
 	if err != nil {
 		zap.S().Errorf("Failed to insert the design template. %v", err)
 		return ErrorCheck(err)
@@ -52,59 +46,33 @@ func (db *MongoService) CreateDesignSchema(userId string, designId string, ds op
 	return nil
 }
 
-func (db *MongoService) GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error) {
-	zap.S().Debugf("Getting schema details for userId: %s | designId: %s | schema version: %s",
-		userId, designId, version)
+func (db *MongoService) GetDesignSchema(userId string, designId string) (openapi.DesignSchema, error) {
+	zap.S().Debugf("Getting schema details for userId: %s | designId: %s", userId, designId)
 
-	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId, "schemas.version": version}
-	opts := options.FindOne().SetProjection(bson.M{"schemas.$": 1})
-
-	if version == latestVersion {
-		filter = bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
-		projection := bson.M{"schemas": bson.M{"$slice": -1}}
-		opts = options.FindOne().SetProjection(projection)
-	}
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
 
 	updatedDoc := openapi.Design{}
-	err := db.designCollection.FindOne(context.TODO(), filter, opts).Decode(&updatedDoc)
+	err := db.designCollection.FindOne(context.TODO(), filter).Decode(&updatedDoc)
 	if err != nil {
 		err = ErrorCheck(err)
 		zap.S().Errorf("Failed to fetch design schema information: %v", err)
 		return openapi.DesignSchema{}, err
 	}
 
-	if len(updatedDoc.Schemas) == 0 {
+	if updatedDoc.Schema.Revision == 0 {
 		return openapi.DesignSchema{}, fmt.Errorf("no design schema found")
 	}
 
-	return updatedDoc.Schemas[0], err
+	return updatedDoc.Schema, nil
 }
 
-func (db *MongoService) GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error) {
-	zap.S().Debugf("Getting schema details for userId: %s | designId: %s", userId, designId)
+func (db *MongoService) UpdateDesignSchema(userId string, designId string, ds openapi.DesignSchema) error {
+	zap.S().Debugf("Updating design schema request for userId: %s | designId: %s", userId, designId)
+
+	db.incrementSchemaRevision(userId, designId, &ds)
 
 	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
-	opts := options.FindOne().SetProjection(bson.M{"schemas": 1})
-
-	updatedDoc := openapi.Design{}
-	err := db.designCollection.FindOne(context.TODO(), filter, opts).Decode(&updatedDoc)
-	if err != nil {
-		err = ErrorCheck(err)
-		zap.S().Errorf("Failed to fetch design schema information: %v", err)
-		return []openapi.DesignSchema{}, err
-	}
-
-	return updatedDoc.Schemas, err
-}
-
-func (db *MongoService) UpdateDesignSchema(userId string, designId string, version string, ds openapi.DesignSchema) error {
-	zap.S().Debugf("Updating design schema request for userId: %s | designId: %s | version: %s", userId, designId, version)
-
-	// set version in the design schema
-	ds.Version = version
-
-	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId, "schemas.version": version}
-	update := bson.M{"$set": bson.M{"schemas.$": ds}}
+	update := bson.M{"$set": bson.M{util.DBFieldSchema: ds}}
 
 	var updatedDoc openapi.Design
 	err := db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
@@ -116,19 +84,30 @@ func (db *MongoService) UpdateDesignSchema(userId string, designId string, versi
 	return nil
 }
 
-// DeleteDesignSchema delete design schema for the given version and design Id
-func (db *MongoService) DeleteDesignSchema(userId string, designId string, version string) error {
-	zap.S().Debugf("delete design schema : %v, %v,%v", userId, designId, version)
+// DeleteDesignSchema deletes design schema for the given design Id
+func (db *MongoService) DeleteDesignSchema(userId string, designId string) error {
+	zap.S().Debugf("delete schema: user: %v, design ID: %v", userId, designId)
 
-	updateRes, err := db.designCollection.UpdateOne(context.TODO(),
-		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId},
-		bson.M{"$pull": bson.M{util.DBFieldSchemas: bson.M{"version": version}}})
+	emptySchema := openapi.DesignSchema{}
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
+	update := bson.M{"$set": bson.M{util.DBFieldSchema: emptySchema}}
+
+	var updatedDoc openapi.Design
+	err := db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
 	if err != nil {
-		return fmt.Errorf("failed to delete design schema deleted error: %v", err)
+		return fmt.Errorf("failed to delete design schema: %v", err)
 	}
-	if updateRes.ModifiedCount == 0 {
-		return fmt.Errorf("schema version %s not found", version)
-	}
-	zap.S().Debugf("successfully deleted design schema: %#v", updateRes)
+
+	zap.S().Debugf("Deleted schema of design: %s", designId)
+
 	return nil
+}
+
+func (db *MongoService) incrementSchemaRevision(userId string, designId string, ds *openapi.DesignSchema) {
+	schema, err := db.GetDesignSchema(userId, designId)
+	if err != nil {
+		ds.Revision = 1
+	} else {
+		ds.Revision = schema.Revision + 1
+	}
 }

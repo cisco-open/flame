@@ -22,7 +22,6 @@ const (
 	ParamState     = "state"
 	ParamUser      = "user"
 	ParamDesignID  = "designId"
-	ParamVersion   = "version"
 	ParamLimit     = "limit"
 	ParamTaskID    = "taskId"
 	ParamKey       = "key"

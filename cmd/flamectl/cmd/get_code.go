@@ -23,34 +23,24 @@ import (
 )
 
 var getDesignCodeCmd = &cobra.Command{
-	Use:   "code <version>",
+	Use:   "code <designId>",
 	Short: "Get an ML code",
 	Long:  "This command retrieves an ML code for a design",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		codeVer := args[0]
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
 
 		params := code.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
-		params.CodeVer = codeVer
 
 		return code.Get(params)
 	},
 }
 
 func init() {
-	getDesignCodeCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	getDesignCodeCmd.MarkPersistentFlagRequired("design")
 	getCmd.AddCommand(getDesignCodeCmd)
 }

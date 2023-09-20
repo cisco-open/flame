@@ -27,7 +27,7 @@ package openapi
 
 // DesignSchema - Schema to define the roles and their connections
 type DesignSchema struct {
-	Version string `json:"version"`
+	Revision int32 `json:"revision,omitempty"`
 
 	Name string `json:"name"`
 
@@ -71,14 +71,7 @@ func AssertDesignSchemaRequired(obj DesignSchema) error {
 	return nil
 }
 
-// AssertRecurseDesignSchemaRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of DesignSchema (e.g. [][]DesignSchema), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseDesignSchemaRequired(objSlice interface{}) error {
-	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aDesignSchema, ok := obj.(DesignSchema)
-		if !ok {
-			return ErrTypeAssertionError
-		}
-		return AssertDesignSchemaRequired(aDesignSchema)
-	})
+// AssertDesignSchemaConstraints checks if the values respects the defined constraints
+func AssertDesignSchemaConstraints(obj DesignSchema) error {
+	return nil
 }

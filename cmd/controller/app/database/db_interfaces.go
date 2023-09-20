@@ -63,25 +63,24 @@ type DesignService interface {
 	CreateDesignSchema(userId string, designId string, info openapi.DesignSchema) error
 
 	// GetDesignSchema returns the schema of a design from the db
-	GetDesignSchema(userId string, designId string, version string) (openapi.DesignSchema, error)
-
-	// GetDesignSchemas returns all the schemas associated with the given designId
-	GetDesignSchemas(userId string, designId string) ([]openapi.DesignSchema, error)
+	GetDesignSchema(userId string, designId string) (openapi.DesignSchema, error)
 
 	// UpdateDesignSchema updates a schema for a design in the db
-	UpdateDesignSchema(userId string, designId string, version string, info openapi.DesignSchema) error
+	UpdateDesignSchema(userId string, designId string, info openapi.DesignSchema) error
 
 	// DeleteDesignSchema deletes the schema of a design from the db
-	DeleteDesignSchema(userId string, designId string, version string) error
+	DeleteDesignSchema(userId string, designId string) error
 
 	// CreateDesignCode adds the code of a design to the db
-	CreateDesignCode(userId string, designId string, fileName string, fileVer string, fileData *os.File) error
+	CreateDesignCode(userId string, designId string, fileName string, fileData *os.File) error
 
 	// GetDesignCode retrieves the code of a design from the db
-	GetDesignCode(userId string, designId string, version string) ([]byte, error)
+	GetDesignCode(userId string, designId string) ([]byte, error)
 
 	// DeleteDesignCode deletes the code of a design from the db
-	DeleteDesignCode(userId string, designId string, version string) error
+	DeleteDesignCode(userId string, designId string) error
+
+	GetDesignCodeRevision(userId string, designId string) (openapi.CodeApiResponse, error)
 }
 
 // JobService is an interface that defines a collection of APIs related to job

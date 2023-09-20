@@ -1,8 +1,6 @@
 {
     "name": "hierarchical mnist example",
     "designId": "hier_mnist",
-    "schemaVersion": "1",
-    "codeVersion": "1",
     "priority": "low",
     "maxRunTime": 7200,
     "backend": "p2p",

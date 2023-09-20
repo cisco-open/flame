@@ -25,24 +25,23 @@
 
 package openapi
 
-// Design - Design template details along with all the schemas.
+// Design - Design template details along with a schema.
 type Design struct {
-	Name string `json:"name"`
+	Schema DesignSchema `json:"schema,omitempty"`
+
+	Name string `json:"name,omitempty"`
 
 	Description string `json:"description,omitempty"`
 
 	Id string `json:"id"`
 
 	UserId string `json:"userId,omitempty"`
-
-	Schemas []DesignSchema `json:"schemas"`
 }
 
 // AssertDesignRequired checks if the required fields are not zero-ed
 func AssertDesignRequired(obj Design) error {
 	elements := map[string]interface{}{
-		"id":      obj.Id,
-		"schemas": obj.Schemas,
+		"id": obj.Id,
 	}
 	for name, el := range elements {
 		if isZero := IsZeroValue(el); isZero {
@@ -50,22 +49,13 @@ func AssertDesignRequired(obj Design) error {
 		}
 	}
 
-	for _, el := range obj.Schemas {
-		if err := AssertDesignSchemaRequired(el); err != nil {
-			return err
-		}
+	if err := AssertDesignSchemaRequired(obj.Schema); err != nil {
+		return err
 	}
 	return nil
 }
 
-// AssertRecurseDesignRequired recursively checks if required fields are not zero-ed in a nested slice.
-// Accepts only nested slice of Design (e.g. [][]Design), otherwise ErrTypeAssertionError is thrown.
-func AssertRecurseDesignRequired(objSlice interface{}) error {
-	return AssertRecurseInterfaceRequired(objSlice, func(obj interface{}) error {
-		aDesign, ok := obj.(Design)
-		if !ok {
-			return ErrTypeAssertionError
-		}
-		return AssertDesignRequired(aDesign)
-	})
+// AssertDesignConstraints checks if the values respects the defined constraints
+func AssertDesignConstraints(obj Design) error {
+	return nil
 }

@@ -44,8 +44,6 @@ type CreateJobRequest struct {
 	Name          string              `json:"name"`
 	UserId        string              `json:"userId,omitempty"`
 	DesignId      string              `json:"designId"`
-	SchemaVersion string              `json:"schemaVersion"`
-	CodeVersion   string              `json:"codeVersion"`
 	Priority      openapi.JobPriority `json:"priority,omitempty"`
 	MaxRunTime    int32               `json:"maxRunTime,omitempty"`
 	Backend       openapi.CommBackend `json:"backend,omitempty"`
@@ -84,17 +82,15 @@ func createJobSpec(data []byte, jobFile string) (bool, openapi.JobSpec) {
 	}
 
 	jobSpec := openapi.JobSpec{
-		Id:            createJobRequest.Id,
-		Name:          createJobRequest.Name,
-		UserId:        createJobRequest.UserId,
-		DesignId:      createJobRequest.DesignId,
-		SchemaVersion: createJobRequest.SchemaVersion,
-		CodeVersion:   createJobRequest.CodeVersion,
-		Priority:      createJobRequest.Priority,
-		MaxRunTime:    createJobRequest.MaxRunTime,
-		Backend:       createJobRequest.Backend,
-		DataSpec:      dataSpec,
-		ModelSpec:     modelSpec,
+		Id:         createJobRequest.Id,
+		Name:       createJobRequest.Name,
+		UserId:     createJobRequest.UserId,
+		DesignId:   createJobRequest.DesignId,
+		Priority:   createJobRequest.Priority,
+		MaxRunTime: createJobRequest.MaxRunTime,
+		Backend:    createJobRequest.Backend,
+		DataSpec:   dataSpec,
+		ModelSpec:  modelSpec,
 	}
 	return true, jobSpec
 }

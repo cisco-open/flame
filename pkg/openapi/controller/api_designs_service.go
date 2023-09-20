@@ -56,7 +56,7 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 		Description: designInfo.Description,
 		Id:          designInfo.Id,
 		UserId:      user,
-		Schemas:     []openapi.DesignSchema{},
+		Schema:      openapi.DesignSchema{},
 	}
 
 	err := s.dbService.CreateDesign(user, d)

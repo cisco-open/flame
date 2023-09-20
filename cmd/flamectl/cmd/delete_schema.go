@@ -22,34 +22,24 @@ import (
 )
 
 var removeSchemaCmd = &cobra.Command{
-	Use:   "schema <version> --design <design id>",
-	Short: "Remove a schema with specific version from a design",
-	Long:  "This command removes a schema with specific version from a design",
+	Use:   "schema <designId>",
+	Short: "Remove schema from a design",
+	Long:  "This command removes schema from a design",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		schemaVersion := args[0]
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
 
 		params := schema.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
-		params.Version = schemaVersion
 
 		return schema.Remove(params)
 	},
 }
 
 func init() {
-	removeSchemaCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	removeSchemaCmd.MarkPersistentFlagRequired("design")
 	removeCmd.AddCommand(removeSchemaCmd)
 }

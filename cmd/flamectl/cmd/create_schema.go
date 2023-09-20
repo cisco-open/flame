@@ -22,22 +22,20 @@ import (
 	"github.com/cisco-open/flame/cmd/flamectl/resources/schema"
 )
 
+const (
+	createDesignSchemaCmdArgNum = 2
+)
+
 var createDesignSchemaCmd = &cobra.Command{
-	Use:   "schema <schema json file>",
+	Use:   "schema <designId> <schema json file>",
 	Short: "Create a new design schema",
-	Long:  "Command to create a new design schema",
-	Args:  cobra.RangeArgs(1, 1),
+	Long:  "This command creates a new design schema",
+	Args:  cobra.RangeArgs(createDesignSchemaCmdArgNum, createDesignSchemaCmdArgNum),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		schemaPath := args[0]
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
+		schemaPath := args[1]
 
 		params := schema.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
@@ -50,7 +48,5 @@ var createDesignSchemaCmd = &cobra.Command{
 }
 
 func init() {
-	createDesignSchemaCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	createDesignSchemaCmd.MarkPersistentFlagRequired("design")
 	createCmd.AddCommand(createDesignSchemaCmd)
 }

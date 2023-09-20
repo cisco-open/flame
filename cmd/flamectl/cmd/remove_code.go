@@ -22,34 +22,24 @@ import (
 )
 
 var removeCodeCmd = &cobra.Command{
-	Use:   "code <version> --design <design id>",
-	Short: "Remove a code with specific version from a design",
-	Long:  "This command removes a code with specific version from a design",
+	Use:   "code  <designId>",
+	Short: "Remove code associated with a design",
+	Long:  "This command removes code associated with a design",
 	Args:  cobra.RangeArgs(1, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
-		codeVer := args[0]
-
-		flags := cmd.Flags()
-
-		designId, err := flags.GetString("design")
-		if err != nil {
-			return err
-		}
+		designId := args[0]
 
 		params := code.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
-		params.CodeVer = codeVer
 
 		return code.Remove(params)
 	},
 }
 
 func init() {
-	removeCodeCmd.PersistentFlags().StringP("design", "d", "", "Design ID")
-	removeCodeCmd.MarkPersistentFlagRequired("design")
 	removeCmd.AddCommand(removeCodeCmd)
 }
