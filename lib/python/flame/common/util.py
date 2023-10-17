@@ -25,8 +25,8 @@ from typing import List, Union
 
 from pip._internal.cli.main import main as pipmain
 
-from flame.common.typing import ModelWeights
 from flame.common.constants import DeviceType
+from flame.common.typing import ModelWeights
 
 PYTORCH = "torch"
 TENSORFLOW = "tensorflow"

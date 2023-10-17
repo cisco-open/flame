@@ -1,0 +1,10 @@
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site1.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site2.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site3.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site4.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site5.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site6.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site7.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site8.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site9.npz
+https://github.com/GustavBaumgart/flame-datasets/raw/main/compas/site10.npz

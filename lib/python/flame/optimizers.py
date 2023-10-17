@@ -15,15 +15,16 @@
 # SPDX-License-Identifier: Apache-2.0
 """optimizer provider class."""
 
-from .config import OptimizerType
-from .object_factory import ObjectFactory
-from .optimizer.fedadagrad import FedAdaGrad
-from .optimizer.fedadam import FedAdam
-from .optimizer.fedavg import FedAvg
-from .optimizer.fedbuff import FedBuff
-from .optimizer.feddyn import FedDyn
-from .optimizer.fedprox import FedProx
-from .optimizer.fedyogi import FedYogi
+from flame.config import OptimizerType
+from flame.object_factory import ObjectFactory
+from flame.optimizer.fedadagrad import FedAdaGrad
+from flame.optimizer.fedadam import FedAdam
+from flame.optimizer.fedavg import FedAvg
+from flame.optimizer.fedbuff import FedBuff
+from flame.optimizer.feddyn import FedDyn
+from flame.optimizer.fedgft import FedGFT
+from flame.optimizer.fedprox import FedProx
+from flame.optimizer.fedyogi import FedYogi
 
 
 class OptimizerProvider(ObjectFactory):
@@ -42,3 +43,4 @@ optimizer_provider.register(OptimizerType.FEDYOGI, FedYogi)
 optimizer_provider.register(OptimizerType.FEDBUFF, FedBuff)
 optimizer_provider.register(OptimizerType.FEDPROX, FedProx)
 optimizer_provider.register(OptimizerType.FEDDYN, FedDyn)
+optimizer_provider.register(OptimizerType.FEDGFT, FedGFT)
