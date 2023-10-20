@@ -29,6 +29,10 @@ DATA_FOLDER_PATH = "/flame/data"
 
 EMPTY_PAYLOAD = b""
 
+# properties of channel ends
+PROP_ROUND_START_TIME = "round_start_time"
+PROP_ROUND_END_TIME = "round_end_time"
+
 
 class CommType(Enum):
     """Enum class for communication type."""
