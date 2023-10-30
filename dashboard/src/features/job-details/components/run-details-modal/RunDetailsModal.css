@@ -1,0 +1,21 @@
+.run-details-content {
+  min-height: 90vh;
+  height: 98vh !important;
+}
+
+.chakra-modal__content-container {
+  overflow: hidden !important;
+}
+
+.run-details-tabs {
+  height: 100%;
+}
+
+.run-details-tab-panels {
+  height: 100%;
+}
+
+.run-details-tab-panel {
+  height: 100%;
+}
+
