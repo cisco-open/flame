@@ -69,12 +69,12 @@ We welcome feedback, questions, and issue reports.
 ## Citation
 
 ```
-@misc{flame2023,
-      title={Federated Learning Operations Made Simple with Flame}, 
-      author={Harshit Daga and Jaemin Shin and Dhruv Garg and Ada Gavrilovska and Myungjin Lee and Ramana Rao Kompella},
-      year={2023},
-      eprint={2305.05118},
-      archivePrefix={arXiv},
-      primaryClass={cs.LG}
+@inproceedings{flame2023,
+    author = {Harshit Daga and Jaemin Shin and Dhruv Garg and Ada Gavrilovska and Myungjin Lee and Ramana Rao Kompella},
+    title = {Flame: Simplifying Topology Extension in Federated Learning},
+    year = {2023},
+    booktitle = {Proceedings of the 2023 ACM Symposium on Cloud Computing},
+    keywords = {Federated Learning, Distributed Machine Learning},
+    series = {SoCC '23}
 }
 ```
