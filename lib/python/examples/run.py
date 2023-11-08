@@ -44,9 +44,9 @@ def new_randhex(used=set(), length=24):
 
 job_path = os.path.join(Path.home(), "flame-log")
 if os.path.exists(job_path):
-    used_job_ids = set()
-else:
     used_job_ids = set(os.listdir(job_path))
+else:
+    used_job_ids = set()
 
 used_task_ids = set()
 

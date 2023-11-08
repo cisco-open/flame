@@ -1,0 +1,80 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "backend": "p2p",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate",
+                    "getDatasetSize"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload",
+                    "uploadDatasetSize"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://github.com/GustavBaumgart/flame-datasets/raw/main/cifar10/test.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 50,
+        "learningRate": 0.1,
+        "weightDecay": 0.001,
+        "rounds": 100
+    },
+    "baseModel": {
+        "name": "",
+        "version": 2
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "default",
+        "kwargs": {}
+    },
+    "optimizer": {
+        "sort": "scaffold",
+        "kwargs": {
+            "k": 100
+        }
+    },
+    "maxRunTime": 300,
+    "realm": "default",
+    "role": "aggregator"
+}
