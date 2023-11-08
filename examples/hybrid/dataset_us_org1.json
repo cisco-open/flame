@@ -3,11 +3,11 @@
 
     "description": "This dataset contains handwritten digits",
 
-    "url": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_1.npz",
+    "url": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist_3.npz",
 
     "dataFormat": "npy",
 
-    "realm": "eu1",
+    "realm": "default/us/org1",
 
     "isPublic": true
 }

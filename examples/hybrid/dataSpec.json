@@ -1,15 +1,15 @@
-{
+[
     {
         "role": "trainer",
         "datasetGroups": {
             "eu": [
-                "641dad83843b4d449a827464",
-                "641dad83843b4d449a827465",
+                "645baa8fae8632e96ee4dd82",
+                "645baa8fae8632e96ee4dd83"
             ],
             "us": [
-                "641dad83843b4d449a827466",
-                "641dad83843b4d449a827467"
+                "645baa8fae8632e96ee4dd84",
+                "645baa8fae8632e96ee4dd85"
             ]
         }
     }
-}
+]

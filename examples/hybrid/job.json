@@ -2,7 +2,7 @@
     "name": "hybrid fl example",
     "designId": "hybrid",
     "priority": "low",
-    "maxRunTime": 300,
+    "maxRunTime": 120,
     "backend": "mqtt",
 
     "dataSpecPath": "dataSpec.json",

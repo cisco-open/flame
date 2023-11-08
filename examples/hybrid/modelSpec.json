@@ -5,8 +5,8 @@
     },
     "hyperparameters": {
         "batchSize": 32,
-        "learningRate": 0.01,
-        "rounds": 5
+        "learningRate": 0.91,
+        "rounds": 1
     },
     "dependencies": [
         "numpy >= 1.2.0"

@@ -148,12 +148,12 @@ func Test_examples(t *testing.T) {
 			expectedRoles: []string{"aggregator", "trainer"},
 			datasetNamesByGroup: map[string][]string{
 				"eu": {
-					"dataset1.json",
-					"dataset2.json",
+					"dataset_eu_org1.json",
+					"dataset_eu_org2.json",
 				},
 				"us": {
-					"dataset3.json",
-					"dataset4.json",
+					"dataset_us_org1.json",
+					"dataset_us_org2.json",
 				},
 			},
 		},
