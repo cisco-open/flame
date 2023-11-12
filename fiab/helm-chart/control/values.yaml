@@ -105,6 +105,7 @@ frontDoorUrl:
   apiserver: apiserver.flame.test
   notifier: notifier.flame.test
   mlflow: mlflow.flame.test
+  dashboard: dashboard.flame.test
 
 mlflow:
   s3EndpointUrl: http://minio.flame.test
@@ -131,6 +132,7 @@ servicePort:
   agent: "10103"
   metaserver: "10104"
   mqtt: "1883"
+  dashboard: "3000"
 
 replicas: 1
 
