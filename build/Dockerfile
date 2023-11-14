@@ -35,6 +35,22 @@ COPY --from=golang-build /flame/* /usr/bin/
 
 # Install flame python library
 COPY --from=python-build /tmp/*.whl /tmp/
+
+# Install required dependencies and Node.js
+ENV NODE_VERSION=17
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
+    apt-get install -y nodejs
+COPY ./dashboard /dashboard_src
+WORKDIR /dashboard_src
+RUN npm install -g serve
+RUN npm install
+RUN npm run build
+RUN cp -a /dashboard_src/build/. /dashboard
+RUN rm -rf /dashboard_src
+WORKDIR /
+
 RUN pip3 install /tmp/*.whl && rm -f /tmp/*.whl
 # this python script configures python packages
 RUN flame-config
