@@ -21,7 +21,7 @@ metadata:
     namespace: {{ .Release.Namespace }}
     {{- if .Values.ingress.annotations }}
     annotations:
-      {{- range $key, $value := .Values.ingress.annotations }}
+      {{- range $key, $value := .Values.ingress.annotationsNoTls }}
       {{ $key }}: {{ tpl $value $ | quote }}
       {{- end }}
     {{- end }}
