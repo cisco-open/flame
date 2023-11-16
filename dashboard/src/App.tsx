@@ -5,8 +5,10 @@ import './App.css';
 function App() {
 
   useEffect(() => {
-    console.log((window as unknown as any).env);
-  })
+    const REACT_APP_API_URL = (window as unknown as any).env?.REACT_APP_API_URL;
+
+    fetch(`${REACT_APP_API_URL}/users/foo/designs`);
+  }, [])
   return (
     <div className="App">
       <header className="App-header">

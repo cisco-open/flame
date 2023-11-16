@@ -51,3 +51,6 @@ scripts/openapi
 # helm dependencies
 charts
 requirements.lock
+
+# React dependencies
+node_modules
