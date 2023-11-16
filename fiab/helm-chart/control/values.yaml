@@ -94,12 +94,15 @@ ingress:
     cert-manager.io/cluster-issuer: selfsigned
   # In mlflow, selfsigned certificate raises SSLCertVerificationError
   # So, fiab env disable tls; tls can be enabled with a legitimate cert
-  annotationsMlflow:
+  annotationsNoTls:
     nginx.ingress.kubernetes.io/rewrite-target: /
     # In case there is 413 error,
     # refer to https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-max-body-size
     # set nginx.ingress.kubernetes.io/proxy-body-size to 0 to disable the limit
     nginx.ingress.kubernetes.io/proxy-body-size: "512m"
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60000"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60000"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60000"
 
 frontDoorUrl:
   apiserver: apiserver.flame.test
