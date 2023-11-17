@@ -84,18 +84,6 @@ ingress:
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
     cert-manager.io/cluster-issuer: selfsigned
-    nginx.ingress.kubernetes.io/proxy-body-size: "512m"
-    nginx.ingress.kubernetes.io/proxy-connect-timeout: "60000"
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "60000"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "60000"
-  annotationsGrpc:
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
-    cert-manager.io/cluster-issuer: selfsigned
-  # In mlflow, selfsigned certificate raises SSLCertVerificationError
-  # So, fiab env disable tls; tls can be enabled with a legitimate cert
-  annotationsNoTls:
-    nginx.ingress.kubernetes.io/rewrite-target: /
     # In case there is 413 error,
     # refer to https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/annotations/#custom-max-body-size
     # set nginx.ingress.kubernetes.io/proxy-body-size to 0 to disable the limit
@@ -103,6 +91,14 @@ ingress:
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "60000"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "60000"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "60000"
+    # The following is for handle CORS
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "http://dashboard.flame.test"
+    nginx.ingress.kubernetes.io/cors-allow-methods: "DELETE, GET, POST, PUT"
+  annotationsGrpc:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/backend-protocol: "GRPC"
+    cert-manager.io/cluster-issuer: selfsigned
 
 frontDoorUrl:
   apiserver: apiserver.flame.test

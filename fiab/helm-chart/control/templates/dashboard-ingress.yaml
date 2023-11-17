@@ -21,12 +21,16 @@ metadata:
     namespace: {{ .Release.Namespace }}
     {{- if .Values.ingress.annotations }}
     annotations:
-      {{- range $key, $value := .Values.ingress.annotationsNoTls }}
+      {{- range $key, $value := .Values.ingress.annotations }}
       {{ $key }}: {{ tpl $value $ | quote }}
       {{- end }}
     {{- end }}
 spec:
     ingressClassName: {{ .Values.ingress.ingressClassName }}
+    # tls:
+    # - hosts:
+    #   - {{ .Values.frontDoorUrl.dashboard }}
+    #   secretName: {{ .Release.Name }}-dashboard-tls
     rules:
     - host: {{ .Values.frontDoorUrl.dashboard }}
       http:
