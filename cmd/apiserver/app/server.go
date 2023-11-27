@@ -24,6 +24,7 @@ import (
 
 	"github.com/cisco-open/flame/pkg/openapi"
 	"github.com/cisco-open/flame/pkg/openapi/apiserver"
+	"github.com/rs/cors"
 )
 
 //crate channel to listen for shutdown and other commands?
@@ -47,8 +48,13 @@ func RunServer(portNo uint16, ctlrEp string) error {
 
 	router := openapi.NewRouter(apiRouters...)
 
+	corsHandler := cors.New(cors.Options{
+        AllowedOrigins: []string{"http://dashboard.flame.test"},
+        AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+    }).Handler(router)
+
 	addr := fmt.Sprintf(":%d", portNo)
-	zap.S().Fatal(http.ListenAndServe(addr, router))
+	zap.S().Fatal(http.ListenAndServe(addr, corsHandler))
 
 	return nil
 }
