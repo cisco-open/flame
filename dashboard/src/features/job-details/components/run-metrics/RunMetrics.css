@@ -1,0 +1,31 @@
+.metrics-container {
+  height: 68vh;
+  overflow: hidden;
+  overflow-y: auto;
+  display: flex;
+  gap: 20px;
+}
+
+.metrics-list {
+  width: 30%;
+  height: 100%;
+  overflow: hidden;
+  overflow-y: auto;
+  font-size: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.metric {
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.chart-container {
+  width: 70%;
+}
+
+.chakra-modal__content-container {
+  overflow: hidden;
+}
