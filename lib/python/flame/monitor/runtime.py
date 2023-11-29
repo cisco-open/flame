@@ -20,20 +20,23 @@ import time
 
 logger = logging.getLogger(__name__)
 
+
 def time_tasklet(func):
     """Decorator to time Tasklet.do() function"""
+
     def wrapper(*args, **kwargs):
         s = args[0]
         if s.composer.mc:
             start = time.time()
             result = func(*args, **kwargs)
             end = time.time()
-            
-            s.composer.mc.save("runtime", s.alias, end-start)
+
+            s.composer.mc.save("runtime", s.alias, end - start)
+            s.composer.mc.save("starttime", s.alias, start)
             logger.debug(f"Runtime of {s.alias} is {end-start}")
             return result
         else:
             logger.debug("No MetricCollector; won't record runtime")
             return func(*args, **kwargs)
-    
+
     return wrapper
