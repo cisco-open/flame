@@ -1,0 +1,39 @@
+.placeholder-node-body {
+  width: 150px;
+  height: 60px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 25px;
+  font-weight: bold;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+}
+
+.placeholder-node {
+  .react-flow__handle {
+    display: none;
+  }
+}
+
+
+div.custom-node-no-interaction-handle {
+  display: flex;
+  width: unset;
+  height: unset;
+  border-radius: 0;
+  border: none;
+  position: unset;
+  background: transparent;
+  transform: none;
+  cursor: pointer !important;
+}
+
+.no-interaction > * {
+  cursor: default !important;
+}

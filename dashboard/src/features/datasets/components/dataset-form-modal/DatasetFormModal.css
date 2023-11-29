@@ -1,0 +1,11 @@
+.dataset-formhier- {
+    /* max-width: 60vw !important; */
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+}
+
+.chakra-modal__content-container {
+    display: flex;
+    justify-content: center !important;
+    align-items: center !important;
+}

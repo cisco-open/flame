@@ -1,0 +1,44 @@
+.customNodeBody {
+    width: 150px;
+    height: 60px;
+    border: 2px solid black;
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 12px;
+    font-weight: bold;
+    background-color: rgb(228, 227, 227) !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+  }
+
+.status-indicator {
+  position: absolute;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  top: 5px;
+  left: 5px;
+  cursor: default;
+}
+
+div.custom-node-no-interaction-handle {
+  display: flex;
+  width: unset;
+  height: unset;
+  border-radius: 0;
+  border: none;
+  position: unset;
+  background: transparent;
+  transform: none;
+  cursor: pointer !important;
+}
+
+.no-interaction > * {
+  cursor: default !important;
+}

@@ -1,0 +1,14 @@
+.channel-details-func-tag-control .chakra-checkbox__control{
+  width: 15px;
+  height: 18px;
+}
+
+.channel-details-func-tag-control .chakra-checkbox__control svg{
+  stroke-width: 1px !important;
+  width: 12px;
+}
+
+.side-panel-overlay > * {
+  height: 100% !important;
+  overflow-y: auto !important;
+}

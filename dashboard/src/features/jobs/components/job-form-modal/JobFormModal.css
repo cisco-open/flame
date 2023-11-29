@@ -1,0 +1,22 @@
+.delete-button .chakra-button__icon {
+    margin-inline-end: 0;
+}
+
+.chakra-step__indicator {
+    width: 20px !important;
+    height: 20px !important;
+}
+
+.chakra-step__icon {
+    width: 10px !important;
+    height: 10px !important;
+}
+
+.chakra-step__number {
+    font-size: 10px !important;
+}
+
+.chakra-form__label {
+    font-size: 12px !important;
+}
+

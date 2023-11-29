@@ -1,0 +1,17 @@
+.guZdik {
+    min-width: unset !important;
+    width: 100%;
+}
+
+.guZdik input {
+    width: 100%;
+}
+
+.chakra-stack {
+    min-width: unset !important;
+}
+
+.side-panel-overlay > * {
+    height: 100% !important;
+    overflow-y: auto !important;
+  }
