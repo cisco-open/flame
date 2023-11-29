@@ -27,7 +27,7 @@ cat ${BASE_FILE} | sed -e "s/2022/${year}/" > ${TMP_FILE}
 
 pushd ..
 
-FILE_EXTS=(go html proto py yaml yml)
+FILE_EXTS=(go html js proto py ts tsx yaml yml)
 for ext in ${FILE_EXTS[*]}; do
     find . -not -path '*/.*' -type f -name *.${ext} \
 	 -exec ${HOME}/go/bin/addlicense -f ./scripts/${TMP_FILE} '{}' +
