@@ -210,31 +210,35 @@ class Trainer(DistTrainer):
         with Composer() as composer:
             self.composer = composer
 
-            task_init_cm = Tasklet("", self.init_cm)
+            task_init_cm = Tasklet("init_cm", self.init_cm)
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("initialize", self.initialize)
 
-            task_get = Tasklet("", self.get, TAG_FETCH)
+            task_get = Tasklet("fetch", self.get, TAG_FETCH)
 
-            task_member_check = Tasklet("", self._member_check, TAG_RING_ALLREDUCE)
+            task_member_check = Tasklet(
+                "member_check", self._member_check, TAG_RING_ALLREDUCE
+            )
 
-            task_allreduce = Tasklet("", self._ring_allreduce, TAG_RING_ALLREDUCE)
+            task_allreduce = Tasklet(
+                "ring_allreduce", self._ring_allreduce, TAG_RING_ALLREDUCE
+            )
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_put = Tasklet("", self.put, TAG_UPLOAD)
+            task_put = Tasklet("upload", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
-            task_save_params = Tasklet("", self.save_params)
+            task_save_params = Tasklet("save_params", self.save_params)
 
-            task_save_model = Tasklet("", self.save_model)
+            task_save_model = Tasklet("save_model", self.save_model)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
