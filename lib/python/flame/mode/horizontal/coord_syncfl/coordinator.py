@@ -225,21 +225,32 @@ class Coordinator(Role):
         with Composer() as composer:
             self.composer = composer
 
-            task_await = Tasklet("", self.await_mid_aggs_and_trainers)
-
-            task_pairing = Tasklet("", self.pair_mid_aggs_and_trainers)
-
-            task_send_mid_aggs_to_top_agg = Tasklet(
-                "", self.send_selected_middle_aggregators
+            task_await = Tasklet(
+                "await_mid_aggs_and_trainers", self.await_mid_aggs_and_trainers
             )
 
-            task_send_trainers_to_agg = Tasklet("", self.send_selected_trainers)
+            task_pairing = Tasklet(
+                "pair_mid_aggs_and_trainers", self.pair_mid_aggs_and_trainers
+            )
 
-            task_send_agg_to_trainer = Tasklet("", self.send_selected_middle_aggregator)
+            task_send_mid_aggs_to_top_agg = Tasklet(
+                "send_selected_middle_aggregators",
+                self.send_selected_middle_aggregators,
+            )
 
-            task_increment_round = Tasklet("", self.increment_round)
+            task_send_trainers_to_agg = Tasklet(
+                "send_selected_trainers", self.send_selected_trainers
+            )
 
-            task_inform_eot = Tasklet("", self.inform_end_of_training)
+            task_send_agg_to_trainer = Tasklet(
+                "send_selected_middle_aggregator", self.send_selected_middle_aggregator
+            )
+
+            task_increment_round = Tasklet("inc_round", self.increment_round)
+
+            task_inform_eot = Tasklet(
+                "inform_end_of_training", self.inform_end_of_training
+            )
 
         loop = Loop(loop_check_fn=lambda: self._work_done)
         (

@@ -21,17 +21,15 @@ from copy import deepcopy
 from datetime import datetime
 
 from diskcache import Cache
+
 from flame.channel_manager import ChannelManager
 from flame.common.constants import DeviceType
 from flame.common.custom_abcmeta import ABCMeta, abstract_attribute
-from flame.common.util import (
-    MLFramework,
-    get_ml_framework_in_use,
-    valid_frameworks,
-    weights_to_device,
-    weights_to_model_device,
-)
+from flame.common.util import (MLFramework, get_ml_framework_in_use,
+                               valid_frameworks, weights_to_device,
+                               weights_to_model_device)
 from flame.config import Config
+from flame.datasamplers import datasampler_provider
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
 from flame.mode.role import Role
@@ -40,7 +38,6 @@ from flame.optimizer.train_result import TrainResult
 from flame.optimizers import optimizer_provider
 from flame.plugin import PluginManager, PluginType
 from flame.registries import registry_provider
-from flame.datasamplers import datasampler_provider
 
 logger = logging.getLogger(__name__)
 
@@ -147,9 +144,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
             if MessageType.DATASAMPLER_METADATA in msg:
                 self.datasampler.handle_metadata_from_trainer(
-                    msg[MessageType.DATASAMPLER_METADATA],
-                    end,
-                    channel,
+                    msg[MessageType.DATASAMPLER_METADATA], end, channel,
                 )
 
             logger.debug(f"{end}'s parameters trained with {count} samples")
@@ -252,6 +247,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         if self.metrics:
             self.registry_client.save_metrics(self._round - 1, self.metrics)
             logger.debug("saving metrics done")
+        self.metrics = dict()
 
     def increment_round(self):
         """Increment the round counter."""

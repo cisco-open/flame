@@ -22,23 +22,18 @@ from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.channel_manager import ChannelManager
 from flame.common.constants import DeviceType
 from flame.common.custom_abcmeta import ABCMeta, abstract_attribute
-from flame.common.util import (
-    MLFramework,
-    delta_weights_pytorch,
-    delta_weights_tensorflow,
-    get_ml_framework_in_use,
-    valid_frameworks,
-    weights_to_device,
-    weights_to_model_device,
-)
+from flame.common.util import (MLFramework, delta_weights_pytorch,
+                               delta_weights_tensorflow,
+                               get_ml_framework_in_use, valid_frameworks,
+                               weights_to_device, weights_to_model_device)
 from flame.config import Config
 from flame.datasamplers import datasampler_provider
-from flame.privacies import privacy_provider
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
 from flame.mode.role import Role
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizers import optimizer_provider
+from flame.privacies import privacy_provider
 from flame.registries import registry_provider
 
 logger = logging.getLogger(__name__)
@@ -202,6 +197,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.metrics:
             self.registry_client.save_metrics(self._round - 1, self.metrics)
             logger.debug("saving metrics done")
+        self.metrics = dict()
 
     def update_metrics(self, metrics: dict[str, float]):
         """Update metrics."""

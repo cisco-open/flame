@@ -15,15 +15,15 @@
 # SPDX-License-Identifier: Apache-2.0
 """Oort horizontal FL top level aggregator."""
 
+import inspect
 import logging
 import math
-import inspect
 
 import torch
 from flame.channel import VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
-from flame.common.util import weights_to_device
 from flame.common.custom_abcmeta import abstract_attribute
+from flame.common.util import weights_to_device
 from flame.mode.composer import Composer
 from flame.mode.horizontal.syncfl.trainer import TAG_FETCH, TAG_UPLOAD
 from flame.mode.horizontal.syncfl.trainer import Trainer as BaseTrainer
@@ -79,7 +79,7 @@ class Trainer(BaseTrainer):
         """Initialize Oort variables."""
         self._stat_utility = 0
 
-        if 'reduction' not in inspect.signature(self.loss_fn).parameters:
+        if "reduction" not in inspect.signature(self.loss_fn).parameters:
             msg = "Parameter 'reduction' not found in loss function "
             msg += f"'{self.loss_fn.__name__}', which is required for Oort"
             raise TypeError(msg)
@@ -90,26 +90,28 @@ class Trainer(BaseTrainer):
         target: torch.Tensor,
         epoch: int,
         batch_idx: int,
-        **kwargs
+        **kwargs,
     ) -> torch.Tensor:
         """
         Measure the loss of a trainer during training.
         The trainer's statistical utility is measured at epoch 1.
         """
         if epoch == 1 and batch_idx == 0:
-            if 'reduction' in kwargs.keys():
-                reduction = kwargs['reduction']
+            if "reduction" in kwargs.keys():
+                reduction = kwargs["reduction"]
             else:
-                reduction = 'mean' # default reduction policy is mean
-            kwargs_wo_reduction = {key: value for key, value in kwargs.items() if key != 'reduction'}
+                reduction = "mean"  # default reduction policy is mean
+            kwargs_wo_reduction = {
+                key: value for key, value in kwargs.items() if key != "reduction"
+            }
 
-            criterion = self.loss_fn(reduction='none', **kwargs_wo_reduction)
+            criterion = self.loss_fn(reduction="none", **kwargs_wo_reduction)
             loss_list = criterion(output, target)
             self._stat_utility += torch.square(loss_list).sum()
-            
-            if reduction == 'mean':
+
+            if reduction == "mean":
                 loss = loss_list.mean()
-            elif reduction == 'sum':
+            elif reduction == "sum":
                 loss = loss_list.sum()
         else:
             criterion = self.loss_fn(**kwargs)
@@ -138,23 +140,25 @@ class Trainer(BaseTrainer):
         with Composer() as composer:
             self.composer = composer
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_init_oort_variables = Tasklet("", self.init_oort_variables)
+            task_init_oort_variables = Tasklet(
+                "init_oort_variables", self.init_oort_variables
+            )
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("initialize", self.initialize)
 
-            task_get = Tasklet("", self.get, TAG_FETCH)
+            task_get = Tasklet("fetch", self.get, TAG_FETCH)
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_put = Tasklet("", self.put, TAG_UPLOAD)
+            task_put = Tasklet("upload", self.put, TAG_UPLOAD)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)

@@ -23,15 +23,10 @@ from copy import deepcopy
 from flame.channel_manager import ChannelManager
 from flame.common.constants import DeviceType
 from flame.common.custom_abcmeta import ABCMeta, abstract_attribute
-from flame.common.util import (
-    MLFramework,
-    delta_weights_pytorch,
-    delta_weights_tensorflow,
-    get_ml_framework_in_use,
-    valid_frameworks,
-    weights_to_device,
-    weights_to_model_device,
-)
+from flame.common.util import (MLFramework, delta_weights_pytorch,
+                               delta_weights_tensorflow,
+                               get_ml_framework_in_use, valid_frameworks,
+                               weights_to_device, weights_to_model_device)
 from flame.config import Config
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
@@ -444,6 +439,7 @@ class Trainer(Role, metaclass=ABCMeta):
         if self.metrics:
             self.registry_client.save_metrics(self._round, self.metrics)
             logger.debug("saving metrics done")
+        self.metrics = dict()
 
     def update_metrics(self, metrics: dict[str, float]):
         """Update metrics."""
@@ -501,29 +497,33 @@ class Trainer(Role, metaclass=ABCMeta):
         with Composer() as composer:
             self.composer = composer
 
-            task_init_cm = Tasklet("", self.init_cm)
+            task_init_cm = Tasklet("init_cm", self.init_cm)
 
-            task_internal_init = Tasklet("", self.internal_init)
+            task_internal_init = Tasklet("internal_init", self.internal_init)
 
-            task_load_data = Tasklet("", self.load_data)
+            task_load_data = Tasklet("load_data", self.load_data)
 
-            task_init = Tasklet("", self.initialize)
+            task_init = Tasklet("initialize", self.initialize)
 
-            task_member_check = Tasklet("", self._member_check, TAG_RING_ALLREDUCE)
+            task_member_check = Tasklet(
+                "member_check", self._member_check, TAG_RING_ALLREDUCE
+            )
 
-            task_allreduce = Tasklet("", self._ring_allreduce, TAG_RING_ALLREDUCE)
+            task_allreduce = Tasklet(
+                "ring_allreduce", self._ring_allreduce, TAG_RING_ALLREDUCE
+            )
 
-            task_train = Tasklet("", self.train)
+            task_train = Tasklet("train", self.train)
 
-            task_eval = Tasklet("", self.evaluate)
+            task_eval = Tasklet("evaluate", self.evaluate)
 
-            task_increment_round = Tasklet("", self.increment_round)
+            task_increment_round = Tasklet("inc_round", self.increment_round)
 
-            task_save_metrics = Tasklet("", self.save_metrics)
+            task_save_metrics = Tasklet("save_metrics", self.save_metrics)
 
-            task_save_params = Tasklet("", self.save_params)
+            task_save_params = Tasklet("save_params", self.save_params)
 
-            task_save_model = Tasklet("", self.save_model)
+            task_save_model = Tasklet("save_model", self.save_model)
 
             # create a loop object with loop exit condition function
             loop = Loop(loop_check_fn=lambda: self._work_done)
