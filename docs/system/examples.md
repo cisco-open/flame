@@ -24,7 +24,7 @@ Failed to create a new design - code: -1, error: Post "https://apiserver.flame.t
 ```
 Note that `--insecure` flag should be used with caution and shouldn't be used in production.
 
-If you get an error saying that `flamectl not found`, please refer to [here](fiab-mac.md#Building-flamectl).
+If you get an error saying that `flamectl not found`, please refer to [here](fiab-ubuntu.md#Building-flamectl).
 
 ### Step 1: create a design
 ```bash
