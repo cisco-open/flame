@@ -12,8 +12,8 @@
   position: absolute;
   background-color: rgba(255,255,255,.5);
   z-index: 1;
-  left: 5px;
-  top: 5px;
+  left: 15px;
+  top: 15px;
 }
 
 .design-details__error-trigger {
@@ -63,8 +63,8 @@
   padding-inline-start: var(--chakra-space-2);
   -webkit-padding-end: var(--chakra-space-2);
   padding-inline-end: var(--chakra-space-2);
-  border: 1px solid;
-  border-color: currentColor;
-  color: var(--chakra-colors-teal-600);
-  background: var(--chakra-colors-transparent);
+  border: none;
+  border-color: none;
+  color: white;
+  background: rgba(255,255,255,.4);
 }

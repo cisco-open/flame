@@ -1,0 +1,9 @@
+.artifact-tree-container > div {
+  width: 100% !important;
+  height: 100% !important;
+}
+
+.artifact-tree-container > div > div {
+  width: 100% !important;
+  height: 100% !important;
+}

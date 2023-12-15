@@ -69,10 +69,10 @@ const DesignList = () => {
   return (
     <DesignContext.Provider value={{ designInEdit }}>
       <Box gap="20px" display="flex" flexDirection="column" height="100%" overflow="hidden">
-        <Box display="flex" alignItems="center" justifyContent="space-between">
+        <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
           <Text as="h1" fontWeight="bold">DESIGNS</Text>
           
-          <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" variant='outline' size="xs" colorScheme="teal">Create New</Button>
+          <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" size="xs" colorScheme="primary">Create New</Button>
         </Box>
 
         <DesignTable

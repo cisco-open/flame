@@ -26,15 +26,16 @@ class ApiClient<T> {
     constructor(endpoint: string, isMlFlow?: boolean) {
         this.endpoint = endpoint;
         const API_URL = (window as unknown as any).env;
-        this.axiosInstance = axios.create({
-            baseURL: `${isMlFlow ?
-                process.env.NODE_ENV === 'development' ? ML_FLOW_BASE_URL :  API_URL?.REACT_APP_MLFLOW_URL :
-                process.env.NODE_ENV === 'development' ? BASE_URL : API_URL?.REACT_APP_API_URL}`,
-        })
+        const baseURL = `${isMlFlow ?
+            process.env.NODE_ENV === 'development' ? ML_FLOW_BASE_URL :  API_URL?.REACT_APP_MLFLOW_URL :
+            process.env.NODE_ENV === 'development' ? BASE_URL : API_URL?.REACT_APP_API_URL}`;
+
+        this.axiosInstance = axios.create({ baseURL })
     }
 
-    getAll = (params?: AxiosRequestConfig) => this.axiosInstance.get<T>(this.endpoint, params)
-        .then(res => res.data);
+    getAll = (params?: AxiosRequestConfig) => {
+        return this.axiosInstance.get<T>(this.endpoint, params)
+        .then(res => res.data);}
 
     get = (id: string) => this.axiosInstance.get<T>(this.endpoint + '/' + id).then(res => res.data);
 

@@ -16,41 +16,94 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { VStack, Image, Text } from '@chakra-ui/react';
+import { VStack, Image, Text, Box, Drawer, DrawerBody, DrawerCloseButton, DrawerContent, DrawerOverlay, Stack } from '@chakra-ui/react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import logo from '../../assets/flame-logo.png';
 import './Sidebar.css';
 import menuItems from '../../menu-items';
 
-const Sidebar = () => {
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const Sidebar = ({ isOpen, onClose }: Props) => {
   const navigate = useNavigate();
+
   return (
-    <VStack
-      className="sidebar"
-      alignItems="flex-start"
-      borderRight='1px solid rgba(58, 53, 65, 0.12)'
-      gap="5px"
-      padding="10px 5px 10px 0"
-      height="100%"
-      boxShadow="rgba(58, 53, 65, 0.42) 0px 4px 8px -4px"
+    <Drawer
+    isOpen={isOpen}
+    onClose={onClose}
+    placement={document.documentElement.dir === "rtl" ? "right" : "left"}
+  >
+    <DrawerOverlay />
+    <DrawerContent
+      w="250px"
+      maxW="250px"
+      ms={{
+        sm: "16px",
+      }}
+      my={{
+        sm: "16px",
+      }}
+      borderRadius="16px"
+
     >
-      <Image
-        paddingLeft="5px"
-        height='50px'
-        src={logo}
-        marginBottom="-5px"
-        onClick={() => navigate('/')}
-        cursor='pointer'
+      <DrawerCloseButton
+        _focus={{ boxShadow: "none" }}
+        _hover={{ boxShadow: "none" }}
       />
+      <DrawerBody maxW="250px" px="1rem">
+        <Box maxW="100%" h="100%" display="flex" flexDirection="column" gap="20px">
+          <Box borderBottom="1px solid #a6a6a6">
+            <Image
+              paddingLeft="5px"
+              height='50px'
+              src={logo}
+              marginBottom="-5px"
+              onClick={() => navigate('/')}
+              cursor='pointer'
+            />
+          </Box>
+          <Stack direction="column" mb="40px">
+            {menuItems.map(item =>
+              <NavLink to={item.url} key={item.id} onClick={onClose} className="sidebar-link">
+                {item.icon}
 
-      {menuItems.map(item =>
-        <NavLink to={item.url} key={item.id} className="sidebar-link">
-          {item.icon}
+                <p className="item-title">{item.title}</p>
+              </NavLink>
+            )}
+          </Stack>
+        </Box>
+      </DrawerBody>
+    </DrawerContent>
+  </Drawer>
+    // <VStack
+    //   className="sidebar"
+    //   alignItems="flex-start"
+    //   borderRight='1px solid rgba(58, 53, 65, 0.12)'
+    //   gap="5px"
+    //   padding="10px 5px 10px 0"
+    //   height="100%"
+    //   boxShadow="rgba(58, 53, 65, 0.42) 0px 4px 8px -4px"
+    // >
+    //   <Image
+    //     paddingLeft="5px"
+    //     height='50px'
+    //     src={logo}
+    //     marginBottom="-5px"
+    //     onClick={() => navigate('/')}
+    //     cursor='pointer'
+    //   />
 
-          <p className="item-title">{item.title}</p>
-        </NavLink>
-      )}
-    </VStack>
+    //   {menuItems.map(item =>
+    //     <NavLink to={item.url} key={item.id} className="sidebar-link">
+    //       {item.icon}
+
+    //       <p className="item-title">{item.title}</p>
+    //     </NavLink>
+    //   )}
+    // </VStack>
   )
 }
 

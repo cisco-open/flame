@@ -18,11 +18,11 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { LOGGEDIN_USER } from "../../../constants";
-import { Task } from "../../../entities/Task";
+import { Job } from "../../../entities/Job";
 import ApiClient from "../../../services/api-client";
 
 const useJob = (id: string) => {
-    const apiClient = new ApiClient<Task[]>(`users/${LOGGEDIN_USER.name}/jobs`);
+    const apiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/jobs`);
     return useQuery({
         enabled: !!id,
         queryKey: ['job', id],

@@ -16,10 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr } from '@chakra-ui/react';
+import { Box, Icon, IconButton, Menu, MenuButton, MenuItem, MenuList, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr } from '@chakra-ui/react';
 import { Dataset } from '../../../../entities/Dataset'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useEffect, useState } from 'react';
+import { FaEllipsisVertical } from "react-icons/fa6";
 
 interface Props {
   datasets: Dataset[] | undefined;
@@ -39,7 +40,7 @@ const DatasetTable = ({ datasets, onEdit }: Props) => {
   }
 
   return (
-    <TableContainer flex={1} overflowY="auto">
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
     <Table variant='simple' fontSize="12px" size="sm">
     <Thead>
         <Tr>
@@ -49,24 +50,39 @@ const DatasetTable = ({ datasets, onEdit }: Props) => {
 
     <Tbody>
         {filteredDatasets?.map((dataset: Dataset) =>
-        <Tr height="50px" key={dataset.id} cursor="pointer">
-            <Td>{dataset.name}</Td>
+        <Tr height="50px" key={dataset.id}>
+          <Td>{dataset.name}</Td>
 
-            <Td>{dataset.realm}</Td>
+          <Td>{dataset.realm}</Td>
 
-            <Td>{dataset.userId}</Td>
+          <Td>{dataset.userId}</Td>
 
-            <Td>{dataset.dataFormat}</Td>
+          <Td>{dataset.dataFormat}</Td>
 
-            <Td>{dataset.computeId}</Td>
+          <Td>{dataset.computeId}</Td>
 
-            <Td>
+          <Td>
             <Box display="flex" gap="10px" justifyContent="flex-end">
-                <Tooltip label="Edit" fontSize="inherit">
-                    <EditOutlinedIcon onClick={(event) => onEditClicked(event, dataset)} cursor="pointer" fontSize="small"/>
-                </Tooltip>
+              <Menu>
+                <MenuButton
+                  as={IconButton}
+                  aria-label='Options'
+                  icon={<Icon as={FaEllipsisVertical} />}
+                  variant='outline'
+                  onClick={(event) => event.stopPropagation()}
+                  border="none"
+                />
+                <MenuList>
+                  <MenuItem
+                    onClick={(event) => onEditClicked(event, dataset)}
+                    icon={<EditOutlinedIcon fontSize="small"/>}
+                  >
+                    Edit
+                  </MenuItem>
+                </MenuList>
+              </Menu>
             </Box>
-            </Td>
+          </Td>
         </Tr>
         )}
     </Tbody>

@@ -45,7 +45,7 @@ const CustomNodeNoInteraction = ({ data: { id, status, label, isInteractive } }:
   }, [status])
 
   return (
-    <div className={`customNode ${isInteractive ? 'interactive' : 'no-interaction'}`}>
+    <div className={`customNode ${isInteractive ? 'interactive interactive-pulse' : 'no-interaction'}`}>
       <div className="customNodeBody">
         {!isConnecting && (
           <Handle

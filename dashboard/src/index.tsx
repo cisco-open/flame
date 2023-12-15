@@ -47,6 +47,62 @@ const MuiTheme = createTheme({
   },
 });
 
+export const colors = {
+  primary: {
+    lighter: '#e6efdc',
+    light: '#b4d095',
+    normal: '#283618',
+    darker: '#1a2310',
+  },
+  secondary: {
+    lighter: '#e8e8e3',
+    light: '#bbbbaa',
+    normal: '#B7B7A4',
+    darker: '#1c1c17',
+  },
+  grayGreen: {
+    lighter: '#e6e6e6',
+    light: '#b3b3b3',
+    normal: '#D4D4D4',
+    darker: '#b3b3b3',
+  },
+  offWhite: {
+    lighter: '#f9f9f7',
+    light: '#f1f0ed',
+    normal: '#F0EFEB',
+    darker: '#d6d3c8',
+  }
+}
+
+// Hex codes: dark green-gray #283618, light gray-green #B7B7A4, soft gray #D4D4D4, off-white #F0EFEB
+
+// export const colors = {
+//   secondary: {
+//     lighter: '#babac5',
+//     light: '#8b8d9e',
+//     normal: '#AAABB8',
+//     darker: '#616274',
+//   },
+//   primary: {
+//     lighter: '#ababd3',
+//     light: '#7474b6',
+//     normal: '#2C2C54',
+//     darker: '#0f0f1c',
+//   },
+//   skyBlue: {
+//     lighter: '#ebf6f9',
+//     light: '#c4e3ed',
+//     normal: '#A9D6E5',
+//     darker: '#76bed6',
+//   },
+//   lightGray: {
+//     lighter: '#eef6f4',
+//     light: '#cce5df',
+//     normal: '#E2E2E2',
+//     darker: '#88c3b4',
+//   }
+// }
+
 
 const theme = extendTheme({
   components: {
@@ -54,7 +110,25 @@ const theme = extendTheme({
   },
   fonts: {
     body: 'Montserrat'
-  }
+  },
+  colors: {
+    primary: {
+      50: colors.primary.lighter,
+      100: colors.primary.light,
+      // ... define other shades of secondary color
+      500: colors.primary.normal, // Replace this with your desired secondary color
+      // ... define other shades of secondary color
+      900: colors.primary.darker,
+    },
+    secondary: {
+      50: colors.secondary.lighter,
+      100: colors.secondary.light,
+      // ... define other shades of primary color
+      500: colors.secondary.normal, // Replace this with your desired primary color
+      // ... define other shades of primary color
+      900: colors.secondary.darker,
+    },
+  },
 })
 
 

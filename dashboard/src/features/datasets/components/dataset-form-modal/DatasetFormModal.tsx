@@ -90,7 +90,7 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
 
             <FormControl>
               <FormLabel fontSize="12px" visibility="hidden">Is Public</FormLabel>
-              <Checkbox {...register('isPublic')}>Is Public</Checkbox>
+              <Checkbox {...register('isPublic')} colorScheme="primary" size="xs">Is Public</Checkbox>
             </FormControl>
 
             <FormControl>
@@ -101,10 +101,10 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={handleSubmit(onSave)} colorScheme='blue' mr={3} isDisabled={!isValid}>
+          <Button onClick={handleSubmit(onSave)} colorScheme='primary' size="xs" mr={3} isDisabled={!isValid}>
             Save
           </Button>
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose} colorScheme="secondary" size="xs" variant="outline" >Cancel</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

@@ -21,7 +21,11 @@ import { Box } from '@mui/material';
 import avatarPlaceholder from '../assets/default-avatar.png';
 import MenuOutlinedIcon from '@mui/icons-material/MenuOutlined';
 
-const Header = () => {
+interface Props {
+  onOpen?: () => void;
+}
+
+const Header = ({ onOpen }: Props) => {
   return (
     <Box
       padding="5px 20px"
@@ -30,8 +34,10 @@ const Header = () => {
       display="flex"
       alignItems="center"
       justifyContent="space-between"
+      zIndex="1"
+      position="relative"
     >
-      <MenuOutlinedIcon fontSize="small" color="disabled" cursor="pointer"/>
+      <MenuOutlinedIcon onClick={onOpen} fontSize="small" cursor="pointer"/>
 
       <Image
         src={avatarPlaceholder}

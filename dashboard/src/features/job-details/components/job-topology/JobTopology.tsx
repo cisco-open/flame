@@ -16,21 +16,16 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useDisclosure } from '@chakra-ui/react'
 import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
 import ReactFlow, { Background, Edge, Node } from 'reactflow'
 import CustomConnectionLine from '../../../../components/custom-connection-line/CustomConnectionLine'
-import { GetRunsPayload, Run, RunViewType } from '../../../../entities/JobDetails'
+import { GetRunsPayload, RunViewType } from '../../../../entities/JobDetails'
 import { edgeTypes, nodeTypes, connectionLineStyle } from '../../../design-details/constants'
-import useTasks from '../../../jobs/hooks/useTasks'
-import useExperiment from '../../hooks/useExperiment'
-import useRuns from '../../hooks/useRuns'
 import { fitViewOptions } from '../../JobDetailsPage'
 import { getEdges, getNodes, getTasksWithLevelsAndCounts } from '../../utils';
-import RunDetailsModal from '../run-details-modal/RunDetailsModal';
 import '../../../../components/custom-node-no-interaction/customNodeNoInteraction.css';
 import { getLayoutedElements } from '../../../utils'
+import { Task } from '../../../../entities/Task'
 
 const initialSearchCriteria: Partial<GetRunsPayload> = {
   max_results: 100,
@@ -38,16 +33,17 @@ const initialSearchCriteria: Partial<GetRunsPayload> = {
   run_view_type: RunViewType.activeOnly,
 }
 
-const JobTopology = () => {
-  const { id } = useParams();
+interface Props {
+  tasks: Task[] | undefined;
+  experiment: any;
+  runs: any | undefined;
+  mutate: (data: Partial<GetRunsPayload>) => void;
+}
+
+const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
   const [nodes, setNodes] = useState<Node<any, string | undefined>[]>([]);
   const [edges, setEdges] = useState<Edge<any>[] | undefined>([]);
-  const [runs, setRuns] = useState<Run[] | undefined>();
-  const { data: tasks } = useTasks(id || '');
-  const [runDetails, setRunDetails] = useState<Run | undefined>(undefined);
-  const { data: runsResponse, mutate } = useRuns();
-  const { data: experiment } = useExperiment(id || '');
-  const { isOpen, onOpen, onClose } = useDisclosure();
+
 
   useEffect(() => {
     if (tasks?.length) {
@@ -68,28 +64,6 @@ const JobTopology = () => {
     })
   }, [experiment]);
 
-  useEffect(() => {
-    const runs = runsResponse?.runs.map(run => {
-      const runNameSlices = run.info.run_name.split('-');
-      const taskId = runNameSlices[runNameSlices.length - 1];
-      return {
-        ...run,
-        taskId,
-      }
-    });
-    setRuns(runs);
-  }, [runsResponse]);
-
-  const onNodeClick = (event: React.MouseEvent, node: Node) => {
-    event.stopPropagation();
-    const selectedRun = runs?.find(run => node.data.id.includes(run.taskId));
-    setRunDetails(selectedRun);
-
-    if (selectedRun) {
-      onOpen();
-    }
-  }
-
   return (
     <>
       <ReactFlow
@@ -97,7 +71,6 @@ const JobTopology = () => {
         edges={edges}
         edgeTypes={edgeTypes}
         nodeTypes={nodeTypes}
-        onNodeClick={onNodeClick}
         connectionLineComponent={CustomConnectionLine as unknown as any}
         connectionLineStyle={connectionLineStyle}
         fitViewOptions={fitViewOptions}
@@ -105,8 +78,6 @@ const JobTopology = () => {
       >
         <Background />
       </ReactFlow>
-
-      <RunDetailsModal isOpen={isOpen} onClose={onClose} runDetails={runDetails}/>
     </>
   )
 }

@@ -90,8 +90,10 @@ export const ChannelDetails = ({ channels, channel, funcTags, onSave }: Props) =
         top="0"
         backgroundColor="white"
         zIndex="2"
+        borderRadius="10px"
       >
         <Box display="flex" flexDirection="column" gap="20px" width="30vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
+          <Text as="h3" textAlign="center">CHANNEL</Text>
           <FormControl>
             <FormLabel fontSize="12px">Name</FormLabel>
             <Input size="xs" {...register('name')} />
@@ -120,6 +122,7 @@ export const ChannelDetails = ({ channels, channel, funcTags, onSave }: Props) =
                     tag.funcTags?.map(tag =>
                       <Checkbox
                         size="xs"
+                        colorScheme="primary"
                         key={tag.value}
                         value={tag.value}
                         isChecked={tag.selected}

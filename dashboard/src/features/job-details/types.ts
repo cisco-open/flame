@@ -20,3 +20,37 @@ export interface MetricsRequestParams {
   run_uuid: string;
   metric_key: string;
 }
+
+export interface ArtifactsRequestParams {
+  run_uuid: string;
+  path?: string;
+}
+
+
+export interface MetricsTimelineDataItem {
+  start: number;
+  category: string;
+  key: string;
+  step: number;
+  value: number;
+  timestamp: number;
+}
+
+export interface MetricsTimelineData {
+  [key: string]: MetricsTimelineDataItem[]
+}
+
+export interface TimelineGroup {
+  id: string;
+  title: JSX.Element;
+  name: string;
+}
+
+export interface Timelineitem {
+  id: string;
+  group: string;
+  title: string;
+  start: number;
+  end: number;
+  bgColor: string;
+}

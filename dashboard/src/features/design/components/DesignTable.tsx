@@ -16,13 +16,15 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr, useDisclosure } from '@chakra-ui/react';
+import { Box, Icon, IconButton, Text, Menu, MenuButton, MenuItem, MenuList, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr, useDisclosure } from '@chakra-ui/react';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useNavigate } from 'react-router-dom';
 import { Design } from '../../../entities/Design';
 import { MouseEvent, useState } from 'react';
 import ConfirmationDialog from '../../../components/confirmation-dialog/ConfirmationDialog';
+import { FaEllipsisVertical } from "react-icons/fa6";
+import { colors } from '../../..';
 
 interface Props {
     designs: Design[] | undefined;
@@ -64,7 +66,7 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
   }
 
   return (
-    <TableContainer flex={1} overflowY="auto">
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
         <Table variant='simple' fontSize={12} size="sm">
         <Thead>
             <Tr>
@@ -75,19 +77,40 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
         <Tbody>
             {designs?.map((design: Design) =>
             <Tr height="50px" key={design.id} cursor="pointer" onClick={() => goToDesignDetails(design.id)}>
-                <Td padding="10px 20px">{design.name}</Td>
+                <Td padding="10px 20px">
+                  <Text as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal}>{design.name}</Text>
+                </Td>
 
                 <Td padding="10px 20px">{design.id}</Td>
 
                 <Td padding="10px 20px">
                 <Box display="flex" gap="10px" justifyContent="flex-end">
-                    <Tooltip label="Edit" fontSize="inherit">
-                        <EditOutlinedIcon onClick={(event) => onEditClicked(event, design)} cursor="pointer" fontSize="small"/>
-                    </Tooltip>
+                  <Menu>
+                      <MenuButton
+                        as={IconButton}
+                        aria-label='Options'
+                        icon={<Icon as={FaEllipsisVertical} />}
+                        variant='outline'
+                        onClick={(event) => event.stopPropagation()}
+                        size="md"
+                        border="none"
+                      />
+                      <MenuList>
+                        <MenuItem
+                          onClick={(event) => onEditClicked(event, design)}
+                          icon={<EditOutlinedIcon fontSize="small"/>}
+                        >
+                          Edit
+                        </MenuItem>
 
-                    <Tooltip label="Delete">
-                        <DeleteOutlineOutlinedIcon onClick={(event) => onDeleteClicked(event, design.id)} cursor="pointer" fontSize="small"/>
-                    </Tooltip>
+                        <MenuItem
+                          onClick={(event) => onDeleteClicked(event, design.id)} 
+                          icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
+                        >
+                          Delete
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
                 </Box>
                 </Td>
             </Tr>

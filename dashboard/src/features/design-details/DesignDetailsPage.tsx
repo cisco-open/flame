@@ -85,7 +85,7 @@ const DesignDetailsPage = () => {
     duplicateNames: [],
   });
 
-  const [fileNames, setFileNames] = useState<any>();
+  const [fileNames, setFileNames] = useState<any>([]);
   const [fileData, setFileData] = useState<any[]>([]);
   const [channel, setChannel] = useState<Channel | undefined>(undefined);
   const [role, setRole] = useState<Role | undefined>(undefined);
@@ -222,7 +222,7 @@ const DesignDetailsPage = () => {
       ...data,
       roleName: data.roleName === role.previousName ? role.name : data.roleName
     }))]);
-    setFileNames([...fileNames.map((name: any) => ({
+    setFileNames([...fileNames?.map((name: any) => ({
       ...name,
       node: name.node === role.previousName ? role.name : name.node
     }))]);
@@ -307,86 +307,79 @@ const DesignDetailsPage = () => {
       <Box display="flex" alignItems="center" height="50px" position="relative">
         <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' size="xs">Back</Button>
 
-        <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2">{design?.name}</Text>
+        <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
 
         <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
           <label className="file-input" htmlFor="file-input">Choose template</label>
           <input id="file-input" style={{ 'width': '60%', 'display': 'none' }} type="file" onChange={handleTemplateChange} />
 
-          <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} variant="solid" size="xs" colorScheme="teal">Save Schema</Button>
+          <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
         </Box>
       </Box>
 
-      <Box display="flex" height="calc(100% - 50px)">
-        {
-          !!errorMessages?.length &&
-          <Box className="design-details__errors">
-            <Popover>
-              <PopoverTrigger>
-                <ErrorOutlineOutlinedIcon className="error-pulse design-details__error-trigger" color="error"/>
-              </PopoverTrigger>
-              <PopoverContent>
-                <PopoverBody>
-                  <UnorderedList>
-                    {
-                      !nodes?.length && !edges?.length ? <ListItem fontSize="12px">Invalid design schema</ListItem> :
-                      errorMessages.map(message => <ListItem fontSize="12px" key={message}>{message}</ListItem>)
-                    }
-                  </UnorderedList>
-                </PopoverBody>
-              </PopoverContent>
-            </Popover>
-          </Box>
-        }
-
+      <Box display="flex" height="calc(100% - 50px)" bgColor="white" borderRadius="10px" zIndex="1">
         <Box flex="3" position="relative">
           {
-            !errorMessages?.length &&
-            !!nodes?.length &&
-            !!edges?.length &&
-            <Button
-              position="absolute"
-              zIndex="1"
-              top="20px"
-              right="90px"
-              variant='outline'
-              colorScheme="teal"
-              onClick={toggleExpandedTopology}
-              size="xs"
-            >
-              { displayExpandedTopology ? 'Collapse' : 'Expand' }
-            </Button>
+            !!errorMessages?.length &&
+            <Box className="design-details__errors">
+              <Popover>
+                <PopoverTrigger>
+                  <ErrorOutlineOutlinedIcon className="error-pulse design-details__error-trigger" color="error"/>
+                </PopoverTrigger>
+                <PopoverContent>
+                  <PopoverBody>
+                    <UnorderedList>
+                      {
+                        !nodes?.length && !edges?.length ? <ListItem fontSize="12px">Invalid design schema</ListItem> :
+                        errorMessages.map(message => <ListItem fontSize="12px" key={message}>{message}</ListItem>)
+                      }
+                    </UnorderedList>
+                  </PopoverBody>
+                </PopoverContent>
+              </Popover>
+            </Box>
           }
 
-          { !displayExpandedTopology &&
-            <Button
-              position="absolute"
-              zIndex="1"
-              top="20px"
-              right="5px"
-              variant='outline'
-              colorScheme="teal"
-              onClick={addNode} size="xs"
-            >
-              Add Role
-            </Button>
-          }
+          <Box position="absolute" zIndex="1" top="20px" right="20px" display="flex" flexDirection="column" alignItems="flex-end" gap="20px">
+            <Box display="flex" gap="20px" position="relative">
+              {
+                !errorMessages?.length &&
+                !!nodes?.length &&
+                !!edges?.length &&
+                <Button
+                  variant='outline'
+                  colorScheme="secondary"
+                  onClick={toggleExpandedTopology}
+                  size="xs"
+                >
+                  { displayExpandedTopology ? 'Collapse' : 'Expand' }
+                </Button>
+              }
 
-          {
-            !!designSchema?.roles &&
-            <Button
-              position="absolute"
-              zIndex="1"
-              top="50px"
-              right="5px"
-              variant='outline'
-              colorScheme="red"
-              onClick={openResetConfirmation}
-              size="xs"
-            >
-              Delete
-            </Button>
-          }
+              { !displayExpandedTopology &&
+                <Button
+                  variant='outline'
+                  colorScheme="secondary"
+                  onClick={addNode} size="xs"
+                >
+                  Add Role
+                </Button>
+              }
+            </Box>
+
+            {
+              !!designSchema?.roles &&
+              <Button
+                variant='outline'
+                colorScheme="red"
+                onClick={openResetConfirmation}
+                size="xs"
+              >
+                Delete
+              </Button>
+            }
+          </Box>
+
 
           { displayExpandedTopology ?
             <ExpandedTopology nodes={nodes}/> :

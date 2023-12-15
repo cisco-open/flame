@@ -19,31 +19,45 @@
 import Sidebar from '../layout/Sidebar/Sidebar'
 import { Outlet } from 'react-router-dom';
 import Header from '../layout/Header';
-import { Grid, GridItem } from '@chakra-ui/react';
+import { Box, Grid, GridItem, useDisclosure } from '@chakra-ui/react';
+import bannerBg from '../assets/bg-image.avif';
+// import bannerBg from '../assets/bg-image-1.webp';
 
 const MainLayout = () => {
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
     return (
-      <Grid
-        templateAreas={`
-            'nav header'
-            'nav main'
-        `}
-        gridTemplateRows={'50px 1fr'}
-        gridTemplateColumns={'150px 1fr'}
-        height='100vh'
-      >
-        <GridItem area="header">
-            <Header />
-        </GridItem>
+      <>
+        <Box
+          bgImage={bannerBg}
+          position="absolute"
+          minH='40vh'
+          w='100%'
+          bgPos="center"
+          bgSize="cover"
+        ></Box>
 
-        <GridItem area="nav">
-            <Sidebar />
-        </GridItem>
+        <Box
+          display="flex"
+          flexDirection="column"
+          bgColor="#ebebeb"
+          height="100%"
+        >
+          <Box height="50px">
+              <Header onOpen={onOpen}/>
+          </Box>
 
-        <GridItem area="main" padding='20px' height="100%" overflowY="auto">
-          <Outlet />
-        </GridItem>
-      </Grid>
+          <Box flex="1" height="calc(100% - 50px)">
+            <Box>
+                <Sidebar onClose={onClose} isOpen={isOpen}/>
+            </Box>
+
+            <Box padding='20px' overflowY="auto" height="100%" className="outlet">
+              <Outlet />
+            </Box>
+          </Box>
+        </Box>
+      </>
     );
 };
 

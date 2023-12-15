@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, SimpleGrid, FormControl, FormLabel, Select, Text, Input, Button } from '@chakra-ui/react'
+import { Box, SimpleGrid, FormControl, FormLabel, Select, Text, Input } from '@chakra-ui/react'
 import { useContext, useEffect, useState } from 'react'
 import { ArgsGroup } from '../../../../entities/JobForm';
 import { optimizer, OPTIMIZER_DEFAULT_OPTIONS, OPTIMIZER_OPTION, OPTIMIZER_OPTIONS } from '../../constants';

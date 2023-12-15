@@ -21,7 +21,7 @@ import { RunResponse } from "../../../entities/JobDetails";
 import ApiClient from "../../../services/api-client";
 
 const useRuns = () => {
-  const apiClient = new ApiClient<RunResponse>('runs/search', true);
+  const apiClient = new ApiClient<RunResponse>('mlflow/runs/search', true);
   return useMutation({
     mutationKey: ['runs'],
     mutationFn: apiClient.post,
