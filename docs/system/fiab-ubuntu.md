@@ -198,6 +198,83 @@ ping -c 1 mlflow.flame.test
 These ping commands should run successfully without any errors. As another alternative, open a browser and go to `mlflow.flame.test`.
 That should return a mlflow's web page.
 
+## Using Dashboard
+Dashboard can be accessed by clicking [here](http://dashboard.flame.test/design).
+
+### Design Creation
+From the `Designs` page, a design can be created by clicking on `Create New` button.
+After a design is created, the TAG can be created.
+
+<p align="center"><img src="../images/tag_canvas.png" alt="System workflow" width="600px"/></p>
+
+There are two ways to create a TAG:
+  1. Selecting a pre-defined template from the drop-down
+  2. From scratch by clicking on `Add Role` button.
+
+After the TAG is created, a code file must be associated with each role.
+The code file can be added by clicking on each Role and using the file selector from the bottom of the right-hand side drawer.
+
+<p align="center"><img src="../images/code_file.png" alt="System workflow" width="600px"/></p>
+
+There's also a validation indicator for the TAG on the top-right side of the canvas.
+
+<p align="center"><img src="../images/tag_validation.png" alt="System workflow" width="600px"/></p>
+
+The TAG can be expanded with some simulated workers, by clicking on the `Expand` button.
+
+<p align="center"><img src="../images/expanded_tag.png" alt="System workflow" width="600px"/></p>
+
+Once the TAG is valid, the `Save Schema` button is enabled and can be clicked.
+
+### Datasets Creation
+Navigate to the `Datasets` page from the hamburger menu.
+
+<p align="center"><img src="../images/datasets_page.png" alt="System workflow" width="600px"/></p>
+
+In order to add a new `Dataset`, the `Create New` button must be pressed and input the metadata of the `Dataset`.
+Also, for that `Dataset` to be visible, it has to be set as public by checking the `Is Public` checkbox.
+
+<p align="center"><img src="../images/dataset_is_public.png" alt="System workflow" width="600px"/></p>
+
+### Job Creation
+Next, a `Job` can be created.
+Using the hamburger menu, go to `Jobs` page.
+
+<p align="center"><img src="../images/jobs_page.png" alt="System workflow" width="600px"/></p>
+
+Clicking on the `Create New` button, a stepper will be displayed.
+
+On the first step, fill out the details for `Name`, select a `Design`, select the `Backend` option and add the `Timeout` in seconds.
+
+On the second step, select at least one `Dataset`.
+
+On the last step, if there is a pre-trained model, that can be used by typing it's name and version number. Also, pick the `Optimizer` and `Selector` options and set new `Hyperparameters` or update the default ones.
+
+The `Job` can be saved by clicking on the `Save` button.
+
+### Job execution
+From the `Jobs` page, click on the menu icon and select the `Start Job` option.
+
+<p align="center"><img src="../images/start_job.png" alt="System workflow" width="600px"/></p>
+
+### Job result
+After the `Job` is completed, the results of this `Job` can be viewed by clicking on the `Job Name`.
+In this page, there is the visualisation of the expanded topology with actual workers.
+
+More details can be displayed by clicking on the `Graph Icon`.
+
+<p align="center"><img src="../images/graph_icon.png" alt="System workflow" width="600px"/></p>
+
+The first section represents a timeline of each worker runtime metrics.
+
+By clicking on each worker, more details can be displayed like: individual metrics, hyper parameters or model artifact.
+
+<p align="center"><img src="../images/workers.png" alt="System workflow" width="600px"/></p>
+
+Also, the resulted model can be downloaded by clicking on the download icon.
+
+<p align="center"><img src="../images/model.png" alt="System workflow" width="600px"/></p>
+
 ## Stopping flame
 Once using flame is done, one can stop flame by running the following command:
 ```bash
