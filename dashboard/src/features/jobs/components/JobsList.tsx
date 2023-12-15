@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TableContainer, Table, Thead, Tr, Th, Tbody, Td, Box, Tooltip, useDisclosure } from "@chakra-ui/react";
+import { TableContainer, Table, Thead, Tr, Th, Tbody, Td, Text, Box, Tooltip, useDisclosure, IconButton, Menu, MenuButton, MenuItem, MenuList, Icon } from "@chakra-ui/react";
 import { Job } from "../../../entities/Job";
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import StopCircleIcon from '@mui/icons-material/StopCircle';
@@ -26,6 +26,8 @@ import React, { useState } from "react";
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ConfirmationDialog from "../../../components/confirmation-dialog/ConfirmationDialog";
+import { FaEllipsisVertical } from "react-icons/fa6";
+import { colors } from "../../..";
 
 const columns = ['Name', 'State', ''];
 
@@ -92,7 +94,7 @@ const JobsList = ({ openJobModal }: Props) => {
     //     <JobCard />
     //   )}
     // </SimpleGrid>
-    <TableContainer flex={1} overflowY="auto">
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
         <Table variant='simple' fontSize={12} size="sm">
         <Thead>
             <Tr>
@@ -102,28 +104,51 @@ const JobsList = ({ openJobModal }: Props) => {
 
         <Tbody>
             {jobs?.map((job: Job) =>
-            <Tr height="50px" key={job.id} cursor="pointer" onClick={() => goToJobDetails(job)}>
-                <Td>{job.name}</Td>
+            <Tr height="50px" key={job.id}>
+                <Td>
+                  <Text as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal} onClick={() => goToJobDetails(job)}>{job.name}</Text>
+                </Td>
 
                 <Td>{job.state}</Td>
 
                 <Td>
                 <Box display="flex" gap="10px" justifyContent="flex-end">
-                    <Tooltip label="Edit" fontSize="inherit">
-                      <EditOutlinedIcon onClick={(event) => onEditClick(event, job)} cursor="pointer" fontSize="small"/>
-                    </Tooltip>
+                  <Menu>
+                    <MenuButton
+                      as={IconButton}
+                      aria-label='Options'
+                      icon={<Icon as={FaEllipsisVertical} />}
+                      variant='outline'
+                      onClick={(event) => event.stopPropagation()}
+                      border="none"
+                    />
+                    <MenuList>
+                      <MenuItem
+                        onClick={(event) => onEditClick(event, job)}
+                        icon={<EditOutlinedIcon fontSize="small"/>}
+                      >
+                        Edit
+                      </MenuItem>
 
-                    <Tooltip label={job.state !== 'running' ? 'Start Job' : 'Stop Job'} fontSize="inherit">
-                      {
-                        job.state !== 'running' ?
-                          <PlayCircleOutlineIcon onClick={(event) => onStartClick(event, job)} cursor="pointer" fontSize="small"/> :
-                          <StopCircleIcon onClick={(event) => onStopClick(event, job)} cursor="pointer" fontSize="small"/>
-                      }
-                    </Tooltip>
+                      <MenuItem
+                        onClick={(event) => job.state !== 'running' ? onStartClick(event, job) : onStopClick(event, job)}
+                        icon={
+                          job.state !== 'running' ?
+                            <PlayCircleOutlineIcon  fontSize="small"/> :
+                            <StopCircleIcon fontSize="small"/>
+                        }
+                      >
+                        {job.state !== 'running' ? 'Start Job' : 'Stop Job' }
+                      </MenuItem>
 
-                    <Tooltip label="Delete">
-                        <DeleteOutlineOutlinedIcon onClick={(event) => openConfirmationModal(event, job.id)} cursor="pointer" fontSize="small"/>
-                    </Tooltip>
+                      <MenuItem
+                        onClick={(event) => openConfirmationModal(event, job.id)}
+                        icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
+                      >
+                        Delete
+                      </MenuItem>
+                    </MenuList>
+                  </Menu>
                 </Box>
                 </Td>
             </Tr>

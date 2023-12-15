@@ -28,7 +28,7 @@ interface Props {
   onAction: () => void;
 }
 
-const ConfirmationDialog = ({ isOpen, actionButtonLabel, message, buttonColorScheme = 'teal', onClose, onAction }: Props) => {
+const ConfirmationDialog = ({ isOpen, actionButtonLabel, message, buttonColorScheme = 'primary', onClose, onAction }: Props) => {
   return (
     <Modal
       isOpen={isOpen}

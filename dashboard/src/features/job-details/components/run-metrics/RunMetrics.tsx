@@ -24,19 +24,19 @@ import { sortMetrics } from '../../utils';
 import MetricChart from '../metric-chart/MetricChart';
 import './RunMetrics.css';
 interface Props {
-  metrics: Metric[] | undefined;
   run: Run;
 }
 
 
-const RunMetrics = ({ metrics, run }: Props) => {
+const RunMetrics = ({ run }: Props) => {
   const [ selectedMetric, setSelectedMetric ] = useState<any>();
   const [ sortedMetrics, setSortedMetrics ] = useState<any>();
   const { data } = useMetrics({ run_uuid: selectedMetric?.run_uuid, metric_key: selectedMetric?.metric_key });
 
   useEffect(() => {
-    setSortedMetrics(sortMetrics(metrics));
-  }, [metrics]);
+    if (!run?.data?.metrics) { return; }
+    setSortedMetrics([...sortMetrics(run?.data?.metrics)]);
+  }, [run]);
 
   const onMetricSelect = (param: any) => {
     setSelectedMetric({ run_uuid: run.info.run_uuid, metric_key: param.key })
@@ -46,9 +46,9 @@ const RunMetrics = ({ metrics, run }: Props) => {
     <Box className="metrics-container">
       <Box className="metrics-list">
         {
-          sortedMetrics?.map((param: Metric) =>
-          <Box className="metric" key={param.key} onClick={() => onMetricSelect(param)}>
-            <p>{param.key}</p>
+          sortedMetrics?.map((metric: Metric) =>
+          <Box className="metric" key={metric.key} onClick={() => onMetricSelect(metric)}>
+            <p>{metric.key}</p>
           </Box>
           )
         }

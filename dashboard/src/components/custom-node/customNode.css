@@ -1,7 +1,7 @@
 .custom-node-body {
   width: 150px;
   height: 60px;
-  border: 2px solid black;
+  border: 1px solid lightgray;
   position: relative;
   overflow: hidden;
   border-radius: 10px;
@@ -14,6 +14,11 @@
   display: flex;
   justify-content: center;
   align-items: center;
+  /* background-image: url('../../assets/node-bg.avif'); */
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: lighten;
+  box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
 }
 
 .status-indicator {

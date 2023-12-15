@@ -53,12 +53,23 @@ module.exports = function(app) {
   )
 
   app.use(
-    '/mlflow',
+    '/jobs/mlflow/get-artifact',
     createProxyMiddleware({
-      target: 'https://flame-mlflow.int.dev.eticloud.io/ajax-api/2.0/mlflow',
+      target: 'https://flame-mlflow.int.dev.eticloud.io',
       changeOrigin: true,
       pathRewrite: {
-        '^/mlflow' : '/',
+        '^/jobs/mlflow/get-artifact' : '/get-artifact',
+        },
+    })
+  )
+
+  app.use(
+    '/mlflow',
+    createProxyMiddleware({
+      target: 'https://flame-mlflow.int.dev.eticloud.io',
+      changeOrigin: true,
+      pathRewrite: {
+        '^/mlflow' : '/ajax-api/2.0/',
         },
     })
   )
@@ -66,10 +77,10 @@ module.exports = function(app) {
   app.use(
     '/jobs/mlflow',
     createProxyMiddleware({
-      target: 'https://flame-mlflow.int.dev.eticloud.io/ajax-api/2.0/mlflow',
+      target: 'https://flame-mlflow.int.dev.eticloud.io',
       changeOrigin: true,
       pathRewrite: {
-        '^/jobs/mlflow' : '/',
+        '^/jobs/mlflow' : '/ajax-api/2.0/',
         },
     })
   )

@@ -22,7 +22,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import { useContext, useEffect } from 'react';
 import { UseFormRegister } from 'react-hook-form';
 import { ArgsGroup } from '../../../../entities/JobForm';
-import { HYPERPARAMETER_OPTIONS } from '../../constants';
+import { hyperparameters, HYPERPARAMETER_OPTIONS, HYPERPARAMETER_TYPE } from '../../constants';
 import { JobContext } from '../../JobContext';
 import { FormFields } from '../job-form-modal/JobFormModal';
 import OptimizerForm from '../optimizer-form/OptimizerForm';
@@ -30,7 +30,7 @@ import SelectorForm from '../selector-form/SelectorForm';
 
 interface Props {
   register: UseFormRegister<FormFields>;
-  hyperParameters: { key: string, value: string, id: number}[];
+  hyperParameters: { key: string, value: string, id: number, type?: HYPERPARAMETER_TYPE }[];
   setHyperParameters: (parameters: any) => void;
   setValue: (name: string, value: any) => void;
 }
@@ -49,7 +49,18 @@ const ModelSpecForm = ({
   }, [job]);
 
   const hyperparametersOptions = HYPERPARAMETER_OPTIONS;
+
   const setHyperparameterValue = (event: any, index: number, paramEnum: ArgsGroup) => {
+    const targetParameter = hyperParameters[index];
+
+    paramEnum === ArgsGroup.key ?
+      targetParameter.key = event.target.value :
+      targetParameter.value = event.target.value;
+    hyperParameters[index] = targetParameter;
+    setHyperParameters(hyperParameters);
+  }
+
+  const setCustomHyperparameterValue = (event: any, index: number, paramEnum: ArgsGroup) => {
     const targetParameter = hyperParameters[index];
 
     paramEnum === ArgsGroup.key ?
@@ -62,8 +73,15 @@ const ModelSpecForm = ({
   const addHyperParameter = () => {
     setHyperParameters([
       ...hyperParameters,
-      { key: '', value: '', id: hyperParameters.length + 1
-    }])
+      { key: '', value: '', id: hyperParameters.length + 1 }
+    ])
+  }
+
+  const addCustomHyperParameter = () => {
+    setHyperParameters([
+      ...hyperParameters,
+      { key: '', value: '', id: hyperParameters.length + 1, type: HYPERPARAMETER_TYPE.custom }
+    ])
   }
 
   const removeHyperParameter = (id: number) => {
@@ -136,17 +154,26 @@ const ModelSpecForm = ({
 
         {hyperParameters.map((parameter, index) =>
           <FormControl key={parameter.id} display="flex" justifyContent="space-between" gap="20px">
-            <Select
-              backgroundColor="white"
-              size="xs"
-              placeholder="key"
-              onChange={(event) => setHyperparameterValue(event, index, ArgsGroup.key)}
-              value={parameter.key}
-            >
-              {
-                hyperparametersOptions.map(param => <option key={param.id} value={param.value}>{param.label}</option>)
-              }
-            </Select>
+            { parameter.type === HYPERPARAMETER_TYPE.custom ?
+                <Input
+                backgroundColor="white"
+                size="xs"
+                value={parameter.key}
+                placeholder="value"
+                onChange={(event) => setCustomHyperparameterValue(event, index, ArgsGroup.key)}
+              /> :
+              <Select
+                backgroundColor="white"
+                size="xs"
+                placeholder="key"
+                onChange={(event) => setHyperparameterValue(event, index, ArgsGroup.key)}
+                value={parameter.key}
+              >
+                {
+                  hyperparametersOptions.map(param => <option key={param.id} value={param.value}>{param.label}</option>)
+                }
+              </Select>
+            }
 
             <Input
               backgroundColor="white"
@@ -156,19 +183,31 @@ const ModelSpecForm = ({
               onChange={(event) => setHyperparameterValue(event, index, ArgsGroup.value)}
             />
 
-            <Button size="sm" className="delete-button" leftIcon={<DeleteOutlineIcon fontSize="small" />} onClick={() => removeHyperParameter(parameter.id)} colorScheme='blue' />
+            <Button size="xs" className="delete-button" colorScheme="red" variant="outline" leftIcon={<DeleteOutlineIcon fontSize="small" />} onClick={() => removeHyperParameter(parameter.id)} />
           </FormControl>
         )}
 
-        <Button
-          size="sm"
-          leftIcon={<AddIcon fontSize="small" />}
-          onClick={addHyperParameter}
-          colorScheme='blue'
-          mr={3}
-        >
-          Add more
-        </Button>
+        <Box>
+          <Button
+            size="xs"
+            leftIcon={<AddIcon fontSize="small" />}
+            onClick={addHyperParameter}
+            colorScheme='primary'
+            mr={3}
+          >
+            Add more
+          </Button>
+
+          <Button
+            size="xs"
+            leftIcon={<AddIcon fontSize="small" />}
+            onClick={addCustomHyperParameter}
+            colorScheme='primary'
+            mr={3}
+          >
+            Add custom hyperparameter
+          </Button>
+        </Box>
       </Box>
     </Box>
   )

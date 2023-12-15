@@ -295,19 +295,20 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
             }
 
             <Box display="flex" justifyContent="space-between">
-              <Button isDisabled={activeStep === 0} colorScheme='blue' onClick={handlePrevious}>Previous</Button>
+              <Button isDisabled={activeStep === 0} colorScheme='primary' size="xs" onClick={handlePrevious}>Previous</Button>
               {
                 activeStep !== steps.length - 1 &&
                 <Button
                   isDisabled={(activeStep === 0 && !selectedDesignId) || activeStep === 1 && !datasetPayload}
-                  colorScheme='blue'
+                  colorScheme='primary'
+                  size="xs"
                   onClick={handleNext}
                 >
                   Next
                 </Button>
               }
               { activeStep === steps.length - 1 &&
-                <Button onClick={job ? onEdit : onSave} colorScheme='blue' mr={3}>
+                <Button onClick={job ? onEdit : onSave} colorScheme='primary' size="xs" mr={3}>
                   Save
                 </Button>
               }

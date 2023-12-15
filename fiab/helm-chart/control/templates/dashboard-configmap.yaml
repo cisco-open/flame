@@ -24,4 +24,4 @@ data:
   api-config.js: |
     window.env = {};
     window.env.REACT_APP_API_URL="http://{{ .Values.frontDoorUrl.apiserver }}";
-    window.env.REACT_APP_MLFLOW_URL="http://{{ .Values.frontDoorUrl.mlflow }}/ajax-api/2.0/mlflow";
+    window.env.REACT_APP_MLFLOW_URL="http://{{ .Values.frontDoorUrl.mlflow }}/ajax-api/2.0";

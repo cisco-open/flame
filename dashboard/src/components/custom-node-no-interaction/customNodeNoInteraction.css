@@ -1,21 +1,42 @@
 .customNodeBody {
-    width: 150px;
-    height: 60px;
-    border: 2px solid black;
-    position: relative;
-    overflow: hidden;
-    border-radius: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    font-size: 12px;
-    font-weight: bold;
-    background-color: rgb(228, 227, 227) !important;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    cursor: pointer;
+  width: 150px;
+  height: 60px;
+  border: 1px solid lightgray;
+  position: relative;
+  overflow: hidden;
+  border-radius: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 12px;
+  font-weight: bold;
+  background-color: rgb(228, 227, 227) !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  /* background-image: url('../../assets/node-bg.avif'); */
+  background-size: cover;
+  background-position: center;
+  background-blend-mode: lighten;
+  box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
+}
+
+.interactive-pulse {
+  animation: interactive-pulse-animation 1s infinite;
+  border-radius: 10px;
+}
+
+@keyframes interactive-pulse-animation {
+  0% {
+    box-shadow: 0 0 0 0px rgb(189, 188, 188);
   }
+  50% {
+    box-shadow: 0 0 0 2px rgb(152, 203, 121);
+  }
+  100% {
+    box-shadow: 0 0 0 0px rgb(21, 237, 21);
+  }
+}
 
 .status-indicator {
   position: absolute;
@@ -25,6 +46,10 @@
   top: 5px;
   left: 5px;
   cursor: default;
+}
+
+.customHandle {
+  opacity: 0;
 }
 
 div.custom-node-no-interaction-handle {
@@ -37,6 +62,7 @@ div.custom-node-no-interaction-handle {
   background: transparent;
   transform: none;
   cursor: pointer !important;
+  opacity: 0;
 }
 
 .no-interaction > * {

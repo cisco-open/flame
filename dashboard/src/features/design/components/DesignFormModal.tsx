@@ -96,10 +96,10 @@ const DesignFormModal = ({ isOpen, onClose, onSave }: Props ) => {
         </ModalBody>
 
         <ModalFooter>
-          <Button onClick={handleSubmit(onSave)} colorScheme='blue' mr={3} isDisabled={!isValid}>
+          <Button onClick={handleSubmit(onSave)} colorScheme='primary' size="xs" mr={3} isDisabled={!isValid}>
             Save
           </Button>
-          <Button onClick={handleClose}>Cancel</Button>
+          <Button onClick={handleClose} colorScheme="secondary" variant="outline" size="xs">Cancel</Button>
         </ModalFooter>
       </ModalContent>
     </Modal>

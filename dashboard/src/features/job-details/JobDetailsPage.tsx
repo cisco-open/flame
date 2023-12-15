@@ -16,10 +16,18 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Button } from "@chakra-ui/react";
-import { useNavigate } from "react-router-dom";
+import { Box, Button, Text, useDisclosure, Icon } from "@chakra-ui/react";
+import { useNavigate, useParams } from "react-router-dom";
 import JobTopology from "./components/job-topology/JobTopology";
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
+import JobRunTimeline from "./components/job-run-timeline/JobRunTimeline";
+import useRuns from "./hooks/useRuns";
+import useTasks from "../jobs/hooks/useTasks";
+import useExperiment from "./hooks/useExperiment";
+import useJob from "../jobs/hooks/useJob";
+import AssessmentTwoToneIcon from '@mui/icons-material/AssessmentTwoTone';
+import { useEffect, useState } from "react";
+import { JobDetailsContext } from "./JobDetailsContext";
 
 export const fitViewOptions = {
   padding: 1,
@@ -28,14 +36,57 @@ export const fitViewOptions = {
 
 const JobDetailsPage = () => {
   const navigate = useNavigate();
+  const { data: runsResponse, mutate } = useRuns();
+  const { id } = useParams();
+  const { data: tasks } = useTasks(id || '');
+  const { data: experiment } = useExperiment(id || '');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { data: job } = useJob(id || '');
+  const [ runs, setRuns ] = useState<any[]>();
+  const [ artifact, setArtifact ] = useState<any>();
+
+  useEffect(() => {
+    const runs = runsResponse?.runs.map(run => {
+      const runNameSlices = run.info.run_name.split('-');
+      const taskId = runNameSlices[runNameSlices.length - 1];
+      return {
+        ...run,
+        taskId,
+      }
+    });
+    setRuns(runs);
+  }, [runsResponse])
 
   return (
-    <>
-      <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs')} variant='link' size="xs">Back</Button>
-      <Box width="100%" height="100%">
-        <JobTopology />
+    <JobDetailsContext.Provider value={{ artifact, setArtifact }}>
+      <Box display="flex" flexDirection="column" gap="10px" height="100%">
+        <Box display="flex" alignItems="center" position="relative" zIndex="1">
+          <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs')} variant='link' size="xs">Back</Button>
+
+          <Text as="h2" flex="1" textAlign="center" fontWeight="bold">{ job?.name }</Text>
+        </Box>
+
+        <Box width="100%" height="100%" position="relative" bgColor="white" borderRadius="10px">
+          <Icon cursor="pointer" position="absolute" top="10px" right="10px" width="40px" height="40px" zIndex="1" as={AssessmentTwoToneIcon} onClick={onOpen} />
+
+          <JobTopology
+            tasks={tasks}
+            experiment={experiment}
+            mutate={mutate}
+            runs={runs}
+          />
+        </Box>
+
+        <JobRunTimeline
+          isOpen={isOpen}
+          onClose={onClose}
+          runsResponse={runsResponse}
+          tasks={tasks}
+          jobName={job?.name}
+          runs={runs}
+        />
       </Box>
-    </>
+    </JobDetailsContext.Provider>
   )
 }
 

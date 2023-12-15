@@ -16,13 +16,14 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Grid, GridItem, Heading, Text } from '@chakra-ui/react';
+import { Box, Grid, GridItem, Heading, Text, useDisclosure } from '@chakra-ui/react';
 import { isRouteErrorResponse, useRouteError } from 'react-router-dom'
 import Header from '../layout/Header';
 import Sidebar from '../layout/Sidebar/Sidebar';
 
 const ErrorPage = () => {
     const error = useRouteError();
+    const { isOpen, onOpen, onClose } = useDisclosure();
   return (
     <Grid
         templateAreas={`
@@ -34,11 +35,11 @@ const ErrorPage = () => {
         height='100vh'
     >
         <GridItem area="header">
-            <Header />
+            <Header onOpen={onOpen}/>
         </GridItem>
 
         <GridItem area="nav">
-            <Sidebar />
+            <Sidebar onClose={onClose} isOpen={isOpen}/>
         </GridItem>
 
         <GridItem area="main" paddingX='5px'>

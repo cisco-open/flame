@@ -95,8 +95,10 @@ const RoleDetails = ({ role, setFileData, onSave, setFuncTags, fileNames }: Prop
         top="0"
         backgroundColor="white"
         zIndex="2"
+        borderRadius="10px"
       >
         <Box display="flex" flexDirection="column" gap="20px" width="30vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
+          <Text as="h3" textAlign="center">ROLE</Text>
           <FormControl>
             <FormLabel fontSize="12px">Name</FormLabel>
             <Input
@@ -128,6 +130,7 @@ const RoleDetails = ({ role, setFileData, onSave, setFuncTags, fileNames }: Prop
 
           <FormControl display="flex" alignItems="center" gap="10px">
             <Checkbox
+              colorScheme="primary"
               { ...register('isDataConsumer') }
             />
             <FormLabel margin="0" fontSize="12px">Is data consumer</FormLabel>

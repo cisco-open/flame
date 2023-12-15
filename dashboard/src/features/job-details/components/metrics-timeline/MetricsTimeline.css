@@ -1,0 +1,10 @@
+.worker-name {
+  overflow: hidden;
+  padding-left: 3;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.worker-name.active {
+  background-color: #b4d095;
+}

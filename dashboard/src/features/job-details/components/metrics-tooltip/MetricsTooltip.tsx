@@ -16,34 +16,24 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
-type Props = {
-  types?: Array<string>;
-  minSize?: number;
-  maxSize?: number;
-};
-/**
- * Draw the types and sizes restrictions for the uploading.
- * @param {Object} fileData file data types, minSize, maxSize
- * @returns JSX Element | null
- *
- * @internal
- */
-export default function DrawTypes({
-  types,
-  minSize,
-  maxSize
-}: Props): null | JSX.Element {
-  if (types) {
-    const stringTypes = types.toString();
-    let size = '';
-    if (maxSize) size += `size >= ${maxSize}, `;
-    if (minSize) size += `size <= ${minSize}, `;
+import { Box } from '@chakra-ui/react';
+import { time } from 'console';
+import React, { useEffect } from 'react'
+
+const MetricsTooltip = (props: any) => {
+  if (props.active && props.payload && props.payload.length) {
+    const { name, time, category } = props.payload[0].payload;
+
     return (
-      <span title={`${size}types: ${stringTypes}`} className="file-types">
-        {stringTypes}
-      </span>
+      <Box bgColor="white" padding="10px" border="1px solid gray" boxShadow="rgba(58, 53, 65, 0.42) 0px 4px 8px -4px">
+        <p><strong>Category:</strong> {category}</p>
+        <p><strong>Name:</strong> {name}</p>
+        <p><strong>Time:</strong> {time} sec</p>
+      </Box>
     );
   }
+
   return null;
 }
+
+export default MetricsTooltip

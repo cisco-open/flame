@@ -59,6 +59,79 @@ const hasSameGroup = (task: Task, secondTask: Task) => {
   return !!task.group?.find((group: string) => secondTask.group?.includes(group));
 }
 
+export const getInitialFileStructure = (data: any) => {
+  return data?.files?.map(((file: any, index: number) => ({
+    id: `${index}`,
+    name: file.path,
+    children: [],
+    isDir: true,
+  })));
+}
+
+export const getFileStructure = (artifacts: any, fileStructure: any) => {
+  const fs = [...fileStructure];
+  artifacts?.files?.map((file: any) => {
+    const parentIndex = fs.findIndex((f: any) => f.name === file.path.split('/')[0]);
+    const parent = fs[parentIndex];
+    const fileName = file.path.split(`${parent.name}/`)[1];
+
+    if (file.is_dir) {
+      fs[parentIndex].children.push({
+        id: `${parent.id}-${fileName}`,
+        name: fileName,
+        parentName: parent.name,
+        children: [],
+        path: file.path,
+        isDir: file.is_dir
+      })
+    } else {
+      fs[parentIndex].children.push({
+        id: `${parent.id}-${fileName}`,
+        parentName: parent.name,
+        name: fileName,
+        path: file.path,
+        isDir: file.is_dir
+      })
+    }
+
+  });
+
+  return fs;
+}
+
+export const getRuntimeMetrics = (runs: Run[] | undefined) => {
+  const names: string[] = [];
+
+  const runtimes = (runs || []).map(run => {
+    names.push(run.info.run_name);
+
+    return {
+      name: run.info.run_name,
+      values: run.data.metrics
+        ?.filter(metric => metric.key.includes('runtime') || metric.key.includes('starttime'))
+        ?.map((metric) => {
+          return {
+            name: metric.key,
+            category: run.info.run_name,
+            runId: run.info.run_id,
+          }
+        }).sort((a, b) => {
+          if (a.name < b.name) {
+            return -1;
+          } else if (a.name > b.name) {
+            return 1;
+          }
+          return 0;
+        })
+    }
+  }).map(entry => entry.values).reduce((acc, item) => acc = [...acc, ...(item || [])], []);
+
+  return {
+    runtimes,
+    names,
+  }
+}
+
 export const getNodes = (tasks: Task[], runs: Run[] | undefined) => {
   return tasks.map((task) => {
     return {
@@ -67,7 +140,6 @@ export const getNodes = (tasks: Task[], runs: Run[] | undefined) => {
         label: task.role,
         id: task.taskId,
         status: task.state,
-        isInteractive: !!runs?.find(run => task.taskId.includes(run.taskId)),
       },
       position: { x: 0, y: 0 },
       type: 'customNodeNoInteraction',

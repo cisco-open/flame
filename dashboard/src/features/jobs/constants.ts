@@ -128,7 +128,13 @@ export const hyperparameters = {
   LEARNING_RATE: 'learningRate',
   WEIGHT_DECAY: 'weightDecay',
   AGG_GOAL: 'aggGoal',
-  CONCURRENCY: 'concurrency'
+  CONCURRENCY: 'concurrency',
+  CUSTOM: 'custom',
+}
+
+export enum HYPERPARAMETER_TYPE {
+  predefined,
+  custom
 }
 
 export const HYPERPARAMETER_OPTIONS = [
@@ -166,6 +172,11 @@ export const HYPERPARAMETER_OPTIONS = [
     value: hyperparameters.CONCURRENCY,
     label: getLabel(hyperparameters.CONCURRENCY),
     id: 7,
+  },
+  {
+    value: hyperparameters.CUSTOM,
+    label: getLabel(hyperparameters.CUSTOM),
+    id: 8,
   },
 ]
 

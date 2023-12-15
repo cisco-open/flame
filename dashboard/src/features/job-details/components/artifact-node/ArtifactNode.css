@@ -1,0 +1,98 @@
+.node-container,
+.node-content {
+  display: flex;
+  height: 100%;
+  align-items: center;
+}
+
+.node-content {
+  cursor: pointer;
+}
+
+.node-content span.arrow {
+  width: 20px;
+  font-size: 20px;
+  display: flex;
+}
+
+.node-content span.file-folder-icon {
+  margin-right: 7px;
+  display: flex;
+  align-items: center;
+  font-size: 20px;
+}
+
+.node-content span.node-text {
+  flex: 1;
+}
+
+.node-content input[type="text"],
+.search-input {
+  padding: 0px 10px;
+  outline: none;
+  color: white;
+  border-radius: 2px;
+}
+
+.node-content input[type="text"] {
+  width: 97%;
+  border: 1px solid #878787;
+  background: transparent;
+  height: 22px;
+}
+
+.search-input {
+  width: 100%;
+  height: 30px;
+  background: #2d2c2c;
+  border: none;
+  margin: 1rem 0;
+}
+
+.search-input:focus {
+  border: 1px solid #878787;
+}
+
+.file-actions {
+  height: 100%;
+  display: flex;
+}
+
+.file-actions button {
+  cursor: pointer;
+}
+
+.folderFileActions {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: 10px;
+}
+
+.folderFileActions button {
+  display: flex;
+  align-items: center;
+  color: #999999;
+  background-color: inherit;
+  border: none;
+  font-size: 16px;
+  height: 100%;
+  width: 24px;
+}
+
+.node-container .file-actions .folderFileActions {
+  visibility: hidden;
+}
+.node-container:hover .file-actions .folderFileActions {
+  visibility: visible;
+}
+
+[role="treeitem"]:hover {
+  background-color: #343434;
+  color: white;
+}
+
+[role="treeitem"]:focus-within {
+  background-color: rgba(52, 52, 52, 0.4);
+  outline: none;
+}
