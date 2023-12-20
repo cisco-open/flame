@@ -16,8 +16,6 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { getLabel } from "./utils";
-
 export const optimizer = {
   FEDAVG: "fedavg",
   FEDADAGRAD: "fedadagrad",
@@ -90,7 +88,7 @@ export const BACKEND_OPTIONS = [
 export const DEFAULT_HYPERPARAMETERS = [
   {
     key: 'rounds',
-    value: '1',
+    value: '5',
     id: 1,
   },
   {
@@ -140,42 +138,42 @@ export enum HYPERPARAMETER_TYPE {
 export const HYPERPARAMETER_OPTIONS = [
   {
     value: hyperparameters.ROUNDS,
-    label: getLabel(hyperparameters.ROUNDS),
+    label: hyperparameters.ROUNDS,
     id: 1,
   },
   {
     value: hyperparameters.LEARNING_RATE,
-    label: getLabel(hyperparameters.LEARNING_RATE),
+    label: hyperparameters.LEARNING_RATE,
     id: 2,
   },
   {
     value: hyperparameters.WEIGHT_DECAY,
-    label: getLabel(hyperparameters.WEIGHT_DECAY),
+    label: hyperparameters.WEIGHT_DECAY,
     id: 3,
   },
   {
     value: hyperparameters.BATCH_SIZE,
-    label: getLabel(hyperparameters.BATCH_SIZE),
+    label: hyperparameters.BATCH_SIZE,
     id: 4,
   },
   {
     value: hyperparameters.EPOCHS,
-    label: getLabel(hyperparameters.EPOCHS),
+    label: hyperparameters.EPOCHS,
     id: 5,
   },
   {
     value: hyperparameters.AGG_GOAL,
-    label: getLabel(hyperparameters.AGG_GOAL),
+    label: hyperparameters.AGG_GOAL,
     id: 6,
   },
   {
     value: hyperparameters.CONCURRENCY,
-    label: getLabel(hyperparameters.CONCURRENCY),
+    label: hyperparameters.CONCURRENCY,
     id: 7,
   },
   {
     value: hyperparameters.CUSTOM,
-    label: getLabel(hyperparameters.CUSTOM),
+    label: hyperparameters.CUSTOM,
     id: 8,
   },
 ]
@@ -201,22 +199,22 @@ export const JOB_PRIORITY_OPTIONS = [
 export const SELECTOR_OPTIONS = [
   {
     value: selector.DEFAULT,
-    label: getLabel(selector.DEFAULT),
+    label: selector.DEFAULT,
     id: 1,
   },
   {
     value: selector.RANDOM,
-    label: getLabel(selector.RANDOM),
+    label: selector.RANDOM,
     id: 2,
   },
   {
     value: selector.FEDBUFF,
-    label: getLabel(selector.FEDBUFF),
+    label: selector.FEDBUFF,
     id: 3,
   },
   {
     value: selector.OORT,
-    label: getLabel(selector.OORT),
+    label: selector.OORT,
     id: 4,
   }
 ];
@@ -224,37 +222,37 @@ export const SELECTOR_OPTIONS = [
 export const OPTIMIZER_OPTIONS = [
   {
     value: optimizer.FEDAVG,
-    label: getLabel(optimizer.FEDAVG),
+    label: optimizer.FEDAVG,
     id: 1,
   },
   {
     value: optimizer.FEDADAGRAD,
-    label: getLabel(optimizer.FEDADAGRAD),
+    label: optimizer.FEDADAGRAD,
     id: 2,
   },
   {
     value: optimizer.FEDADAM,
-    label: getLabel(optimizer.FEDADAM),
+    label: optimizer.FEDADAM,
     id: 3,
   },
   {
     value: optimizer.FEDYOGI,
-    label: getLabel(optimizer.FEDYOGI),
+    label: optimizer.FEDYOGI,
     id: 4,
   },
   {
     value: optimizer.FEDBUFF,
-    label: getLabel(optimizer.FEDBUFF),
+    label: optimizer.FEDBUFF,
     id: 5,
   },
   {
     value: optimizer.FEDPROX,
-    label: getLabel(optimizer.FEDPROX),
+    label: optimizer.FEDPROX,
     id: 6,
   },
   {
     value: optimizer.FEDDYN,
-    label: getLabel(optimizer.FEDDYN),
+    label: optimizer.FEDDYN,
     id: 7,
   },
 ];

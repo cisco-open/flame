@@ -57,7 +57,6 @@ const OptimizerForm = () => {
   }, [optimizerGroups]);
 
   useEffect(() => {
-    // @TODO - adjust mappings for complex selectors
     if (!job) { return; }
     setSelectedOptimizer(job.modelSpec.optimizer.sort);
   }, [job])

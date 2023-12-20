@@ -76,9 +76,9 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
 
         <Tbody>
             {designs?.map((design: Design) =>
-            <Tr height="50px" key={design.id} cursor="pointer" onClick={() => goToDesignDetails(design.id)}>
+            <Tr height="50px" key={design.id}>
                 <Td padding="10px 20px">
-                  <Text as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal}>{design.name}</Text>
+                  <Text onClick={() => goToDesignDetails(design.id)} as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal}>{design.name}</Text>
                 </Td>
 
                 <Td padding="10px 20px">{design.id}</Td>

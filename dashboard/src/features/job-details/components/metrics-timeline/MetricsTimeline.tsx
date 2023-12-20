@@ -66,6 +66,7 @@ const MetricsTimeline = ({ data, runs }: Props) => {
   const [items, setItems] = useState<Timelineitem[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<string>();
   const [runDetails, setRunDetails] = useState<string>();
+  const [colorLegend, setColorLegend] = useState<{ [key: string]: string }>();
 
   useEffect(() => {
     const selectedRun = runs?.find((run: any) => selectedWorker?.includes(run.taskId));
@@ -105,7 +106,7 @@ const MetricsTimeline = ({ data, runs }: Props) => {
 
     const min = new Date(Math.min(...items.map(item => item.start)));
     const max = new Date(Math.max(...items.map(item => item.end)));
-
+    setColorLegend(keyToColorMap);
     setMin(min);
     setMax(max);
     setGroups(groups);
@@ -169,6 +170,24 @@ const MetricsTimeline = ({ data, runs }: Props) => {
             <DateHeader unit="minute" />
           </TimelineHeaders>
         </Timeline>
+      }
+
+      { colorLegend &&
+        <Box display="flex" flexDirection="column" gap="20px" alignItems="center">
+          <Text>Legend</Text>
+
+          <Box display="flex" gap="10px" flexWrap="wrap">
+            {
+              Object.keys(colorLegend).map(key =>
+                <Box display="flex" key={key} alignItems="center" gap="5px">
+                  <Box width="10px" height="10px" backgroundColor={colorLegend[key]}></Box>
+
+                  <Text as="p">{key.split('.')[0]}</Text>
+                </Box>
+              )
+            }
+          </Box>
+        </Box>
       }
 
       {

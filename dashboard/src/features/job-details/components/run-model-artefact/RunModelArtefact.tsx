@@ -17,26 +17,26 @@
  */
 
 import { Box, Icon, Text } from '@chakra-ui/react';
-import { useContext, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import ApiClient from '../../../../services/api-client';
 import useArtifact from '../../hooks/useArtifact';
 import useArtifacts from '../../hooks/useArtifacts';
 import { ArtifactContext } from '../../ArtifactContext';
-import { getFileStructure, getInitialFileStructure } from '../../utils';
 import ArtifactTree from '../artifact-tree/ArtifactTree';
 import DownloadTwoToneIcon from '@mui/icons-material/DownloadTwoTone';
 import Loading from '../../../../layout/loading/Loading';
-import { JobDetailsContext } from '../../JobDetailsContext';
 
 interface Props {
   runDetails: any;
 }
 
+const MAX_FILE_SIZE_FOR_PREVIEW = 5000;
+
 const RunModelArtefact = ({ runDetails }: Props) => {
-  const [ artifacts, setArtifacts ] = useState<any>();
+  const [ responses, setResponses ] = useState<any>([]);
   const [ artifactFile, setArtifactFile ] = useState<any>();
+  const [ artifactPreview, setArtifactPreview ] = useState<any>();
   const [ selectedArtifact, setSelectedArtifact ] = useState<any>();
-  const [ fileStructure, setFileStructure ] = useState<any>();
   const [ selectedFile, setSelectedFile ] = useState<any>();
   const [ mappedFileStructure, setMappedFileStructure ] = useState<any>();
   const [ artifactLoading, setArtifactLoading ] = useState<boolean>(false);
@@ -46,11 +46,12 @@ const RunModelArtefact = ({ runDetails }: Props) => {
   useEffect(() => {
     if (!artifact) { return; }
 
-    if (selectedFile?.data?.name !== 'model.pth') {
-      setArtifactFile(artifact);
+    if (selectedFile?.data?.file_size < MAX_FILE_SIZE_FOR_PREVIEW) {
+      setArtifactPreview(artifact)
     } else {
-      setArtifactFile('You can now download this file.');
+      setArtifactPreview('You can now download this file.');
     }
+    setArtifactFile(artifact);
 
     setArtifactLoading(false);
   }, [artifact]);
@@ -60,49 +61,30 @@ const RunModelArtefact = ({ runDetails }: Props) => {
       setMappedFileStructure(undefined);
       return;
     }
+    const responses = [...data.files];
+    setResponses((prevValue: any) => [...prevValue, ...responses]);
+    fetchArtifacts(responses.map((r: any) => {
+      const index = r.path.lastIndexOf('/');
+      const fileName = r.path.slice(index + 1);
 
-    setFileStructure(getInitialFileStructure(data))
-    fetchArtifacts(data.files).then(res => { setArtifacts(res) });
+      return {
+        ...r,
+        isDir: r.is_dir,
+        id: `${fileName}`,
+        name: fileName,
+      }
+    }));
   }, [data]);
 
   useEffect(() => {
-    if (!artifacts || !fileStructure || fileStructure[0]?.children?.length) { return; }
-    const structure = getFileStructure(artifacts, fileStructure);
-    setMappedFileStructure(structure);
-  }, [artifacts, fileStructure]);
+    if (!selectedFile?.data || selectedFile?.data?.is_dir) { return; }
 
-  useEffect(() => {
-    if (!selectedFile?.data) { return; }
-
-    if (!selectedFile?.children?.length && selectedFile?.data?.isDir) {
-      fetchArtifact(selectedFile).then(res => {
-        const newFileStructure = [...fileStructure];
-        const targetParentIndex = newFileStructure[0]?.children?.findIndex((file: any) => file.name === selectedFile?.data?.name);
-        const parent = newFileStructure[0]?.children?.[targetParentIndex];
-        parent.children = res.files.map((file: any, index: number) => {
-          const fileName = file.path.split(`${parent.path}/`)[1];
-
-          return {
-            id: `${index}-${parent?.id}-${fileName}`,
-            parentName: parent.name,
-            name: fileName,
-            path: file.path,
-            isDir: file.is_dir
-          }
-        });
-
-        setFileStructure(newFileStructure);
-      });
-    } else {
-      if (!selectedFile?.data?.isDir) {
-        setArtifactLoading(true);
-      }
-      setSelectedArtifact(selectedFile?.data);
-    }
+    setArtifactLoading(true);
+    setSelectedArtifact(selectedFile?.data);
   }, [selectedFile]);
 
   const onDownloadFile = () => {
-    const blob = new Blob([artifactFile], { type: 'text/plain' });
+    const blob = new Blob([artifactFile]);
 
     const url = URL.createObjectURL(blob);
 
@@ -114,41 +96,47 @@ const RunModelArtefact = ({ runDetails }: Props) => {
 
     link.click();
 
-    // Cleanup
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   }
 
-  const fetchArtifacts = async (files: any[]) => {
-    const responses: any[] = [];
-    const apiClient = new ApiClient('mlflow/artifacts/list', true);
-    for (const file of files) {
-      try {
-        const response = await apiClient.getAll({ params: { run_uuid: runDetails?.info?.run_uuid, path: file?.is_dir ? file?.path : '' }});
-        responses.push(response)
-      } catch (error) {
-        console.error('Error fetching artifacts:', error);
-      }
-    }
+  useEffect(() => {
+    setMappedFileStructure([...responses.filter((data: any) =>
+      data.is_dir &&
+      data.children?.length &&
+      data.path.split('/').length === 1 &&
+      !!data.id
+    )]);
+  }, [responses])
 
-    return responses[0];
+  const fetchArtifacts = async (files: any[]) => {
+    const apiClient = new ApiClient('mlflow/artifacts/list', true);
+
+    if (!files?.length) { return; }
+
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].is_dir) {
+        try {
+          const response: any = await apiClient.getAll({ params: { run_uuid: runDetails?.info?.run_uuid, path: files[i]?.is_dir ? files[i]?.path : '' }});
+          files[i]['children'] = response.files.map(((f: any) => {
+            const index = f.path.lastIndexOf('/');
+            const fileName = f.path.slice(index + 1);
+            return {
+              ...f,
+              name: fileName,
+              id: f.path
+            }
+          }));
+        } catch (error) {
+          console.error('Error fetching artifacts:', error);
+        }
+      }
+      fetchArtifacts(files[i].children);
+    }
+    setResponses((prevValue: any) => [...prevValue, ...files]);
   };
 
-  const fetchArtifact = async (file: any) => {
-    const apiClient = new ApiClient('mlflow/artifacts/list', true);
-    let response: any;
-    try {
-      response = await apiClient.getAll({ params: { run_uuid: runDetails?.info?.run_uuid, path: file?.data?.path }});
-    } catch (error) {
-      console.error('Error fetching artifacts:', error);
-    }
-    return response;
-  }
-
   const onFileSelect = (data: any) => {
-    if (!data?.data?.isDir) {
-      setArtifactLoading(true);
-    }
     setSelectedFile(data);
   }
 
@@ -182,7 +170,7 @@ const RunModelArtefact = ({ runDetails }: Props) => {
               {
                 artifactFile ?
                   <pre style={{ fontSize: "10px"}}>
-                    {artifactFile}
+                    {artifactPreview}
                   </pre> :
                   <Box height="100%" display="flex" justifyContent="center" flexDirection="column" alignItems="center">
                     <Text as="h4">Select a file to preview.</Text>

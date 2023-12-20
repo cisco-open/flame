@@ -56,16 +56,11 @@ const ModelSpecForm = ({
     paramEnum === ArgsGroup.key ?
       targetParameter.key = event.target.value :
       targetParameter.value = event.target.value;
-    hyperParameters[index] = targetParameter;
-    setHyperParameters(hyperParameters);
-  }
 
-  const setCustomHyperparameterValue = (event: any, index: number, paramEnum: ArgsGroup) => {
-    const targetParameter = hyperParameters[index];
+    if (event.target.value === hyperparameters.CUSTOM) {
+      targetParameter.type = HYPERPARAMETER_TYPE.custom;
+    }
 
-    paramEnum === ArgsGroup.key ?
-      targetParameter.key = event.target.value :
-      targetParameter.value = event.target.value;
     hyperParameters[index] = targetParameter;
     setHyperParameters(hyperParameters);
   }
@@ -74,13 +69,6 @@ const ModelSpecForm = ({
     setHyperParameters([
       ...hyperParameters,
       { key: '', value: '', id: hyperParameters.length + 1 }
-    ])
-  }
-
-  const addCustomHyperParameter = () => {
-    setHyperParameters([
-      ...hyperParameters,
-      { key: '', value: '', id: hyperParameters.length + 1, type: HYPERPARAMETER_TYPE.custom }
     ])
   }
 
@@ -145,7 +133,11 @@ const ModelSpecForm = ({
         alignItems="center"
         width="70%"
       >
-        <Text as="h4" textAlign="center">Hyperparameters</Text>
+        <Box>
+          <Text as="h4" textAlign="center">Hyperparameters</Text>
+
+          <Text fontSize="10px" as="label">Value can be single value or a list (comma separated values)</Text>
+        </Box>
 
         <Box display="flex" justifyContent="space-around" width="100%">
           <Text as="label" fontSize="12px">Key</Text>
@@ -160,7 +152,7 @@ const ModelSpecForm = ({
                 size="xs"
                 value={parameter.key}
                 placeholder="value"
-                onChange={(event) => setCustomHyperparameterValue(event, index, ArgsGroup.key)}
+                onChange={(event) => setHyperparameterValue(event, index, ArgsGroup.key)}
               /> :
               <Select
                 backgroundColor="white"
@@ -188,24 +180,14 @@ const ModelSpecForm = ({
         )}
 
         <Box>
-          <Button
+           <Button
             size="xs"
             leftIcon={<AddIcon fontSize="small" />}
             onClick={addHyperParameter}
             colorScheme='primary'
             mr={3}
           >
-            Add more
-          </Button>
-
-          <Button
-            size="xs"
-            leftIcon={<AddIcon fontSize="small" />}
-            onClick={addCustomHyperParameter}
-            colorScheme='primary'
-            mr={3}
-          >
-            Add custom hyperparameter
+            Add More
           </Button>
         </Box>
       </Box>

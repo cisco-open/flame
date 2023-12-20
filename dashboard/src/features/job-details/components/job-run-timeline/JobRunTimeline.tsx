@@ -22,7 +22,7 @@ import { Run, RunResponse } from '../../../../entities/JobDetails'
 import { Task } from '../../../../entities/Task'
 import Loading from '../../../../layout/loading/Loading'
 import ApiClient from '../../../../services/api-client'
-import { getRuntimeMetrics } from '../../utils'
+import { getRunName, getRuntimeMetrics } from '../../utils'
 import MetricsTimeline from '../metrics-timeline/MetricsTimeline'
 
 interface Props {
@@ -69,7 +69,7 @@ const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }:
         .map((item: any, index: number, list: any[]) => {
           if (!item.key.includes('runtime')) { return item; }
           const startTimeCounterpart = list.find(i => i.key.includes(item.key.split('.')[0]) && i.key.includes('starttime') && item.step === i.step);
-          const startTimeTimestamp = Math.round(startTimeCounterpart.value * 1000);
+          const startTimeTimestamp = Math.round((startTimeCounterpart?.value || 1) * 1000);
           return {
             ...item,
             start: startTimeTimestamp,
@@ -87,11 +87,13 @@ const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }:
     if (!tasks && !runsResponse) { return; }
     const taskIds = tasks?.map(task => task.taskId.substring(0, 8));
 
-    const runs = runsResponse?.runs.filter((run, index, runs) =>
-      run.info.start_time &&
-      run.info.end_time &&
-      taskIds?.includes(run.info.run_name.substring(run.info.run_name.length - 8)) &&
-      hasTheGreatestTimestamp(run, runs)
+    const runs = runsResponse?.runs.filter((run, index, runs) => {
+      const runName = getRunName(run);
+      return run.info.start_time &&
+        run.info.end_time &&
+        taskIds?.includes(runName.substring(runName.length - 8)) &&
+        hasTheGreatestTimestamp(run, runs)
+    }
     );
     const mappedData = getRuntimeMetrics(runs);
     setRuntimes(mappedData.runtimes);
@@ -138,7 +140,7 @@ const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }:
   };
 
   const hasTheGreatestTimestamp = (run: Run, runs: Run[]) => {
-    const targetRuns = runs.filter(r => r.info.run_name === run.info.run_name && run.info.start_time && run.info.end_time);
+    const targetRuns = runs.filter(r => getRunName(r) === getRunName(run) && run.info.start_time && run.info.end_time);
     let targetRun = targetRuns[0];
     for (let run of targetRuns) {
       if (targetRun.info.start_time < run.info.start_time) {

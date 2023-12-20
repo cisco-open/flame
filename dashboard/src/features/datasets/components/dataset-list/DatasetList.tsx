@@ -41,7 +41,7 @@ const DatasetList = () => {
   }
 
   const handleSave = (data: any) => {
-    createMutation.mutate({ ...data, realm: DEFAULT_REALM, dataFormat: DEFAULT_DATA_FORMAT, userId: LOGGEDIN_USER.name });
+    createMutation.mutate({ ...data, dataFormat: DEFAULT_DATA_FORMAT, userId: LOGGEDIN_USER.name });
   }
 
   return (

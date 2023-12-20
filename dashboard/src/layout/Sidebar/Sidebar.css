@@ -13,7 +13,7 @@
 
 .sidebar-link.active {
     box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
-    background-image: linear-gradient(98deg, #19747E, #d9d9d9 94%);
+    background-color: #283618;
     /* background-image: linear-gradient(98deg, #2C2C54, #ababd3 94%); */
     border-radius: 0px 100px 100px 0px;
     color: white !important;

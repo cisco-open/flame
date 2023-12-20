@@ -119,15 +119,16 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
 
   useEffect(() => {
     const mappedHyperparameters = hyperParameters.reduce((acc: any, param: any) => {
-      acc[param.key] = param.value;
+      const listValue = typeof param.value === 'string' ? param?.value.split(',') : param.value;
+      acc[param.key] = Array.isArray(listValue) && listValue.length > 1 ? listValue : param.value;
       return acc;
     }, {});
     setMappedHyperParameters(mappedHyperparameters);
   }, [hyperParameters])
 
   useEffect(() => {
-    if (!design) { return; }
-    const roles = design?.schema?.roles.filter(role => role.isDataConsumer);
+    if (!design?.schema?.roles) { return; }
+    const roles = design?.schema?.roles?.filter(role => role.isDataConsumer);
     const dictionary = {} as unknown as any;
     const datasetControls = roles?.map(role => {
       role.groupAssociation.map(group => {

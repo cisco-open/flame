@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Button, ListItem, Popover, PopoverBody, PopoverContent, PopoverTrigger, Text, UnorderedList, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, ListItem, Popover, PopoverBody, PopoverContent, PopoverTrigger, Select, Text, UnorderedList, useDisclosure } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
 import ReactFlow, { Background, NodeChange, applyNodeChanges, useEdgesState, addEdge, useReactFlow } from 'reactflow';
@@ -51,7 +51,6 @@ import useSchema from './hooks/useSchemas';
 import { LOGGEDIN_USER } from '../../constants';
 import useCode from '../../hooks/useCode';
 import CustomConnectionLine from '../../components/custom-connection-line/CustomConnectionLine';
-import { saveAs } from 'file-saver';
 import ExpandedTopology from './components/expanded-topology/ExpandedTopology';
 import ConfirmationDialog from '../../components/confirmation-dialog/ConfirmationDialog';
 import './animations.css';
@@ -65,6 +64,24 @@ export interface SchemaValidity {
   duplicateNames: string[];
 }
 
+const schemaFiles = [
+  {
+    id: 1,
+    name: 'Two tier schema',
+    path: '/2-tier.json',
+  },
+  {
+    id: 2,
+    name: 'Hierarchical FL schema',
+    path: '/hier-fl.json'
+  },
+  {
+    id: 3,
+    name: 'Distributed schema',
+    path: '/distributed.json'
+  }
+];
+
 const DesignDetailsPage = () => {
   const jsZip = require("jszip");
   const navigate = useNavigate();
@@ -72,7 +89,8 @@ const DesignDetailsPage = () => {
   const { data: design, isLoading } = useDesign(id || '');
   const { updateMutation, deleteMutation } = useSchema(id || '')
   const { pushFileMutation, deleteCodeMutation } = useCode(id || '');
-  const [ designSchema, setDesignSchema ] = useState<Schema | undefined>()
+  const [ designSchema, setDesignSchema ] = useState<any>();
+  const [ selectedDesignTemplate, setSelectedDesignTemplate ] = useState<any>();
   const [ nodes, setNodes ] = useState<any>([]);
   const [ funcTags, setFuncTags ] = useState<MappedFuncTag[]>([]);
   const [ errorMessages, setErrorMessages ] = useState<string[]>([]);
@@ -118,10 +136,7 @@ const DesignDetailsPage = () => {
     fitViewOptions.nodes = nodes?.map(node => ({ id: node.id }));
     setNodes(nodes);
     setEdges(getEdges(designSchema || undefined));
-
-    window.requestAnimationFrame(() => {
-      fitView();
-    });
+    setTimeout(() => fitView(), 10);
   }, [designSchema]);
 
   const checkSchemaValidity = (nodes: any, edges: any, fileNames: any) => {
@@ -203,14 +218,15 @@ const DesignDetailsPage = () => {
     setNodes([...(nodes || []), getDefaultNode(nodes?.length || 0)]);
   }
 
-  const handleTemplateChange = (event: any) => {
-    const fileReader = new FileReader();
-    fileReader.readAsText(event?.target?.files[0], "application/json");
-    fileReader.onload = e => {
-      onPaneClick();
-      setFileNames(null);
-      setDesignSchema(JSON.parse(e?.target?.result as string))
-    };
+  const handleTemplateChange = async (event: any) => {
+    const targetTemplate = schemaFiles.find(file => file.id === +event.target.value);
+    try {
+      const response = await fetch(targetTemplate?.path || '');
+      const data = await response.json();
+      setDesignSchema(data);
+    } catch (error) {
+      console.error('Error fetching JSON:', error);
+    }
   }
 
   const handleRoleSave = (role: Role) => {
@@ -232,7 +248,7 @@ const DesignDetailsPage = () => {
   }
 
   const channelSave = useCallback((channel: Channel) => {
-    setEdges(getUpdatedEdges(channel, edges));
+    setEdges(getUpdatedEdges(channel, edges) as unknown as any);
     setAreEdgesUpdated(true);
     onPaneClick();
     setTimeout(() => setAreEdgesUpdated(false), 100)
@@ -246,7 +262,6 @@ const DesignDetailsPage = () => {
 
   const handleDesignCodeSave = () => {
     createDesignCodeZip(fileData, design?.id).generateAsync({ type: 'blob' }).then((file: any) => {
-      saveAs(file, design?.id);
       pushFileMutation.mutate({
         fileName: design?.id,
         fileData: file,
@@ -298,6 +313,24 @@ const DesignDetailsPage = () => {
     setFuncTags([...funcTags.filter(tag => tag.roleName !== data.roleName), data])
   }
 
+  const handleChannelDelete = (id: string) => {
+    const schema = {...designSchema};
+    schema.channels = schema?.channels?.filter((channel: any) => channel.name !== id);
+    const filteredEdges = edges.filter((edge: any) => edge?.channel?.name !== id);
+    setEdges(filteredEdges);
+    setDesignSchema(schema);
+    onPaneClick();
+  }
+
+  const handleRoleDelete = (id: string) => {
+    const schema = {...designSchema};
+    schema.roles = schema?.roles?.filter((role: any) => role.name !== id);
+    const filteredNodes = nodes.filter((node: any) => node?.role?.name !== id);
+    setNodes(filteredNodes);
+    setDesignSchema(schema);
+    onPaneClick();
+  }
+
   if (isLoading) {
     return <p>Loading...</p>
   }
@@ -305,15 +338,23 @@ const DesignDetailsPage = () => {
   return (
     <Box display="flex" flexDirection="column" height="100%" overflow="hidden">
       <Box display="flex" alignItems="center" height="50px" position="relative">
-        <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' size="xs">Back</Button>
+        <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' colorScheme="primary" size="xs">Back</Button>
 
         <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
 
         <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
-          <label className="file-input" htmlFor="file-input">Choose template</label>
-          <input id="file-input" style={{ 'width': '60%', 'display': 'none' }} type="file" onChange={handleTemplateChange} />
+          <Select
+            size="xs"
+            placeholder='Select option'
+            value={selectedDesignTemplate}
+            onChange={(event) => handleTemplateChange(event)}
+          >
+            {schemaFiles?.map(file =>
+              <option key={file.id} value={file.id}>{file.name}</option>
+            )}
+          </Select>
 
-          <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
+          <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} flexShrink="0" variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
         </Box>
       </Box>
 
@@ -368,14 +409,14 @@ const DesignDetailsPage = () => {
             </Box>
 
             {
-              !!designSchema?.roles &&
+              !!designSchema?.roles?.length &&
               <Button
                 variant='outline'
                 colorScheme="red"
                 onClick={openResetConfirmation}
                 size="xs"
               >
-                Delete
+                Reset
               </Button>
             }
           </Box>
@@ -413,6 +454,7 @@ const DesignDetailsPage = () => {
                   role={role}
                   setFileData={handleFiles}
                   onSave={(data) => handleRoleSave(data)}
+                  onDelete={handleRoleDelete}
                   setFuncTags={(data) => handleNewFuncTags(data)}
                   fileNames={fileNames}
                 />
@@ -424,6 +466,7 @@ const DesignDetailsPage = () => {
                   channels={edges?.map((edge: any) => edge.channel)}
                   funcTags={funcTags}
                   onSave={(data) => channelSave(data)}
+                  onDelete={handleChannelDelete}
                 />
               }
             </>
