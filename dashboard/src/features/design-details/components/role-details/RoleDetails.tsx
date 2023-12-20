@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Checkbox, FormControl, FormLabel, Text, Input, Textarea } from '@chakra-ui/react'
+import { Box, Checkbox, FormControl, FormLabel, Text, Input, Textarea, Button } from '@chakra-ui/react'
 import { FileUploader } from 'react-drag-drop-files';
 import { Role } from '../../../../entities/DesignDetails';
 import './RoleDetails.css';
@@ -31,12 +31,13 @@ interface Props {
   setFileData: (file: any) => void;
   onSave: (data: any) => void;
   setFuncTags: (data: {roleName: string; funcTags: any }) => void;
+  onDelete: (roleId: string) => void;
   fileNames: { node: string, name: string }[];
 }
 
 const fileTypes = ["py"];
 
-const RoleDetails = ({ role, setFileData, onSave, setFuncTags, fileNames }: Props) => {
+const RoleDetails = ({ role, setFileData, onSave, setFuncTags, onDelete, fileNames }: Props) => {
   useEffect(() => {
     setValue('name', role.name);
     setValue('description', role.description);
@@ -97,8 +98,12 @@ const RoleDetails = ({ role, setFileData, onSave, setFuncTags, fileNames }: Prop
         zIndex="2"
         borderRadius="10px"
       >
-        <Box display="flex" flexDirection="column" gap="20px" width="30vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
-          <Text as="h3" textAlign="center">ROLE</Text>
+        <Box display="flex" flexDirection="column" gap="20px" width="40vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
+          <Box position="relative">
+            <Text flex="1" as="h3" textAlign="center">{role.name}</Text>
+
+            <Button onClick={() => onDelete(role.name)} position="absolute" top="0" right="0" size="xs" colorScheme="red">Delete</Button>
+          </Box>
           <FormControl>
             <FormLabel fontSize="12px">Name</FormLabel>
             <Input

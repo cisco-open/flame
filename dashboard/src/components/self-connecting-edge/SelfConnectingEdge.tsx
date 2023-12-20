@@ -37,7 +37,7 @@ const SelfConnecting = (props: EdgeProps) => {
       <div
           style={{
             position: 'absolute',
-            transform: `translate(-50%, -50%) translate(${sourceX}px,${sourceY / 2}px)`,
+            transform: `translate(-120%, -275%) translate(${sourceX}px,${sourceY / 2}px)`,
             background: 'white',
             padding: 5,
             borderRadius: 5,

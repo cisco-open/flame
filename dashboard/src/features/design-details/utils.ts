@@ -163,6 +163,8 @@ export const getSchemaValidity = (nodes: any, edges: any, fileNames: any) => {
 }
 
 export const getUpdatedNodes = (role: any, nodes: any) => {
+  if (!nodes.length) { return; }
+
   const index = role?.index || 0;
   const targetNode = nodes[index];
   const newNode = {
@@ -177,6 +179,7 @@ export const getUpdatedNodes = (role: any, nodes: any) => {
 }
 
 export const getUpdatedEdges = (channel: Channel, edges: any) => {
+  if (!edges?.length) { return; }
   const index = channel?.index || 0;
   const targetEdge = edges[index];
   const newEdge = {

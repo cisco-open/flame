@@ -1,0 +1,37 @@
+{
+    "name": "Distributed schema",
+    "description": "This implementation is on Keras using MNIST dataset.",
+    "roles": [
+        {
+            "name": "trainer",
+            "description": "It consumes the data and trains local model",
+            "isDataConsumer": true,
+            "groupAssociation": [
+                {
+                    "param-channel": "group-1"
+                }
+            ]
+        }
+    ],
+    "channels": [
+        {
+            "description": "Model update is sent from a trainer to another trainer",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "group-1"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "trainer"
+            ],
+            "funcTags": {
+                "trainer": [
+                    "ring_allreduce"
+                ]
+            }
+        }
+    ]
+}

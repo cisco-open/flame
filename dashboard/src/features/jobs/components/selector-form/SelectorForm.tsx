@@ -40,7 +40,6 @@ const SelectorForm = () => {
   }, [selectedSelector]);
 
   useEffect(() => {
-    // @TODO - adjust mappings for complex selectors
     if (!job) { return; }
     setSelectedSelector(getSelectorsFromJob(job));
   }, [job])

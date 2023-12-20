@@ -20,7 +20,7 @@ import Sidebar from '../layout/Sidebar/Sidebar'
 import { Outlet } from 'react-router-dom';
 import Header from '../layout/Header';
 import { Box, Grid, GridItem, useDisclosure } from '@chakra-ui/react';
-import bannerBg from '../assets/bg-image.avif';
+import bannerBg from '../assets/bg-image.png';
 // import bannerBg from '../assets/bg-image-1.webp';
 
 const MainLayout = () => {

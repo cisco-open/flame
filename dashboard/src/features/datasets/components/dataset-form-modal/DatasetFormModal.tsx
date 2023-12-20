@@ -42,6 +42,7 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
   const schema = yup.object().shape({
     name: yup.string().required(),
     url: yup.string().required(),
+    realm: yup.string().required(),
     description: yup.string(),
     computeId: yup.string(),
     isPublic: yup.boolean(),
@@ -89,8 +90,13 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
             </FormControl>
 
             <FormControl>
+              <FormLabel fontSize="12px">Realm</FormLabel>
+              <Input size="xs" placeholder='Realm' {...register('realm')} />
+            </FormControl>
+
+            <FormControl>
               <FormLabel fontSize="12px" visibility="hidden">Is Public</FormLabel>
-              <Checkbox {...register('isPublic')} colorScheme="primary" size="xs">Is Public</Checkbox>
+              <Checkbox {...register('isPublic')} colorScheme="primary">Is Public</Checkbox>
             </FormControl>
 
             <FormControl>

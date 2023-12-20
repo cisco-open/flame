@@ -82,7 +82,8 @@ export const getFileStructure = (artifacts: any, fileStructure: any) => {
         parentName: parent.name,
         children: [],
         path: file.path,
-        isDir: file.is_dir
+        isDir: file.is_dir,
+        size: file.file_size,
       })
     } else {
       fs[parentIndex].children.push({
@@ -90,7 +91,8 @@ export const getFileStructure = (artifacts: any, fileStructure: any) => {
         parentName: parent.name,
         name: fileName,
         path: file.path,
-        isDir: file.is_dir
+        isDir: file.is_dir,
+        size: file.file_size,
       })
     }
 
@@ -103,16 +105,17 @@ export const getRuntimeMetrics = (runs: Run[] | undefined) => {
   const names: string[] = [];
 
   const runtimes = (runs || []).map(run => {
-    names.push(run.info.run_name);
+    const runName = getRunName(run);
+    names.push(runName);
 
     return {
-      name: run.info.run_name,
+      name: runName,
       values: run.data.metrics
         ?.filter(metric => metric.key.includes('runtime') || metric.key.includes('starttime'))
         ?.map((metric) => {
           return {
             name: metric.key,
-            category: run.info.run_name,
+            category: runName,
             runId: run.info.run_id,
           }
         }).sort((a, b) => {
@@ -130,6 +133,10 @@ export const getRuntimeMetrics = (runs: Run[] | undefined) => {
     runtimes,
     names,
   }
+}
+
+export const getRunName = (run: Run): string => {
+  return run?.data?.tags?.find(tag => tag.key.includes('runName'))?.value || '';
 }
 
 export const getNodes = (tasks: Task[], runs: Run[] | undefined) => {

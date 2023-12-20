@@ -31,17 +31,19 @@ const ArtifactTree = ({ data }: Props) => {
 
   return (
     <div className="artifact-tree-container">
-      <Tree
-        ref={treeRef}
-        initialData={data}
-        width={260}
-        height={1000}
-        indent={24}
-        rowHeight={32}
-        openByDefault={false}
-      >
-        {ArtifactNode}
-      </Tree>
+      { !!data.length &&
+        <Tree
+          ref={treeRef}
+          initialData={data}
+          width={260}
+          height={1000}
+          indent={24}
+          rowHeight={32}
+          openByDefault={false}
+        >
+          {ArtifactNode}
+        </Tree>
+      }
     </div>
   );
 };

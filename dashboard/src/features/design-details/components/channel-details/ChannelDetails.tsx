@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Checkbox, CheckboxGroup, FormControl, FormLabel, Input, Text, Textarea } from '@chakra-ui/react'
+import { Box, Button, Checkbox, CheckboxGroup, FormControl, FormLabel, Input, Text, Textarea } from '@chakra-ui/react'
 import { Channel, MappedFuncTag } from '../../../../entities/DesignDetails'
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -29,10 +29,11 @@ interface Props {
   channel: Channel;
   channels: Channel[];
   onSave: (data: any) => void;
+  onDelete: (channelId: string) => void;
   funcTags: MappedFuncTag[];
 }
 
-export const ChannelDetails = ({ channels, channel, funcTags, onSave }: Props) => {
+export const ChannelDetails = ({ channels, channel, funcTags, onSave, onDelete }: Props) => {
   const [mappedFuncTags, setMappedFuncTags] = useState<MappedFuncTag[]>();
   const schema = yup.object().shape({
     name: yup.string().required(),
@@ -92,8 +93,12 @@ export const ChannelDetails = ({ channels, channel, funcTags, onSave }: Props) =
         zIndex="2"
         borderRadius="10px"
       >
-        <Box display="flex" flexDirection="column" gap="20px" width="30vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
-          <Text as="h3" textAlign="center">CHANNEL</Text>
+        <Box display="flex" flexDirection="column" gap="20px" width="40vw" zIndex="2" onClick={(e) => e.stopPropagation()}>
+          <Box position="relative">
+            <Text flex="1" as="h3" textAlign="center">{channel.name}</Text>
+
+            <Button onClick={() => onDelete(channel.name)} position="absolute" top="0" right="0" size="xs" colorScheme="red">Delete</Button>
+          </Box>
           <FormControl>
             <FormLabel fontSize="12px">Name</FormLabel>
             <Input size="xs" {...register('name')} />

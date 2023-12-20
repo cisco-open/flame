@@ -28,6 +28,7 @@ import useJob from "../jobs/hooks/useJob";
 import AssessmentTwoToneIcon from '@mui/icons-material/AssessmentTwoTone';
 import { useEffect, useState } from "react";
 import { JobDetailsContext } from "./JobDetailsContext";
+import { getRunName } from "./utils";
 
 export const fitViewOptions = {
   padding: 1,
@@ -46,8 +47,10 @@ const JobDetailsPage = () => {
   const [ artifact, setArtifact ] = useState<any>();
 
   useEffect(() => {
+    if (!runsResponse?.runs) { return; }
     const runs = runsResponse?.runs.map(run => {
-      const runNameSlices = run.info.run_name.split('-');
+      const runName = getRunName(run);
+      const runNameSlices = runName.split('-');
       const taskId = runNameSlices[runNameSlices.length - 1];
       return {
         ...run,
@@ -61,7 +64,7 @@ const JobDetailsPage = () => {
     <JobDetailsContext.Provider value={{ artifact, setArtifact }}>
       <Box display="flex" flexDirection="column" gap="10px" height="100%">
         <Box display="flex" alignItems="center" position="relative" zIndex="1">
-          <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs')} variant='link' size="xs">Back</Button>
+          <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs')} colorScheme="primary" variant='link' size="xs">Back</Button>
 
           <Text as="h2" flex="1" textAlign="center" fontWeight="bold">{ job?.name }</Text>
         </Box>
