@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,15 +22,16 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import { Button, Checkbox, FormControl, FormLabel, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, SimpleGrid, Textarea } from '@chakra-ui/react';
 import { useEffect, useRef } from 'react';
 import './DatasetFormModal.css';
+import { DatasetForm } from '../../types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: DatasetForm) => void;
   isSaveSuccess: boolean;
 }
 
-const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
+const DatasetFormModal = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
   const initialRef: React.MutableRefObject<null> = useRef(null);
 
   useEffect(() => {
@@ -117,4 +118,4 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
   )
 }
 
-export default DatasetForm
+export default DatasetFormModal

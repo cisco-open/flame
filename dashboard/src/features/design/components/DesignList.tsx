@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import { Design } from '../../../entities/Design';
 import useDesigns from '../hooks/useDesigns';
 import { useEffect, useState } from 'react';
 import { DesignContext } from '../DesignContext';
-import { DesignForm } from '../../../entities/DesignForm';
 import { LOGGEDIN_USER } from '../../../constants';
+import { DesignForm } from '../types';
 
 const DesignList = () => {
   const defaultDesignInEdit = {
@@ -71,7 +71,7 @@ const DesignList = () => {
       <Box gap="20px" display="flex" flexDirection="column" height="100%" overflow="hidden">
         <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
           <Text as="h1" fontWeight="bold">DESIGNS</Text>
-          
+
           <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" size="xs" colorScheme="primary">Create New</Button>
         </Box>
 

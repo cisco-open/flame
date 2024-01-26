@@ -16,18 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { ExperimentData } from "../../../entities/Experiment";
-import ApiClient from "../../../services/api-client";
-import { ArtifactsRequestParams } from "../types";
-
-const useArtifacts = (data: ArtifactsRequestParams) => {
-  const apiClient = new ApiClient<any>('mlflow/artifacts/list', true);
-  return useQuery({
-    enabled: !!data.run_uuid || !!data.path,
-    queryKey: ['artifacts', data.run_uuid],
-    queryFn: () => apiClient.getAll({ params: data }),
-  });
+export interface ComputeFormData {
+  adminId: string;
+  region: string;
+  apiKey: string;
+  computeId: string;
 }
-
-export default useArtifacts;

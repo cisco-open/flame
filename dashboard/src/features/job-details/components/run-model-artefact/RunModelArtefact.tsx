@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import { ArtifactContext } from '../../ArtifactContext';
 import ArtifactTree from '../artifact-tree/ArtifactTree';
 import DownloadTwoToneIcon from '@mui/icons-material/DownloadTwoTone';
 import Loading from '../../../../layout/loading/Loading';
+import { ArtifactTreeItem } from '../../types';
 
 interface Props {
   runDetails: any;
@@ -38,7 +39,7 @@ const RunModelArtefact = ({ runDetails }: Props) => {
   const [ artifactPreview, setArtifactPreview ] = useState<any>();
   const [ selectedArtifact, setSelectedArtifact ] = useState<any>();
   const [ selectedFile, setSelectedFile ] = useState<any>();
-  const [ mappedFileStructure, setMappedFileStructure ] = useState<any>();
+  const [ mappedFileStructure, setMappedFileStructure ] = useState<ArtifactTreeItem[]>();
   const [ artifactLoading, setArtifactLoading ] = useState<boolean>(false);
   const { data: artifact } = useArtifact({ run_uuid: runDetails?.info?.run_uuid, path: selectedArtifact?.path});
   const { data, isLoading: areArtifactsLoading } = useArtifacts({ run_uuid: runDetails?.info?.run_uuid });

@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,15 +17,15 @@
  */
 
 import { Box, Button, useDisclosure, Text } from '@chakra-ui/react';
-import { DesignForm } from '../../../../entities/DesignForm';
 import AddIcon from '@mui/icons-material/Add';
 import { Dataset } from '../../../../entities/Dataset';
 import DatasetTable from '../dataset-table/DatasetTable';
 import useDatasets from '../../../../hooks/useDatasets';
-import DatasetForm from '../dataset-form-modal/DatasetFormModal';
 import { useState } from 'react';
-import { DEFAULT_DATA_FORMAT, DEFAULT_REALM } from '../../constants';
+import { DEFAULT_DATA_FORMAT } from '../../constants';
 import { LOGGEDIN_USER } from '../../../../constants';
+import DatasetFormModal from '../dataset-form-modal/DatasetFormModal';
+import { DatasetForm } from '../../types';
 
 const DatasetList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -40,7 +40,7 @@ const DatasetList = () => {
     onClose();
   }
 
-  const handleSave = (data: any) => {
+  const handleSave = (data: DatasetForm) => {
     createMutation.mutate({ ...data, dataFormat: DEFAULT_DATA_FORMAT, userId: LOGGEDIN_USER.name });
   }
 
@@ -56,7 +56,7 @@ const DatasetList = () => {
         onEdit={(dataset: Dataset) => handleEdit(dataset)}
       />
 
-      <DatasetForm isOpen={isOpen} isSaveSuccess={isSaveSuccess} onClose={handleClose} onSave={(data: DesignForm) => handleSave(data)} />
+      <DatasetFormModal isOpen={isOpen} isSaveSuccess={isSaveSuccess} onClose={handleClose} onSave={(data: DatasetForm) => handleSave(data)} />
     </Box>
   )
 }

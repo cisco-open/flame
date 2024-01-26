@@ -16,18 +16,27 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useQuery } from "@tanstack/react-query";
-import { ExperimentData } from "../../../entities/Experiment";
-import ApiClient from "../../../services/api-client";
-import { ArtifactsRequestParams } from "../types";
+import { TableContainer, Table, Thead, Tr, Th, Tbody } from "@chakra-ui/react";
 
-const useArtifacts = (data: ArtifactsRequestParams) => {
-  const apiClient = new ApiClient<any>('mlflow/artifacts/list', true);
-  return useQuery({
-    enabled: !!data.run_uuid || !!data.path,
-    queryKey: ['artifacts', data.run_uuid],
-    queryFn: () => apiClient.getAll({ params: data }),
-  });
+const columns = ['Compute ID', 'Admin ID', 'Region', ''];
+
+const ComputesList = () => {
+
+  return (
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
+        <Table variant='simple' fontSize={12} size="sm">
+          <Thead>
+              <Tr>
+                  {columns.map(column => <Th key={column}>{column}</Th>)}
+              </Tr>
+          </Thead>
+
+          <Tbody>
+
+          </Tbody>
+        </Table>
+    </TableContainer>
+  )
 }
 
-export default useArtifacts;
+export default ComputesList;

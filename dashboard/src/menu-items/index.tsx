@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
 import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import StorageIcon from '@mui/icons-material/Storage';
 
 const menuItems: MenuItem[] = [
   {
@@ -50,6 +51,13 @@ const menuItems: MenuItem[] = [
     type: 'item',
     url: '/datasets',
     icon: <FolderOpenOutlinedIcon sx={{ color: 'gray' }} fontSize="inherit"/>
+  },
+  {
+    id: 'computes',
+    title: 'COMPUTES',
+    type: 'item',
+    url: '/computes',
+    icon: <StorageIcon sx={{ color: 'gray' }} fontSize="inherit"/>
   },
 ];
 

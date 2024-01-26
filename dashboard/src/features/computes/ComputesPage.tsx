@@ -16,47 +16,44 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Button, useDisclosure, Text } from '@chakra-ui/react';
+import { Button, Box, Text, useDisclosure } from '@chakra-ui/react';
 import AddIcon from '@mui/icons-material/Add';
-import { useEffect, useState } from 'react';
-import { Job } from '../../entities/Job';
-import JobFormModal from './components/job-form-modal/JobFormModal';
-import JobsList from './components/JobsList';
-import useJob from './hooks/useJob';
+import { useEffect } from 'react';
+import ComputeFormModal from './compute-form-modal/ComputeFormModal';
+import ComputesList from './computes-list/ComputesList';
+import useComputes from './hooks/useComputes';
+import { ComputeFormData } from './types';
+import { LOGGEDIN_USER } from '../../constants';
 
-const JobPage = () => {
+const ComputesPage = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [ jobInEdit, setJobInEdit ] = useState<Job | null>(null);
-  const { data: job } = useJob(jobInEdit?.id || '');
+  const { data, createMutation } = useComputes(LOGGEDIN_USER.name, onClose);
 
   useEffect(() => {
-    if (job) {
-      onOpen();
-    }
-  }, [job]);
+    console.log(data);
+  }, data);
 
   const handleClose = () => {
-    setJobInEdit(null);
     onClose();
   };
 
-  const handleEditJob = (job: Job) => {
-    setJobInEdit(job);
+  const onSave = (data: ComputeFormData) => {
+    createMutation.mutate({ ...data });
   }
 
   return (
     <Box gap={5} display="flex" flexDirection="column" height="100%" overflow="hidden">
       <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
-        <Text as="h1" fontWeight="bold">JOBS</Text>
+        <Text as="h1" fontWeight="bold">COMPUTES</Text>
 
         <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" size="xs" colorScheme="primary">Create New</Button>
       </Box>
 
-      <JobsList openJobModal={(job: Job) => handleEditJob(job)} />
+      <ComputesList />
 
-      { isOpen && <JobFormModal isOpen={isOpen} job={job} onClose={handleClose}/> }
+      { isOpen && <ComputeFormModal isOpen={isOpen} onClose={handleClose} onSave={onSave} /> }
     </Box>
   )
 }
 
-export default JobPage;
+export default ComputesPage

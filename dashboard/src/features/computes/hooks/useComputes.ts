@@ -18,30 +18,25 @@
 
 import { useToast } from "@chakra-ui/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { LOGGEDIN_USER } from "../../../constants";
-import { Job } from "../../../entities/Job";
 import ApiClient from "../../../services/api-client";
 
-const apiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs`);
-
-const useJobs = (id?: string, onClose?: () => void) => {
-    const jobStatusApiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs/${id}/status`);
-    const jobsApiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs/${id}`);
+const useComputes = (adminId?: string, onClose?: () => void) => {
+    const apiClient = new ApiClient<any[]>('computes');
 
     const toast = useToast();
     const queryClientHook = useQueryClient();
 
     const queryClient =  useQuery({
-        queryKey: ['jobs'],
-        queryFn: apiClient.getAll,
+        queryKey: ['computes'],
+        queryFn: () => apiClient.getAll({ params: { adminId }}),
     });
 
     const deleteMutation = useMutation({
-       mutationFn: jobsApiClient.deleteWithoutParam,
+       mutationFn: apiClient.delete,
        onSuccess: () => {
-            queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries({ queryKey: ['computes'] });
             toast({
-                title: 'Job successfully deleted',
+                title: 'Compute successfully deleted',
                 status: 'success',
             });
        }
@@ -50,9 +45,9 @@ const useJobs = (id?: string, onClose?: () => void) => {
     const createMutation = useMutation({
         mutationFn: apiClient.post,
         onSuccess: () => {
-            queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries({ queryKey: ['computes'] });
             toast({
-                title: 'Job successfully created',
+                title: 'Compute successfully created',
                 status: 'success',
             });
 
@@ -61,29 +56,18 @@ const useJobs = (id?: string, onClose?: () => void) => {
     });
 
     const editMutation = useMutation({
-        mutationFn: jobsApiClient.put,
+        mutationFn: apiClient.put,
         onSuccess: () => {
-            queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries({ queryKey: ['computes'] });
             toast({
-                title: 'Job successfully updated',
+                title: 'Compute successfully updated',
                 status: 'success',
             });
             if (onClose) { onClose() }
         }
     });
 
-    const updateStatusMutation = useMutation({
-        mutationFn: jobStatusApiClient.put,
-        onSuccess: () => {
-            queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
-            toast({
-                title: 'Job status successfully updated',
-                status: 'success',
-            })
-        },
-    });
-
-    return { ...queryClient, createMutation, updateStatusMutation, editMutation, deleteMutation }
+    return { ...queryClient, createMutation, editMutation, deleteMutation }
 }
 
-export default useJobs;
+export default useComputes;

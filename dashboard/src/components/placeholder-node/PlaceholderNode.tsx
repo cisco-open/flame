@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,13 +20,7 @@ import { Handle, Position, ReactFlowState, useStore } from 'reactflow';
 import { useEffect, useState } from 'react';
 import { Tooltip } from '@chakra-ui/react';
 import './PlaceholderNode.scss';
-
-const colors: any = {
-  failed: 'red',
-  completed: 'gray',
-  ready: 'green',
-  terminated: 'red'
-}
+import { NODE_COLORS } from '../../constants';
 
 const connectionNodeIdSelector = (state: ReactFlowState) => state.connectionNodeId;
 
@@ -41,7 +35,7 @@ const PlaceholderNode = ({ data: { id, status, label, isInteractive } }: Props) 
   const isConnecting = !!connectionNodeId;
 
   useEffect(() => {
-    setStatusColor(colors[status])
+    setStatusColor(NODE_COLORS[status])
     setTooltip(`${status?.[0].toUpperCase()}${status?.substring(1)}`)
   }, [status])
 

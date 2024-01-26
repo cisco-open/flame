@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@ import DesignDetailsPage from "../features/design-details/DesignDetailsPage";
 import JobPage from "../features/jobs/JobPage";
 import JobDetailsPage from "../features/job-details/JobDetailsPage";
 import DatasetsPage from "../features/datasets/DatasetsPage";
+import ComputesPage from "../features/computes/ComputesPage";
 
 const router = createBrowserRouter([
     {
@@ -55,6 +56,10 @@ const router = createBrowserRouter([
             {
                 path: '/datasets',
                 element: <DatasetsPage />
+            },
+            {
+                path: '/computes',
+                element: <ComputesPage />
             }
         ]
     }

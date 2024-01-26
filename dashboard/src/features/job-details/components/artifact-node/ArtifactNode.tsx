@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,10 +26,9 @@ interface Props {
   node?: any;
   style?: any;
   dragHandle?: any;
-  tree?: any;
 }
 
-const ArtifactNode = ({ node, style, dragHandle, tree }: Props) => {
+const ArtifactNode = ({ node, style, dragHandle }: Props) => {
   const CustomIcon = node?.data?.icon;
   const iconColor = node?.data?.iconColor;
   const { onFileSelect } = useContext(ArtifactContext);

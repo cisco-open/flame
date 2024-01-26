@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react';
 import ReactFlow, { Background, useReactFlow } from 'reactflow';
 import CustomConnectionLine from '../../../../components/custom-connection-line/CustomConnectionLine';
 import { edgeTypes, nodeTypes, defaultEdgeOptions, connectionLineStyle } from '../../constants';
-import { getEdgesForExpanded, getLayoutedElements, getNodesForExpandedTopology } from '../../utils';
+import { getEdgesForExpanded, getTreeLayoutedElements, getNodesForExpandedTopology } from '../../utils';
 
 
 interface Props {
@@ -36,7 +36,7 @@ const ExpandedTopology = ({ nodes }: Props) => {
     const newNodes = getNodesForExpandedTopology(nodes);
     const edges = getEdgesForExpanded(newNodes);
 
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, edges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getTreeLayoutedElements(newNodes, edges);
 
     setNewNodes([...layoutedNodes]);
     setEdges([...layoutedEdges]);

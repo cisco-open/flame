@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -53,4 +53,12 @@ export interface Timelineitem {
   start: number;
   end: number;
   bgColor: string;
+}
+
+export interface ArtifactTreeItem {
+  id: string;
+  isDir: boolean;
+  is_dir: boolean;
+  name: string;
+  path: string;
 }

@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,6 @@
  */
 
 import { TabList, TabPanel, Tab, TabPanels, Tabs } from '@chakra-ui/react';
-import { useContext, useState } from 'react';
-import { JobDetailsContext } from '../../JobDetailsContext';
 import RunMetrics from '../run-metrics/RunMetrics';
 import RunModelArtefact from '../run-model-artefact/RunModelArtefact';
 import RunParameters from '../run-parameters/RunParameters';
@@ -29,7 +27,6 @@ interface Props {
 }
 
 const WorkerDetails = ({ runDetails }: Props) => {
-  const { artifact } = useContext(JobDetailsContext);
   return (
     <Tabs className="run-details-tabs">
       <TabList>
