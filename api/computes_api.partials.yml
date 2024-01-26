@@ -40,6 +40,37 @@
               $ref: '#/components/schemas/Error'
         description: unexpected error
 
+  get:
+    operationId: getAllComputes
+    summary: Get list of all the computes created by the user.
+    tags:
+      - computes
+    parameters:
+      - description: Admin ID
+        name: adminId
+        in: query
+        schema:
+          format: string
+          type: string
+        style: form
+        explode: true
+        required: true
+    responses:
+      "200":
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ComputeSpec'
+        description: An array of computes
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+
 /computes/{computeId}:
   ########################################
   # Get the status of a compute cluster

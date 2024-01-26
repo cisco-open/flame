@@ -41,6 +41,7 @@ const (
 	//TODO append Field to distinguish the fields
 	DBFieldMongoID          = "_id"
 	DBFieldUserId           = "userid"
+	DBFieldAdminId          = "adminId"
 	DBFieldId               = "id"
 	DBFieldDesignId         = "designid"
 	DBFieldCode             = "code"

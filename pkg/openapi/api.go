@@ -36,6 +36,7 @@ import (
 // pass the data to a ComputesApiServicer to perform the required actions, then write the service results to the http response.
 type ComputesApiRouter interface {
 	DeleteCompute(http.ResponseWriter, *http.Request)
+	GetAllComputes(http.ResponseWriter, *http.Request)
 	GetComputeConfig(http.ResponseWriter, *http.Request)
 	GetComputeStatus(http.ResponseWriter, *http.Request)
 	GetDeploymentConfig(http.ResponseWriter, *http.Request)
@@ -112,6 +113,7 @@ type JobsApiRouter interface {
 // and updated with the logic required for the API.
 type ComputesApiServicer interface {
 	DeleteCompute(context.Context, string, string) (ImplResponse, error)
+	GetAllComputes(context.Context, string) (ImplResponse, error)
 	GetComputeConfig(context.Context, string, string) (ImplResponse, error)
 	GetComputeStatus(context.Context, string, string) (ImplResponse, error)
 	GetDeploymentConfig(context.Context, string, string, string) (ImplResponse, error)

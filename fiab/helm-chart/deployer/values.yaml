@@ -33,7 +33,7 @@ mlflow:
   servicePort: "5000"
 
 deployer:
-  adminId: "admin-2"
+  adminId: "foo"
   region: "default/us/west"
   computeId: "compute-1"
   apiKey: "apiKey-1"

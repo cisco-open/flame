@@ -77,6 +77,7 @@ const (
 
 	// Keys for computes endpoints
 	RegisterComputeEndpoint     = "REGISTER_COMPUTE"
+	GetAllComputesEndpoint      = "GET_ALL_COMPUTES"
 	GetComputeStatusEndpoint    = "GET_COMPUTE_STATUS"
 	UpdateComputeEndpoint       = "UPDATE_COMPUTE"
 	DeleteComputeEndpoint       = "DELETE_COMPUTE"
@@ -132,6 +133,7 @@ var URI = map[string]string{
 
 	// Computes
 	RegisterComputeEndpoint:     "/computes",
+	GetAllComputesEndpoint:      "/computes/?adminId={{.adminId}}",
 	GetComputeStatusEndpoint:    "/computes/{{.computeId}}",
 	UpdateComputeEndpoint:       "/computes/{{.computeId}}",
 	DeleteComputeEndpoint:       "/computes/{{.computeId}}",

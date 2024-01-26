@@ -73,6 +73,37 @@ func (s *ComputesApiService) DeleteCompute(ctx context.Context, computeId string
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("DeleteCompute method not implemented")
 }
 
+// GetAllComputes - Get list of all the computes created by the admin.
+func (s *ComputesApiService) GetAllComputes(ctx context.Context, adminId string) (openapi.ImplResponse, error) {
+	//TODO input validation
+	zap.S().Debugf("get list of computes for admin: %s ", adminId)
+
+	//create controller request
+	//construct URL
+	uriMap := map[string]string{
+		constants.ParamAdminID: adminId,
+	}
+	zap.S().Debugf("urimap: %s ", uriMap)
+
+	url := restapi.CreateURL(HostEndpoint, restapi.GetAllComputesEndpoint, uriMap)
+
+	zap.S().Debugf("url: %s ", url)
+
+	//send get request
+	code, body, err := restapi.HTTPGet(url)
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	var computeList []openapi.ComputeSpec
+	zap.S().Debugf("compute list: %s ", computeList)
+
+	err = util.ByteToStruct(body, &computeList)
+
+	return openapi.Response(http.StatusOK, computeList), err
+}
+
 // GetComputeConfig - Get configuration for a compute cluster
 func (s *ComputesApiService) GetComputeConfig(ctx context.Context, computeId string,
 	xAPIKEY string) (openapi.ImplResponse, error) {

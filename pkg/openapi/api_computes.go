@@ -74,6 +74,12 @@ func (c *ComputesApiController) Routes() Routes {
 			c.DeleteCompute,
 		},
 		{
+			"GetAllComputes",
+			strings.ToUpper("Get"),
+			"/computes",
+			c.GetAllComputes,
+		},
+		{
 			"GetComputeConfig",
 			strings.ToUpper("Get"),
 			"/computes/{computeId}/config",
@@ -131,6 +137,21 @@ func (c *ComputesApiController) DeleteCompute(w http.ResponseWriter, r *http.Req
 
 	xAPIKEYParam := r.Header.Get("X-API-KEY")
 	result, err := c.service.DeleteCompute(r.Context(), computeIdParam, xAPIKEYParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// GetAllComputes - Get all computes owned by an admin
+func (c *ComputesApiController) GetAllComputes(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query()
+	adminIdParam := query.Get(constants.ParamAdminID)
+
+	result, err := c.service.GetAllComputes(r.Context(), adminIdParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
