@@ -38,6 +38,7 @@ const (
 	GetDatasetEndPoint     = "GET_DATASET"
 	GetDatasetsEndPoint    = "GET_DATASETS"
 	GetAllDatasetsEndPoint = "GET_ALL_DATASETS"
+	DeleteDatasetEndPoint  = "DELETE_DATASET"
 
 	// Keys for design endpoints
 	CreateDesignEndPoint = "CREATE_DESIGN"
@@ -92,6 +93,7 @@ var URI = map[string]string{
 	// Dataset
 	CreateDatasetEndPoint:  "/users/{{.user}}/datasets",
 	GetDatasetEndPoint:     "/users/{{.user}}/datasets/{{.datasetId}}",
+	DeleteDatasetEndPoint:  "/users/{{.user}}/datasets/{{.datasetId}}",
 	GetDatasetsEndPoint:    "/users/{{.user}}/datasets/?limit={{.limit}}",
 	GetAllDatasetsEndPoint: "/datasets/?limit={{.limit}}",
 

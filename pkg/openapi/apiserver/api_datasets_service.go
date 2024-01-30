@@ -28,6 +28,7 @@ package apiserver
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -147,4 +148,26 @@ func (s *DatasetsApiService) UpdateDataset(ctx context.Context, user string, dat
 	//return Response(0, Error{}), nil
 
 	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDataset method not implemented")
+}
+
+// DeleteDataset - Delete dataset
+func (s *DatasetsApiService) DeleteDataset(ctx context.Context, user string, datasetId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Dataset request received for user: %s | DatasetId: %v", user, datasetId)
+
+	// create controller request
+	uriMap := map[string]string{
+		constants.ParamUser:      user,
+		constants.ParamDatasetID: datasetId,
+	}
+
+	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDatasetEndPoint, uriMap)
+
+	// send delete request
+	code, body, err := restapi.HTTPDelete(url, datasetId, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	return openapi.Response(http.StatusOK, fmt.Sprintf("%s dataset deleted", datasetId)), nil
 }

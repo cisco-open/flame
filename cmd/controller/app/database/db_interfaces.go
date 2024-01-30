@@ -43,6 +43,9 @@ type DatasetService interface {
 
 	// GetDatasetById returns the details of a particular dataset
 	GetDatasetById(string) (openapi.DatasetInfo, error)
+
+	// DeleteDataset deletes the design from the db
+	DeleteDataset(userId string, datasetId string) error
 }
 
 // DesignService is an interface that defines a collection of APIs related to design
