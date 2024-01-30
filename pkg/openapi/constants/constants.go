@@ -21,6 +21,7 @@ const (
 	ParamJobID     = "jobId"
 	ParamState     = "state"
 	ParamUser      = "user"
+	ParamAdminID   = "adminId"
 	ParamDesignID  = "designId"
 	ParamLimit     = "limit"
 	ParamTaskID    = "taskId"

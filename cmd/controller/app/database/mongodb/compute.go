@@ -18,6 +18,7 @@ package mongodb
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -82,6 +83,41 @@ func (db *MongoService) RegisterCompute(computeSpec openapi.ComputeSpec) (openap
 		}
 		return openapi.ComputeStatus{}, nil
 	}
+}
+
+func (db *MongoService) GetAllComputes(adminId string) ([]openapi.ComputeSpec, error) {
+	zap.S().Infof("Get computes info for admin: %s", adminId)
+
+	if adminId == "" {
+		return nil, errors.New("Admin ID parameter is required")
+	}
+	filter := bson.M{util.DBFieldIsPublic: true, util.DBFieldAdminId: adminId}
+
+	cursor, err := db.computeCollection.Find(context.TODO(), filter)
+	if err != nil {
+		zap.S().Warnf("Failed to fetch computes info: %v", err)
+
+		return nil, ErrorCheck(err)
+	}
+
+	defer cursor.Close(context.TODO())
+	var computeInfoList []openapi.ComputeSpec
+
+	for cursor.Next(context.TODO()) {
+		var computesInfo openapi.ComputeSpec
+		if err = cursor.Decode(&computesInfo); err != nil {
+			err = ErrorCheck(err)
+			zap.S().Errorf("Failed to decode compute info: %v", err)
+
+			return nil, err
+		}
+
+		computeInfoList = append(computeInfoList, computesInfo)
+	}
+
+	zap.S().Debugf("compute list db: %s ", computeInfoList)
+
+	return computeInfoList, nil
 }
 
 // UpdateComputeStatus update compute cluster's status

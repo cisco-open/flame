@@ -77,6 +77,19 @@ func (s *ComputesApiService) DeleteCompute(ctx context.Context, computeId string
 }
 
 // GetComputeConfig - Get configuration for a compute cluster
+func (s *ComputesApiService) GetAllComputes(ctx context.Context, adminId string) (openapi.ImplResponse, error) {
+	computeList, err := s.dbService.GetAllComputes(adminId)
+	zap.S().Debugf("compute list controller 1: %s ", computeList)
+
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), fmt.Errorf("failed to get list of computes: %v", err)
+	}
+	zap.S().Debugf("compute list controller: %s ", computeList)
+
+	return openapi.Response(http.StatusOK, computeList), nil
+}
+
+// GetComputeConfig - Get configuration for a compute cluster
 func (s *ComputesApiService) GetComputeConfig(ctx context.Context, computeId string,
 	xAPIKEY string) (openapi.ImplResponse, error) {
 	// TODO - update GetComputeConfig with the required logic for this service method.

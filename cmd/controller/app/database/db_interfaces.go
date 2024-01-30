@@ -157,6 +157,9 @@ type ComputeService interface {
 	// RegisterCompute registers a compute given a openapi.ComputeSpec
 	RegisterCompute(openapi.ComputeSpec) (openapi.ComputeStatus, error)
 
+	// GetAllComputes gets the list of computes owned by an admin
+	GetAllComputes(adminId string) ([]openapi.ComputeSpec, error)
+
 	// GetComputeIdsByRegion gets all the compute Ids associated with a region
 	GetComputeIdsByRegion(string) ([]string, error)
 
