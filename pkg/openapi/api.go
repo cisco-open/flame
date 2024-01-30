@@ -56,6 +56,7 @@ type DatasetsApiRouter interface {
 	GetDataset(http.ResponseWriter, *http.Request)
 	GetDatasets(http.ResponseWriter, *http.Request)
 	UpdateDataset(http.ResponseWriter, *http.Request)
+	DeleteDataset(http.ResponseWriter, *http.Request)
 }
 
 // DesignCodeApiRouter defines the required methods for binding the api requests to a responses for the DesignCodeApi
@@ -134,6 +135,7 @@ type DatasetsApiServicer interface {
 	GetDataset(context.Context, string, string) (ImplResponse, error)
 	GetDatasets(context.Context, string, int32) (ImplResponse, error)
 	UpdateDataset(context.Context, string, string, DatasetInfo) (ImplResponse, error)
+	DeleteDataset(context.Context, string, string) (ImplResponse, error)
 }
 
 // DesignCodeApiServicer defines the api actions for the DesignCodeApi service

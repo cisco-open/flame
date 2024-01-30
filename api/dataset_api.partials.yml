@@ -227,3 +227,42 @@
     summary: Update meta info for a given dataset
     tags:
       - datasets
+
+  #------------------------------------#
+  # Delete Dataset via ID
+  #------------------------------------#
+  delete:
+    operationId: deleteDatset
+    parameters:
+      - name: user
+        description: User ID
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+      - name: datasetId
+        description: Dataset ID
+        explode: false
+        in: path
+        required: true
+        schema:
+          type: string
+        style: simple
+    responses:
+      '200':
+        description: Deleted
+      '404':
+        description: Dataset not found
+      '401':
+        description: Unauthorized
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Delete dataset
+    tags:
+      - datasets

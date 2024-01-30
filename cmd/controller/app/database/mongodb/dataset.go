@@ -67,6 +67,24 @@ func (db *MongoService) setDatasetId(docId primitive.ObjectID) error {
 	return nil
 }
 
+func (db *MongoService) DeleteDataset(userId string, datasetId string) error {
+	zap.S().Debugf("Delete dataset : %v, %v", userId, datasetId)
+
+	updateRes, err := db.datasetCollection.DeleteOne(context.TODO(),
+		bson.M{util.DBFieldUserId: userId, util.DBFieldId: datasetId})
+	if err != nil {
+		return fmt.Errorf("failed to delete dataset error: %v", err)
+	}
+
+	if updateRes.DeletedCount == 0 {
+		return fmt.Errorf("dataset id %s not found", datasetId)
+	}
+
+	zap.S().Debugf("Successfully deleted dataset: %v", updateRes)
+
+	return nil
+}
+
 func (db *MongoService) GetDatasetById(datasetId string) (openapi.DatasetInfo, error) {
 	zap.S().Infof("get dataset info for datasetId: %s", datasetId)
 

@@ -23,6 +23,7 @@ const (
 	ParamUser      = "user"
 	ParamAdminID   = "adminId"
 	ParamDesignID  = "designId"
+	ParamDatasetID = "datasetId"
 	ParamLimit     = "limit"
 	ParamTaskID    = "taskId"
 	ParamKey       = "key"

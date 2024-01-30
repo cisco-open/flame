@@ -179,3 +179,15 @@ func (s *DatasetsApiService) checkComputeForDatasetByComputeId(datasetRealm stri
 	}
 	return nil
 }
+
+// DeleteDataset - Delete dataset
+func (s *DatasetsApiService) DeleteDataset(ctx context.Context, user string, datasetId string) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received DeleteDataset Delete request: %s | %s", user, datasetId)
+
+	err := s.dbService.DeleteDataset(user, datasetId)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, nil), nil
+}

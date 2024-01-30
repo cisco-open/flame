@@ -80,6 +80,38 @@ func Create(params Params) error {
 	return nil
 }
 
+func Remove(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		constants.ParamUser:      params.User,
+		constants.ParamDatasetID: params.DatasetId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDatasetEndPoint, uriMap)
+
+	// send delete request
+	code, responseBody, err := restapi.HTTPDelete(url, nil, "")
+
+	if err != nil {
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+
+		fmt.Printf("Failed to delete dataset '%s' - code: %d; %s\n",
+			params.DatasetId, code, msg)
+		return nil
+	}
+
+	if restapi.CheckStatusCode(code) != nil {
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to delete dataset '%s': %s\n", params.DatasetId, msg)
+		return nil
+	}
+
+	fmt.Printf("Dataset '%s' deleted successfully\n", params.DatasetId)
+
+	return nil
+}
+
 func Get(params Params) error {
 	fmt.Println("Not yet implemented")
 	return nil
