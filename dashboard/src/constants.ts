@@ -19,3 +19,10 @@
 export const LOGGEDIN_USER = {
     name: 'foo'
 };
+
+export const NODE_COLORS: { [key: string]: string } = {
+    failed: 'red',
+    completed: 'gray',
+    ready: 'green',
+    terminated: 'red'
+}

@@ -16,27 +16,50 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, Icon, IconButton, Menu, MenuButton, MenuItem, MenuList, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr } from '@chakra-ui/react';
+import { Box, Icon, IconButton, Menu, MenuButton, MenuItem, MenuList, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr, useDisclosure } from '@chakra-ui/react';
 import { Dataset } from '../../../../entities/Dataset'
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import { useEffect, useState } from 'react';
 import { FaEllipsisVertical } from "react-icons/fa6";
-
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import ConfirmationDialog from '../../../../components/confirmation-dialog/ConfirmationDialog';
 interface Props {
   datasets: Dataset[] | undefined;
   onEdit: (dataset: Dataset) => void;
+  onDelete: (id: string) => void;
 }
 
-const DatasetTable = ({ datasets, onEdit }: Props) => {
+const DatasetTable = ({ datasets, onEdit, onDelete }: Props) => {
   const columns = ['Name', 'Realm', 'User ID', 'Data Format', 'Compute ID', ''];
   const [filteredDatasets, setFilteredDatasets] = useState<Dataset[] | undefined>([]);
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [ datasetId, setDatasetId ] = useState('');
 
   useEffect(() => {
     setFilteredDatasets(datasets);
   }, [datasets])
 
-  const onEditClicked = (event: any, dataset: Dataset) => {
+  const onEditClicked = (event: React.MouseEvent, dataset: Dataset) => {
+    event.stopPropagation();
+
     onEdit(dataset);
+  }
+
+  const onDeleteClicked = (event: React.MouseEvent, id: string) => {
+    event?.stopPropagation();
+    setDatasetId(id);
+    onOpen();
+  }
+
+  const handleConfirmationClose = () => {
+    onClose();
+    setDatasetId('');
+  }
+
+  const onDeleteConfirm = () => {
+    onDelete(datasetId);
+    setDatasetId('');
+    onClose();
   }
 
   return (
@@ -79,6 +102,13 @@ const DatasetTable = ({ datasets, onEdit }: Props) => {
                   >
                     Edit
                   </MenuItem>
+
+                  <MenuItem
+                    onClick={(event) => onDeleteClicked(event, dataset.id)} 
+                    icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
+                  >
+                    Delete
+                  </MenuItem>
                 </MenuList>
               </Menu>
             </Box>
@@ -87,6 +117,15 @@ const DatasetTable = ({ datasets, onEdit }: Props) => {
         )}
     </Tbody>
     </Table>
+
+    <ConfirmationDialog
+      actionButtonLabel={'Delete'}
+      message={'Are sure you want to delete this dataset?'}
+      buttonColorScheme={'red'}
+      isOpen={isOpen}
+      onClose={handleConfirmationClose}
+      onAction={onDeleteConfirm}
+    />
 </TableContainer>
   )
 }

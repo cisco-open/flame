@@ -17,8 +17,9 @@
  */
 
 import Dagre from '@dagrejs/dagre';
+import { Edge, Node } from 'reactflow';
 
-export const getLayoutedElements = (nodes: any[], edges: any[], rankdir: string, ranksep: number, nodesep: number) => {
+export const getGraphLayoutedElements = (nodes: Node[], edges: Edge[], rankdir: string, ranksep: number, nodesep: number) => {
   const g = new Dagre.graphlib.Graph().setDefaultEdgeLabel(() => ({}));
 
   g.setGraph({ rankdir, ranksep, nodesep, });
@@ -29,7 +30,7 @@ export const getLayoutedElements = (nodes: any[], edges: any[], rankdir: string,
   Dagre.layout(g);
 
   return {
-    nodes: nodes.map((node: any) => {
+    nodes: nodes.map((node: Node) => {
       const { x, y } = g.node(node.id);
 
       return { ...node, position: { x, y } };

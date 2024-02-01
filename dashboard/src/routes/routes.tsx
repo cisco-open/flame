@@ -25,6 +25,7 @@ import DesignDetailsPage from "../features/design-details/DesignDetailsPage";
 import JobPage from "../features/jobs/JobPage";
 import JobDetailsPage from "../features/job-details/JobDetailsPage";
 import DatasetsPage from "../features/datasets/DatasetsPage";
+import ComputesPage from "../features/computes/ComputesPage";
 
 const router = createBrowserRouter([
     {
@@ -55,6 +56,10 @@ const router = createBrowserRouter([
             {
                 path: '/datasets',
                 element: <DatasetsPage />
+            },
+            {
+                path: '/computes',
+                element: <ComputesPage />
             }
         ]
     }

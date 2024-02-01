@@ -24,7 +24,7 @@ import { edgeTypes, nodeTypes, connectionLineStyle } from '../../../design-detai
 import { fitViewOptions } from '../../JobDetailsPage'
 import { getEdges, getNodes, getTasksWithLevelsAndCounts } from '../../utils';
 import '../../../../components/custom-node-no-interaction/customNodeNoInteraction.css';
-import { getLayoutedElements } from '../../../utils'
+import { getGraphLayoutedElements } from '../../../utils'
 import { Task } from '../../../../entities/Task'
 
 const initialSearchCriteria: Partial<GetRunsPayload> = {
@@ -48,8 +48,8 @@ const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
   useEffect(() => {
     if (tasks?.length) {
       const edges = getEdges(tasks);
-      const nodes = getNodes(getTasksWithLevelsAndCounts(tasks), runs);
-      const layouted = getLayoutedElements(nodes, edges, 'TB', 200, 200);
+      const nodes = getNodes(getTasksWithLevelsAndCounts(tasks));
+      const layouted = getGraphLayoutedElements(nodes, edges, 'TB', 200, 200);
 
       setEdges([...layouted.edges]);
       setNodes([...layouted.nodes]);

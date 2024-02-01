@@ -31,7 +31,7 @@ export interface Schema {
 
 export interface Channel {
     description: string;
-    funcTags: any;
+    funcTags: { [key: string]: string[] };
     groupBy: GroupBy;
     name: string;
     pair: string[];

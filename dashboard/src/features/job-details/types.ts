@@ -16,9 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Task } from "../../entities/Task";
+
 export interface MetricsRequestParams {
-  run_uuid: string;
-  metric_key: string;
+  run_uuid: string | undefined;
+  metric_key: string | undefined;
 }
 
 export interface ArtifactsRequestParams {
@@ -53,4 +55,17 @@ export interface Timelineitem {
   start: number;
   end: number;
   bgColor: string;
+}
+
+export interface ArtifactTreeItem {
+  id: string;
+  isDir: boolean;
+  is_dir: boolean;
+  name: string;
+  path: string;
+}
+
+export interface MappedTask extends Task {
+  group: any;
+  count: number;
 }

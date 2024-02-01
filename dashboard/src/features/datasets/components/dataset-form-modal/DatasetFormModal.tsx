@@ -20,24 +20,32 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { Button, Checkbox, FormControl, FormLabel, Input, Modal, ModalBody, ModalCloseButton, ModalContent, ModalFooter, ModalHeader, ModalOverlay, SimpleGrid, Textarea } from '@chakra-ui/react';
-import { useEffect, useRef } from 'react';
+import { useContext, useEffect, useRef } from 'react';
 import './DatasetFormModal.css';
+import { DatasetForm } from '../../types';
+import { DatasetsContext } from '../../DatasetsContext';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: DatasetForm) => void;
   isSaveSuccess: boolean;
 }
 
-const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
+const DatasetFormModal = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
   const initialRef: React.MutableRefObject<null> = useRef(null);
+  const { datasetInEdit } = useContext(DatasetsContext);
 
   useEffect(() => {
     if (isSaveSuccess) {
       reset();
     }
   }, [isSaveSuccess])
+
+  useEffect(() => {
+    const dataset = datasetInEdit ? datasetInEdit : {};
+    reset({ ...dataset })
+  }, [datasetInEdit])
 
   const schema = yup.object().shape({
     name: yup.string().required(),
@@ -65,7 +73,7 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
     >
       <ModalOverlay />
       <ModalContent className="dataset-form">
-        <ModalHeader textAlign="center">Create Dataset</ModalHeader>
+        <ModalHeader textAlign="center">{ datasetInEdit ? 'Edit' : 'Create'} Dataset</ModalHeader>
 
         <ModalCloseButton />
 
@@ -117,4 +125,4 @@ const DatasetForm = ({ isOpen, isSaveSuccess, onClose, onSave }: Props) => {
   )
 }
 
-export default DatasetForm
+export default DatasetFormModal

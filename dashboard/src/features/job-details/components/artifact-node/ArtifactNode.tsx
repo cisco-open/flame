@@ -26,10 +26,9 @@ interface Props {
   node?: any;
   style?: any;
   dragHandle?: any;
-  tree?: any;
 }
 
-const ArtifactNode = ({ node, style, dragHandle, tree }: Props) => {
+const ArtifactNode = ({ node, style, dragHandle }: Props) => {
   const CustomIcon = node?.data?.icon;
   const iconColor = node?.data?.iconColor;
   const { onFileSelect } = useContext(ArtifactContext);
