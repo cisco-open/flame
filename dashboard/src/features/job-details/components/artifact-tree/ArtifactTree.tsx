@@ -21,9 +21,10 @@ import { useRef } from "react";
 import { Tree } from "react-arborist";
 import ArtifactNode from "../artifact-node/ArtifactNode";
 import './ArtifactTree.css';
+import { ArtifactTreeItem } from '../../types';
 
 interface Props {
-  data: any;
+  data: ArtifactTreeItem[];
 }
 
 const ArtifactTree = ({ data }: Props) => {

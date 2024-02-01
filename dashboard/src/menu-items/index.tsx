@@ -21,6 +21,7 @@ import DashboardOutlinedIcon from '@mui/icons-material/DashboardOutlined';
 import WorkOutlineOutlinedIcon from '@mui/icons-material/WorkOutlineOutlined';
 import DesignServicesOutlinedIcon from '@mui/icons-material/DesignServicesOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import StorageIcon from '@mui/icons-material/Storage';
 
 const menuItems: MenuItem[] = [
   {
@@ -50,6 +51,13 @@ const menuItems: MenuItem[] = [
     type: 'item',
     url: '/datasets',
     icon: <FolderOpenOutlinedIcon sx={{ color: 'gray' }} fontSize="inherit"/>
+  },
+  {
+    id: 'computes',
+    title: 'COMPUTES',
+    type: 'item',
+    url: '/computes',
+    icon: <StorageIcon sx={{ color: 'gray' }} fontSize="inherit"/>
   },
 ];
 

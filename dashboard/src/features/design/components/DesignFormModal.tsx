@@ -35,11 +35,12 @@ import { useForm } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import { DesignContext } from '../DesignContext';
+import { DesignForm } from '../types';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSave: (data: any) => void;
+  onSave: (data: DesignForm) => void;
 }
 
 const DesignFormModal = ({ isOpen, onClose, onSave }: Props ) => {

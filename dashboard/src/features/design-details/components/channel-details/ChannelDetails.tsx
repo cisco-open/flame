@@ -62,7 +62,7 @@ export const ChannelDetails = ({ channels, channel, funcTags, onSave, onDelete }
     onSave(getChannelPayload(getValues(), channel, mappedFuncTags));
   }
 
-  const onFuncTagChange = (event: any, targetRoleName: string) => {
+  const onFuncTagChange = (event: (string | number)[], targetRoleName: string) => {
     const updatedFuncTags = mappedFuncTags?.map(mappedTag => {
       if (mappedTag.roleName === targetRoleName) {
         return {

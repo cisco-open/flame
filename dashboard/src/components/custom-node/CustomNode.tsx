@@ -20,13 +20,7 @@ import { Handle, Position, ReactFlowState, useStore } from 'reactflow';
 import { useEffect, useState } from 'react';
 import { Tooltip } from '@chakra-ui/react';
 import '../../features/design-details/animations.css';
-
-const colors: any = {
-  failed: 'red',
-  completed: 'gray',
-  ready: 'green',
-  terminated: 'red'
-}
+import { NODE_COLORS } from '../../constants';
 
 const connectionNodeIdSelector = (state: ReactFlowState) => state.connectionNodeId;
 
@@ -44,7 +38,7 @@ const CustomNode = ({ data: { id, status, label } }: Props) => {
   const isTarget = connectionNodeId && connectionNodeId !== id;
 
   useEffect(() => {
-    setStatusColor(colors[status])
+    setStatusColor(NODE_COLORS[status])
     setTooltip(`${status?.[0].toUpperCase()}${status?.substring(1)}`)
   }, [status])
 

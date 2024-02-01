@@ -16,24 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box } from '@chakra-ui/react';
-import { time } from 'console';
-import React, { useEffect } from 'react'
+import { createContext } from "react";
+import { Dataset } from "../../entities/Dataset";
 
-const MetricsTooltip = (props: any) => {
-  if (props.active && props.payload && props.payload.length) {
-    const { name, time, category } = props.payload[0].payload;
-
-    return (
-      <Box bgColor="white" padding="10px" border="1px solid gray" boxShadow="rgba(58, 53, 65, 0.42) 0px 4px 8px -4px">
-        <p><strong>Category:</strong> {category}</p>
-        <p><strong>Name:</strong> {name}</p>
-        <p><strong>Time:</strong> {time} sec</p>
-      </Box>
-    );
-  }
-
-  return null;
+export interface DatasetContextType {
+    datasetInEdit: Dataset | undefined;
 }
 
-export default MetricsTooltip
+export const DatasetsContext = createContext<DatasetContextType>({} as DatasetContextType);

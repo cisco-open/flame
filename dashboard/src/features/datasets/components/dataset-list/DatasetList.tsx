@@ -17,47 +17,61 @@
  */
 
 import { Box, Button, useDisclosure, Text } from '@chakra-ui/react';
-import { DesignForm } from '../../../../entities/DesignForm';
 import AddIcon from '@mui/icons-material/Add';
 import { Dataset } from '../../../../entities/Dataset';
 import DatasetTable from '../dataset-table/DatasetTable';
 import useDatasets from '../../../../hooks/useDatasets';
-import DatasetForm from '../dataset-form-modal/DatasetFormModal';
 import { useState } from 'react';
-import { DEFAULT_DATA_FORMAT, DEFAULT_REALM } from '../../constants';
+import { DEFAULT_DATA_FORMAT } from '../../constants';
 import { LOGGEDIN_USER } from '../../../../constants';
+import DatasetFormModal from '../dataset-form-modal/DatasetFormModal';
+import { DatasetForm } from '../../types';
+import { DatasetsContext } from '../../DatasetsContext';
 
 const DatasetList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [ datasetId, setDatasetId ] = useState<string>('');
+  const [ datasetInEdit, setDatasetInEdit ] = useState<Dataset>();
   const [ isSaveSuccess, setIsSaveSuccess ] = useState<boolean>(false);
-  const { data: datasets, createMutation } = useDatasets({ onClose, setIsSaveSuccess });
-
-  const handleEdit = (dataset: Dataset) => {
-
-  }
+  const { data: datasets, createMutation, deleteMutation, updateMutation } = useDatasets({ onClose, setIsSaveSuccess, datasetId, setDatasetId });
 
   const handleClose = () => {
     onClose();
   }
 
-  const handleSave = (data: any) => {
-    createMutation.mutate({ ...data, dataFormat: DEFAULT_DATA_FORMAT, userId: LOGGEDIN_USER.name });
+  const handleSave = (data: DatasetForm) => {
+    datasetInEdit ?
+      updateMutation.mutate(data) :
+      createMutation.mutate({ ...data, dataFormat: DEFAULT_DATA_FORMAT, userId: LOGGEDIN_USER.name });
+  }
+
+  const handleDelete = (id: string) => {
+    setDatasetId(id);
+    deleteMutation.mutate(id);
+  }
+
+  const handleEdit = (dataset: Dataset) => {
+    setDatasetInEdit(dataset);
+    onOpen();
   }
 
   return (
-    <Box gap={5} display="flex" flexDirection="column" height="100%" overflow="hidden">
-      <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
-        <Text as="h1" fontWeight="bold">DATASETS</Text>
+    <DatasetsContext.Provider value={{ datasetInEdit }}>
+      <Box gap={5} display="flex" flexDirection="column" height="100%" overflow="hidden">
+        <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
+          <Text as="h1" fontWeight="bold">DATASETS</Text>
 
-        <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" size="xs" colorScheme="primary">Create New</Button>
+          <Button leftIcon={<AddIcon fontSize="small" />} onClick={onOpen} alignSelf="flex-end" size="xs" colorScheme="primary">Create New</Button>
+        </Box>
+        <DatasetTable
+          datasets={datasets}
+          onDelete={(id: string) => handleDelete(id)}
+          onEdit={(dataset: Dataset) => handleEdit(dataset)}
+        />
+
+        <DatasetFormModal isOpen={isOpen} isSaveSuccess={isSaveSuccess} onClose={handleClose} onSave={(data: DatasetForm) => handleSave(data)} />
       </Box>
-      <DatasetTable
-        datasets={datasets}
-        onEdit={(dataset: Dataset) => handleEdit(dataset)}
-      />
-
-      <DatasetForm isOpen={isOpen} isSaveSuccess={isSaveSuccess} onClose={handleClose} onSave={(data: DesignForm) => handleSave(data)} />
-    </Box>
+    </DatasetsContext.Provider>
   )
 }
 

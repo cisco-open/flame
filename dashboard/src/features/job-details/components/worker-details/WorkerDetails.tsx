@@ -17,8 +17,6 @@
  */
 
 import { TabList, TabPanel, Tab, TabPanels, Tabs } from '@chakra-ui/react';
-import { useContext, useState } from 'react';
-import { JobDetailsContext } from '../../JobDetailsContext';
 import RunMetrics from '../run-metrics/RunMetrics';
 import RunModelArtefact from '../run-model-artefact/RunModelArtefact';
 import RunParameters from '../run-parameters/RunParameters';
@@ -29,12 +27,13 @@ interface Props {
 }
 
 const WorkerDetails = ({ runDetails }: Props) => {
-  const { artifact } = useContext(JobDetailsContext);
   return (
     <Tabs className="run-details-tabs">
       <TabList>
         <Tab fontSize="12px">Hyperparameters</Tab>
+
         <Tab fontSize="12px">Metrics</Tab>
+        
         <Tab fontSize="12px">Model Artifact</Tab>
       </TabList>
 
@@ -42,9 +41,11 @@ const WorkerDetails = ({ runDetails }: Props) => {
         <TabPanel className="run-details-tab-panel">
           <RunParameters parameters={runDetails?.data?.params} />
         </TabPanel>
+
         <TabPanel className="run-details-tab-panel">
           <RunMetrics run={runDetails}/>
         </TabPanel>
+
         <TabPanel className="run-details-tab-panel">
           <RunModelArtefact runDetails={runDetails} />
         </TabPanel>

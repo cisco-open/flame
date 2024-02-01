@@ -16,8 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Run } from "../../entities/JobDetails";
+import { Metric, Run } from "../../entities/JobDetails";
 import { Task } from "../../entities/Task";
+import { MappedTask } from "./types";
 
 export const getEdges = (tasks: Task[]) => {
   const pairs = [];
@@ -25,7 +26,7 @@ export const getEdges = (tasks: Task[]) => {
     ...task,
     group: Object.values(task?.groupAssociation || {}) as string[],
     count: tasks.filter((t: Task) => t.role === task.role).length
-  })).sort(((a: any, b: any) => a.count - b.count));
+  })).sort(((a: MappedTask, b: MappedTask) => a.count - b.count));
 
   for (let i = 0; i < mappedTasks.length; i++) {
     const pair = mappedTasks.find((task, index) =>
@@ -57,48 +58,6 @@ const getEdgeLabel = (first: Task, second: Task) => {
 
 const hasSameGroup = (task: Task, secondTask: Task) => {
   return !!task.group?.find((group: string) => secondTask.group?.includes(group));
-}
-
-export const getInitialFileStructure = (data: any) => {
-  return data?.files?.map(((file: any, index: number) => ({
-    id: `${index}`,
-    name: file.path,
-    children: [],
-    isDir: true,
-  })));
-}
-
-export const getFileStructure = (artifacts: any, fileStructure: any) => {
-  const fs = [...fileStructure];
-  artifacts?.files?.map((file: any) => {
-    const parentIndex = fs.findIndex((f: any) => f.name === file.path.split('/')[0]);
-    const parent = fs[parentIndex];
-    const fileName = file.path.split(`${parent.name}/`)[1];
-
-    if (file.is_dir) {
-      fs[parentIndex].children.push({
-        id: `${parent.id}-${fileName}`,
-        name: fileName,
-        parentName: parent.name,
-        children: [],
-        path: file.path,
-        isDir: file.is_dir,
-        size: file.file_size,
-      })
-    } else {
-      fs[parentIndex].children.push({
-        id: `${parent.id}-${fileName}`,
-        parentName: parent.name,
-        name: fileName,
-        path: file.path,
-        isDir: file.is_dir,
-        size: file.file_size,
-      })
-    }
-
-  });
-
-  return fs;
 }
 
 export const getRuntimeMetrics = (runs: Run[] | undefined) => {
@@ -139,7 +98,7 @@ export const getRunName = (run: Run): string => {
   return run?.data?.tags?.find(tag => tag.key.includes('runName'))?.value || '';
 }
 
-export const getNodes = (tasks: Task[], runs: Run[] | undefined) => {
+export const getNodes = (tasks: Task[]) => {
   return tasks.map((task) => {
     return {
       id: task.taskId,
@@ -160,7 +119,7 @@ export const getTasksWithLevelsAndCounts = (tasks: Task[]): Task[] => {
     count: tasks.filter((t: any) => t.role === task.role).length,
   }));
   const levels = tasksWithCount.map((task: any) => task.count);
-  const counts = Array.from(new Set(levels)).sort((a: any, b: any) => a - b);
+  const counts = Array.from(new Set(levels)).sort((a: number, b: number) => a - b);
   return tasksWithCount.map((task: any) => ({
     ...task,
     level: counts.indexOf(task.count) + 1,
@@ -178,7 +137,7 @@ export const getTasksWithLevelsAndCounts = (tasks: Task[]): Task[] => {
   });
 }
 
-export const sortMetrics = (metrics: any) => metrics?.sort((a: any, b: any) => {
+export const sortMetrics = (metrics: Metric[]) => metrics?.sort((a: Metric, b: Metric) => {
   if ( a.key < b.key ){
     return -1;
   }

@@ -20,7 +20,7 @@ import { useEffect, useState } from 'react';
 import ReactFlow, { Background, useReactFlow } from 'reactflow';
 import CustomConnectionLine from '../../../../components/custom-connection-line/CustomConnectionLine';
 import { edgeTypes, nodeTypes, defaultEdgeOptions, connectionLineStyle } from '../../constants';
-import { getEdgesForExpanded, getLayoutedElements, getNodesForExpandedTopology } from '../../utils';
+import { getEdgesForExpanded, getTreeLayoutedElements, getNodesForExpandedTopology } from '../../utils';
 
 
 interface Props {
@@ -36,7 +36,7 @@ const ExpandedTopology = ({ nodes }: Props) => {
     const newNodes = getNodesForExpandedTopology(nodes);
     const edges = getEdgesForExpanded(newNodes);
 
-    const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(newNodes, edges);
+    const { nodes: layoutedNodes, edges: layoutedEdges } = getTreeLayoutedElements(newNodes, edges);
 
     setNewNodes([...layoutedNodes]);
     setEdges([...layoutedEdges]);

@@ -16,8 +16,11 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-export interface DesignForm {
-    description: string;
-    id: string;
-    name: string;
+export interface DatasetForm {
+  name: string;
+  url: string;
+  realm: string;
+  description: string | undefined;
+  computeId: string | undefined;
+  isPublic: boolean | undefined;
 }

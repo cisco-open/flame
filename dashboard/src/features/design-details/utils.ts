@@ -178,7 +178,7 @@ export const getUpdatedNodes = (role: any, nodes: any) => {
   return updatedNodes;
 }
 
-export const getUpdatedEdges = (channel: Channel, edges: any) => {
+export const getUpdatedEdges = (channel: Channel, edges: Edge[]) => {
   if (!edges?.length) { return; }
   const index = channel?.index || 0;
   const targetEdge = edges[index];
@@ -572,7 +572,7 @@ export const getSortedNodes = (nodes: any) => {
   })
 }
 
-export const getLayoutedElements = (nodes: any, edges: any) => {
+export const getTreeLayoutedElements = (nodes: any, edges: any) => {
   if (nodes.length === 0) return { nodes, edges };
   const g = tree();
 

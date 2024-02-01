@@ -29,16 +29,17 @@ interface Props {
 
 
 const RunMetrics = ({ run }: Props) => {
-  const [ selectedMetric, setSelectedMetric ] = useState<any>();
-  const [ sortedMetrics, setSortedMetrics ] = useState<any>();
+  const [ selectedMetric, setSelectedMetric ] = useState<{ run_uuid: string, metric_key: string }>();
+  const [ sortedMetrics, setSortedMetrics ] = useState<Metric[] | undefined>();
   const { data } = useMetrics({ run_uuid: selectedMetric?.run_uuid, metric_key: selectedMetric?.metric_key });
 
   useEffect(() => {
     if (!run?.data?.metrics) { return; }
+
     setSortedMetrics([...sortMetrics(run?.data?.metrics)]);
   }, [run]);
 
-  const onMetricSelect = (param: any) => {
+  const onMetricSelect = (param: Metric) => {
     setSelectedMetric({ run_uuid: run.info.run_uuid, metric_key: param.key })
   }
 
