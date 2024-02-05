@@ -28,6 +28,7 @@ const mutateApiClient = new ApiClient<Dataset>(`users/${LOGGEDIN_USER.name}/data
 const deleteApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/datasets`);
 
 const useDatasets = (data?: any) => {
+    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/datasets/${data.datasetInEdit?.id}`);
     const queryClientHook = useQueryClient();
     const toast = useToast();
     const createMutation = useMutation({
@@ -51,9 +52,11 @@ const useDatasets = (data?: any) => {
     });
 
     const updateMutation = useMutation({
-        mutationFn: apiClient.put,
+        mutationFn: updateApiClient.put,
         onSuccess: () => {
-            data?.setIsSaveSuccess(false);
+            queryClientHook.invalidateQueries({ queryKey: ['datasets'] });
+            data?.setIsSaveSuccess(true);
+            data?.onClose();
             toast({
                 title: 'Dataset successfully updated',
                 status: 'success',

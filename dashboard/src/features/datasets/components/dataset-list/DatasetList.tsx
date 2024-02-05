@@ -33,7 +33,7 @@ const DatasetList = () => {
   const [ datasetId, setDatasetId ] = useState<string>('');
   const [ datasetInEdit, setDatasetInEdit ] = useState<Dataset>();
   const [ isSaveSuccess, setIsSaveSuccess ] = useState<boolean>(false);
-  const { data: datasets, createMutation, deleteMutation, updateMutation } = useDatasets({ onClose, setIsSaveSuccess, datasetId, setDatasetId });
+  const { data: datasets, createMutation, deleteMutation, updateMutation } = useDatasets({ datasetInEdit, onClose, setIsSaveSuccess, datasetId, setDatasetId });
 
   const handleClose = () => {
     onClose();
