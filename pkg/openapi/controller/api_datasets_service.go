@@ -129,17 +129,12 @@ func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit
 // UpdateDataset - Update meta info for a given dataset
 func (s *DatasetsApiService) UpdateDataset(ctx context.Context, user string, datasetId string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	// TODO - update UpdateDataset with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	dataset, err := s.dbService.UpdateDataset(user, datasetId, datasetInfo)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
-
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
-
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDataset method not implemented")
+	return openapi.Response(http.StatusOK, dataset), nil
 }
 
 func (s *DatasetsApiService) checkComputeForDatasetByRegion(datasetRealm string, datasetInfo *openapi.DatasetInfo) error {
