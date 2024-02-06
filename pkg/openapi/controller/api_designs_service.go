@@ -98,3 +98,13 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 
 	return openapi.Response(http.StatusOK, designList), nil
 }
+
+func (s *DesignsApiService) UpdateDesign(ctx context.Context, user string, designId string,
+	designInfo openapi.DesignInfo) (openapi.ImplResponse, error) {
+	dataset, err := s.dbService.UpdateDesign(user, designId, designInfo)
+	if err != nil {
+		return openapi.Response(http.StatusInternalServerError, nil), err
+	}
+
+	return openapi.Response(http.StatusOK, dataset), nil
+}

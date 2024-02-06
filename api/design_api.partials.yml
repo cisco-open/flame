@@ -145,6 +145,47 @@
     summary: Get design template information
     tags:
       - designs
+
+  #------------------------------------#
+  # Update Design
+  #------------------------------------#
+  put:
+    operationId: updateDesign
+    parameters:
+      - name: user
+        description: User ID
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+      - name: designId
+        description: Design ID
+        in: path
+        schema:
+          type: string
+        style: simple
+        explode: false
+        required: true
+    requestBody:
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/DesignInfo'
+    responses:
+      "200":
+        description: Null response
+      default:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Error'
+        description: unexpected error
+    summary: Update design
+    tags:
+      - designs
+
 #------------------------------------#
 # Delete Design via ID
 #------------------------------------#
