@@ -38,6 +38,9 @@ type DatasetService interface {
 	// CreateDataset creates a new dataset in the db
 	CreateDataset(userId string, info openapi.DatasetInfo) (string, error)
 
+	// UpdateDataset updates a dataset in the db
+	UpdateDataset(userId string, datasetId string, dataset openapi.DatasetInfo) (openapi.DatasetInfo, error)
+
 	// GetDatasets returns a list of datasets associated with a user
 	GetDatasets(userId string, limit int32) ([]openapi.DatasetInfo, error)
 

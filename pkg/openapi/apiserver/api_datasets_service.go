@@ -137,17 +137,23 @@ func (s *DatasetsApiService) GetDatasets(ctx context.Context, user string, limit
 // UpdateDataset - Update meta info for a given dataset
 func (s *DatasetsApiService) UpdateDataset(ctx context.Context, user string, datasetId string,
 	datasetInfo openapi.DatasetInfo) (openapi.ImplResponse, error) {
-	// TODO - update UpdateDataset with the required logic for this service method.
-	// Add api_datasets_service.go to the .openapi-generator-ignore to avoid overwriting this service
-	// implementation when updating open api generation.
+	zap.S().Debugf("Update dataset request received for datasetId: %v", datasetId)
 
-	//TODO: Uncomment the next line to return response Response(200, {}) or use other options such as http.Ok ...
-	//return Response(200, nil),nil
+	//create controller request
+	uriMap := map[string]string{
+		constants.ParamUser:      user,
+		constants.ParamDatasetID: datasetId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateDatasetEndPoint, uriMap)
 
-	//TODO: Uncomment the next line to return response Response(0, Error{}) or use other options such as http.Ok ...
-	//return Response(0, Error{}), nil
+	//send put request
+	code, body, err := restapi.HTTPPut(url, datasetInfo, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
 
-	return openapi.Response(http.StatusNotImplemented, nil), errors.New("UpdateDataset method not implemented")
+	return openapi.Response(http.StatusOK, nil), err
 }
 
 // DeleteDataset - Delete dataset

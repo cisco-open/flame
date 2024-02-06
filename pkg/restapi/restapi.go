@@ -35,6 +35,7 @@ import (
 const (
 	// Keys for dataset endpoints
 	CreateDatasetEndPoint  = "CREATE_DATASET"
+	UpdateDatasetEndPoint  = "UPDATE_DATASET"
 	GetDatasetEndPoint     = "GET_DATASET"
 	GetDatasetsEndPoint    = "GET_DATASETS"
 	GetAllDatasetsEndPoint = "GET_ALL_DATASETS"
@@ -92,6 +93,7 @@ const (
 var URI = map[string]string{
 	// Dataset
 	CreateDatasetEndPoint:  "/users/{{.user}}/datasets",
+	UpdateDatasetEndPoint:  "/users/{{.user}}/datasets/{{.datasetId}}",
 	GetDatasetEndPoint:     "/users/{{.user}}/datasets/{{.datasetId}}",
 	DeleteDatasetEndPoint:  "/users/{{.user}}/datasets/{{.datasetId}}",
 	GetDatasetsEndPoint:    "/users/{{.user}}/datasets/?limit={{.limit}}",

@@ -54,6 +54,24 @@ func (db *MongoService) CreateDataset(userId string, dataset openapi.DatasetInfo
 	return dataset.Id, nil
 }
 
+func (db *MongoService) UpdateDataset(userId string, datasetId string, dataset openapi.DatasetInfo) (openapi.DatasetInfo, error) {
+	zap.S().Debugf("Updating dataset request for userId: %s | datasetId: %s", userId, datasetId)
+
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: datasetId}
+	update := bson.M{"$set": dataset}
+
+	var updatedDoc openapi.DatasetInfo
+
+	err := db.datasetCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
+
+	if err != nil {
+		zap.S().Errorf("Failed to update the dataset: %v", err)
+		return dataset, ErrorCheck(err)
+	}
+
+	return dataset, nil
+}
+
 func (db *MongoService) setDatasetId(docId primitive.ObjectID) error {
 	filter := bson.M{util.DBFieldMongoID: docId}
 	update := bson.M{"$set": bson.M{util.DBFieldId: GetStringID(docId)}}
