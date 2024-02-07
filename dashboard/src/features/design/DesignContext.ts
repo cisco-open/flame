@@ -20,7 +20,7 @@ import { createContext } from "react";
 import { Design } from "../../entities/Design";
 
 export interface DesignContextType {
-    designInEdit: Design;
+    designInEdit: Design | undefined;
 }
 
 export const DesignContext = createContext<DesignContextType>({} as DesignContextType);

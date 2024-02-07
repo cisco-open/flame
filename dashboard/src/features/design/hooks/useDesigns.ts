@@ -21,10 +21,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LOGGEDIN_USER } from "../../../constants";
 import { Design } from "../../../entities/Design";
 import ApiClient from "../../../services/api-client";
+import { AxiosError } from "axios";
 
 const apiClient = new ApiClient<Design[]>(`users/${LOGGEDIN_USER.name}/designs`);
 
-const useDesigns = () => {
+const useDesigns = (data?: any) => {
+    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/designs/${data.designInEdit?.id}`);
+
     const queryClientHook = useQueryClient();
     const toast = useToast();
 
@@ -35,6 +38,24 @@ const useDesigns = () => {
             toast({
                 title: 'Design successfully created',
                 status: 'success',
+            })
+        },
+    });
+
+    const updateMutation = useMutation({
+        mutationFn: updateApiClient.put,
+        onSuccess: () => {
+            queryClientHook.invalidateQueries({ queryKey: ['designs'] });
+            data?.onClose();
+            toast({
+                title: 'Design successfully updated',
+                status: 'success',
+            })
+        },
+        onError: (error: AxiosError) => {
+            toast({
+                title: `${error?.response?.data || 'An error occured.'}` ,
+                status: 'error',
             })
         },
     });
@@ -55,7 +76,7 @@ const useDesigns = () => {
         queryFn: apiClient.getAll,
     });
 
-    return { ...queryClient, createMutation, deleteMutation }
+    return { ...queryClient, createMutation, deleteMutation, updateMutation }
 }
 
 export default useDesigns;

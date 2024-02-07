@@ -75,7 +75,7 @@ const DesignFormModal = ({ isOpen, onClose, onSave }: Props ) => {
     >
       <ModalOverlay />
       <ModalContent>
-        <ModalHeader textAlign="center">Create Design</ModalHeader>
+        <ModalHeader textAlign="center">{ designInEdit ? 'Edit' : 'Create' } Design</ModalHeader>
 
         <ModalCloseButton />
 
