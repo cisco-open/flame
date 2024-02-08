@@ -88,6 +88,7 @@ type DesignsApiRouter interface {
 	DeleteDesign(http.ResponseWriter, *http.Request)
 	GetDesign(http.ResponseWriter, *http.Request)
 	GetDesigns(http.ResponseWriter, *http.Request)
+	UpdateDesign(http.ResponseWriter, *http.Request)
 }
 
 // JobsApiRouter defines the required methods for binding the api requests to a responses for the JobsApi
@@ -170,6 +171,7 @@ type DesignsApiServicer interface {
 	DeleteDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesigns(context.Context, string, int32) (ImplResponse, error)
+	UpdateDesign(context.Context, string, string, DesignInfo) (ImplResponse, error)
 }
 
 // JobsApiServicer defines the api actions for the JobsApi service

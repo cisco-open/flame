@@ -87,6 +87,9 @@ type DesignService interface {
 	DeleteDesignCode(userId string, designId string) error
 
 	GetDesignCodeRevision(userId string, designId string) (openapi.CodeApiResponse, error)
+
+	// UpdateDesign updates a design
+	UpdateDesign(userId string, designId string, design openapi.DesignInfo) (openapi.DesignInfo, error)
 }
 
 // JobService is an interface that defines a collection of APIs related to job

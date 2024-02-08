@@ -108,3 +108,22 @@ func (db *MongoService) GetDesigns(userId string, limit int32) ([]openapi.Design
 
 	return designInfoList, nil
 }
+
+func (db *MongoService) UpdateDesign(userId string, designId string,
+	design openapi.DesignInfo) (openapi.DesignInfo, error) {
+	zap.S().Debugf("Updating dataset request for userId: %s | datasetId: %s", userId, designId)
+
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId}
+	update := bson.M{"$set": design}
+
+	var updatedDoc openapi.DesignInfo
+
+	err := db.designCollection.FindOneAndUpdate(context.TODO(), filter, update).Decode(&updatedDoc)
+
+	if err != nil {
+		zap.S().Errorf("Failed to update the design: %v", err)
+		return design, ErrorCheck(err)
+	}
+
+	return design, nil
+}

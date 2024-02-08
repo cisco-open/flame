@@ -143,3 +143,25 @@ func (s *DesignsApiService) GetDesigns(ctx context.Context, user string, limit i
 
 	return openapi.Response(http.StatusOK, designInfoList), err
 }
+
+// UpdateDesign - Update design
+func (s *DesignsApiService) UpdateDesign(ctx context.Context, user string, designId string,
+	designInfo openapi.DesignInfo) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Update design request received for designId: %v", designId)
+
+	//create controller request
+	uriMap := map[string]string{
+		constants.ParamUser:     user,
+		constants.ParamDesignID: designId,
+	}
+	url := restapi.CreateURL(HostEndpoint, restapi.UpdateDesignEndPoint, uriMap)
+
+	//send put request
+	code, body, err := restapi.HTTPPut(url, designInfo, "application/json")
+	errResp, retErr := errorResponse(code, body, err)
+	if retErr != nil {
+		return errResp, retErr
+	}
+
+	return openapi.Response(http.StatusOK, nil), err
+}

@@ -92,6 +92,12 @@ func (c *DesignsApiController) Routes() Routes {
 			"/users/{user}/designs",
 			c.GetDesigns,
 		},
+		{
+			"UpdateDesign",
+			strings.ToUpper("Put"),
+			"/users/{user}/designs/{designId}",
+			c.UpdateDesign,
+		},
 	}
 }
 
@@ -167,6 +173,34 @@ func (c *DesignsApiController) GetDesigns(w http.ResponseWriter, r *http.Request
 		return
 	}
 	result, err := c.service.GetDesigns(r.Context(), userParam, limitParam)
+	// If an error occurred, encode the error with the status code
+	if err != nil {
+		c.errorHandler(w, r, err, &result)
+		return
+	}
+	// If no error, encode the body and the result code
+	EncodeJSONResponse(result.Body, &result.Code, w)
+}
+
+// UpdateDesign - Update design
+func (c *DesignsApiController) UpdateDesign(w http.ResponseWriter, r *http.Request) {
+	params := mux.Vars(r)
+	userParam := params[constants.ParamUser]
+
+	designIdParam := params["designId"]
+
+	designInfoParam := DesignInfo{}
+	d := json.NewDecoder(r.Body)
+	d.DisallowUnknownFields()
+	if err := d.Decode(&designInfoParam); err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+	if err := AssertDesignInfoRequired(designInfoParam); err != nil {
+		c.errorHandler(w, r, err, nil)
+		return
+	}
+	result, err := c.service.UpdateDesign(r.Context(), userParam, designIdParam, designInfoParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
