@@ -29,23 +29,19 @@ import { LOGGEDIN_USER } from '../../../constants';
 import { DesignForm } from '../types';
 
 const DesignList = () => {
-  const defaultDesignInEdit = {
-    description: '',
-    name: '',
-    id: '',
-    userId: ''
-  };
-
-  const { data, isLoading, createMutation, deleteMutation } = useDesigns();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [ designInEdit, setDesignInEdit ] = useState<Design>(defaultDesignInEdit);
+  const [ designInEdit, setDesignInEdit ] = useState<Design>();
+
+  const { data, isLoading, createMutation, deleteMutation, updateMutation } = useDesigns({ designInEdit, onClose });
 
   useEffect(() => {
     handleClose();
   }, [createMutation.isSuccess])
 
   const handleSave = (data: DesignForm) => {
-    createMutation.mutate({ ...data, userId: LOGGEDIN_USER.name });
+    designInEdit ?
+      updateMutation.mutate({ ...data }) :
+      createMutation.mutate({ ...data, userId: LOGGEDIN_USER.name });
   };
 
   const handleDelete = (id: string) => {
@@ -53,13 +49,14 @@ const DesignList = () => {
   }
 
   const handleEdit = (design: Design) => {
+    console.log(design);
     setDesignInEdit(design);
     onOpen();
   }
 
   const handleClose = () => {
     onClose();
-    setDesignInEdit(defaultDesignInEdit);
+    setDesignInEdit(undefined);
   }
 
   if (isLoading) {
