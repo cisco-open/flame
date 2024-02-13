@@ -159,3 +159,37 @@ func GetMany(params Params, flagAll bool) error {
 
 	return nil
 }
+
+func Update(params Params) error {
+	// read dataset via conf file
+	jsonData, err := os.ReadFile(params.DatasetFile)
+	if err != nil {
+		return err
+	}
+
+	// read dataset from the json file
+	dataset := openapi.DatasetInfo{}
+	err = json.Unmarshal(jsonData, &dataset)
+	if err != nil {
+		return err
+	}
+
+	// construct URL
+	uriMap := map[string]string{
+		constants.ParamUser:      params.User,
+		constants.ParamDatasetID: params.DatasetId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.UpdateDatasetEndPoint, uriMap)
+
+	code, responseBody, err := restapi.HTTPPut(url, dataset, "application/json")
+	if err != nil && restapi.CheckStatusCode(code) != nil {
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to update dataset - code: %d; %s\n", code, msg)
+		return nil
+	}
+
+	fmt.Println("Updated dataset successfully")
+
+	return nil
+}
