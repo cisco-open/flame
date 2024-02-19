@@ -19,7 +19,7 @@
 import { Box, Button, ListItem, Popover, PopoverBody, PopoverContent, PopoverTrigger, Select, Text, UnorderedList, useDisclosure } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ReactFlow, { Background, NodeChange, applyNodeChanges, useEdgesState, addEdge, useReactFlow } from 'reactflow';
+import ReactFlow, { Background, NodeChange, applyNodeChanges, useEdgesState, addEdge, useReactFlow, ReactFlowProvider } from 'reactflow';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
 import React, { useCallback, useEffect, useState } from 'react';
 import 'reactflow/dist/style.css';
@@ -48,7 +48,7 @@ import { nodeTypes, edgeTypes, fitViewOptions, defaultEdgeOptions, connectionLin
 
 import "filepond/dist/filepond.min.css";
 import useSchema from './hooks/useSchemas';
-import { LOGGEDIN_USER } from '../../constants';
+import { COLORS, LOGGEDIN_USER } from '../../constants';
 import useCode from '../../hooks/useCode';
 import CustomConnectionLine from '../../components/custom-connection-line/CustomConnectionLine';
 import ExpandedTopology from './components/expanded-topology/ExpandedTopology';
@@ -82,11 +82,15 @@ const schemaFiles = [
   }
 ];
 
-const DesignDetailsPage = () => {
+interface Props {
+  externalDesignId?: string;
+}
+
+const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const jsZip = require("jszip");
   const navigate = useNavigate();
   const { id } = useParams();
-  const { data: design, isLoading } = useDesign(id || '');
+  const { data: design, isLoading } = useDesign(id || externalDesignId || '');
   const { updateMutation, deleteMutation } = useSchema(id || '')
   const { pushFileMutation, deleteCodeMutation } = useCode(id || '');
   const [ designSchema, setDesignSchema ] = useState<any>();
@@ -132,12 +136,12 @@ const DesignDetailsPage = () => {
   }, [id, designSchema]);
 
   useEffect(() => {
-    const nodes = getNodes(designSchema || undefined);
+    const nodes = getNodes(designSchema || undefined, externalDesignId);
     fitViewOptions.nodes = nodes?.map(node => ({ id: node.id }));
     setNodes(nodes);
-    setEdges(getEdges(designSchema || undefined));
+    setEdges(getEdges(designSchema || undefined, externalDesignId));
     setTimeout(() => fitView(), 10);
-  }, [designSchema]);
+  }, [designSchema, externalDesignId]);
 
   const checkSchemaValidity = (nodes: any, edges: any, fileNames: any) => {
     setSchemaValidity(getSchemaValidity(nodes, edges, fileNames));
@@ -180,12 +184,15 @@ const DesignDetailsPage = () => {
     }
   }
 
-  const onNodesChange = useCallback(
-    (changes: NodeChange[]) => setNodes((nds: any) => applyNodeChanges(changes, nds) as any),
-    []
+  const onNodesChange = useCallback(() => {
+    if (externalDesignId) { return; }
+    return (changes: NodeChange[]) => setNodes((nds: any) => applyNodeChanges(changes, nds) as any);
+  }, []
   );
 
   const onEdgeClick = (event: React.MouseEvent, edge: any) => {
+    if (externalDesignId) { return; }
+
     event.stopPropagation();
     const index = edges.findIndex((e: any) => e.id === edge.id);
     setChannel(undefined);
@@ -193,6 +200,8 @@ const DesignDetailsPage = () => {
     setRole(undefined);
   }
   const onNodeClick = (event: React.MouseEvent, node: any) => {
+    if (externalDesignId) { return; }
+
     event.stopPropagation();
     const index = nodes.findIndex((n: any) => n.id === node.id);
     setRole(undefined);
@@ -286,8 +295,8 @@ const DesignDetailsPage = () => {
     updateMutation.mutate(getSchemaPayload(designSchema, nodes, edges, design?.id));
   };
 
-  const getNodes = (schema: Schema | undefined) => schema ? mapNodes(schema) : [];
-  const getEdges = (schema: Schema | undefined) => schema ? mapEdges(schema) : [];
+  const getNodes = (schema: Schema | undefined, externalDesignId?: string) => schema ? mapNodes(schema, externalDesignId) : [];
+  const getEdges = (schema: Schema | undefined, externalDesignId?: string) => schema ? mapEdges(schema, externalDesignId) : [];
 
   const toggleExpandedTopology = () => {
     setDisplayExpandedTopology(!displayExpandedTopology);
@@ -337,31 +346,35 @@ const DesignDetailsPage = () => {
 
   return (
     <Box display="flex" flexDirection="column" height="100%" overflow="hidden">
-      <Box display="flex" alignItems="center" height="50px" position="relative">
-        <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' colorScheme="primary" size="xs">Back</Button>
+      {
+        !externalDesignId &&
+        <Box display="flex" alignItems="center" height="50px" position="relative">
+          <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' colorScheme="primary" size="xs">Designs</Button>
 
-        <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
+          <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
 
-        <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
-          <Select
-            size="xs"
-            placeholder='Select option'
-            value={selectedDesignTemplate}
-            onChange={(event) => handleTemplateChange(event)}
-          >
-            {schemaFiles?.map(file =>
-              <option key={file.id} value={file.id}>{file.name}</option>
-            )}
-          </Select>
+          <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
+            <Select
+              size="xs"
+              placeholder='Select design template'
+              backgroundColor={COLORS.white}
+              value={selectedDesignTemplate}
+              onChange={(event) => handleTemplateChange(event)}
+            >
+              {schemaFiles?.map(file =>
+                <option key={file.id} value={file.id}>{file.name}</option>
+              )}
+            </Select>
 
-          <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} flexShrink="0" variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
+            <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} flexShrink="0" variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
+          </Box>
         </Box>
-      </Box>
+      }
 
       <Box display="flex" height="calc(100% - 50px)" bgColor="white" borderRadius="10px" zIndex="1">
-        <Box flex="3" position="relative">
+        <Box flex="3" position="relative" className={externalDesignId ? 'external-usage' : ''}>
           {
-            !!errorMessages?.length &&
+            !!errorMessages?.length && !externalDesignId &&
             <Box className="design-details__errors">
               <Popover>
                 <PopoverTrigger>
@@ -381,45 +394,48 @@ const DesignDetailsPage = () => {
             </Box>
           }
 
-          <Box position="absolute" zIndex="1" top="20px" right="20px" display="flex" flexDirection="column" alignItems="flex-end" gap="20px">
-            <Box display="flex" gap="20px" position="relative">
+          {
+            !externalDesignId &&
+            <Box position="absolute" zIndex="1" top="20px" right="20px" display="flex" flexDirection="column" alignItems="flex-end" gap="20px">
+              <Box display="flex" gap="20px" position="relative">
+                {
+                  !errorMessages?.length &&
+                  !!nodes?.length &&
+                  !!edges?.length &&
+                  <Button
+                    variant='outline'
+                    colorScheme="secondary"
+                    onClick={toggleExpandedTopology}
+                    size="xs"
+                  >
+                    { displayExpandedTopology ? 'Collapse' : 'Expand' }
+                  </Button>
+                }
+
+                { !displayExpandedTopology &&
+                  <Button
+                    variant='outline'
+                    colorScheme="secondary"
+                    onClick={addNode} size="xs"
+                  >
+                    Add Role
+                  </Button>
+                }
+              </Box>
+
               {
-                !errorMessages?.length &&
-                !!nodes?.length &&
-                !!edges?.length &&
+                !!designSchema?.roles?.length &&
                 <Button
                   variant='outline'
-                  colorScheme="secondary"
-                  onClick={toggleExpandedTopology}
+                  colorScheme="red"
+                  onClick={openResetConfirmation}
                   size="xs"
                 >
-                  { displayExpandedTopology ? 'Collapse' : 'Expand' }
-                </Button>
-              }
-
-              { !displayExpandedTopology &&
-                <Button
-                  variant='outline'
-                  colorScheme="secondary"
-                  onClick={addNode} size="xs"
-                >
-                  Add Role
+                  Reset
                 </Button>
               }
             </Box>
-
-            {
-              !!designSchema?.roles?.length &&
-              <Button
-                variant='outline'
-                colorScheme="red"
-                onClick={openResetConfirmation}
-                size="xs"
-              >
-                Reset
-              </Button>
-            }
-          </Box>
+          }
 
 
           { displayExpandedTopology ?
@@ -439,8 +455,9 @@ const DesignDetailsPage = () => {
               connectionLineComponent={CustomConnectionLine as unknown as any}
               connectionLineStyle={connectionLineStyle}
               fitView
+              className={ externalDesignId ? 'design-details__react-flow--disabled' : ''}
             >
-              <Background />
+              { !externalDesignId && <Background /> }
             </ReactFlow>
           }
         </Box>

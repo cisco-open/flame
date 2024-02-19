@@ -1,0 +1,19 @@
+.list-item {
+  padding: 5px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  gap: 10px;
+
+  > * {
+    display: flex;
+    align-items: center;
+    flex: 2;
+    gap: 10px !important;
+  }
+}
+
+.list-item:hover {
+  background-color: rgb(224, 222, 222);
+}

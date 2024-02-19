@@ -82,7 +82,7 @@ const DesignFormModal = ({ isOpen, onClose, onSave }: Props ) => {
         <ModalBody pb={6} display="flex" flexDirection="column" gap="10px">
           <FormControl>
             <FormLabel fontSize="12px">ID</FormLabel>
-            <Input size="xs" placeholder='ID' {...register('id')} />
+            <Input isDisabled={!!designInEdit} size="xs" placeholder='ID' {...register('id')} />
           </FormControl>
 
           <FormControl>

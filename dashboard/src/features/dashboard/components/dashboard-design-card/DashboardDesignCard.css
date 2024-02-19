@@ -1,0 +1,35 @@
+.dashboard-design-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
+  background-color: #d6d3c8;
+  transition: all .2s ease-in-out;
+  transform: scale(1);
+  cursor: pointer;
+}
+
+.dashboard-design-card:hover {
+  transform: scale(1.01);
+}
+
+.dashboard-design-card__bottom {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dashboard-design-card__bottom__name {
+  font-size: 15px;
+  color: black;
+  text-transform: uppercase;
+}
+
+.dashboard-design-card__bottom__description {
+  font-size: 13px;
+  color: black;
+  font-style: italic;
+}
+

@@ -17,7 +17,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import ReactFlow, { Background, useReactFlow } from 'reactflow';
+import ReactFlow, { Background, ReactFlowProvider, useReactFlow } from 'reactflow';
 import CustomConnectionLine from '../../../../components/custom-connection-line/CustomConnectionLine';
 import { edgeTypes, nodeTypes, defaultEdgeOptions, connectionLineStyle } from '../../constants';
 import { getEdgesForExpanded, getTreeLayoutedElements, getNodesForExpandedTopology } from '../../utils';
@@ -47,18 +47,20 @@ const ExpandedTopology = ({ nodes }: Props) => {
   }, [nodes])
 
   return (
-    <ReactFlow
-      nodes={newNodes}
-      edges={edges}
-      edgeTypes={edgeTypes}
-      nodeTypes={nodeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      connectionLineComponent={CustomConnectionLine as unknown as any}
-      connectionLineStyle={connectionLineStyle}
-      fitView
-    >
-      <Background />
-    </ReactFlow>
+    <ReactFlowProvider>
+      <ReactFlow
+        nodes={newNodes}
+        edges={edges}
+        edgeTypes={edgeTypes}
+        nodeTypes={nodeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        connectionLineComponent={CustomConnectionLine as unknown as any}
+        connectionLineStyle={connectionLineStyle}
+        fitView
+      >
+        <Background />
+      </ReactFlow>
+    </ReactFlowProvider>
   )
 }
 

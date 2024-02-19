@@ -48,8 +48,10 @@
   cursor: default;
 }
 
-.customHandle {
+.custom-node-no-interaction-handle__target {
   opacity: 0;
+  pointer-events: none;
+  cursor: default !important;
 }
 
 div.custom-node-no-interaction-handle {
@@ -61,8 +63,9 @@ div.custom-node-no-interaction-handle {
   position: unset;
   background: transparent;
   transform: none;
-  cursor: pointer !important;
   opacity: 0;
+  pointer-events: none;
+  cursor: default !important;
 }
 
 .no-interaction > * {

@@ -25,6 +25,7 @@ import { MouseEvent, useState } from 'react';
 import ConfirmationDialog from '../../../components/confirmation-dialog/ConfirmationDialog';
 import { FaEllipsisVertical } from "react-icons/fa6";
 import { colors } from '../../..';
+import { COLORS } from '../../../constants';
 
 interface Props {
     designs: Design[] | undefined;
@@ -66,7 +67,7 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
   }
 
   return (
-    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor={COLORS.offWhite} borderRadius="10px" padding="10px">
         <Table variant='simple' fontSize={12} size="sm">
         <Thead>
             <Tr>

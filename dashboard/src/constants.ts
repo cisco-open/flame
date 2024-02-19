@@ -26,3 +26,15 @@ export const NODE_COLORS: { [key: string]: string } = {
     ready: 'green',
     terminated: 'red'
 }
+
+export const COLORS: { [key: string]: string} = {
+    white: '#ffffff',
+    offWhite: '#f9f9f9'
+}
+
+export const JOB_STATE = {
+    ready: 'ready',
+    completed: 'completed',
+    failed: 'failed',
+    all: 'all',
+}

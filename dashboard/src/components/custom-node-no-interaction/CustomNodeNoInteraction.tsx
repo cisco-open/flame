@@ -39,7 +39,7 @@ const CustomNodeNoInteraction = ({ data: { id, status, label, isInteractive } }:
   }, [status])
 
   return (
-    <div className={`customNode ${isInteractive ? 'interactive interactive-pulse' : 'no-interaction'}`}>
+    <div onWheelCapture={(event) => { event.preventDefault(); event?.stopPropagation(); }} onWheel={(event) => { event.preventDefault(); event?.stopPropagation(); }} className={`customNode ${isInteractive ? 'interactive interactive-pulse' : 'no-interaction'}`}>
       <div className="customNodeBody">
         {!isConnecting && (
           <Handle
@@ -61,7 +61,7 @@ const CustomNodeNoInteraction = ({ data: { id, status, label, isInteractive } }:
           </Tooltip>
         }
 
-        <Handle isConnectable={false} className="customHandle" position={Position.Left} type="target"></Handle>
+        <Handle isConnectable={false} className="customHandle custom-node-no-interaction-handle__target" position={Position.Left} type="target"></Handle>
         {label}
       </div>
     </div>

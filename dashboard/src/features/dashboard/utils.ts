@@ -1,5 +1,5 @@
 /**
- * Copyright 2023 Cisco Systems, Inc. and its affiliates
+ * Copyright 2024 Cisco Systems, Inc. and its affiliates
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,12 +16,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Schema } from "./DesignDetails";
+import { Job } from "../../entities/Job";
 
-export interface Design {
-    description: string;
-    id: string;
-    name: string;
-    userId: string;
-    schema?: Schema,
+export const mapJobsToStatus = (jobs: Job[]) => {
+  const jobState: { [key: string]: number} = {};
+  jobs?.forEach((item) => {
+
+    if (!jobState[item.state.toLowerCase()]) {
+      jobState[item.state.toLowerCase()] = 1;
+
+      return;
+    }
+
+    jobState[item.state.toLowerCase()] = jobState[item.state.toLowerCase()] + 1;
+  });
+
+  return jobState;
 }

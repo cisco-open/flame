@@ -35,6 +35,7 @@
     "react": "^18.2.0",
     "react-arborist": "^3.3.0-rc.1",
     "react-calendar-timeline": "^0.28.0",
+    "react-chartjs-2": "^5.2.0",
     "react-dom": "^18.2.0",
     "react-drag-drop-files": "^2.3.10",
     "react-filepond": "^7.1.2",
