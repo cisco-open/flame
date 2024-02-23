@@ -61,7 +61,7 @@ const JobDetailsPage = () => {
   return (
     <Box display="flex" flexDirection="column" gap="10px" height="100%">
       <Box display="flex" alignItems="center" position="relative" zIndex="1">
-        <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs')} colorScheme="primary" variant='link' size="xs">Back</Button>
+        <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/jobs?stateFilter=all')} colorScheme="primary" variant='link' size="xs">Jobs</Button>
 
         <Text as="h2" flex="1" textAlign="center" fontWeight="bold">{ job?.name }</Text>
       </Box>

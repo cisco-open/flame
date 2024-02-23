@@ -23,10 +23,11 @@ import { useEffect, useState } from 'react';
 import { FaEllipsisVertical } from "react-icons/fa6";
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ConfirmationDialog from '../../../../components/confirmation-dialog/ConfirmationDialog';
+import { COLORS } from '../../../../constants';
 interface Props {
   datasets: Dataset[] | undefined;
-  onEdit: (dataset: Dataset) => void;
-  onDelete: (id: string) => void;
+  onEdit?: (dataset: Dataset) => void;
+  onDelete?: (id: string) => void;
 }
 
 const DatasetTable = ({ datasets, onEdit, onDelete }: Props) => {
@@ -42,7 +43,9 @@ const DatasetTable = ({ datasets, onEdit, onDelete }: Props) => {
   const onEditClicked = (event: React.MouseEvent, dataset: Dataset) => {
     event.stopPropagation();
 
-    onEdit(dataset);
+    if (onEdit) {
+      onEdit(dataset);
+    }
   }
 
   const onDeleteClicked = (event: React.MouseEvent, id: string) => {
@@ -57,13 +60,15 @@ const DatasetTable = ({ datasets, onEdit, onDelete }: Props) => {
   }
 
   const onDeleteConfirm = () => {
-    onDelete(datasetId);
+    if (onDelete) {
+      onDelete(datasetId);
+    }
     setDatasetId('');
     onClose();
   }
 
   return (
-    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
+    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor={COLORS.offWhite} borderRadius="10px" padding="10px">
     <Table variant='simple' fontSize="12px" size="sm">
     <Thead>
         <Tr>
@@ -85,33 +90,36 @@ const DatasetTable = ({ datasets, onEdit, onDelete }: Props) => {
           <Td>{dataset.computeId}</Td>
 
           <Td>
-            <Box display="flex" gap="10px" justifyContent="flex-end">
-              <Menu>
-                <MenuButton
-                  as={IconButton}
-                  aria-label='Options'
-                  icon={<Icon as={FaEllipsisVertical} />}
-                  variant='outline'
-                  onClick={(event) => event.stopPropagation()}
-                  border="none"
-                />
-                <MenuList>
-                  <MenuItem
-                    onClick={(event) => onEditClicked(event, dataset)}
-                    icon={<EditOutlinedIcon fontSize="small"/>}
-                  >
-                    Edit
-                  </MenuItem>
+            {
+              onEdit && onDelete &&
+              <Box display="flex" gap="10px" justifyContent="flex-end">
+                <Menu>
+                  <MenuButton
+                    as={IconButton}
+                    aria-label='Options'
+                    icon={<Icon as={FaEllipsisVertical} />}
+                    variant='outline'
+                    onClick={(event) => event.stopPropagation()}
+                    border="none"
+                  />
+                  <MenuList>
+                    <MenuItem
+                      onClick={(event) => onEditClicked(event, dataset)}
+                      icon={<EditOutlinedIcon fontSize="small"/>}
+                    >
+                      Edit
+                    </MenuItem>
 
-                  <MenuItem
-                    onClick={(event) => onDeleteClicked(event, dataset.id)} 
-                    icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
-                  >
-                    Delete
-                  </MenuItem>
-                </MenuList>
-              </Menu>
-            </Box>
+                    <MenuItem
+                      onClick={(event) => onDeleteClicked(event, dataset.id)} 
+                      icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
+                    >
+                      Delete
+                    </MenuItem>
+                  </MenuList>
+                </Menu>
+              </Box>
+            }
           </Td>
         </Tr>
         )}

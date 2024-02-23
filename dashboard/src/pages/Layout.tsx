@@ -47,7 +47,7 @@ const MainLayout = () => {
               <Header onOpen={onOpen}/>
           </Box>
 
-          <Box flex="1" height="calc(100% - 50px)">
+          <Box flex="1" height="calc(100% - 50px)" zIndex="1">
             <Box>
                 <Sidebar onClose={onClose} isOpen={isOpen}/>
             </Box>

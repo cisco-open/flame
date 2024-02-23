@@ -16,20 +16,31 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { TableContainer, Table, Thead, Tr, Th, Tbody, Td, Text, Box, Tooltip, useDisclosure, IconButton, Menu, MenuButton, MenuItem, MenuList, Icon } from "@chakra-ui/react";
+import { TableContainer, Table, Thead, Tr, Th, Tbody, Td, Text, Box, Tooltip, useDisclosure, IconButton, Menu, MenuButton, MenuItem, MenuList, Icon, Select } from "@chakra-ui/react";
 import { Job } from "../../../entities/Job";
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import StopCircleIcon from '@mui/icons-material/StopCircle';
 import useJobs from "../hooks/useJobs";
 import { useNavigate } from "react-router-dom";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import ConfirmationDialog from "../../../components/confirmation-dialog/ConfirmationDialog";
 import { FaEllipsisVertical } from "react-icons/fa6";
 import { colors } from "../../..";
+import { COLORS, JOB_STATE } from "../../../constants";
+import { useSearchParams } from 'react-router-dom';
 
 const columns = ['Name', 'State', ''];
+
+const JOB_STATES = [
+  { label: 'All', value: JOB_STATE.all},
+  { label: 'Ready', value: JOB_STATE.ready},
+  { label: 'Completed', value: JOB_STATE.completed },
+  { label: 'Failed', value: JOB_STATE.failed }
+]
+
+
 
 interface Props {
   openJobModal: (job: Job) => void;
@@ -37,9 +48,17 @@ interface Props {
 
 const JobsList = ({ openJobModal }: Props) => {
   const [jobId, setJobId] = useState('');
-  const navigate = useNavigate();
   const { data: jobs, updateStatusMutation, deleteMutation } = useJobs(jobId);
+  const [ filteredData, setFilteredData ] = useState<Job[] | undefined>(jobs)
+  const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stateFilter = searchParams.get('stateFilter') || 'all';
+
+  useEffect(() => {
+    if (!stateFilter) { return; }
+    setFilteredData(stateFilter === 'all' ? [...(jobs || [])] : [...(jobs?.filter(job => job.state === stateFilter) || [])]);
+  }, [stateFilter, jobs])
 
   const onStartClick = (event: React.MouseEvent, job: Job) => {
     event.stopPropagation();
@@ -88,83 +107,90 @@ const JobsList = ({ openJobModal }: Props) => {
     openJobModal(job);
   }
 
+  const handleFilterChange = (event: any) => {
+    setSearchParams({ stateFilter: event.target.value || 'all' })
+  }
+
   return (
-    // <SimpleGrid columns={3} spacing="20px">
-    //   {jobs?.map(sjob => 
-    //     <JobCard />
-    //   )}
-    // </SimpleGrid>
-    <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor="white" borderRadius="10px" padding="10px">
-        <Table variant='simple' fontSize={12} size="sm">
-        <Thead>
-            <Tr>
-                {columns.map(column => <Th key={column}>{column}</Th>)}
-            </Tr>
-        </Thead>
+    <Box display="flex" flexDirection="column" gap="20px">
+      <Select placeholder='Filter by state' width="200px" size="xs" backgroundColor={COLORS.white} onChange={handleFilterChange} value={stateFilter}>
+        {
+          JOB_STATES.map(state => <option key={state.value} value={state.value}>{state.label}</option>)
+        }
+      </Select>
 
-        <Tbody>
-            {jobs?.map((job: Job) =>
-            <Tr height="50px" key={job.id}>
-                <Td>
-                  <Text as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal} onClick={() => goToJobDetails(job)}>{job.name}</Text>
-                </Td>
+      <TableContainer flex={1} overflowY="auto" zIndex="1" backgroundColor={COLORS.offWhite} borderRadius="10px" padding="10px">
+          <Table variant='simple' fontSize={12} size="sm">
+          <Thead>
+              <Tr>
+                  {columns.map(column => <Th key={column}>{column}</Th>)}
+              </Tr>
+          </Thead>
 
-                <Td>{job.state}</Td>
+          <Tbody>
+              {filteredData?.map((job: Job) =>
+              <Tr height="50px" key={job.id}>
+                  <Td>
+                    <Text as="span" cursor="pointer" textDecoration="underline" color={colors.primary.normal} onClick={() => goToJobDetails(job)}>{job.name}</Text>
+                  </Td>
 
-                <Td>
-                <Box display="flex" gap="10px" justifyContent="flex-end">
-                  <Menu>
-                    <MenuButton
-                      as={IconButton}
-                      aria-label='Options'
-                      icon={<Icon as={FaEllipsisVertical} />}
-                      variant='outline'
-                      onClick={(event) => event.stopPropagation()}
-                      border="none"
-                    />
-                    <MenuList>
-                      <MenuItem
-                        onClick={(event) => onEditClick(event, job)}
-                        icon={<EditOutlinedIcon fontSize="small"/>}
-                      >
-                        Edit
-                      </MenuItem>
+                  <Td>{job.state}</Td>
 
-                      <MenuItem
-                        onClick={(event) => job.state !== 'running' ? onStartClick(event, job) : onStopClick(event, job)}
-                        icon={
-                          job.state !== 'running' ?
-                            <PlayCircleOutlineIcon  fontSize="small"/> :
-                            <StopCircleIcon fontSize="small"/>
-                        }
-                      >
-                        {job.state !== 'running' ? 'Start Job' : 'Stop Job' }
-                      </MenuItem>
+                  <Td>
+                  <Box display="flex" gap="10px" justifyContent="flex-end">
+                    <Menu>
+                      <MenuButton
+                        as={IconButton}
+                        aria-label='Options'
+                        icon={<Icon as={FaEllipsisVertical} />}
+                        variant='outline'
+                        onClick={(event) => event.stopPropagation()}
+                        border="none"
+                      />
+                      <MenuList>
+                        <MenuItem
+                          onClick={(event) => onEditClick(event, job)}
+                          icon={<EditOutlinedIcon fontSize="small"/>}
+                        >
+                          Edit
+                        </MenuItem>
 
-                      <MenuItem
-                        onClick={(event) => openConfirmationModal(event, job.id)}
-                        icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
-                      >
-                        Delete
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
-                </Box>
-                </Td>
-            </Tr>
-            )}
-        </Tbody>
-        </Table>
+                        <MenuItem
+                          onClick={(event) => job.state !== 'running' ? onStartClick(event, job) : onStopClick(event, job)}
+                          icon={
+                            job.state !== 'running' ?
+                              <PlayCircleOutlineIcon  fontSize="small"/> :
+                              <StopCircleIcon fontSize="small"/>
+                          }
+                        >
+                          {job.state !== 'running' ? 'Start Job' : 'Stop Job' }
+                        </MenuItem>
 
-        <ConfirmationDialog
-          actionButtonLabel={'Delete'}
-          message={'Are sure you want to delete this job?'}
-          buttonColorScheme={'red'}
-          isOpen={isOpen}
-          onClose={handleConfirmationClose}
-          onAction={onDelete}
-        />
-    </TableContainer>
+                        <MenuItem
+                          onClick={(event) => openConfirmationModal(event, job.id)}
+                          icon={<DeleteOutlineOutlinedIcon fontSize="small"/>}
+                        >
+                          Delete
+                        </MenuItem>
+                      </MenuList>
+                    </Menu>
+                  </Box>
+                  </Td>
+              </Tr>
+              )}
+          </Tbody>
+          </Table>
+
+          <ConfirmationDialog
+            actionButtonLabel={'Delete'}
+            message={'Are sure you want to delete this job?'}
+            buttonColorScheme={'red'}
+            isOpen={isOpen}
+            onClose={handleConfirmationClose}
+            onAction={onDelete}
+          />
+      </TableContainer>
+    </Box>
   )
 }
 

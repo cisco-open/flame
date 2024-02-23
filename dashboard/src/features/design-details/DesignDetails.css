@@ -8,6 +8,19 @@
   z-index: 2;
 }
 
+.react-flow__attribution {
+  display: none;
+}
+
+.external-usage {
+  width: 100%;
+  height: 250px;
+}
+
+.design-details__react-flow--disabled {
+  pointer-events: none;
+}
+
 .design-details__errors {
   position: absolute;
   background-color: rgba(255,255,255,.5);

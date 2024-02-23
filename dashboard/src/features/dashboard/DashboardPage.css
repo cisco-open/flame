@@ -1,0 +1,116 @@
+.grid-item {
+  height: 100%;
+  background-color: white;
+  border-radius: 4px;
+  box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  overflow-y: auto;
+}
+
+.dashboard-page-container {
+  position: relative;
+  padding: 20px;
+  z-index: 1;
+  background-color: #f9f9f9;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 40px
+}
+
+.dashboard-page-container__item {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+
+  > * {
+    flex: 1;
+  }
+}
+
+.dashboard-page-container__item__title {
+  font-weight: bold;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.dashboard-page-container__item__jobs-count {
+  display: flex;
+  justify-content: space-evenly;
+
+  > * {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+
+    > * {
+      flex: 1;
+      gap: 5px;
+    }
+  }
+}
+
+.flame-link {
+  text-decoration: underline;
+  cursor: pointer;
+  color: blue;
+}
+
+.dashboard-page-container__item__jobs-count__item > *:first-child {
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.dashboard-page-container__item__jobs-count__item > *:last-child {
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.dashboard-page-container__item__content {
+  display: flex;
+  gap: 20px;
+  background: white;
+  box-shadow: rgba(58, 53, 65, 0.42) 0px 4px 8px -4px;
+  border-radius: 10px;
+  padding: 20px;
+
+  > * {
+    flex: 1;
+  }
+}
+
+.dashboard-page-container__item__jobs-chart {
+  height: 100%;
+  max-height: 40vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.dashboard-page-container__designs-datasets {
+  display: flex;
+  gap: 20px;
+}
+
+.dashboard-page-container__designs-datasets__item {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  flex: 1;
+}
+
+.dashboard-page-container__designs-datasets__item__card-container {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+
+  > * {
+    width: calc(100% / 2)
+  }
+}

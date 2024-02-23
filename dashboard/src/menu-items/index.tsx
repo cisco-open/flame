@@ -42,7 +42,7 @@ const menuItems: MenuItem[] = [
     id: 'jobs',
     title: 'JOBS',
     type: 'item',
-    url: '/jobs',
+    url: '/jobs?stateFilter=all',
     icon: <WorkOutlineOutlinedIcon sx={{ color: 'gray' }} fontSize="inherit"/>
   },
   {
@@ -52,13 +52,13 @@ const menuItems: MenuItem[] = [
     url: '/datasets',
     icon: <FolderOpenOutlinedIcon sx={{ color: 'gray' }} fontSize="inherit"/>
   },
-  {
-    id: 'computes',
-    title: 'COMPUTES',
-    type: 'item',
-    url: '/computes',
-    icon: <StorageIcon sx={{ color: 'gray' }} fontSize="inherit"/>
-  },
+  // {
+  //   id: 'computes',
+  //   title: 'COMPUTES',
+  //   type: 'item',
+  //   url: '/computes',
+  //   icon: <StorageIcon sx={{ color: 'gray' }} fontSize="inherit"/>
+  // },
 ];
 
 export default menuItems;

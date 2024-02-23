@@ -17,7 +17,6 @@
  */
 
 import { createBrowserRouter } from "react-router-dom";
-import DashboardPage from "../pages/DashboardPage";
 import ErrorPage from "../pages/ErrorPage";
 import MainLayout from "../pages/Layout";
 import DesignPage from "../features/design/DesignPage";
@@ -26,6 +25,7 @@ import JobPage from "../features/jobs/JobPage";
 import JobDetailsPage from "../features/job-details/JobDetailsPage";
 import DatasetsPage from "../features/datasets/DatasetsPage";
 import ComputesPage from "../features/computes/ComputesPage";
+import DashboardPage from "../features/dashboard/DashboardPage";
 
 const router = createBrowserRouter([
     {
@@ -57,10 +57,10 @@ const router = createBrowserRouter([
                 path: '/datasets',
                 element: <DatasetsPage />
             },
-            {
-                path: '/computes',
-                element: <ComputesPage />
-            }
+            // {
+            //     path: '/computes',
+            //     element: <ComputesPage />
+            // }
         ]
     }
 ]);

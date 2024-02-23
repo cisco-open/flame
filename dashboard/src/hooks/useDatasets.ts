@@ -28,7 +28,7 @@ const mutateApiClient = new ApiClient<Dataset>(`users/${LOGGEDIN_USER.name}/data
 const deleteApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/datasets`);
 
 const useDatasets = (data?: any) => {
-    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/datasets/${data.datasetInEdit?.id}`);
+    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/datasets/${data?.datasetInEdit?.id}`);
     const queryClientHook = useQueryClient();
     const toast = useToast();
     const createMutation = useMutation({

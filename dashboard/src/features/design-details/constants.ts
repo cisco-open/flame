@@ -23,6 +23,8 @@ import FloatingEdge from "../../components/floating-edge/FloatingEdge";
 import InvisibleEdge from "../../components/invisible-edge/InvisibleEdge";
 import PlaceholderNode from "../../components/placeholder-node/PlaceholderNode";
 import SelfConnectingEdge from "../../components/self-connecting-edge/SelfConnectingEdge";
+import NoInteractionEdge from "../../components/no-interaction-edge/NoInteractionEdge";
+import SelfConnectingNoInteraction from "../../components/self-containing-edge-no-interaction/SelfConnectingNoInteraction";
 
 export const initialNodes = [
   {
@@ -38,8 +40,9 @@ export const initialNodes = [
 ];
 
 export const fitViewOptions: FitViewOptions = {
-  padding: 1,
-  nodes: []
+  padding: 3,
+  nodes: [],
+  includeHiddenNodes: true,
 }
 
 
@@ -59,6 +62,8 @@ export const edgeTypes = {
   floating: FloatingEdge as unknown as any,
   selfConnecting: SelfConnectingEdge,
   invisible: InvisibleEdge as unknown as any,
+  noInteraction: NoInteractionEdge as unknown as any,
+  selfConnectingNoInteraction: SelfConnectingNoInteraction,
 }
 
 export const nodeTypes = {

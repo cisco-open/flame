@@ -29,24 +29,32 @@ export const getChannel = (schema: Schema | undefined, edge: Edge): Channel | un
 export const getRole = (schema: Schema | undefined, node: Node): Role | undefined =>
   schema?.roles?.find(role => role.name === node.id);
 
-export const mapNodes = (schema: Schema) => schema?.roles?.map((role, index) => ({
+export const mapNodes = (schema: Schema, externalDesignId?: string) => schema?.roles?.map((role, index) => ({
   id: role.name,
   data: { label: role.name },
   position: { x: role.name === 'coordinator' ? 500 : 100, y: role.name === 'coordinator' ? 400 : index * 200 },
-  type: 'custom',
+  type: externalDesignId ? 'customNodeNoInteraction' : 'custom',
   groupAssociation: role.groupAssociation,
   dragHandle: '.custom-drag-handle',
   role,
 }));
 
-export const mapEdges = (schema: Schema) => schema?.channels?.map(channel => ({
+export const mapEdges = (schema: Schema, externalDesignId?: string) => schema?.channels?.map(channel => ({
   id: `${channel.pair[0]}-${channel.pair[1]}`,
   label: channel.name,
   source: channel.pair[0],
   target: channel.pair[1],
-  type: channel.pair[1] === channel.pair[0] ? 'selfConnecting' : 'floating',
+  type: getEdgeType(channel, externalDesignId),
   channel: { ...channel },
 }));
+
+const getEdgeType = (channel: Channel, externalDesignId: string | undefined) => {
+  if (externalDesignId) {
+    return channel.pair[1] === channel.pair[0] ? 'selfConnectingNoInteraction' : 'noInteraction';
+  }
+
+  return channel.pair[1] === channel.pair[0] ? 'selfConnecting' : 'floating';
+}
 
 export const getEdgeParams = (source: any, target: any) => {
   const sourceIntersectionPoint = getNodeIntersection(source, target);
