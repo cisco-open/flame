@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 
 TAG_GET_DATATSET_SIZE = "getDatasetSize"
 
-
 class TopAggregator(BaseTopAggregator):
     """Top level Aggregator implements an ML aggregation role."""
 
