@@ -21,16 +21,23 @@ from copy import deepcopy
 from datetime import datetime
 
 from diskcache import Cache
-
-from flame.common.constants import (PROP_ROUND_END_TIME, PROP_ROUND_START_TIME,
-                                    DeviceType, TrainState)
-from flame.common.util import (MLFramework, get_ml_framework_in_use,
-                               weights_to_device, weights_to_model_device)
+from flame.common.constants import (
+    PROP_ROUND_END_TIME,
+    PROP_ROUND_START_TIME,
+    DeviceType,
+    TrainState,
+)
+from flame.common.util import (
+    MLFramework,
+    get_ml_framework_in_use,
+    weights_to_device,
+    weights_to_model_device,
+)
 from flame.mode.composer import Composer
-from flame.mode.horizontal.syncfl.top_aggregator import (TAG_AGGREGATE,
-                                                         TAG_DISTRIBUTE)
-from flame.mode.horizontal.syncfl.top_aggregator import \
-    TopAggregator as BaseTopAggregator
+from flame.mode.horizontal.syncfl.top_aggregator import TAG_AGGREGATE, TAG_DISTRIBUTE
+from flame.mode.horizontal.syncfl.top_aggregator import (
+    TopAggregator as BaseTopAggregator,
+)
 from flame.mode.message import MessageType
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizer.train_result import TrainResult
@@ -38,6 +45,7 @@ from flame.optimizer.train_result import TrainResult
 logger = logging.getLogger(__name__)
 
 TAG_GET_DATATSET_SIZE = "getDatasetSize"
+
 
 class TopAggregator(BaseTopAggregator):
     """Top level Aggregator implements an ML aggregation role."""
@@ -90,7 +98,9 @@ class TopAggregator(BaseTopAggregator):
 
             if MessageType.DATASAMPLER_METADATA in msg:
                 self.datasampler.handle_metadata_from_trainer(
-                    msg[MessageType.DATASAMPLER_METADATA], end, channel,
+                    msg[MessageType.DATASAMPLER_METADATA],
+                    end,
+                    channel,
                 )
 
             logger.debug(f"{end}'s parameters trained with {count} samples")

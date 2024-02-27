@@ -18,17 +18,17 @@
 import logging
 
 from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
-from flame.common.constants import TrainState, DeviceType
+from flame.common.constants import DeviceType, TrainState
 from flame.common.util import (
     MLFramework,
     get_ml_framework_in_use,
-    weights_to_model_device,
     weights_to_device,
+    weights_to_model_device,
 )
 from flame.mode.composer import Composer
+from flame.mode.horizontal.trainer import Trainer as BaseTrainer
 from flame.mode.message import MessageType
 from flame.mode.tasklet import Loop, Tasklet
-from flame.mode.horizontal.trainer import Trainer as BaseTrainer
 
 logger = logging.getLogger(__name__)
 
@@ -160,7 +160,9 @@ class Trainer(BaseTrainer):
 
             task_init = Tasklet("init", self.initialize)
 
-            task_put_dataset_size = Tasklet("upload_dataset_size", self.put, TAG_UPLOAD_DATASET_SIZE)
+            task_put_dataset_size = Tasklet(
+                "upload_dataset_size", self.put, TAG_UPLOAD_DATASET_SIZE
+            )
 
             task_get = Tasklet("fetch", self.get, TAG_FETCH)
 
