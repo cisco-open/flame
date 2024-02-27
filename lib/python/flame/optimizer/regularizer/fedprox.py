@@ -16,9 +16,9 @@
 """FedProx Regularizer."""
 import logging
 
-from .default import Regularizer
-
 from flame.common.util import get_params_as_vector_pytorch
+
+from .default import Regularizer
 
 logger = logging.getLogger(__name__)
 
@@ -35,18 +35,18 @@ class FedProxRegularizer(Regularizer):
     def get_term(self, **kwargs):
         """Calculate proximal term for client-side regularization."""
         import torch
-        
-        w = kwargs['w']
+
+        w = kwargs["w"]
         w_vector = get_params_as_vector_pytorch(w)
-        
-        if 'w_t_vector' in self.state_dict:
-            w_t_vector = self.state_dict['w_t_vector']
+
+        if "w_t_vector" in self.state_dict:
+            w_t_vector = self.state_dict["w_t_vector"]
         else:
-            w_t = kwargs['w_t']
+            w_t = kwargs["w_t"]
             w_t_vector = get_params_as_vector_pytorch(w_t)
-            self.state_dict['w_t_vector'] = w_t_vector
-        
+            self.state_dict["w_t_vector"] = w_t_vector
+
         return (self.mu / 2) * torch.sum(torch.pow(w_vector - w_t_vector, 2))
-    
+
     def update(self):
-        del self.state_dict['w_t_vector']
+        del self.state_dict["w_t_vector"]

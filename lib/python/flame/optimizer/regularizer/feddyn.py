@@ -17,7 +17,7 @@
 import logging
 
 from flame.common.constants import TrainState
-from flame.common.util import get_params_detached_pytorch, get_params_as_vector_pytorch
+from flame.common.util import get_params_as_vector_pytorch, get_params_detached_pytorch
 from flame.optimizer.regularizer.default import Regularizer
 
 logger = logging.getLogger(__name__)
@@ -49,13 +49,13 @@ class FedDynRegularizer(Regularizer):
 
         # concatenate weights into a vector
         w_vector = get_params_as_vector_pytorch(w)
-        
-        if 'w_t_vector' in self.state_dict:
-            w_t_vector = self.state_dict['w_t_vector']
+
+        if "w_t_vector" in self.state_dict:
+            w_t_vector = self.state_dict["w_t_vector"]
         else:
             w_t = [param for param in prev_model.parameters()]
             w_t_vector = get_params_as_vector_pytorch(w_t)
-            self.state_dict['w_t_vector'] = w_t_vector
+            self.state_dict["w_t_vector"] = w_t_vector
 
         # weight decay term using alpha parameter
         w_decay_term = (self.alpha / 2) * torch.sum(torch.pow(w_vector, 2))
@@ -86,5 +86,5 @@ class FedDynRegularizer(Regularizer):
 
         # adjust prev_grad
         self.prev_grad += w_vector - w_t_vector
-        
-        del self.state_dict['w_t_vector']
+
+        del self.state_dict["w_t_vector"]

@@ -15,14 +15,11 @@
 # SPDX-License-Identifier: Apache-2.0
 """SCAFFOLD Regularizer."""
 import logging
-
 from collections import defaultdict
 from copy import deepcopy
 
 from flame.common.constants import TrainState
-from flame.common.util import (get_params_as_vector_pytorch,
-                               get_params_detached_pytorch)
-from math import ceil
+from flame.common.util import get_params_as_vector_pytorch, get_params_detached_pytorch
 from flame.optimizer.regularizer.default import Regularizer
 
 logger = logging.getLogger(__name__)
