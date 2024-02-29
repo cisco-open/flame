@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/cbroglie/mustache v1.4.0
-	github.com/cenkalti/backoff/v4 v4.1.3
+	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/google/uuid v1.2.0
 	github.com/gorilla/mux v1.8.0
 	github.com/olekukonko/tablewriter v0.0.5
