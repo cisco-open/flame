@@ -36,7 +36,7 @@ setup(
         "boto3",
         "cloudpickle",
         "diskcache",
-        "mlflow==2.0.1",
+        "mlflow==2.1.1",
         "paho-mqtt",
         "protobuf==3.20.3",
         "grpcio==1.51.1",
