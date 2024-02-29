@@ -44,7 +44,7 @@ jobs:
         go-version: 1.18.x
 
     - name: Start MongoDB
-      uses: supercharge/mongodb-github-action@1.8.0
+      uses: supercharge/mongodb-github-action@1.10.0
 
     - name: Test
       run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
