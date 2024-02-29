@@ -10,7 +10,7 @@ require (
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/afero v1.8.2
 	github.com/spf13/cobra v1.4.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.4
 	github.com/sv-tools/mongoifc v1.11.2
 	github.com/tryvium-travels/memongo v0.9.0
 	go.mongodb.org/mongo-driver v1.11.2
