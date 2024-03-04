@@ -49,7 +49,6 @@ const DesignList = () => {
   }
 
   const handleEdit = (design: Design) => {
-    console.log(design);
     setDesignInEdit(design);
     onOpen();
   }

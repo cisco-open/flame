@@ -18,7 +18,6 @@
 
 import { Button, Box, Text, useDisclosure } from '@chakra-ui/react';
 import AddIcon from '@mui/icons-material/Add';
-import { useEffect } from 'react';
 import ComputeFormModal from './compute-form-modal/ComputeFormModal';
 import ComputesList from './computes-list/ComputesList';
 import useComputes from './hooks/useComputes';
@@ -27,10 +26,6 @@ import { ComputeFormData } from './types';
 const ComputesPage = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { data, createMutation } = useComputes(onClose);
-
-  useEffect(() => {
-    console.log(data);
-  }, data);
 
   const handleClose = () => {
     onClose();

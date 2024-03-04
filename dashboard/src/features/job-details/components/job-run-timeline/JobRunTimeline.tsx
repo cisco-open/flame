@@ -17,13 +17,14 @@
  */
 
 import { Modal, ModalOverlay, ModalContent, ModalCloseButton, ModalBody, Box, ModalHeader} from '@chakra-ui/react'
-import { useEffect, useState } from 'react'
-import { Run, RunResponse } from '../../../../entities/JobDetails'
+import { useEffect, useRef, useState } from 'react'
+import { RunResponse } from '../../../../entities/JobDetails'
 import { Task } from '../../../../entities/Task'
 import Loading from '../../../../layout/loading/Loading'
 import ApiClient from '../../../../services/api-client'
-import { getRunName, getRuntimeMetrics } from '../../utils'
+import { getLatestRuns, getRunName, getRuntimeMetrics, mapMetricResponse } from '../../utils'
 import MetricsTimeline from '../metrics-timeline/MetricsTimeline'
+import { sortByPropertyName } from '../../../utils'
 
 interface Props {
   isOpen: boolean,
@@ -34,7 +35,7 @@ interface Props {
   onClose: () => void;
 }
 
-interface UiMetric {
+export interface UiMetric {
   name: string,
   from: number,
   to: number,
@@ -44,39 +45,37 @@ interface UiMetric {
   runId: string,
   id: string,
   fill: string,
+  processed?: boolean,
 }
 
 const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }: Props) => {
-  const [runtimes, setRuntimes] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any[]>([]);
   const [loading, setIsLoading] = useState<boolean>(true);
   const [names, setNames] = useState<any[]>([]);
   const [responses, setResponses] = useState<any[]>([]);
+  const [minDate, setMinDate] = useState<Date>();
+  const [maxDate, setMaxDate] = useState<Date>();
+  const [workers, setWorkers] = useState<string[] | undefined>([]);
   const [transformedData, setTransformedData] = useState<any>();
 
-  useEffect(() => {
-    if (!runtimes.length) { return; }
+  const isOpenReference = useRef<boolean>();
+  isOpenReference.current = isOpen;
 
-    fetchMetrics(runtimes, names);
-  }, [runtimes, names]);
+  useEffect(() => {
+    if (!metrics.length) { return; }
+    const sortedRunTimeMetrics = sortByPropertyName(metrics, 'order');
+
+    if (isOpenReference.current) {
+      fetchMetrics(sortedRunTimeMetrics, names);
+    }
+  }, [metrics, names, isOpenReference.current]);
 
   useEffect(() => {
     if (!Object.keys(responses)?.length) { return; }
     const data: any = {}
 
     Object.keys(responses).map((key: any) => (
-      data[key] = responses[key]
-        .reduce((acc: any[], curr: any) => [...acc, ...curr], [])
-        .map((item: any, index: number, list: any[]) => {
-          if (!item.key.includes('runtime')) { return item; }
-          const startTimeCounterpart = list.find(i => i.key.includes(item.key.split('.')[0]) && i.key.includes('starttime') && item.step === i.step);
-          const startTimeTimestamp = Math.round((startTimeCounterpart?.value || 1) * 1000);
-          return {
-            ...item,
-            start: startTimeTimestamp,
-            category: key
-          }
-        })
-        .filter((item: any) => item.key.includes('runtime'))
+      data[key] = responses[key].filter((item: any) => item.key.includes('runtime'))
     ));
 
     setIsLoading(false);
@@ -85,71 +84,43 @@ const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }:
 
   useEffect(() => {
     if (!tasks && !runsResponse) { return; }
-    const taskIds = tasks?.map(task => task.taskId.substring(0, 8));
 
-    const runs = runsResponse?.runs.filter((run, index, runs) => {
-      const runName = getRunName(run);
-      return run.info.start_time &&
-        run.info.end_time &&
-        taskIds?.includes(runName.substring(runName.length - 8)) &&
-        hasTheGreatestTimestamp(run, runs)
-    }
-    );
+    const runs = getLatestRuns(runsResponse, tasks);
+    const max = Math.max(...(runs || [])?.map(run => run.info.end_time));
+    const min = Math.min(...(runs || [])?.map(run => run.info.start_time));
+    setMinDate(new Date(min - 60000));
+    setMaxDate(new Date(max + 60000));
+    setWorkers(runs?.map(run => getRunName(run)));
+
     const mappedData = getRuntimeMetrics(runs);
-    setRuntimes(mappedData.runtimes);
+    setMetrics(mappedData.metrics);
     setNames(mappedData.names);
     setIsLoading(true);
   }, [tasks, runsResponse]);
 
-  const fetchMetrics = async (runtimes: UiMetric[], names: string[]) => {
+  const fetchMetrics = async (metrics: UiMetric[], names: string[]) => {
     const fetchedResponses: any = names.reduce((acc, name) => ({ ...acc, [name]: []}), {});
     const apiClient = new ApiClient('mlflow/metrics/get-history', true);
 
-    for (const element of runtimes) {
-      const { name, runId, category } = element;
-
-
-      try {
-        const response = await apiClient.getAll({ params: { metric_key: name, run_uuid: runId, }});
-        fetchedResponses[category] = [...fetchedResponses[category], (response as unknown as any).metrics];
-      } catch (error) {
-        console.error('Error fetching metrics:', error);
+    for (const metric of metrics) {
+      if (!isOpenReference.current) {
+        return;
       }
+
+      const { name, runId, category } = metric;
+        try {
+          const response = await apiClient.getAll({ params: { metric_key: name, run_uuid: runId, }})
+            .then(res => mapMetricResponse(res, fetchedResponses, metric));
+          fetchedResponses[category] = [...fetchedResponses[category], ...(response as unknown as any)];
+
+          setResponses({ ...fetchedResponses });
+        } catch (error) {
+          console.error('Error fetching metrics:', error);
+        }
     }
 
-    const newData: any = {}
-    Object.keys(fetchedResponses).map((name: string) => {
-      const transformedData: any = {};
-      fetchedResponses[name] = fetchedResponses[name].map((stepArray: any) => {
-        stepArray.forEach((item: any) => {
-          const { step } = item;
-          if (!transformedData[step]) {
-            transformedData[step] = [];
-          }
-          transformedData[step].push(item);
-        });
-        newData[name] = {...newData[name], ...transformedData };
-        return transformedData;
-      });
-    });
 
-    Object.keys(newData).map((key: string) => {
-      newData[key] = Object.keys(newData[key]).map(k => newData[key][k])
-    });
-    setResponses(newData);
   };
-
-  const hasTheGreatestTimestamp = (run: Run, runs: Run[]) => {
-    const targetRuns = runs.filter(r => getRunName(r) === getRunName(run) && run.info.start_time && run.info.end_time);
-    let targetRun = targetRuns[0];
-    for (let run of targetRuns) {
-      if (targetRun.info.start_time < run.info.start_time) {
-        targetRun = run;
-      }
-    }
-
-    return targetRun.info.run_id === run.info.run_id;
-  }
 
   return (
     <Modal
@@ -170,7 +141,7 @@ const JobRunTimeline = ({ isOpen, runsResponse, runs, jobName, tasks, onClose }:
             <Box height="100%" display="flex" justifyContent="center" alignItems="center">
               <Loading message={'Fetching data...'} />
             </Box> :
-            <MetricsTimeline data={transformedData} runs={runs}/>
+            isOpen && <MetricsTimeline workers={workers} data={transformedData} minDate={minDate} maxDate={maxDate} isOpen={isOpenReference.current} runs={runs}/>
           }
         </ModalBody>
       </ModalContent>
