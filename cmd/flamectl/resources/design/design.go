@@ -36,6 +36,7 @@ type Params struct {
 	DesignId string
 	Desc     string
 	Limit    string
+	Name     string
 }
 
 func Create(params Params) error {
@@ -161,6 +162,34 @@ func GetMany(params Params) error {
 	}
 
 	table.Render() // Send output
+
+	return nil
+}
+
+func Update(params Params) error {
+	// construct URL
+	uriMap := map[string]string{
+		constants.ParamUser:     params.User,
+		constants.ParamDesignID: params.DesignId,
+	}
+	url := restapi.CreateURL(params.Endpoint, restapi.UpdateDesignEndPoint, uriMap)
+
+	design := openapi.DesignInfo{
+		Id:          params.DesignId,
+		UserId:      params.User,
+		Name:        params.Name,
+		Description: params.Desc,
+	}
+
+	code, responseBody, err := restapi.HTTPPut(url, design, "application/json")
+	if err != nil && restapi.CheckStatusCode(code) != nil {
+		var msg string
+		_ = json.Unmarshal(responseBody, &msg)
+		fmt.Printf("Failed to update design - code: %d; %s\n", code, msg)
+		return nil
+	}
+
+	fmt.Println("Updated design successfully")
 
 	return nil
 }
