@@ -16,8 +16,9 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Metric, Run } from "../../entities/JobDetails";
+import { Metric, Run, RunResponse } from "../../entities/JobDetails";
 import { Task } from "../../entities/Task";
+import { UiMetric } from "./components/job-run-timeline/JobRunTimeline";
 import { MappedTask } from "./types";
 
 export const getEdges = (tasks: Task[]) => {
@@ -63,33 +64,34 @@ const hasSameGroup = (task: Task, secondTask: Task) => {
 export const getRuntimeMetrics = (runs: Run[] | undefined) => {
   const names: string[] = [];
 
-  const runtimes = (runs || []).map(run => {
+  const metrics = (runs || []).map(run => {
     const runName = getRunName(run);
     names.push(runName);
 
+    const startTimeMetrics = run.data.metrics
+      .filter(metric => metric.key.includes('starttime'))
+      .sort((m1, m2) => m1.timestamp - m2.timestamp)
+
+    const runTimeMetrics = run.data.metrics
+      .filter(metric => metric.key
+      .includes('runtime')).sort((m1, m2) => m1.timestamp - m2.timestamp)
+
     return {
       name: runName,
-      values: run.data.metrics
-        ?.filter(metric => metric.key.includes('runtime') || metric.key.includes('starttime'))
-        ?.map((metric) => {
+      values: [...startTimeMetrics, ...runTimeMetrics]
+        ?.map((metric, i) => {
           return {
             name: metric.key,
             category: runName,
             runId: run.info.run_id,
+            order: i,
           }
-        }).sort((a, b) => {
-          if (a.name < b.name) {
-            return -1;
-          } else if (a.name > b.name) {
-            return 1;
-          }
-          return 0;
         })
     }
   }).map(entry => entry.values).reduce((acc, item) => acc = [...acc, ...(item || [])], []);
 
   return {
-    runtimes,
+    metrics,
     names,
   }
 }
@@ -146,3 +148,46 @@ export const sortMetrics = (metrics: Metric[]) => metrics?.sort((a: Metric, b: M
   }
   return 0;
 });
+
+export const getLatestRuns = (runsResponse: RunResponse | undefined, tasks: Task[] | undefined) => {
+  const taskIds = tasks?.map(task => task.taskId.substring(0, 8));
+
+  return runsResponse?.runs.filter((run, index, runs) => {
+    const runName = getRunName(run);
+    return run.info.start_time &&
+      run.info.end_time &&
+      taskIds?.includes(runName.substring(runName.length - 8)) &&
+      hasTheGreatestTimestamp(run, runs)
+  }
+  )
+}
+
+const hasTheGreatestTimestamp = (run: Run, runs: Run[]) => {
+  const targetRuns = runs.filter(r => getRunName(r) === getRunName(run) && run.info.start_time && run.info.end_time);
+  let targetRun = targetRuns[0];
+  for (let run of targetRuns) {
+    if (targetRun.info.start_time < run.info.start_time) {
+      targetRun = run;
+    }
+  }
+
+  return targetRun.info.run_id === run.info.run_id;
+}
+
+export const mapMetricResponse = (res: any, list: any, metric: UiMetric) => {
+  const { category } = metric;
+
+  return (res as unknown as any).metrics.map((m: Metric) => {
+    const startTimeCounterpart = list[category]
+      .find((metric: Metric) => metric.key.includes(m.key.split('.')[0]) &&
+        metric.key.includes('starttime') &&
+        m.step === metric.step
+      );
+    const start = Math.round((startTimeCounterpart?.value || 1) * 1000);
+    return {
+      ...m,
+      category,
+      start,
+    }
+  })
+}

@@ -38,3 +38,17 @@ export const getGraphLayoutedElements = (nodes: Node[], edges: Edge[], rankdir: 
     edges,
   };
 };
+
+export const sortByPropertyName = (list: any[], propertyName: string) => {
+  return list.sort((a: any, b: any) => {
+    if (a[propertyName] < b[propertyName]) {
+      return -1;
+    }
+
+    if (a[propertyName] > b[propertyName]) {
+      return 1
+    };
+
+    return 0;
+  });
+}

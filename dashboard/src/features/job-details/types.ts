@@ -48,7 +48,7 @@ export interface TimelineGroup {
   name: string;
 }
 
-export interface Timelineitem {
+export interface TimelineItem {
   id: string;
   group: string;
   title: string;

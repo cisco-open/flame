@@ -45,7 +45,7 @@ const JobPage = () => {
   }
 
   return (
-    <Box gap={5} display="flex" flexDirection="column" height="100%" overflow="hidden">
+    <Box gap={5} display="flex" flexDirection="column" height="100%">
       <Box display="flex" alignItems="center" justifyContent="space-between" zIndex="1">
         <Text as="h1" fontWeight="bold">JOBS</Text>
 

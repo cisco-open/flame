@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import 'react-calendar-timeline/lib/Timeline.css'
 import Timeline, {
   TimelineHeaders,
@@ -24,10 +24,11 @@ import Timeline, {
 } from 'react-calendar-timeline/lib';
 import 'react-calendar-timeline/lib/Timeline.css'
 import { Box, Text } from '@chakra-ui/react';
-import { MetricsTimelineData, TimelineGroup, Timelineitem, MetricsTimelineDataItem } from '../../types';
+import { MetricsTimelineData, TimelineGroup, TimelineItem, MetricsTimelineDataItem } from '../../types';
 import { colors } from '../../../..';
 import WorkerDetails from '../worker-details/WorkerDetails';
 import './MetricsTimeline.css';
+import Loading from '../../../../layout/loading/Loading';
 
 const keys = {
   groupIdKey: "id",
@@ -44,6 +45,10 @@ const keys = {
 interface Props {
   data: MetricsTimelineData;
   runs: any;
+  minDate: Date | undefined;
+  maxDate: Date | undefined;
+  workers: string[] | undefined;
+  isOpen: boolean;
 }
 
 const itemColors = [
@@ -59,14 +64,21 @@ const itemColors = [
   '#F94144',
 ];
 
-const MetricsTimeline = ({ data, runs }: Props) => {
-  const [min, setMin] = useState<Date>();
-  const [max, setMax] = useState<Date>();
+const MetricsTimeline = ({ data, runs, minDate, maxDate, workers, isOpen }: Props) => {
   const [groups, setGroups] = useState<TimelineGroup[]>([]);
-  const [items, setItems] = useState<Timelineitem[]>([]);
+  const [items, setItems] = useState<TimelineItem[]>([]);
   const [selectedWorker, setSelectedWorker] = useState<string>();
   const [runDetails, setRunDetails] = useState<string>();
   const [colorLegend, setColorLegend] = useState<{ [key: string]: string }>();
+
+  useEffect(() => {
+    if (!isOpen) {
+      setItems([]);
+      setGroups([]);
+      setRunDetails('');
+      setColorLegend(undefined);
+    }
+  }, [isOpen])
 
   useEffect(() => {
     const selectedRun = runs?.find((run: any) => selectedWorker?.includes(run.taskId));
@@ -74,23 +86,29 @@ const MetricsTimeline = ({ data, runs }: Props) => {
   }, [runs, selectedWorker]);
 
   useEffect(() => {
+    if (!workers?.length) { return; }
+
+    const groups: TimelineGroup[] = workers.map((worker, index) => ({
+      id: `${worker}-${index}`,
+      title: <Box onClick={() => onGroupClick(worker)} cursor="pointer">
+        <Text as="p" textDecoration="underline" color={colors.primary.normal}>{worker}</Text>
+      </Box>,
+      name: worker,
+    }));
+
+    setGroups(groups);
+  }, [workers]);
+
+  useEffect(() => {
     if (!data || (data && !Object.keys(data)?.length)) { return; }
 
     const keyToColorMap: { [key: string]: string } = {};
 
-    const groups: TimelineGroup[] = Object.keys(data).map((key, index) => ({
-      id: `${key}-${index}`,
-      title: <Box onClick={() => onGroupClick(key)} cursor="pointer">
-        <Text as="p" textDecoration="underline" color={colors.primary.normal}>{key}</Text>
-      </Box>,
-      name: key,
-    }));
-
-    const items: Timelineitem[] = Object.keys(data)
+    const items: TimelineItem[] = Object.keys(data)
       .reduce((acc: MetricsTimelineDataItem[], key: string) => [...acc, ...data[key]], [])
       .map((item: MetricsTimelineDataItem, index: number) => {
         if (!(item.key in keyToColorMap)) {
-          keyToColorMap[item.key] = itemColors[Object.keys(keyToColorMap).length + 1]; // Assign a new color if key is encountered for the first time
+          keyToColorMap[item.key] = itemColors[Object.keys(keyToColorMap).length + 1];
         }
 
         const group = groups?.find((group) => group.name === item.category)?.id || ''
@@ -104,12 +122,7 @@ const MetricsTimeline = ({ data, runs }: Props) => {
         }
       });
 
-    const min = new Date(Math.min(...items.map(item => item.start)));
-    const max = new Date(Math.max(...items.map(item => item.end)));
     setColorLegend(keyToColorMap);
-    setMin(min);
-    setMax(max);
-    setGroups(groups);
     setItems(items);
   }, [data]);
 
@@ -151,31 +164,31 @@ const MetricsTimeline = ({ data, runs }: Props) => {
     );
   };
 
-
+  if (!items?.length) {
+    return <Loading message='Processing metrics...' />
+  }
 
   return (
     <Box display="flex" flexDirection="column" gap="20px">
       {
-        !!min && !!max && !!items.length && !!groups.length &&
+        !!minDate && !!maxDate && !!items.length && !!groups.length &&
         <Timeline
           groups={groups}
           items={items}
-          defaultTimeStart={min}
-          defaultTimeEnd={max}
+          defaultTimeStart={minDate}
+          defaultTimeEnd={maxDate}
           minZoom={100}
           keys={keys}
           itemRenderer={itemRenderer}
         >
           <TimelineHeaders className="sticky">
-            <DateHeader unit="minute" />
+            <DateHeader unit="hour" />
           </TimelineHeaders>
         </Timeline>
       }
 
       { colorLegend &&
         <Box display="flex" flexDirection="column" gap="20px" alignItems="center">
-          <Text>Legend</Text>
-
           <Box display="flex" gap="10px" flexWrap="wrap">
             {
               Object.keys(colorLegend).map(key =>
