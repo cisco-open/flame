@@ -26,7 +26,7 @@ import { AxiosError } from "axios";
 const apiClient = new ApiClient<Design[]>(`users/${LOGGEDIN_USER.name}/designs`);
 
 const useDesigns = (data?: any) => {
-    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/designs/${data.designInEdit?.id}`);
+    const updateApiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/designs/${data?.designInEdit?.id}`);
 
     const queryClientHook = useQueryClient();
     const toast = useToast();

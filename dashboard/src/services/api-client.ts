@@ -27,7 +27,7 @@ class ApiClient<T> {
         this.endpoint = endpoint;
         const API_URL = (window as unknown as any).env;
         const baseURL = `${isMlFlow ?
-            process.env.NODE_ENV === 'development' ? ML_FLOW_BASE_URL :  API_URL?.REACT_APP_MLFLOW_URL :
+            process.env.NODE_ENV === 'development' ? ML_FLOW_BASE_URL :  `${API_URL?.REACT_APP_MLFLOW_URL}/ajax-api/2.0` :
             process.env.NODE_ENV === 'development' ? BASE_URL : API_URL?.REACT_APP_API_URL}`;
 
         this.axiosInstance = axios.create({ baseURL })
