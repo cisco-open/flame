@@ -165,7 +165,7 @@ export const getSchemaValidity = (nodes: any, edges: any, fileNames: any) => {
     noDataConsumerRoles: !dataConsumerRoles?.length,
     noGroupOnEachChannel: channelGroups?.length !== channels?.length,
     codeFileMissing: !fileNames || fileNames?.length < roles?.length,
-    allRolesNotConnected: roles?.length === 1 ? !channels?.length : channels?.length < roles?.length - 1,
+    allRolesNotConnected: !channels?.length || roles?.length === 1 ? !channels?.length : channels?.length < roles?.length - 1,
     duplicateNames
   };
 }
