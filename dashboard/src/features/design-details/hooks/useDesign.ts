@@ -23,8 +23,8 @@ import ApiClient from "../../../services/api-client";
 
 const apiClient = new ApiClient<DesignDetails>(`users/${LOGGEDIN_USER.name}/designs`);
 
-const useDesign = (id: string) => useQuery({
-    enabled: !!id,
+const useDesign = (id: string, shouldFetchDesign = true) => useQuery({
+    enabled: !!id && shouldFetchDesign,
     queryKey: ['design', id],
     queryFn: () => apiClient.get(id),
 });

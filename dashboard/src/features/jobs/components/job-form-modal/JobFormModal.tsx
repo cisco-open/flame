@@ -95,10 +95,11 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
   const [ selectorKwargsPayload, setSelectorKwargsPayload ] = useState<KwargPayload | undefined>();
   const [ optimizerKwargsPayload, setOptimizerKwargsPayload ] = useState<KwargPayload | undefined>();
   const [ mappedJobToForm, setMappedJobToForm ] = useState<JobForm | null>(null);
+  const [ isDesignPresent, setIsDesignPresent ] = useState<boolean>(false);
 
   const [ datasetPayload, setDatasetPayload ] = useState<DatasetPayload | null>(null);
-  const { data: design } = useDesign(selectedDesignId)
-  const { data: designs } = useDesigns();
+  const { data: design } = useDesign(selectedDesignId, isDesignPresent)
+  const { data: designs  } = useDesigns();
   const { data: datasets } = useDatasets();
   const { createMutation, editMutation } = useJobs(job?.id, onClose);
   const { activeStep, setActiveStep } = useSteps({
@@ -112,10 +113,11 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
   };
 
   useEffect(() => {
-    if (!job) { return; }
+    if (!job || !designs?.length) { return; }
+    setIsDesignPresent(!!designs.find(d => d.id === job.designId));
     setMappedJobToForm(mapJobToForm(job));
     setHyperParameters(getHyperparametersFromJob(job) as unknown as any);
-  }, [job])
+  }, [job, designs]);
 
   useEffect(() => {
     const mappedHyperparameters = hyperParameters.reduce((acc: any, param: any) => {
@@ -210,7 +212,7 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
     selectorName: yup.string(),
   });
 
-  const { register, handleSubmit, formState, reset, getValues, setValue } = useForm({
+  const { register, reset, getValues, setValue } = useForm({
     resolver: yupResolver(schema),
     defaultValues: {
       backend: defaultBackendOption.name,
@@ -224,6 +226,12 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
 
   const handlePrevious = () => {
     setActiveStep((prevActiveStep) => prevActiveStep - 1);
+  }
+
+  const onDesignSelect = (designId: string) => {
+    setIsDesignPresent(!!designs?.find(d => d.id === designId));
+
+    setSelectedDesignId(designId);
   }
 
   return (
@@ -266,9 +274,10 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
             {
               activeStep === 0 &&
               <GeneralForm
+                isDesignPresent={isDesignPresent}
                 designs={designs}
                 backendOptions={backendOptions}
-                setSelectedDesignId={setSelectedDesignId}
+                setSelectedDesignId={onDesignSelect}
                 selectedDesignId={selectedDesignId}
                 register={register}
                 setValue={(name, value) => setValue(name as unknown as any, value)}
@@ -280,6 +289,7 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
               <DatasetForm
                 datasetControls={datasetControls}
                 datasets={datasets}
+                selectedDesignId={selectedDesignId}
                 setDatasetPayload={setDatasetPayload}
                 mappedJobToForm={mappedJobToForm}
               />
@@ -300,7 +310,7 @@ const JobFormModal = ({ isOpen, job, onClose }: Props) => {
               {
                 activeStep !== steps.length - 1 &&
                 <Button
-                  isDisabled={(activeStep === 0 && !selectedDesignId) || activeStep === 1 && !datasetPayload}
+                  isDisabled={(activeStep === 0 && !isDesignPresent) || activeStep === 1 && !datasetPayload}
                   colorScheme='primary'
                   size="xs"
                   onClick={handleNext}

@@ -16,11 +16,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Task } from "./Task";
+
 export interface GetRunsPayload {
     experiment_ids: string[];
     max_results: number;
     order_by: string[];
     run_view_type: RunViewType;
+}
+
+export interface NodeMenuItem {
+    label: string;
+    tasks: Task[] | undefined;
+    propertyName: string;
+    callback: (data: any) => void;
 }
 
 export enum RunViewType {

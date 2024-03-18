@@ -46,6 +46,7 @@ const useDesigns = (data?: any) => {
         mutationFn: updateApiClient.put,
         onSuccess: () => {
             queryClientHook.invalidateQueries({ queryKey: ['designs'] });
+            queryClientHook.invalidateQueries(['design', data?.designInEdit?.id]);
             data?.onClose();
             toast({
                 title: 'Design successfully updated',
@@ -64,6 +65,11 @@ const useDesigns = (data?: any) => {
         mutationFn: apiClient.delete,
         onSuccess: () => {
             queryClientHook.invalidateQueries({ queryKey: ['designs'] });
+
+            if (data?.navigate) {
+                data.navigate('/design');
+            }
+
             toast({
                 title: 'Design successfully deleted',
                 status: 'success',

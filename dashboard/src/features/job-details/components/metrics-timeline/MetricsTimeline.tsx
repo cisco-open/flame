@@ -118,7 +118,9 @@ const MetricsTimeline = ({ data, runs, minDate, maxDate, workers, isOpen }: Prop
           title: item.key.split('.')[0],
           start: item.start,
           end: item.start + (Math.round(item.value) * 1000),
-          bgColor: keyToColorMap[item.key]
+          bgColor: keyToColorMap[item.key],
+          canMove: false,
+          canResize: false,
         }
       });
 

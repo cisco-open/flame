@@ -18,15 +18,16 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { LOGGEDIN_USER } from "../../../constants";
+import { Job } from "../../../entities/Job";
 import ApiClient from "../../../services/api-client";
 
-const useJob = (id: string) => {
-    const apiClient = new ApiClient<any>(`users/${LOGGEDIN_USER.name}/jobs`);
+const useJobStatus = (id: string | undefined) => {
+    const apiClient = new ApiClient<Job>(`users/${LOGGEDIN_USER.name}/jobs/${id}/status`);
     return useQuery({
         enabled: !!id,
-        queryKey: ['job', id],
-        queryFn: () => apiClient.get(id),
+        queryKey: ['jobStatus', id],
+        queryFn: apiClient.getAll,
     });
 }
 
-export default useJob;
+export default useJobStatus;

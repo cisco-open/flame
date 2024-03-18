@@ -16,6 +16,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { NodeMenuItem } from "./JobDetails"
+
 export interface Task {
     computeId: string,
     jobId: string,
@@ -30,4 +32,5 @@ export interface Task {
     groupAssociation: any,
     count?: number,
     group?: string[],
+    menuItems?: NodeMenuItem[],
 }
