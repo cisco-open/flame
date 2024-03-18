@@ -8,3 +8,7 @@
 .worker-name.active {
   background-color: #b4d095;
 }
+
+.rct-item {
+  pointer-events: none;
+}

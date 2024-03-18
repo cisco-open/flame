@@ -121,7 +121,7 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
 
         <ConfirmationDialog
           actionButtonLabel={'Delete'}
-          message={'Are sure you want to delete this design?'}
+          message={'A design might be used in a Job! Are sure you want to delete this design?'}
           buttonColorScheme={'red'}
           isOpen={isOpen}
           onClose={handleConfirmationClose}

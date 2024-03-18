@@ -1,0 +1,16 @@
+.job-details-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  padding: 5px;
+}
+
+.job-details-menu-item:hover {
+  background-color: rgb(239, 237, 237);
+  border-radius: 4px;
+}
+
+.job-details .chakra-popover__content {
+  width: 200px !important;
+}

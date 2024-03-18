@@ -19,9 +19,9 @@
 import { Box, Button, ListItem, Popover, PopoverBody, PopoverContent, PopoverTrigger, Select, Text, UnorderedList, useDisclosure } from '@chakra-ui/react';
 import { useNavigate, useParams } from 'react-router-dom';
 import ArrowBackIosIcon from '@mui/icons-material/ArrowBackIos';
-import ReactFlow, { Background, NodeChange, applyNodeChanges, useEdgesState, addEdge, useReactFlow, ReactFlowProvider } from 'reactflow';
+import ReactFlow, { Background, NodeChange, applyNodeChanges, useEdgesState, addEdge, useReactFlow } from 'reactflow';
 import ErrorOutlineOutlinedIcon from '@mui/icons-material/ErrorOutlineOutlined';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import 'reactflow/dist/style.css';
 import { Channel, MappedFuncTag, Role, Schema } from '../../entities/DesignDetails';
 import { ChannelDetails } from './components/channel-details/ChannelDetails';
@@ -54,6 +54,17 @@ import CustomConnectionLine from '../../components/custom-connection-line/Custom
 import ExpandedTopology from './components/expanded-topology/ExpandedTopology';
 import ConfirmationDialog from '../../components/confirmation-dialog/ConfirmationDialog';
 import './animations.css';
+import { FaEllipsisVertical } from 'react-icons/fa6';
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import useDesigns from '../design/hooks/useDesigns';
+import FullscreenExitTwoToneIcon from '@mui/icons-material/FullscreenExitTwoTone';
+import FullscreenTwoToneIcon from '@mui/icons-material/FullscreenTwoTone';
+import AddBoxTwoToneIcon from '@mui/icons-material/AddBoxTwoTone';
+import RestartAltTwoToneIcon from '@mui/icons-material/RestartAltTwoTone';
+import DesignFormModal from '../design/components/DesignFormModal';
+import { DesignForm } from '../design/types';
+import { DesignContext } from '../design/DesignContext';
 
 export interface SchemaValidity {
   multipleDataConsumerRoles: boolean;
@@ -94,6 +105,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const { updateMutation, deleteMutation } = useSchema(id || '')
   const { pushFileMutation, deleteCodeMutation } = useCode(id || '');
   const [ designSchema, setDesignSchema ] = useState<any>();
+  const [ isMenuOpened, setIsMenuOpened ] = useState<boolean>(false);
   const [ selectedDesignTemplate, setSelectedDesignTemplate ] = useState<any>();
   const [ nodes, setNodes ] = useState<any>([]);
   const [ funcTags, setFuncTags ] = useState<MappedFuncTag[]>([]);
@@ -108,6 +120,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   });
 
   const [fileNames, setFileNames] = useState<any>([]);
+  const [designInEdit, setDesignInEdit] = useState<any>();
   const [fileData, setFileData] = useState<any[]>([]);
   const [channel, setChannel] = useState<Channel | undefined>(undefined);
   const [role, setRole] = useState<Role | undefined>(undefined);
@@ -115,7 +128,22 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const [areEdgesUpdated, setAreEdgesUpdated] = useState<boolean>();
   const [displayExpandedTopology, setDisplayExpandedTopology] = useState<boolean>(false);
   const { fitView } = useReactFlow();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isDeleteSchemaOpen, onOpen: onDeleteSchemaOpen, onClose: onDeleteSchemaClose } = useDisclosure();
+  const { isOpen: isDeleteDesignOpen, onOpen: onDeleteDesignOpen, onClose: onDeleteDesignClose } = useDisclosure();
+  const { isOpen: isEditDesignOpen, onOpen: onEditDesignOpen, onClose: onEditDesignClose } = useDisclosure();
+  const { data: designs, deleteMutation: deleteDesignMutation, updateMutation: updateDesignMutation } = useDesigns({ designInEdit, navigate, onClose: onEditDesignClose });
+  const { isOpen: isPopoverOpen, onToggle: onPopoverToggle, onClose: onPopoverClose } = useDisclosure();
+
+  const isOpenReference = useRef<boolean>();
+  isOpenReference.current = isPopoverOpen;
+
+  useEffect(() => {
+    window.addEventListener('click', closeMenuOnClick);
+
+    return () => {
+      window.removeEventListener('click', closeMenuOnClick);
+    }
+  }, [])
 
   useEffect(() => {
     setDesignSchema(design?.schema);
@@ -130,7 +158,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   }, [schemaValidity])
 
   useEffect(() => {
-    if (designSchema?.roles) {
+    if (designSchema?.roles && id) {
       loadRoleFiles();
     }
   }, [id, designSchema]);
@@ -145,6 +173,12 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
 
   const checkSchemaValidity = (nodes: any, edges: any, fileNames: any) => {
     setSchemaValidity(getSchemaValidity(nodes, edges, fileNames));
+  }
+
+  const closeMenuOnClick = () => {
+    if(isOpenReference.current) {
+      onPopoverClose();
+    }
   }
 
   const loadRoleFiles = async () => {
@@ -184,11 +218,11 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
     }
   }
 
-  const onNodesChange = useCallback(() => {
+  const onNodesChange = (changes: any) => {
     if (externalDesignId) { return; }
-    return (changes: NodeChange[]) => setNodes((nds: any) => applyNodeChanges(changes, nds) as any);
-  }, []
-  );
+
+    setNodes((nds: any) => applyNodeChanges(changes, nds) as any);
+  };
 
   const onEdgeClick = (event: React.MouseEvent, edge: any) => {
     if (externalDesignId) { return; }
@@ -202,6 +236,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const onNodeClick = (event: React.MouseEvent, node: any) => {
     if (externalDesignId) { return; }
 
+    onPopoverClose();
     event.stopPropagation();
     const index = nodes.findIndex((n: any) => n.id === node.id);
     setRole(undefined);
@@ -212,7 +247,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const onPaneClick = useCallback(
     (event?: React.MouseEvent) => {
       event?.stopPropagation();
-
+      onPopoverClose();
       setChannel(undefined);
       setRole(undefined);
     },
@@ -302,20 +337,12 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
     setDisplayExpandedTopology(!displayExpandedTopology);
   }
 
-  const openResetConfirmation = () => {
-    onOpen();
-  }
-
-  const handleClose = () => {
-    onClose();
-  }
-
-  const onDelete = () => {
+  const onSchemaDelete = () => {
     deleteMutation.mutate();
     deleteCodeMutation.mutate();
     setNodes([]);
     setEdges([]);
-    onClose();
+    onDeleteSchemaClose();
   }
 
   const handleNewFuncTags = (data: any) => {
@@ -340,165 +367,216 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
     onPaneClick();
   }
 
+  const onEditDesignClicked = (event: React.MouseEvent) => {
+    setDesignInEdit(designs?.find(d => d.id === id));
+    onEditDesignOpen();
+  }
+
+  const onDeleteDesignClicked = (event: React.MouseEvent) => {
+    onDeleteDesignOpen();
+  }
+
+  const handleDesignDelete = () => {
+    deleteDesignMutation.mutate(id);
+  }
+
+  const handleEditDesign = (data: DesignForm) => {
+    updateDesignMutation.mutate({ ...data });
+  };
+
   if (isLoading) {
     return <p>Loading...</p>
   }
 
   return (
-    <Box display="flex" flexDirection="column" height="100%" overflow="hidden">
-      {
-        !externalDesignId &&
-        <Box display="flex" alignItems="center" height="50px" position="relative">
-          <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' colorScheme="primary" size="xs">Designs</Button>
+    <DesignContext.Provider value={{ designInEdit }}>
+      <Box display="flex" flexDirection="column" height="100%" overflow="hidden" className="design-details">
+        {
+          !externalDesignId &&
+          <Box display="flex" alignItems="center" height="50px" position="relative">
+            <Button marginTop="2px" leftIcon={<ArrowBackIosIcon fontSize="small" />} onClick={() => navigate('/design')} variant='link' colorScheme="primary" size="xs">Designs</Button>
 
-          <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
+            <Text alignSelf="center" flex="1" textAlign="center" textTransform="uppercase" as="h2" fontWeight="bold">{design?.name}</Text>
 
-          <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
-            <Select
-              size="xs"
-              placeholder='Select design template'
-              backgroundColor={COLORS.white}
-              value={selectedDesignTemplate}
-              onChange={(event) => handleTemplateChange(event)}
-            >
-              {schemaFiles?.map(file =>
-                <option key={file.id} value={file.id}>{file.name}</option>
-              )}
-            </Select>
+            <Box display="flex" justifyContent="flex-end" gap="20px" alignItems="center">
+              <Select
+                size="xs"
+                placeholder='Select design template'
+                backgroundColor={COLORS.white}
+                value={selectedDesignTemplate}
+                onChange={(event) => handleTemplateChange(event)}
+              >
+                {schemaFiles?.map(file =>
+                  <option key={file.id} value={file.id}>{file.name}</option>
+                )}
+              </Select>
 
-            <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} flexShrink="0" variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
+              <Button isDisabled={!!errorMessages?.length} onClick={handleSchemaSave} flexShrink="0" variant="solid" size="xs" colorScheme="primary">Save Schema</Button>
+            </Box>
           </Box>
-        </Box>
-      }
+        }
 
-      <Box display="flex" height="calc(100% - 50px)" bgColor="white" borderRadius="10px" zIndex="1">
-        <Box flex="3" position="relative" className={externalDesignId ? 'external-usage' : ''}>
-          {
-            !!errorMessages?.length && !externalDesignId &&
-            <Box className="design-details__errors">
-              <Popover>
-                <PopoverTrigger>
-                  <ErrorOutlineOutlinedIcon className="error-pulse design-details__error-trigger" color="error"/>
-                </PopoverTrigger>
-                <PopoverContent>
-                  <PopoverBody>
-                    <UnorderedList>
-                      {
-                        !nodes?.length && !edges?.length ? <ListItem fontSize="12px">Invalid design schema</ListItem> :
-                        errorMessages.map(message => <ListItem fontSize="12px" key={message}>{message}</ListItem>)
-                      }
-                    </UnorderedList>
-                  </PopoverBody>
-                </PopoverContent>
-              </Popover>
-            </Box>
-          }
-
-          {
-            !externalDesignId &&
-            <Box position="absolute" zIndex="1" top="20px" right="20px" display="flex" flexDirection="column" alignItems="flex-end" gap="20px">
-              <Box display="flex" gap="20px" position="relative">
-                {
-                  !errorMessages?.length &&
-                  !!nodes?.length &&
-                  !!edges?.length &&
-                  <Button
-                    variant='outline'
-                    colorScheme="secondary"
-                    onClick={toggleExpandedTopology}
-                    size="xs"
-                  >
-                    { displayExpandedTopology ? 'Collapse' : 'Expand' }
-                  </Button>
-                }
-
-                { !displayExpandedTopology &&
-                  <Button
-                    variant='outline'
-                    colorScheme="secondary"
-                    onClick={addNode} size="xs"
-                  >
-                    Add Role
-                  </Button>
-                }
+        <Box display="flex" height="calc(100% - 50px)" bgColor="white" borderRadius="10px" zIndex="1">
+          <Box flex="3" position="relative" className={externalDesignId ? 'external-usage' : ''}>
+            {
+              !!errorMessages?.length && !externalDesignId &&
+              <Box className="design-details__errors">
+                <Popover>
+                  <PopoverTrigger>
+                    <ErrorOutlineOutlinedIcon className="error-pulse design-details__error-trigger" color="error"/>
+                  </PopoverTrigger>
+                  <PopoverContent>
+                    <PopoverBody>
+                      <UnorderedList>
+                        {
+                          !nodes?.length && !edges?.length ? <ListItem fontSize="12px">Invalid design schema</ListItem> :
+                          errorMessages.map(message => <ListItem fontSize="12px" key={message}>{message}</ListItem>)
+                        }
+                      </UnorderedList>
+                    </PopoverBody>
+                  </PopoverContent>
+                </Popover>
               </Box>
+            }
 
-              {
-                !!designSchema?.roles?.length &&
-                <Button
-                  variant='outline'
-                  colorScheme="red"
-                  onClick={openResetConfirmation}
-                  size="xs"
-                >
-                  Reset
-                </Button>
-              }
-            </Box>
-          }
+            {
+              !externalDesignId &&
+              <Box position="absolute" zIndex="1" top="5px" right="5px" display="flex" flexDirection="column" alignItems="flex-end" gap="20px">
+                <Popover isOpen={isPopoverOpen}>
+                  <PopoverTrigger>
+                    <Button onClick={(event: React.MouseEvent) => { event.stopPropagation(); onPopoverToggle()}} className='menu-button' leftIcon={<FaEllipsisVertical />} />
+                  </PopoverTrigger>
+
+                  <PopoverContent onClick={onPopoverClose}>
+                    <PopoverBody className='design-details-popover-body'>
+                      { !errorMessages?.length &&
+                        !!nodes?.length &&
+                        !!edges?.length &&
+                        <Box className="design-details-menu-item" onClick={toggleExpandedTopology}>
+                          {
+                            displayExpandedTopology ?
+                            <FullscreenExitTwoToneIcon fontSize="small"/> :
+                            <FullscreenTwoToneIcon fontSize="small"/>
+                          }
+
+                          { displayExpandedTopology ? 'Collapse' : 'Expand' }
+                        </Box>
+                      }
+
+                      { !displayExpandedTopology &&
+                        <Box className="design-details-menu-item" onClick={addNode}>
+                          <AddBoxTwoToneIcon fontSize="small"/>
+
+                          Add Role
+                        </Box>
+                      }
+
+                      {
+                        !!designSchema?.roles?.length &&
+                        <Box className="design-details-menu-item" onClick={onDeleteSchemaOpen}>
+                          <RestartAltTwoToneIcon fontSize="small"/>
+
+                          Reset
+                        </Box>
+                      }
+
+                      <Box className="design-details-menu-item" onClick={(event) => onEditDesignClicked(event)}>
+                        <EditOutlinedIcon fontSize="small"/>
+
+                        Edit Design
+                      </Box>
+
+                      <Box className="design-details-menu-item" onClick={(event) => onDeleteDesignClicked(event)}>
+                        <DeleteOutlineOutlinedIcon fontSize="small"/>
+
+                        Delete Design
+                      </Box>
+                    </PopoverBody>
+                  </PopoverContent>
+                </Popover>
+              </Box>
+            }
 
 
-          { displayExpandedTopology ?
-            <ExpandedTopology nodes={nodes}/> :
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              edgeTypes={edgeTypes}
-              nodeTypes={nodeTypes}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              onEdgeClick={onEdgeClick}
-              onPaneClick={onPaneClick}
-              onNodeClick={onNodeClick}
-              onConnect={onConnect}
-              defaultEdgeOptions={defaultEdgeOptions}
-              connectionLineComponent={CustomConnectionLine as unknown as any}
-              connectionLineStyle={connectionLineStyle}
-              fitView
-              className={ externalDesignId ? 'design-details__react-flow--disabled' : ''}
-            >
-              { !externalDesignId && <Background /> }
-            </ReactFlow>
+            { displayExpandedTopology ?
+              <ExpandedTopology nodes={nodes}/> :
+              <ReactFlow
+                nodes={nodes}
+                edges={edges}
+                edgeTypes={edgeTypes}
+                nodeTypes={nodeTypes}
+                onNodesChange={onNodesChange}
+                onEdgesChange={onEdgesChange}
+                onEdgeClick={onEdgeClick}
+                onPaneClick={onPaneClick}
+                onNodeClick={onNodeClick}
+                onConnect={onConnect}
+                defaultEdgeOptions={defaultEdgeOptions}
+                connectionLineComponent={CustomConnectionLine as unknown as any}
+                connectionLineStyle={connectionLineStyle}
+                fitView
+                className={ externalDesignId ? 'design-details__react-flow--disabled' : ''}
+              >
+                { !externalDesignId && <Background /> }
+              </ReactFlow>
+            }
+          </Box>
+
+          {
+            (role || channel) &&
+              <>
+                {
+                  role &&
+                  <RoleDetails
+                    role={role}
+                    setFileData={handleFiles}
+                    onSave={(data) => handleRoleSave(data)}
+                    onDelete={handleRoleDelete}
+                    setFuncTags={(data) => handleNewFuncTags(data)}
+                    fileNames={fileNames}
+                  />
+                }
+                {
+                  channel &&
+                  <ChannelDetails
+                    channel={channel}
+                    channels={edges?.map((edge: any) => edge.channel)}
+                    funcTags={funcTags}
+                    onSave={(data) => channelSave(data)}
+                    onDelete={handleChannelDelete}
+                  />
+                }
+              </>
           }
         </Box>
 
         {
-          (role || channel) &&
-            <>
-              {
-                role &&
-                <RoleDetails
-                  role={role}
-                  setFileData={handleFiles}
-                  onSave={(data) => handleRoleSave(data)}
-                  onDelete={handleRoleDelete}
-                  setFuncTags={(data) => handleNewFuncTags(data)}
-                  fileNames={fileNames}
-                />
-              }
-              {
-                channel &&
-                <ChannelDetails
-                  channel={channel}
-                  channels={edges?.map((edge: any) => edge.channel)}
-                  funcTags={funcTags}
-                  onSave={(data) => channelSave(data)}
-                  onDelete={handleChannelDelete}
-                />
-              }
-            </>
+          isDeleteSchemaOpen &&
+          <ConfirmationDialog
+            actionButtonLabel={'Delete'}
+            message={'Are sure you want to reset design schema?'}
+            buttonColorScheme={'red'}
+            isOpen={isDeleteSchemaOpen}
+            onClose={onDeleteSchemaClose}
+            onAction={onSchemaDelete}
+          />
         }
-      </Box>
 
-      <ConfirmationDialog
-        actionButtonLabel={'Delete'}
-        message={'Are sure you want to reset design schema?'}
-        buttonColorScheme={'red'}
-        isOpen={isOpen}
-        onClose={handleClose}
-        onAction={onDelete}
-      />
-    </Box>
+        {
+          isDeleteDesignOpen &&
+          <ConfirmationDialog
+            actionButtonLabel={'Delete'}
+            message={'Are sure you want to delete this design?'}
+            buttonColorScheme={'red'}
+            isOpen={isDeleteDesignOpen}
+            onClose={onDeleteDesignClose}
+            onAction={handleDesignDelete}
+          />
+        }
+
+        { true && <DesignFormModal isOpen={isEditDesignOpen} onClose={onEditDesignClose} onSave={(data: DesignForm) => handleEditDesign(data)} /> }
+      </Box>
+    </DesignContext.Provider>
   )
 }
 

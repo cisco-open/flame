@@ -14,7 +14,6 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  /* background-image: url('../../assets/node-bg.avif'); */
   background-size: cover;
   background-position: center;
   background-blend-mode: lighten;

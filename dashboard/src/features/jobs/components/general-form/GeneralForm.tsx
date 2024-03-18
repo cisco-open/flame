@@ -16,7 +16,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { Box, FormControl, FormLabel, Input, Select, SimpleGrid } from '@chakra-ui/react'
+import { Box, FormControl, FormLabel, Input, Select, Text, SimpleGrid } from '@chakra-ui/react'
 import React, { useContext, useEffect } from 'react'
 import { Design } from '../../../../entities/Design';
 import {UseFormRegister } from 'react-hook-form';
@@ -30,9 +30,10 @@ interface Props {
   setValue: (name: string, value: any) => void;
   backendOptions: { name: string, id: number }[];
   selectedDesignId: string;
+  isDesignPresent: boolean | undefined;
 }
 
-const GeneralForm = ({ designs, backendOptions, selectedDesignId, setSelectedDesignId, register, setValue }: Props) => {
+const GeneralForm = ({ designs, backendOptions, selectedDesignId, isDesignPresent, setSelectedDesignId, register, setValue }: Props) => {
   const { job } = useContext(JobContext);
 
   useEffect(() => {
@@ -80,6 +81,8 @@ const GeneralForm = ({ designs, backendOptions, selectedDesignId, setSelectedDes
               <option key={design.id} value={design.id}>{design.name}</option>
             )}
           </Select>
+
+          { !isDesignPresent && <Text fontSize="12px" marginTop="5px" color="red" fontStyle="italic">Design is missing. Please select a new design.</Text>}
         </FormControl>
 
         <FormControl>

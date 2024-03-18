@@ -21,10 +21,12 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { LOGGEDIN_USER } from "../../../constants";
 import { Job } from "../../../entities/Job";
 import ApiClient from "../../../services/api-client";
+import { NavigateFunction } from "react-router-dom";
+import { AxiosError } from "axios";
 
 const apiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs`);
 
-const useJobs = (id?: string, onClose?: () => void) => {
+const useJobs = (id?: string, onClose?: () => void, navigate?: NavigateFunction | undefined) => {
     const jobStatusApiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs/${id}/status`);
     const jobsApiClient = new ApiClient<Job[]>(`users/${LOGGEDIN_USER.name}/jobs/${id}`);
 
@@ -39,11 +41,17 @@ const useJobs = (id?: string, onClose?: () => void) => {
     const deleteMutation = useMutation({
        mutationFn: jobsApiClient.deleteWithoutParam,
        onSuccess: () => {
-            queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries(['jobs']);
+            queryClientHook.invalidateQueries(['jobStatus', id]);
+
             toast({
                 title: 'Job successfully deleted',
                 status: 'success',
             });
+
+            if (navigate) {
+                navigate('/jobs');
+            }
        }
     });
 
@@ -64,6 +72,7 @@ const useJobs = (id?: string, onClose?: () => void) => {
         mutationFn: jobsApiClient.put,
         onSuccess: () => {
             queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries(['job', id]);
             toast({
                 title: 'Job successfully updated',
                 status: 'success',
@@ -76,9 +85,16 @@ const useJobs = (id?: string, onClose?: () => void) => {
         mutationFn: jobStatusApiClient.put,
         onSuccess: () => {
             queryClientHook.invalidateQueries({ queryKey: ['jobs'] });
+            queryClientHook.invalidateQueries(['jobStatus', id]);
             toast({
                 title: 'Job status successfully updated',
                 status: 'success',
+            })
+        },
+        onError: (err: AxiosError) => {
+            toast({
+                title: `${err?.response?.data}`,
+                status: 'error',
             })
         },
     });

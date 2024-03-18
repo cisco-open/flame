@@ -18,16 +18,25 @@
 
 import { Handle, Position, ReactFlowState, useStore } from 'reactflow';
 import { useEffect, useState } from 'react';
-import { Tooltip } from '@chakra-ui/react';
+import { Box, Button, Popover, PopoverBody, PopoverContent, PopoverTrigger, Tooltip } from '@chakra-ui/react';
 import { NODE_COLORS } from '../../constants';
+import { NodeMenuItem } from '../../entities/JobDetails';
+import { FaEllipsisVertical } from 'react-icons/fa6';
 
 const connectionNodeIdSelector = (state: ReactFlowState) => state.connectionNodeId;
 
 interface Props {
-    data: { id: string, status: string, label: string, isInteractive: boolean };
+    data: {
+      id: string,
+      status: string,
+      label: string,
+      log: string,
+      isInteractive: boolean,
+      menuItems?: NodeMenuItem[],
+    };
 }
 
-const CustomNodeNoInteraction = ({ data: { id, status, label, isInteractive } }: Props) => {
+const CustomNodeNoInteraction = ({ data: { status, label, isInteractive, menuItems } }: Props) => {
   const connectionNodeId = useStore(connectionNodeIdSelector);
   const [ statusColor, setStatusColor ] = useState('green');
   const [ tooltip, setTooltip ] = useState('green');
@@ -48,6 +57,28 @@ const CustomNodeNoInteraction = ({ data: { id, status, label, isInteractive } }:
             type="source"
           />
         )}
+
+        {
+          !!menuItems?.length &&
+          <Popover>
+            <PopoverTrigger>
+              <Button className='menu-button' leftIcon={<FaEllipsisVertical />} />
+            </PopoverTrigger>
+
+            <PopoverContent>
+              <PopoverBody>
+                {
+                  menuItems.map(item =>
+                    <Box className="custom-node-no-interaction-menu-item" key={item.label} onClick={() => { item.callback({ taskName: label, tasks: item.tasks }) }}>
+                    { item.label }
+                    </Box>
+                  )
+                }
+              </PopoverBody>
+            </PopoverContent>
+          </Popover>
+        }
+
 
         {
           status &&

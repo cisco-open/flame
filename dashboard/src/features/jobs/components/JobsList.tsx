@@ -40,8 +40,6 @@ const JOB_STATES = [
   { label: 'Failed', value: JOB_STATE.failed }
 ]
 
-
-
 interface Props {
   openJobModal: (job: Job) => void;
 }
@@ -56,7 +54,7 @@ const JobsList = ({ openJobModal }: Props) => {
   const stateFilter = searchParams.get('stateFilter') || 'all';
 
   useEffect(() => {
-    if (!stateFilter) { return; }
+    if (!stateFilter || !jobs?.length) { return; }
     setFilteredData(stateFilter === 'all' ? [...(jobs || [])] : [...(jobs?.filter(job => job.state === stateFilter) || [])]);
   }, [stateFilter, jobs])
 
