@@ -20,6 +20,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
+	"strings"
 
 	"github.com/olekukonko/tablewriter"
 
@@ -33,10 +35,11 @@ import (
 type Params struct {
 	resources.CommonParams
 
-	DesignId string
-	Desc     string
-	Limit    string
-	Name     string
+	DesignId    string
+	Desc        string
+	Limit       string
+	Name        string
+	ForceDelete bool
 }
 
 func Create(params Params) error {
@@ -68,8 +71,9 @@ func Create(params Params) error {
 func Remove(params Params) error {
 	// construct URL
 	uriMap := map[string]string{
-		constants.ParamUser:     params.User,
-		constants.ParamDesignID: params.DesignId,
+		constants.ParamUser:        params.User,
+		constants.ParamDesignID:    params.DesignId,
+		constants.ParamForceDelete: strconv.FormatBool(params.ForceDelete),
 	}
 	url := restapi.CreateURL(params.Endpoint, restapi.DeleteDesignEndPoint, uriMap)
 
@@ -88,7 +92,13 @@ func Remove(params Params) error {
 	if restapi.CheckStatusCode(code) != nil {
 		var msg string
 		_ = json.Unmarshal(responseBody, &msg)
-		fmt.Printf("Failed to delete design '%s': %s\n", params.DesignId, msg)
+
+		if strings.Contains(msg, "design used in job") {
+			fmt.Printf("Failed to delete a design that is used in a job. To delete it, use --force flag\n")
+		} else {
+			fmt.Printf("Failed to delete design '%s': %s\n", params.DesignId, msg)
+		}
+
 		return nil
 	}
 

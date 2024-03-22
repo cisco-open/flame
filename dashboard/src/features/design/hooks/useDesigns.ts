@@ -61,8 +61,8 @@ const useDesigns = (data?: any) => {
         },
     });
 
-    const deleteMutation = useMutation({
-        mutationFn: apiClient.delete,
+    const forceDeleteMutation = useMutation({
+        mutationFn: apiClient.deleteWithQueryParams,
         onSuccess: () => {
             queryClientHook.invalidateQueries({ queryKey: ['designs'] });
 
@@ -77,12 +77,33 @@ const useDesigns = (data?: any) => {
         },
     });
 
+    const deleteMutation = useMutation({
+        mutationFn: apiClient.delete,
+        onSuccess: () => {
+            queryClientHook.invalidateQueries({ queryKey: ['designs'] });
+
+            if (data?.navigate) {
+                data.navigate('/design');
+            }
+
+            toast({
+                title: 'Design successfully deleted',
+                status: 'success',
+            })
+        },
+        onError: (err: AxiosError) => {
+            if ((err?.response?.data as string)?.includes('design used in job')) {
+                data.onForceDeleteOpen();
+            }
+        }
+    });
+
     const queryClient = useQuery({
         queryKey: ['designs'],
         queryFn: apiClient.getAll,
     });
 
-    return { ...queryClient, createMutation, deleteMutation, updateMutation }
+    return { ...queryClient, createMutation, deleteMutation, updateMutation, forceDeleteMutation }
 }
 
 export default useDesigns;

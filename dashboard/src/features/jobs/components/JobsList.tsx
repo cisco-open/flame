@@ -105,13 +105,13 @@ const JobsList = ({ openJobModal }: Props) => {
     openJobModal(job);
   }
 
-  const handleFilterChange = (event: any) => {
+  const handleStateFilterChange = (event: any) => {
     setSearchParams({ stateFilter: event.target.value || 'all' })
   }
 
   return (
     <Box display="flex" flexDirection="column" gap="20px">
-      <Select placeholder='Filter by state' width="200px" size="xs" backgroundColor={COLORS.white} onChange={handleFilterChange} value={stateFilter}>
+      <Select placeholder='Filter by state' width="200px" size="xs" backgroundColor={COLORS.white} onChange={handleStateFilterChange} value={stateFilter}>
         {
           JOB_STATES.map(state => <option key={state.value} value={state.value}>{state.label}</option>)
         }

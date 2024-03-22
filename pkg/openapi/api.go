@@ -168,7 +168,7 @@ type DesignSchemaApiServicer interface {
 // and updated with the logic required for the API.
 type DesignsApiServicer interface {
 	CreateDesign(context.Context, string, DesignInfo) (ImplResponse, error)
-	DeleteDesign(context.Context, string, string) (ImplResponse, error)
+	DeleteDesign(context.Context, string, string, bool) (ImplResponse, error)
 	GetDesign(context.Context, string, string) (ImplResponse, error)
 	GetDesigns(context.Context, string, int32) (ImplResponse, error)
 	UpdateDesign(context.Context, string, string, DesignInfo) (ImplResponse, error)

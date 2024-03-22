@@ -27,23 +27,44 @@ import (
 func TestMongoService_DeleteDesign(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
 	defer mt.Close()
-	mt.Run("success", func(mt *mtest.T) {
+
+	mt.Run("success_force_delete_true", func(mt *mtest.T) {
 		db := &MongoService{
 			designCollection: mt.Coll,
+			jobCollection:    mt.Coll,
 		}
-		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
-			{"n", 1}})
-		err := db.DeleteDesign("userid", "designid")
+		mt.AddMockResponses(
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 5}},
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 1}},
+		)
+		err := db.DeleteDesign("userid", "designid", true)
 		assert.Nil(t, err)
 	})
 
-	mt.Run("no document deleted", func(mt *mtest.T) {
+	mt.Run("success_force_delete_false", func(mt *mtest.T) {
 		db := &MongoService{
 			designCollection: mt.Coll,
+			jobCollection:    mt.Coll,
 		}
-		mt.AddMockResponses(bson.D{{"ok", 1}, {"acknowledged", true},
-			{"n", 0}})
-		err := db.DeleteDesign("userid", "designid")
+		mt.AddMockResponses(
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 5}},
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 1}},
+		)
+		err := db.DeleteDesign("userid", "designid", false)
+		assert.Nil(t, err)
+	})
+
+	mt.Run("no_document_deleted", func(mt *mtest.T) {
+		db := &MongoService{
+			designCollection: mt.Coll,
+			jobCollection:    mt.Coll,
+		}
+		mt.AddMockResponses(
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 5}},
+			bson.D{{"ok", 1}, {"acknowledged", true}, {"n", 0}},
+		)
+		err := db.DeleteDesign("userid", "designid", true)
 		assert.NotNil(t, err)
+		assert.Equal(t, "design id designid not found", err.Error(), "Unexpected error message")
 	})
 }

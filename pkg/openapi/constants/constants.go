@@ -17,15 +17,16 @@
 package constants
 
 const (
-	ParamComputeID = "computeId"
-	ParamJobID     = "jobId"
-	ParamState     = "state"
-	ParamUser      = "user"
-	ParamAdminID   = "adminId"
-	ParamDesignID  = "designId"
-	ParamDatasetID = "datasetId"
-	ParamLimit     = "limit"
-	ParamTaskID    = "taskId"
-	ParamKey       = "key"
-	ParamGeneric   = "generic"
+	ParamComputeID   = "computeId"
+	ParamJobID       = "jobId"
+	ParamState       = "state"
+	ParamUser        = "user"
+	ParamAdminID     = "adminId"
+	ParamDesignID    = "designId"
+	ParamDatasetID   = "datasetId"
+	ParamLimit       = "limit"
+	ParamTaskID      = "taskId"
+	ParamKey         = "key"
+	ParamGeneric     = "generic"
+	ParamForceDelete = "forceDelete"
 )

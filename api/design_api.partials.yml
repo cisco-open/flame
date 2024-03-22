@@ -215,6 +215,14 @@
         style: simple
         explode: false
         required: true
+      - description: Flag for force delete a design that is used in jobs
+        explode: true
+        in: query
+        name: forceDelete
+        required: false
+        schema:
+          type: boolean
+        style: form
     responses:
       '200':
         description: Deleted
