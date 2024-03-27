@@ -1,0 +1,3 @@
+[submodule "fedscale_datasets/FedScale"]
+	path = fedscale_datasets/FedScale
+	url = https://github.com/SymbioticLab/FedScale.git
