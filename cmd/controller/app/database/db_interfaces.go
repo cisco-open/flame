@@ -60,7 +60,7 @@ type DesignService interface {
 	GetDesign(userId string, designId string) (openapi.Design, error)
 
 	// DeleteDesign deletes the design from the db
-	DeleteDesign(userId string, designId string) error
+	DeleteDesign(userId string, designId string, forceDelete bool) error
 
 	// GetDesigns returns a list of designs associated with a user
 	GetDesigns(userId string, limit int32) ([]openapi.DesignInfo, error)

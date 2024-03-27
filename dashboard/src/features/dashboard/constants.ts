@@ -28,5 +28,29 @@ export const JOB_STATE_COLOR: { [key: string]: { color: string, borderColor: str
   failed: {
     borderColor: 'rgba(255, 99, 132, 0.8)',
     color: 'rgba(255, 99, 132, 1)',
-  }
+  },
+  terminated: {
+    borderColor: 'rgba(247, 2, 2, 0.8)',
+    color: 'rgba(247, 2, 2, 1)',
+  },
+  starting: {
+    borderColor: 'rgba(69, 237, 181, 0.8)',
+    color: 'rgba(69, 237, 181, 1)',
+  },
+  applying: {
+    borderColor: 'rgba(245, 226, 15, 0.8)',
+    color: 'rgba(245, 226, 15, 1)',
+  },
+  deploying: {
+    borderColor: 'rgba(190, 7, 227, 0.8)',
+    color: 'rgba(190, 7, 227, 1)',
+  },
+  stopping: {
+    borderColor: 'rgba(145, 6, 52, 0.8)',
+    color: 'rgba(145, 6, 52, 1)',
+  },
+  running: {
+    borderColor: 'rgba(245, 169, 5, 0.8)',
+    color: 'rgba(245, 169, 5, 1)',
+  },
 }

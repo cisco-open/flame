@@ -19,25 +19,31 @@
 import { Box, Icon, IconButton, Text, Menu, MenuButton, MenuItem, MenuList, Table, TableContainer, Tbody, Td, Th, Thead, Tooltip, Tr, useDisclosure } from '@chakra-ui/react';
 import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Design } from '../../../entities/Design';
-import { MouseEvent, useState } from 'react';
+import { MouseEvent, useState, useEffect } from 'react';
 import ConfirmationDialog from '../../../components/confirmation-dialog/ConfirmationDialog';
 import { FaEllipsisVertical } from "react-icons/fa6";
 import { colors } from '../../..';
 import { COLORS } from '../../../constants';
+import useDesigns from '../hooks/useDesigns';
 
 interface Props {
     designs: Design[] | undefined;
-    onDelete: (id: string) => void;
     onEdit: (design: Design) => void;
 }
 
-const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
+const DesignTable = ({ designs, onEdit }: Props) => {
   const columns = ['Name', 'ID', ''];
   const [ designId, setDesignId ] = useState('');
   const navigate = useNavigate();
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { isOpen: isForceDeleteOpen, onOpen: onForceDeleteOpen, onClose: onForceDeleteClose } = useDisclosure();
+  const { deleteMutation, forceDeleteMutation } = useDesigns({ onForceDeleteOpen });
+
+  useEffect(() => {
+    return () => setDesignId('');
+  }, [])
 
   const goToDesignDetails = (id: string): void => {
     navigate(`/design/${id}`);
@@ -56,9 +62,14 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
   }
 
   const onDeleteConfirm = () => {
-    onDelete(designId);
-    setDesignId('');
+    deleteMutation.mutate(designId);
+
     onClose();
+  }
+
+  const handleForceDelete = () => {
+    forceDeleteMutation.mutate({ id: designId, queryParams: '?forceDelete=true' } );
+    onForceDeleteClose();
   }
 
   const handleConfirmationClose = () => {
@@ -121,14 +132,30 @@ const DesignTable = ({ designs, onDelete, onEdit }: Props) => {
 
         <ConfirmationDialog
           actionButtonLabel={'Delete'}
-          message={'A design might be used in a Job! Are sure you want to delete this design?'}
+          message={
+            <Text
+              as="span"
+            >
+              Are sure you want to delete this design? A design might be used in a Job! Check the <Link style={{ color: 'blue' }} to="/jobs">Jobs Page</Link>.
+            </Text>
+          }
           buttonColorScheme={'red'}
           isOpen={isOpen}
           onClose={handleConfirmationClose}
           onAction={onDeleteConfirm}
+        />
+
+        <ConfirmationDialog
+          actionButtonLabel={'Delete'}
+          message="This design is used in a job, are you sure you want to delete this anyway?"
+          buttonColorScheme={'red'}
+          isOpen={isForceDeleteOpen}
+          onClose={onForceDeleteClose}
+          onAction={handleForceDelete}
         />
     </TableContainer>
   )
 }
 
 export default DesignTable
+

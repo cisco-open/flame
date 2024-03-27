@@ -42,11 +42,26 @@ func (db *MongoService) CreateDesign(userId string, design openapi.Design) error
 	return nil
 }
 
-func (db *MongoService) DeleteDesign(userId string, designId string) error {
+func (db *MongoService) DeleteDesign(userId string, designId string, forceDelete bool) error {
+	filter := bson.M{util.DBFieldUserId: userId, util.DBFieldDesignId: designId}
+
+	count, err := db.jobCollection.CountDocuments(context.TODO(), filter)
+
+	if err != nil {
+		zap.S().Errorf("Error counting jobs: %v", err)
+	}
+
+	if count == 0 {
+		zap.S().Debugf("No jobs found. Design can be safely deleted.")
+	} else if !forceDelete {
+		return fmt.Errorf("design used in job: design id: %s | jobs count %d", designId, count)
+	}
+
 	zap.S().Debugf("Delete design : %v, %v", userId, designId)
 
 	updateRes, err := db.designCollection.DeleteOne(context.TODO(),
 		bson.M{util.DBFieldUserId: userId, util.DBFieldId: designId})
+
 	if err != nil {
 		return fmt.Errorf("failed to delete design error: %v", err)
 	}

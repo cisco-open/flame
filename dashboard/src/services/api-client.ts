@@ -45,6 +45,8 @@ class ApiClient<T> {
 
     deleteWithoutParam = () => this.axiosInstance.delete<T>(`${this.endpoint}`);
 
+    deleteWithQueryParams = (data: any) => this.axiosInstance.delete<T>(`${this.endpoint}/${data.id}${data.queryParams}`)
+
     put = (payload: any) => this.axiosInstance.put<T>(`${this.endpoint}`, payload);
 
     pushFile = (data: any) => {

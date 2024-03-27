@@ -130,11 +130,18 @@ func (c *DesignsApiController) CreateDesign(w http.ResponseWriter, r *http.Reque
 // DeleteDesign - Delete design template
 func (c *DesignsApiController) DeleteDesign(w http.ResponseWriter, r *http.Request) {
 	params := mux.Vars(r)
+	query := r.URL.Query()
+	forceDeleteParam, err := parseBoolParameter(query.Get(constants.ParamForceDelete), false)
+	if err != nil {
+		c.errorHandler(w, r, &ParsingError{Err: err}, nil)
+		return
+	}
+
 	userParam := params[constants.ParamUser]
 
 	designIdParam := params[constants.ParamDesignID]
 
-	result, err := c.service.DeleteDesign(r.Context(), userParam, designIdParam)
+	result, err := c.service.DeleteDesign(r.Context(), userParam, designIdParam, forceDeleteParam)
 	// If an error occurred, encode the error with the status code
 	if err != nil {
 		c.errorHandler(w, r, err, &result)
