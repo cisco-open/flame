@@ -119,6 +119,7 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
     duplicateNames: [],
   });
 
+  const { isOpen: isForceDeleteOpen, onOpen: onForceDeleteOpen, onClose: onForceDeleteClose } = useDisclosure();
   const [fileNames, setFileNames] = useState<any>([]);
   const [designInEdit, setDesignInEdit] = useState<any>();
   const [fileData, setFileData] = useState<any[]>([]);
@@ -131,7 +132,12 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
   const { isOpen: isDeleteSchemaOpen, onOpen: onDeleteSchemaOpen, onClose: onDeleteSchemaClose } = useDisclosure();
   const { isOpen: isDeleteDesignOpen, onOpen: onDeleteDesignOpen, onClose: onDeleteDesignClose } = useDisclosure();
   const { isOpen: isEditDesignOpen, onOpen: onEditDesignOpen, onClose: onEditDesignClose } = useDisclosure();
-  const { data: designs, deleteMutation: deleteDesignMutation, updateMutation: updateDesignMutation } = useDesigns({ designInEdit, navigate, onClose: onEditDesignClose });
+  const {
+    data: designs,
+    deleteMutation: deleteDesignMutation,
+    updateMutation: updateDesignMutation,
+    forceDeleteMutation,
+  } = useDesigns({ designInEdit, navigate, onClose: onEditDesignClose, onForceDeleteOpen });
   const { isOpen: isPopoverOpen, onToggle: onPopoverToggle, onClose: onPopoverClose } = useDisclosure();
 
   const isOpenReference = useRef<boolean>();
@@ -388,6 +394,11 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
     return <p>Loading...</p>
   }
 
+  const handleForceDelete = () => {
+    forceDeleteMutation.mutate({ id, queryParams: '?forceDelete=true' } );
+    onForceDeleteClose();
+  }
+
   return (
     <DesignContext.Provider value={{ designInEdit }}>
       <Box display="flex" flexDirection="column" height="100%" overflow="hidden" className="design-details">
@@ -571,6 +582,18 @@ const DesignDetailsPage = ({ externalDesignId }: Props) => {
             isOpen={isDeleteDesignOpen}
             onClose={onDeleteDesignClose}
             onAction={handleDesignDelete}
+          />
+        }
+
+        {
+          isForceDeleteOpen &&
+          <ConfirmationDialog
+            actionButtonLabel={'Delete'}
+            message="This design is used in a job, are you sure you want to delete this anyway?"
+            buttonColorScheme={'red'}
+            isOpen={isForceDeleteOpen}
+            onClose={onForceDeleteClose}
+            onAction={handleForceDelete}
           />
         }
 
