@@ -183,9 +183,7 @@ selfsigned certificate creation. Run the following command:
 ./setup-cert-manager.sh
 ```
 
-## (Optional) Building flame container image
-To simply use flame, skip this step and go to the [starting flame step](#Starting-flame).
-Building flame container image is only needed if a developer makes changes in the source code and wants to test the local changes.
+## Building flame container image
 
 In order to build flame container image, run the following:
 ```bash
@@ -221,22 +219,7 @@ Run the following command:
 ```bash
 ./flame.sh start
 ```
-The above command ensures that the latest official flame image from docker hub is used.
-To use a locally developed image, add `--local-img ` in the above command.
-
-**Note**: The following error may occur during the start.
-```console
-Error: INSTALLATION FAILED: failed post-install: timed out waiting for the condition
-```
-This issue may be because container images are large or the Internet connection is slow.
-The issue has been reported in minikube [github](https://github.com/kubernetes/minikube/issues/14789).
-The latest minikube still doesn't contain the patched component (cri-dockerd 0.2.6).
-A workaround is to pull images manually (e.g. `minikube ssh docker pull ciscoresearch/flame:v0.2.2`).
-The command `kubectl get pods -n flame` gives a list of pods and their status.
-The pods with `ErrImagePull` or `ImagePullBackOff` status are ones that might be affected by the issue.
-Identifying the required image can be done by running a `kubectl describe` command
-(e.g., `kubectl describe pod -n flame flame-apiserver-5df5fb6bc4-22z6l`);
-the command's output will show details about the pod, including image name and its tag.
+The above command ensures that the locally developed image is used.
 
 ## Validating deployment
 To check deployment status, run the following command:

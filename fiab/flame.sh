@@ -20,6 +20,7 @@ RELEASE_NAME=flame
 
 FILE_OF_INTEREST=helm-chart/control/values.yaml
 LINES_OF_INTEREST="27,34"
+TAG="dev"
 
 SED_MAC_FIX=
 if [[ "$OSTYPE" == "darwin"* ]]; then
@@ -48,15 +49,10 @@ function pre_start_stop_check {
 function start {
     # install the flame helm chart
     exposedb=$1
-    tag=$2
-    if [ "$tag" == "" ]; then
-        helm install --create-namespace --namespace $RELEASE_NAME \
-	     $RELEASE_NAME helm-chart/control/
-    else
-        helm install --create-namespace --namespace $RELEASE_NAME \
-	     --set imageTag=$2,workerImageTag=$2 \
-	     $RELEASE_NAME helm-chart/control/
-    fi
+
+    helm install --create-namespace --namespace $RELEASE_NAME \
+    --set imageTag=$TAG,workerImageTag=$TAG \
+    $RELEASE_NAME helm-chart/control/
 
     # Wait until mongodb is up
     ready=false
@@ -235,14 +231,12 @@ function post_stop_cleanup {
 
 function main {
     exposedb=false
-    tag=""
     verb=${@:$OPTIND:1}
     shift;
 
     for arg in "$@"; do
         case "$arg" in
     	"--expose-db") exposedb=true;;
-    	"--local-img") tag="dev";;
     	*) echo "unknown option: $arg"; exit 1;;
         esac
     done
@@ -253,7 +247,7 @@ function main {
         local start_stop_check_res=$?
         if [ $start_stop_check_res == 1 ]; then
             init
-            start $exposedb $tag
+            start $exposedb $TAG
             post_start_config
         else
             echo "Exiting!"
