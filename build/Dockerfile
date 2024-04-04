@@ -30,11 +30,7 @@ RUN python3 setup.py bdist_wheel && cp dist/flame-*.whl /tmp/
 # available image tags: pytorch-cpu, tensorflow-cpu, allinone-cpu
 #                       pytorch-cuda11.3, tensorflow-cuda11.3, allinone-cuda11.3
 # note: allinone-cuda11.3 is the largest image
-FROM ciscoresearch/mlpack:allinone-cuda11.3
-COPY --from=golang-build /flame/* /usr/bin/
-
-# Install flame python library
-COPY --from=python-build /tmp/*.whl /tmp/
+FROM myungjinlee/mlpack:allinone-cuda11.3
 
 # Install required dependencies and Node.js
 ENV NODE_VERSION=17
@@ -42,6 +38,13 @@ RUN apt-get update && \
     apt-get install -y curl && \
     curl -sL https://deb.nodesource.com/setup_${NODE_VERSION}.x | bash - && \
     apt-get install -y nodejs
+
+COPY --from=golang-build /flame/* /usr/bin/
+
+# Install flame python library
+COPY --from=python-build /tmp/*.whl /tmp/
+
+
 COPY ./dashboard /dashboard_src
 WORKDIR /dashboard_src
 RUN npm install -g serve
