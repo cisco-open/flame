@@ -45,6 +45,7 @@ setup(
         "psutil",
         "numpy",
         "pathlib",
+        "fedscale"
     ],
     extras_require={
         "dev": [
