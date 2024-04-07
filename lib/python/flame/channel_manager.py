@@ -87,20 +87,26 @@ class ChannelManager(object):
         atexit.register(self.cleanup)
 
     def _setup_backends(self):
+        distinct_backends = {} 
+
         for ch_name, channel in self._config.channels.items():
             # rename backend in channel config as sort to avoid confusion
             sort = channel.backend
             if not sort:
-                # channel doesn't have its own backend, notthing to do
+                # channel doesn't have its own backend, nothing to do
                 continue
 
-            # get a backend instance
-            backend = backend_provider.get(sort)
-            broker_host = channel.broker_host or self._config.brokers.sort_to_host[sort]
+            if sort not in distinct_backends:
+                # Create a new backend instance if it doesn't exist
+                backend = backend_provider.get(sort)
+                broker_host = channel.broker_host or self._config.brokers.sort_to_host[sort]
 
-            backend.configure(broker_host, self._job_id, self._task_id)
+                backend.configure(broker_host, self._job_id, self._task_id)
 
-            self._backends[ch_name] = backend
+                distinct_backends[sort] = backend
+
+            # Assign the backend instance to the channel
+            self._backends[ch_name] = distinct_backends[sort]
 
         if len(self._backends) == len(self._config.channels):
             # every channel has its own backend
@@ -109,9 +115,12 @@ class ChannelManager(object):
 
         # set up a default backend
         sort = self._config.backend
-        self._backend = backend_provider.get(sort)
-        broker_host = self._config.brokers.sort_to_host[sort]
-        self._backend.configure(broker_host, self._job_id, self._task_id)
+        if sort not in distinct_backends:
+            self._backend = backend_provider.get(sort)
+            broker_host = self._config.brokers.sort_to_host[sort]
+            self._backend.configure(broker_host, self._job_id, self._task_id)
+        else:
+            self._backend = distinct_backends[sort]
 
     def join_all(self) -> None:
         """join_all ensures that a role joins all of its channels."""
