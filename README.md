@@ -12,7 +12,7 @@ The service manages machine learning workloads, while the python library facilit
 And the library is also responsible for executing FL workloads.
 With extensibility of its library, Flame can support various experimentations and use cases.
 
-[:fire:] We have improved Flame with a redesigned control plane and data plane
+:fire: We have improved Flame with a redesigned control plane and data plane
 (called LIFL) for efficient FL aggregation at scale. LIFL leverages shared memory processing to achieve high-performance communication for hierarchical aggregation. We also introduce locality-aware placement in LIFL to maximize the benefits of shared memory processing. LIFL precisely scales and carefully reuses the resources for hierarchical aggregation to achieve the highest degree of parallelism while minimizing the aggregation time and resource consumption.
 [:fire: **Quickstart with LIFL** :fire:](docs/lifl.md)
 
