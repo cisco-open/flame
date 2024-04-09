@@ -189,9 +189,9 @@ class LeafAggregator(BaseLeafAggregator):
 
             task_no_trainer.set_continue_fn(cont_fn=lambda: self.no_trainer)
 
-        self.composer.get_tasklet("fetch").insert_before(task_no_trainer)
-        task_no_trainer.insert_before(task_get_mid_aggregator)
-        task_get_mid_aggregator.insert_before(task_get_trainers)
+        self.composer.get_tasklet("fetch").insert_before(task_get_mid_aggregator)
+        task_get_mid_aggregator.insert_before(task_no_trainer)
+        task_no_trainer.insert_before(task_get_trainers)
         task_get_trainers.insert_before(task_liveness_check)
 
     @classmethod
