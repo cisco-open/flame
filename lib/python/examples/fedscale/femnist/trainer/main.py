@@ -173,7 +173,7 @@ class PyTorchFemnistTrainer(Trainer):
         self.epochs = self.config.hyperparameters.epochs
         self.batch_size = self.config.hyperparameters.batch_size or 16
 
-        self.data_dir = "../../../../../third_party/FedScale/benchmark/dataset/data/femnist/"
+        self.data_dir = "../../../../../third_party/benchmark/dataset/data/femnist/"
         self.loss_squared = 0
         self.completed_steps = 0
         self.epoch_train_loss = 1e-4

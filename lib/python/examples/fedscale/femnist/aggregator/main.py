@@ -238,7 +238,7 @@ class PyTorchFemnistAggregator(TopAggregator):
         self.device = None
         self.test_loader = None
 
-        self.data_dir = "../../../../../third_party/FedScale/benchmark/dataset/data/femnist/"
+        self.data_dir = "../../../../../third_party/benchmark/dataset/data/femnist/"
         self.meta_dir = "/tmp/flame_dataset/femnist/"
         self.partition_id = 1
 
