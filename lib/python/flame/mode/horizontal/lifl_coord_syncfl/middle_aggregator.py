@@ -45,8 +45,8 @@ class MiddleAggregator(BaseMiddleAggregator):
 
         return channel
 
-    def _get_trainers(self) -> None:
-        logger.debug("getting trainers from coordinator")
+    def _liveness_check(self) -> None:
+        logger.debug("calling _liveness_check")
 
         channel = self.get_channel(TAG_COORDINATE)
 
@@ -58,6 +58,7 @@ class MiddleAggregator(BaseMiddleAggregator):
 
         if self._work_done:
             logger.debug("work is done")
+            self.no_leaf_agg = True # stop mid agg
             return
 
         if MessageType.META_INFO_REQ not in msg:
@@ -71,6 +72,14 @@ class MiddleAggregator(BaseMiddleAggregator):
         channel.send(end, {MessageType.META_INFO_RES: "some useful info"})
         logger.debug("sent meta info response")
 
+        logger.debug("exited _liveness_check")
+
+    def _get_leaf_aggs(self) -> None:
+        logger.debug("getting leaf aggs from coordinator")
+
+        channel = self.get_channel(TAG_COORDINATE)
+
+        end = channel.one_end()
         msg, _ = channel.recv(end)
         logger.debug(f"received msg = {msg} from {end}")
 
@@ -86,15 +95,15 @@ class MiddleAggregator(BaseMiddleAggregator):
         # overide distribute channel's ends method
         dist_channel.ends = lambda: msg[MessageType.COORDINATED_ENDS]
 
-        logger.debug("received trainers from coordinator")
+        logger.debug("received leaf aggregators from coordinator")
 
-    def _handle_no_trainer(self):
+    def _handle_no_leaf_agg(self):
         channel = self.cm.get_by_tag(TAG_DISTRIBUTE)
 
-        self.no_trainer = False
+        self.no_leaf_agg = False
         if len(channel.ends()) == 0:
-            logger.debug("no trainers found")
-            self.no_trainer = True
+            logger.debug("no leaf aggs found")
+            self.no_leaf_agg = True
             return
 
     def compose(self) -> None:
@@ -104,14 +113,17 @@ class MiddleAggregator(BaseMiddleAggregator):
         with CloneComposer(self.composer) as composer:
             self.composer = composer
 
-            task_get_trainers = Tasklet("get_trainers", self._get_trainers)
+            task_liveness_check = Tasklet("liveness_check", self._liveness_check)
 
-            task_no_trainer = Tasklet("handle_no_trainer", self._handle_no_trainer)
+            task_get_leaf_aggs = Tasklet("get_leaf_aggs", self._get_leaf_aggs)
 
-            task_no_trainer.set_continue_fn(cont_fn=lambda: self.no_trainer)
+            task_no_leaf_agg = Tasklet("handle_no_leaf_agg", self._handle_no_leaf_agg)
 
-        self.composer.get_tasklet("fetch").insert_before(task_no_trainer)
-        task_no_trainer.insert_before(task_get_trainers)
+            task_no_leaf_agg.set_continue_fn(cont_fn=lambda: self.no_leaf_agg)
+
+        self.composer.get_tasklet("fetch").insert_before(task_no_leaf_agg)
+        task_no_leaf_agg.insert_before(task_get_leaf_aggs)
+        task_get_leaf_aggs.insert_before(task_liveness_check)
 
     @classmethod
     def get_func_tags(cls) -> list[str]:

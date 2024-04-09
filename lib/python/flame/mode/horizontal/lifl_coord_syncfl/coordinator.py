@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 
 TAG_COORDINATE_WITH_TOP_AGG = "coordinateWithTopAgg"
 TAG_COORDINATE_WITH_MID_AGG = "coordinateWithMidAgg"
+TAG_COORDINATE_WITH_LEAF_AGG = "coordinateWithLeafAgg"
 TAG_COORDINATE_WITH_TRAINER = "coordinateWithTrainer"
 
 
@@ -41,8 +42,11 @@ class Coordinator(Role):
         self._round = 1
         self._work_done = False
 
-        self.agg_to_trainer = dict()
-        self.trainer_to_agg = dict()
+        self.leaf_agg_to_trainer = dict()
+        self.trainer_to_leaf_agg = dict()
+
+        self.mid_agg_to_leaf_agg = dict()
+        self.leaf_agg_to_mid_agg = dict()
 
     def build_channel_manager(self):
         channel_manager = ChannelManager()
@@ -61,84 +65,149 @@ class Coordinator(Role):
 
         return channel
 
-    def await_mid_aggs_and_trainers(self):
-        """Wait for middle aggregators and trainers to join."""
-        logger.info("waiting for mid aggs and trainers")
+    def await_mid_leaf_aggs_and_trainers(self):
+        """Wait for mid and leaf aggregators and trainers to join."""
+        logger.info("waiting for mid and leaf aggs and trainers")
 
         trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
-        aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
+        leaf_aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+        mid_aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
 
         # set necessary properties to help channel decide how to select ends
         trainer_channel.set_property("round", self._round)
-        aggregator_channel.set_property("round", self._round)
+        leaf_aggregator_channel.set_property("round", self._round)
+        mid_aggregator_channel.set_property("round", self._round)
 
-        logger.info("both mid aggs and trainers joined")
+        logger.info("all mid, leaf aggs and trainers joined")
 
-    def _random_pair(self, trainer_ends, agg_ends):
-        """randomly pair aggregator with trainers."""
-        for trainer_end in trainer_ends:
-            agg_end = random.choice(agg_ends)
-            self.trainer_to_agg[trainer_end] = agg_end
+    def _random_pair(self, lower_ends, upper_ends, lower_to_upper, upper_to_lower):
+        """randomly pair scheme."""
+        for lower_end in lower_ends:
+            upper_end = random.choice(upper_ends)
 
-            self.agg_to_trainer[agg_end].append(trainer_end)
+            lower_to_upper[lower_end] = upper_end
+            upper_to_lower[upper_end].append(lower_end)
 
-    def _round_robin_pair(self, trainer_ends, agg_ends):
-        """round-robin pair aggregator with trainers."""
-        trainer_idx = 0
-        for trainer_end in trainer_ends:
-            agg_end = agg_ends[trainer_idx % len(agg_ends)]
-            self.trainer_to_agg[trainer_end] = agg_end
+    def _round_robin_pair(self, lower_ends, upper_ends, lower_to_upper, upper_to_lower):
+        """round-robin pair scheme."""
+        lower_idx = 0
+        for lower_end in lower_ends:
+            upper_end = upper_ends[lower_idx % len(upper_ends)]
 
-            self.agg_to_trainer[agg_end].append(trainer_end)
-            trainer_idx += 1
+            lower_to_upper[lower_end] = upper_end
+            upper_to_lower[upper_end].append(lower_end)
+            lower_idx += 1
+
+    def _best_fit_pair(self, trainer_ends, agg_ends):
+        """best-fit pair aggregator with trainers."""
+        pass
+
+    def _worst_fit_pair(self, trainer_ends, agg_ends):
+        """worst-fit pair aggregator with trainers."""
+        pass
+
+    def _first_fit_pair(self, trainer_ends, agg_ends):
+        """first-fit pair aggregator with trainers."""
+        pass
 
     def _count_assigned_trainers_to_agg(self):
         """Count assigned trainers to aggregator. (for debugging)"""
         for agg_end, trainers in self.agg_to_trainer.items():
             logger.debug(f"agg_end: {agg_end}, # of trainers: {len(trainers)}")
 
-    def pair_mid_aggs_and_trainers(self):
-        """Pair middle aggregators with trainers."""
-        logger.debug("paring mid aggs and trainers")
-        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
-        aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
-
-        trainer_ends = trainer_channel.ends()
-        agg_ends = aggregator_channel.ends()
-
-        # send meta information request
+    def _get_good_ends(self, channel, agg_ends):
         for agg_end in agg_ends:
             logger.debug(f"sending meta info req to {agg_end}")
-            aggregator_channel.send(agg_end, {MessageType.META_INFO_REQ: ""})
+            channel.send(agg_end, {MessageType.META_INFO_REQ: ""})
 
         bad_ends = set()
-        for msg, metadata in aggregator_channel.recv_fifo(agg_ends):
+        for msg, metadata in channel.recv_fifo(agg_ends):
             end, _ = metadata
             if not msg or MessageType.META_INFO_RES not in msg:
                 bad_ends.add(end)
                 logger.debug(f"No meta info response from {end}; skipping it")
                 continue
 
-            # meta info can be used to mapping middle aggregators to trainers
+            # meta info can be used to mapping leaf aggregators to trainers
             # TODO: implement necessary logic
             logger.info(f"got {msg[MessageType.META_INFO_RES]} from {end}")
 
-        agg_ends = [end for end in agg_ends if end not in bad_ends]
+        good_ends = [end for end in agg_ends if end not in bad_ends]
 
-        logger.debug(f"good mid agg ends: {agg_ends}")
+        return good_ends
+
+    def pair_leaf_aggs_and_trainers(self):
+        """Pair leaf aggregators with trainers."""
+        logger.debug("paring leaf aggs and trainers")
+        trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
+        aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+
+        trainer_ends = trainer_channel.ends()
+        agg_ends = aggregator_channel.ends()
+
+        trainer_ends = self._get_good_ends(trainer_channel, trainer_ends)
+        logger.debug(f"good trainer ends: {trainer_ends}")
+
+        agg_ends = self._get_good_ends(aggregator_channel, agg_ends)
+        logger.debug(f"good leaf agg ends: {agg_ends}")
 
         # reset
-        self.agg_to_trainer = dict()
-        self.trainer_to_agg = dict()
+        self.leaf_agg_to_trainer = dict()
+        self.trainer_to_leaf_agg = dict()
 
-        # initialize agg_to_trainer
+        # initialize leaf_agg_to_trainer
         for agg_end in agg_ends:
-            self.agg_to_trainer[agg_end] = list()
+            self.leaf_agg_to_trainer[agg_end] = list()
 
         # TODO: making pairing scheme configurable
-        self._round_robin_pair(trainer_ends, agg_ends)
+        self._round_robin_pair(trainer_ends, agg_ends, self.trainer_to_leaf_agg, self.leaf_agg_to_trainer)
 
-        logger.debug("finished paring mid aggs and trainers")
+        logger.debug(f"trainer to leaf agg mapping: {self.trainer_to_leaf_agg}")
+        logger.debug(f"leaf agg to trainer mapping: {self.leaf_agg_to_trainer}")
+
+        logger.debug("finished pairing leaf aggs and trainers")
+
+    def pair_mid_aggs_and_leaf_aggs(self):
+        """Pair mid aggregators with leaf aggregators."""
+        logger.debug("paring mid aggs and leaf aggs")
+        leaf_aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+        mid_aggregator_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
+
+        leaf_agg_ends = leaf_aggregator_channel.ends()
+        mid_agg_ends = mid_aggregator_channel.ends()
+
+        # leaf_agg_ends = self._get_good_ends(leaf_aggregator_channel, leaf_agg_ends)
+        # logger.debug(f"good leaf agg ends: {leaf_agg_ends}")
+
+        mid_agg_ends = self._get_good_ends(mid_aggregator_channel, mid_agg_ends)
+        logger.debug(f"good mid agg ends: {mid_agg_ends}")
+
+        # reset
+        self.mid_agg_to_leaf_agg = dict()
+        self.leaf_agg_to_mid_agg = dict()
+
+        # initialize mid_agg_to_leaf_agg
+        for mid_agg_end in mid_agg_ends:
+            self.mid_agg_to_leaf_agg[mid_agg_end] = list()
+
+        # filter out leaf_agg_end that has no assigned trainers
+        leaf_aggs_w_trainer = list()
+        for leaf_agg, trainers in self.leaf_agg_to_trainer.items():
+            if len(trainers) == 0:
+                logger.debug(f"no trainer assigned for leaf agg {leaf_agg}")
+                continue
+
+            leaf_aggs_w_trainer.append(leaf_agg)
+        
+        leaf_agg_ends = [agg for agg in leaf_agg_ends if agg in leaf_aggs_w_trainer]
+
+        # TODO: making pairing scheme configurable
+        self._round_robin_pair(leaf_agg_ends, mid_agg_ends, self.leaf_agg_to_mid_agg, self.mid_agg_to_leaf_agg)
+
+        logger.debug(f"mid agg to leaf agg mapping: {self.mid_agg_to_leaf_agg}")
+        logger.debug(f"leaf agg to mid agg mapping: {self.leaf_agg_to_mid_agg}")
+
+        logger.debug("finished pairing mid aggs and leaf aggs")
 
     def send_selected_middle_aggregators(self):
         """Send selected middle aggregator list to top aggregator."""
@@ -146,12 +215,12 @@ class Coordinator(Role):
         top_agg_channel = self.get_channel(TAG_COORDINATE_WITH_TOP_AGG)
 
         mid_aggs = list()
-        for agg, trainers in self.agg_to_trainer.items():
-            if len(trainers) == 0:
-                logger.debug(f"no trainer assigned for mid agg {agg}")
+        for mid_agg, leaf_aggs in self.mid_agg_to_leaf_agg.items():
+            if len(leaf_aggs) == 0:
+                logger.debug(f"no leaf agg assigned for mid agg {mid_agg}")
                 continue
 
-            mid_aggs.append(agg)
+            mid_aggs.append(mid_agg)
 
         msg = {MessageType.COORDINATED_ENDS: mid_aggs, MessageType.EOT: self._work_done}
         end = top_agg_channel.one_end()
@@ -159,27 +228,51 @@ class Coordinator(Role):
 
         logger.debug("finished sending selected mid aggs to top agg")
 
-    def send_selected_trainers(self):
-        """Send selected trainer list to middle aggregator."""
-        logger.debug("calling send_selected_trainers()")
+    def send_selected_leaf_aggregators(self):
+        """Send selected leaf aggregator list to middle aggregator."""
+        logger.debug("sending selected leaf aggs to mid agg")
         mid_agg_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
 
-        for agg, trainers in self.agg_to_trainer.items():
+        for mid_agg, leaf_aggs in self.mid_agg_to_leaf_agg.items():
+            msg = {
+                MessageType.COORDINATED_ENDS: leaf_aggs,
+                MessageType.EOT: self._work_done,
+            }
+            mid_agg_channel.send(mid_agg, msg)
+
+        logger.debug("finished sending selected leaf aggs to mid agg")
+
+    def send_selected_trainers(self):
+        """Send selected trainer list to leaf aggregator."""
+        logger.debug("calling send_selected_trainers()")
+        leaf_agg_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+
+        for leaf_agg, trainers in self.leaf_agg_to_trainer.items():
             msg = {
                 MessageType.COORDINATED_ENDS: trainers,
                 MessageType.EOT: self._work_done,
             }
-            mid_agg_channel.send(agg, msg)
+            leaf_agg_channel.send(leaf_agg, msg)
         logger.debug("exited send_selected_trainers()")
 
-    def send_selected_middle_aggregator(self):
-        """Send selected middle aggregator ID to each trainer."""
-        logger.debug("calling send_selected_middle_aggregator()")
+    def send_selected_leaf_aggregator(self):
+        """Send selected leaf aggregator ID to each trainer."""
+        logger.debug("calling send_selected_leaf_aggregator()")
         trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
 
-        for trainer, agg in self.trainer_to_agg.items():
-            msg = {MessageType.COORDINATED_ENDS: agg, MessageType.EOT: self._work_done}
+        for trainer, leaf_agg in self.trainer_to_leaf_agg.items():
+            msg = {MessageType.COORDINATED_ENDS: leaf_agg, MessageType.EOT: self._work_done}
             trainer_channel.send(trainer, msg)
+        logger.debug("exited send_selected_leaf_aggregator()")
+
+    def send_selected_middle_aggregator(self):
+        """Send selected middle aggregator ID to each leaf aggregator."""
+        logger.debug("calling send_selected_middle_aggregator()")
+        leaf_agg_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+
+        for leaf_agg, mid_agg in self.leaf_agg_to_mid_agg.items():
+            msg = {MessageType.COORDINATED_ENDS: mid_agg, MessageType.EOT: self._work_done}
+            leaf_agg_channel.send(leaf_agg, msg)
         logger.debug("exited send_selected_middle_aggregator()")
 
     def increment_round(self) -> None:
@@ -198,6 +291,9 @@ class Coordinator(Role):
 
         mid_agg_channel = self.get_channel(TAG_COORDINATE_WITH_MID_AGG)
         mid_agg_channel.broadcast({MessageType.EOT: self._work_done})
+
+        leaf_agg_channel = self.get_channel(TAG_COORDINATE_WITH_LEAF_AGG)
+        leaf_agg_channel.broadcast({MessageType.EOT: self._work_done})
 
         trainer_channel = self.get_channel(TAG_COORDINATE_WITH_TRAINER)
         trainer_channel.broadcast({MessageType.EOT: self._work_done})
@@ -244,11 +340,15 @@ class Coordinator(Role):
             self.composer = composer
 
             task_await = Tasklet(
-                "await_mid_aggs_and_trainers", self.await_mid_aggs_and_trainers
+                "await_mid_leaf_aggs_and_trainers", self.await_mid_leaf_aggs_and_trainers
             )
 
-            task_pairing = Tasklet(
-                "pair_mid_aggs_and_trainers", self.pair_mid_aggs_and_trainers
+            task_pairing_leaf_aggs_and_trainers = Tasklet(
+                "pair_leaf_aggs_and_trainers", self.pair_leaf_aggs_and_trainers
+            )
+
+            task_pairing_mid_aggs_and_leaf_aggs = Tasklet(
+                "pair_mid_aggs_and_leaf_aggs", self.pair_mid_aggs_and_leaf_aggs
             )
 
             task_send_mid_aggs_to_top_agg = Tasklet(
@@ -256,12 +356,21 @@ class Coordinator(Role):
                 self.send_selected_middle_aggregators,
             )
 
-            task_send_trainers_to_agg = Tasklet(
+            task_send_leaf_aggs_to_mid_agg = Tasklet(
+                "send_selected_leaf_aggregators",
+                self.send_selected_leaf_aggregators,
+            )
+
+            task_send_trainers_to_leaf_agg = Tasklet(
                 "send_selected_trainers", self.send_selected_trainers
             )
 
-            task_send_agg_to_trainer = Tasklet(
+            task_send_mid_agg_to_leaf_agg = Tasklet(
                 "send_selected_middle_aggregator", self.send_selected_middle_aggregator
+            )
+
+            task_send_leaf_agg_to_trainer = Tasklet(
+                "send_selected_leaf_aggregator", self.send_selected_leaf_aggregator
             )
 
             task_increment_round = Tasklet("inc_round", self.increment_round)
@@ -274,10 +383,13 @@ class Coordinator(Role):
         (
             loop(
                 task_await
-                >> task_pairing
+                >> task_pairing_leaf_aggs_and_trainers
+                >> task_pairing_mid_aggs_and_leaf_aggs
                 >> task_send_mid_aggs_to_top_agg
-                >> task_send_trainers_to_agg
-                >> task_send_agg_to_trainer
+                >> task_send_leaf_aggs_to_mid_agg
+                >> task_send_trainers_to_leaf_agg
+                >> task_send_mid_agg_to_leaf_agg
+                >> task_send_leaf_agg_to_trainer
                 >> task_increment_round
             )
             >> task_inform_eot
@@ -293,5 +405,6 @@ class Coordinator(Role):
         return [
             TAG_COORDINATE_WITH_TOP_AGG,
             TAG_COORDINATE_WITH_MID_AGG,
+            TAG_COORDINATE_WITH_LEAF_AGG,
             TAG_COORDINATE_WITH_TRAINER,
         ]
