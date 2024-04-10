@@ -12,9 +12,10 @@ The service manages machine learning workloads, while the python library facilit
 And the library is also responsible for executing FL workloads.
 With extensibility of its library, Flame can support various experimentations and use cases.
 
-:fire: We have improved Flame with a redesigned control plane and data plane
+We have improved Flame with a redesigned control plane and data plane
 (called LIFL) for efficient FL aggregation at scale. LIFL leverages shared memory processing to achieve high-performance communication for hierarchical aggregation. We also introduce locality-aware placement in LIFL to maximize the benefits of shared memory processing. LIFL precisely scales and carefully reuses the resources for hierarchical aggregation to achieve the highest degree of parallelism while minimizing the aggregation time and resource consumption.
-[:fire: **Quickstart with LIFL** :fire:](docs/lifl.md)
+
+[:fire: **Quickstart with LIFL** :fire:](docs/lifl/lifl.md)
 
 ## Prerequisites
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
@@ -81,7 +82,9 @@ We welcome feedback, questions, and issue reports.
     keywords = {Federated Learning, Distributed Machine Learning},
     series = {SoCC '23}
 }
+```
 
+```
 @inproceedings{lifl-mlsys24,
     author = {Qi, Shixiong and Ramakrishnan, K. K. and Lee, Myungjin},
     title = {LIFL: A Lightweight, Event-Driven Serverless Platform for Federated Learning},
