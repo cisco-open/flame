@@ -1,4 +1,0 @@
-[submodule "third_party/FedScale"]
-	path = third_party/FedScale
-	url = https://github.com/SymbioticLab/FedScale.git
-	branch = 7ec441c
