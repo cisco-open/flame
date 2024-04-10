@@ -29,6 +29,8 @@ use `fedscale_dataset_partitioner.py` helper to partition the dataset to Flame t
 We also provided a pre-partitioned Femnist dataset with a total of 2,800 trainers.
 
     ```bash
+    pip install gdown
+
     cd /tmp/
     gdown https://drive.google.com/uc?id=1tzpXjMe6VJKp3XxnfLa4--tHyfF-UTI8
     tar -xvf flame_dataset.tar

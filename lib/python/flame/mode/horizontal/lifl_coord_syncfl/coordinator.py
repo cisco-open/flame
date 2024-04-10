@@ -80,14 +80,6 @@ class Coordinator(Role):
 
         logger.info("all mid, leaf aggs and trainers joined")
 
-    def _random_pair(self, lower_ends, upper_ends, lower_to_upper, upper_to_lower):
-        """randomly pair scheme."""
-        for lower_end in lower_ends:
-            upper_end = random.choice(upper_ends)
-
-            lower_to_upper[lower_end] = upper_end
-            upper_to_lower[upper_end].append(lower_end)
-
     def _round_robin_pair(self, lower_ends, upper_ends, lower_to_upper, upper_to_lower):
         """round-robin pair scheme."""
         lower_idx = 0
