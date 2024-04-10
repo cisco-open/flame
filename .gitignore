@@ -54,3 +54,6 @@ requirements.lock
 
 # React dependencies
 node_modules
+
+# Dataset
+third_party/benchmark/dataset/data/
