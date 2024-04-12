@@ -68,10 +68,11 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 }
 
 // DeleteDesign - Delete design template
-func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
-	zap.S().Debugf("Received DeleteDesign Delete request: %s | %s", user, designId)
+func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string,
+	designId string, forceDelete bool) (openapi.ImplResponse, error) {
+	zap.S().Debugf("Received DeleteDesign Delete request with force delete: %s | %s | %t", user, designId, forceDelete)
 
-	err := s.dbService.DeleteDesign(user, designId)
+	err := s.dbService.DeleteDesign(user, designId, forceDelete)
 	if err != nil {
 		return openapi.Response(http.StatusInternalServerError, nil), err
 	}

@@ -25,6 +25,7 @@ export interface Job {
     updatedAt: string;
     name: string;
     experimentId?: string;
+    designId?: string;
 }
 
 export interface DatasetPayload {

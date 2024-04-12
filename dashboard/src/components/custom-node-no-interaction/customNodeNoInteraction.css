@@ -3,7 +3,6 @@
   height: 60px;
   border: 1px solid lightgray;
   position: relative;
-  overflow: hidden;
   border-radius: 10px;
   display: flex;
   justify-content: center;
@@ -54,6 +53,15 @@
   cursor: default !important;
 }
 
+.custom-node-no-interaction-menu-item  {
+  padding: 5px;
+  border-radius: 4px;
+}
+
+.custom-node-no-interaction-menu-item:hover  {
+  background-color: rgb(243, 243, 243);
+}
+
 div.custom-node-no-interaction-handle {
   display: flex;
   width: unset;
@@ -70,4 +78,36 @@ div.custom-node-no-interaction-handle {
 
 .no-interaction > * {
   cursor: default !important;
+}
+
+.logs-icon {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 5px;
+  right: 5px;
+  cursor: pointer;
+  color: gray !important;
+  z-index: 1;
+}
+
+.customNodeBody .chakra-popover__content {
+  width: 150px !important;
+}
+
+.menu-button {
+  background-color: transparent !important;
+  width: 15px !important;
+  height: 15px !important;
+  position: absolute !important;
+  right: -10px;
+  top: 5px;
+}
+
+.menu-button:hover {
+  background-color: transparent !important;
+}
+
+.menu-button:active {
+  background-color: transparent !important;
 }

@@ -40,8 +40,6 @@ const JOB_STATES = [
   { label: 'Failed', value: JOB_STATE.failed }
 ]
 
-
-
 interface Props {
   openJobModal: (job: Job) => void;
 }
@@ -56,7 +54,7 @@ const JobsList = ({ openJobModal }: Props) => {
   const stateFilter = searchParams.get('stateFilter') || 'all';
 
   useEffect(() => {
-    if (!stateFilter) { return; }
+    if (!stateFilter || !jobs?.length) { return; }
     setFilteredData(stateFilter === 'all' ? [...(jobs || [])] : [...(jobs?.filter(job => job.state === stateFilter) || [])]);
   }, [stateFilter, jobs])
 
@@ -107,13 +105,13 @@ const JobsList = ({ openJobModal }: Props) => {
     openJobModal(job);
   }
 
-  const handleFilterChange = (event: any) => {
+  const handleStateFilterChange = (event: any) => {
     setSearchParams({ stateFilter: event.target.value || 'all' })
   }
 
   return (
     <Box display="flex" flexDirection="column" gap="20px">
-      <Select placeholder='Filter by state' width="200px" size="xs" backgroundColor={COLORS.white} onChange={handleFilterChange} value={stateFilter}>
+      <Select placeholder='Filter by state' width="200px" size="xs" backgroundColor={COLORS.white} onChange={handleStateFilterChange} value={stateFilter}>
         {
           JOB_STATES.map(state => <option key={state.value} value={state.value}>{state.label}</option>)
         }

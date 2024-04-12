@@ -19,13 +19,16 @@
 import { useEffect, useState } from 'react'
 import ReactFlow, { Background, Edge, Node } from 'reactflow'
 import CustomConnectionLine from '../../../../components/custom-connection-line/CustomConnectionLine'
-import { GetRunsPayload, RunViewType } from '../../../../entities/JobDetails'
+import { GetRunsPayload, NodeMenuItem, RunViewType } from '../../../../entities/JobDetails'
 import { edgeTypes, nodeTypes, connectionLineStyle } from '../../../design-details/constants'
 import { fitViewOptions } from '../../JobDetailsPage'
 import { getEdges, getNodes, getTasksWithLevelsAndCounts } from '../../utils';
 import '../../../../components/custom-node-no-interaction/customNodeNoInteraction.css';
 import { getGraphLayoutedElements } from '../../../utils'
 import { Task } from '../../../../entities/Task'
+import { useDisclosure } from '@chakra-ui/react'
+import TaskLogs from '../task-logs/TaskLogs'
+import { MENU_OPTIONS_PROPERTIES } from '../../constants'
 
 const initialSearchCriteria: Partial<GetRunsPayload> = {
   max_results: 100,
@@ -43,18 +46,38 @@ interface Props {
 const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
   const [nodes, setNodes] = useState<Node<any, string | undefined>[]>([]);
   const [edges, setEdges] = useState<Edge<any>[] | undefined>([]);
+  const [taskName, setTaskName] = useState<string>('');
+  const [taskLog, setTaskLog] = useState<string>('');
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const [nodeMenuItems, setNodeMenuItems] = useState<NodeMenuItem[]>();
 
+  useEffect(() => {
+    setNodeMenuItems([]);
+  }, [tasks])
+
+
+  const onLogsDisplay = (data: { taskName: string, tasks: Task[] }) => {
+    const taskLog = data.tasks?.find(task => task.role === data.taskName)?.log || '';
+    setTaskName(data.taskName);
+    setTaskLog(taskLog);
+    onOpen();
+  }
 
   useEffect(() => {
     if (tasks?.length) {
       const edges = getEdges(tasks);
-      const nodes = getNodes(getTasksWithLevelsAndCounts(tasks));
+      const nodes = getNodes(
+        getTasksWithLevelsAndCounts(tasks).map(task => ({
+          ...task,
+          menuItems: getNodeMenuOptions(task)
+        }))
+      );
       const layouted = getGraphLayoutedElements(nodes, edges, 'TB', 200, 200);
 
       setEdges([...layouted.edges]);
       setNodes([...layouted.nodes]);
     }
-  }, [tasks, runs]);
+  }, [tasks, runs, nodeMenuItems]);
 
   useEffect(() => {
     if (!experiment) { return; }
@@ -63,6 +86,15 @@ const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
       experiment_ids: [experiment?.experiment?.experiment_id || ''],
     })
   }, [experiment]);
+
+  const getNodeMenuOptions = (task: Task) => {
+    const menuOptions: NodeMenuItem[] = [];
+    if (task[MENU_OPTIONS_PROPERTIES.log as keyof Task]) {
+      menuOptions.push({ label: 'Display logs', tasks, callback: onLogsDisplay, propertyName: 'log' })
+    }
+
+    return menuOptions;
+  }
 
   return (
     <>
@@ -78,6 +110,8 @@ const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
       >
         <Background />
       </ReactFlow>
+
+      <TaskLogs isOpen={isOpen} onClose={onClose} taskName={taskName} log={taskLog} />
     </>
   )
 }

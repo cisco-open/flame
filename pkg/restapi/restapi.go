@@ -104,7 +104,7 @@ var URI = map[string]string{
 	CreateDesignEndPoint: "/users/{{.user}}/designs",
 	GetDesignEndPoint:    "/users/{{.user}}/designs/{{.designId}}",
 	GetDesignsEndPoint:   "/users/{{.user}}/designs/?limit={{.limit}}",
-	DeleteDesignEndPoint: "/users/{{.user}}/designs/{{.designId}}",
+	DeleteDesignEndPoint: "/users/{{.user}}/designs/{{.designId}}?forceDelete={{.forceDelete}}",
 	UpdateDesignEndPoint: "/users/{{.user}}/designs/{{.designId}}",
 
 	// Design schema

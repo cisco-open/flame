@@ -33,12 +33,13 @@ interface Props {
 	datasetControls: { label: string, controls: string[]}[] | undefined;
 	datasets: Dataset[] | undefined;
 	mappedJobToForm: any;
+	selectedDesignId: string;
 	setDatasetPayload: (payload: DatasetPayload) => void;
 }
 
-const DatasetForm = ({ datasetControls, datasets, mappedJobToForm, setDatasetPayload }: Props) => {
+const DatasetForm = ({ datasetControls, datasets, mappedJobToForm, selectedDesignId, setDatasetPayload }: Props) => {
 	const [ mappedDatasets, setMappedDatasets ] = useState<Option[] | undefined>(undefined);
-	const [ selectedDatasets, setSelectedDatasets ] = useState<any>({});
+	const [ selectedDatasets, setSelectedDatasets ] = useState<any>(null);
 	const [filteredDatasets, setFilteredDatasets] = useState<Dataset[] | undefined>([]);
 
 	useEffect(() => {
@@ -46,7 +47,7 @@ const DatasetForm = ({ datasetControls, datasets, mappedJobToForm, setDatasetPay
 	}, [datasets]);
 
 	useEffect(() => {
-		if (!mappedJobToForm) { return; }
+		if (!mappedJobToForm || mappedJobToForm.designId !== selectedDesignId) { return; }
 		// @TODO -> fix datasets to handle a list of datasets
 		const jobDatasets = mappedJobToForm.datasets.map((datasetGroup: any) => {
 			const mappedGroup = Object.keys(datasetGroup).reduce((acc: any, key: string) => ({
@@ -67,6 +68,7 @@ const DatasetForm = ({ datasetControls, datasets, mappedJobToForm, setDatasetPay
 	}, [mappedJobToForm])
 
 	useEffect(() => {
+		if (!selectedDatasets) { return; }
 		setDatasetPayload(createDatasetPayload(selectedDatasets));
 	}, [selectedDatasets])
 

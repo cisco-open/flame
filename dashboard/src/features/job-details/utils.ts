@@ -108,6 +108,7 @@ export const getNodes = (tasks: Task[]) => {
         label: task.role,
         id: task.taskId,
         status: task.state,
+        menuItems: task.menuItems
       },
       position: { x: 0, y: 0 },
       type: 'customNodeNoInteraction',
@@ -190,4 +191,13 @@ export const mapMetricResponse = (res: any, list: any, metric: UiMetric) => {
       start,
     }
   })
+}
+
+export const getMappedLogs = (log: string | undefined): { value: string, id: number}[] => {
+  const logs = (log?.split('\n') || []).map(log => log?.trim()).filter(log => !!log);
+  if (logs[0]?.split('|').length < 6) {
+    logs.shift();
+  }
+
+  return logs.map((log, index) => ({ value: log, id: index}));
 }

@@ -72,13 +72,15 @@ func (s *DesignsApiService) CreateDesign(ctx context.Context, user string, desig
 }
 
 // DeleteDesign - Delete design template
-func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string, designId string) (openapi.ImplResponse, error) {
+func (s *DesignsApiService) DeleteDesign(ctx context.Context, user string,
+	designId string, forceDelete bool) (openapi.ImplResponse, error) {
 	zap.S().Debugf("Design delete request received for user: %s | DesignId: %v", user, designId)
 
 	// create controller request
 	uriMap := map[string]string{
-		constants.ParamUser:     user,
-		constants.ParamDesignID: designId,
+		constants.ParamUser:        user,
+		constants.ParamDesignID:    designId,
+		constants.ParamForceDelete: strconv.FormatBool(forceDelete),
 	}
 
 	url := restapi.CreateURL(HostEndpoint, restapi.DeleteDesignEndPoint, uriMap)

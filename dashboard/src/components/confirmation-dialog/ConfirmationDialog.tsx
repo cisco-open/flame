@@ -23,7 +23,7 @@ interface Props {
   isOpen: boolean;
   actionButtonLabel: string;
   buttonColorScheme?: string;
-  message: string;
+  message: string | React.ReactNode;
   onClose: () => void;
   onAction: () => void;
 }
@@ -39,7 +39,7 @@ const ConfirmationDialog = ({ isOpen, actionButtonLabel, message, buttonColorSch
       <ModalContent className="dataset-form">
         <ModalCloseButton />
 
-        <ModalBody pb={6} display="flex" flexDirection="column" gap="10px">
+        <ModalBody pb={6} display="flex" maxWidth="95%" flexDirection="column" gap="10px">
           <Text>{message}</Text>
         </ModalBody>
 

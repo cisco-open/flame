@@ -32,7 +32,7 @@ const DesignList = () => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [ designInEdit, setDesignInEdit ] = useState<Design>();
 
-  const { data, isLoading, createMutation, deleteMutation, updateMutation } = useDesigns({ designInEdit, onClose });
+  const { data, isLoading, createMutation, updateMutation } = useDesigns({ designInEdit, onClose });
 
   useEffect(() => {
     handleClose();
@@ -43,10 +43,6 @@ const DesignList = () => {
       updateMutation.mutate({ ...data }) :
       createMutation.mutate({ ...data, userId: LOGGEDIN_USER.name });
   };
-
-  const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
-  }
 
   const handleEdit = (design: Design) => {
     setDesignInEdit(design);
@@ -73,7 +69,6 @@ const DesignList = () => {
 
         <DesignTable
           designs={data}
-          onDelete={(id: string) => handleDelete(id)}
           onEdit={(design: Design) => handleEdit(design)}
         />
 

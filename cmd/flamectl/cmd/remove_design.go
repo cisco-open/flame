@@ -21,6 +21,10 @@ import (
 	"github.com/cisco-open/flame/cmd/flamectl/resources/design"
 )
 
+const (
+	forceDeleteFlag = "force"
+)
+
 var removeDesignCmd = &cobra.Command{
 	Use:   "design <designId>",
 	Short: "Remove a design and its objects",
@@ -29,17 +33,24 @@ var removeDesignCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		checkInsecure(cmd)
 
+		flags := cmd.Flags()
+
+		forceDelete, _ := flags.GetBool(forceDeleteFlag)
+
 		designId := args[0]
 
 		params := design.Params{}
 		params.Endpoint = config.ApiServer.Endpoint
 		params.User = config.User
 		params.DesignId = designId
+		params.ForceDelete = forceDelete
 
 		return design.Remove(params)
 	},
 }
 
 func init() {
+	removeDesignCmd.Flags().BoolP(forceDeleteFlag, "f", false, "Force delete flag")
+
 	removeCmd.AddCommand(removeDesignCmd)
 }
