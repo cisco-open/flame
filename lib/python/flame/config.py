@@ -41,8 +41,7 @@ class BackendType(str, Enum):
     LOCAL = "local"
     P2P = "p2p"
     MQTT = "mqtt"
-    LIFL_SHM = "lifl_shm"
-    LIFL_P2P = "lifl_p2p"
+    SHM = "shm"
 
 
 class RegistryType(str, Enum):
