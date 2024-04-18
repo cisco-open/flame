@@ -1,9 +1,6 @@
-import { Box, Icon, IconButton, Menu, MenuButton, Text, MenuItem, MenuList, Modal, ModalBody, ModalCloseButton, ModalContent, ModalHeader, ModalOverlay, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react'
-import { colors } from '@mui/material';
+import { Text, Modal, ModalBody, ModalCloseButton, ModalContent, ModalHeader, ModalOverlay, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react'
 import React, { useEffect, useRef, useState } from 'react'
-import { FaEllipsisVertical } from 'react-icons/fa6';
 import { COLORS } from '../../../../constants';
-import { Design } from '../../../../entities/Design';
 import { getMappedLogs } from '../../utils';
 
 interface Props {
