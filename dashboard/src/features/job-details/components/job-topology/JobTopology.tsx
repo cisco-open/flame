@@ -56,8 +56,8 @@ const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
   }, [tasks])
 
 
-  const onLogsDisplay = (data: { taskName: string, tasks: Task[] }) => {
-    const taskLog = data.tasks?.find(task => task.role === data.taskName)?.log || '';
+  const onLogsDisplay = (data: { taskName: string, taskId: string, tasks: Task[] }) => {
+    const taskLog = data.tasks?.find(task => task.taskId === data.taskId)?.log || '';
     setTaskName(data.taskName);
     setTaskLog(taskLog);
     onOpen();
@@ -68,8 +68,9 @@ const JobTopology = ({ tasks, experiment, runs, mutate }: Props) => {
       const edges = getEdges(tasks);
       const nodes = getNodes(
         getTasksWithLevelsAndCounts(tasks).map(task => ({
-          ...task,
-          menuItems: getNodeMenuOptions(task)
+            ...task,
+            menuItems: getNodeMenuOptions(task),
+            taskId: task.taskId
         }))
       );
       const layouted = getGraphLayoutedElements(nodes, edges, 'TB', 200, 200);

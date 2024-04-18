@@ -33,10 +33,11 @@ interface Props {
       log: string,
       isInteractive: boolean,
       menuItems?: NodeMenuItem[],
+      taskId: string;
     };
 }
 
-const CustomNodeNoInteraction = ({ data: { status, label, isInteractive, menuItems } }: Props) => {
+const CustomNodeNoInteraction = ({ data: { status, label, isInteractive, menuItems, taskId } }: Props) => {
   const connectionNodeId = useStore(connectionNodeIdSelector);
   const [ statusColor, setStatusColor ] = useState('green');
   const [ tooltip, setTooltip ] = useState('green');
@@ -69,7 +70,7 @@ const CustomNodeNoInteraction = ({ data: { status, label, isInteractive, menuIte
               <PopoverBody>
                 {
                   menuItems.map(item =>
-                    <Box className="custom-node-no-interaction-menu-item" key={item.label} onClick={() => { item.callback({ taskName: label, tasks: item.tasks }) }}>
+                    <Box className="custom-node-no-interaction-menu-item" key={item.label} onClick={() => { item.callback({ taskName: label, taskId, tasks: item.tasks }) }}>
                     { item.label }
                     </Box>
                   )

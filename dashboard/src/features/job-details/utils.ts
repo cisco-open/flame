@@ -108,7 +108,8 @@ export const getNodes = (tasks: Task[]) => {
         label: task.role,
         id: task.taskId,
         status: task.state,
-        menuItems: task.menuItems
+        menuItems: task.menuItems,
+        taskId: task.taskId
       },
       position: { x: 0, y: 0 },
       type: 'customNodeNoInteraction',

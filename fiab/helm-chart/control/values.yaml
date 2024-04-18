@@ -63,10 +63,10 @@ minio:
     hosts:
       - minio.flame.test
 
-imageName: ciscoresearch/flame
-imageTag: v0.4.0
-workerImageName: ciscoresearch/flame
-workerImageTag: v0.4.0
+imageName: flame
+imageTag: dev
+workerImageName: flame
+workerImageTag: dev
 
 broker:
   - sort: mqtt
