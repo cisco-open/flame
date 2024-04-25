@@ -70,6 +70,6 @@ jobs:
         go-version: 1.18.x
 
     - name: golangci-lint
-      uses: golangci/golangci-lint-action@0ad9a0988b3973e851ab0a07adf248ec2e100376 # v3
+      uses: golangci/golangci-lint-action@82d40c283aeb1f2b6595839195e95c2d6a49081b # v3
       with:
         version: v1.47
