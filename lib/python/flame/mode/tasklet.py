@@ -49,6 +49,7 @@ class Tasklet(object):
         self.func = func
         self.args = args
         self.kwargs = kwargs
+        self.siblings = []
 
         self.composer = ComposerContext.get_composer()
 
@@ -67,6 +68,19 @@ class Tasklet(object):
         )
 
     def __rshift__(self, other: Tasklet) -> Tasklet:
+    
+        # case: t1 >> [t2, t3]
+        # make list[0] (e.g. t2) the next tasklet and asign the rest of the list as siblings (e.g. [t3])
+        if isinstance(other, list):
+            if (len(other) == 0):
+                raise ValueError(f"empry list is not permitted")
+            elif (len(other) == 1):
+                other = other[0]
+            else:
+                firstTasklet = other[0]
+                firstTasklet.set_siblings(other[1:])
+                other = firstTasklet            
+
         """Set up connection."""
         if self not in self.composer.chain:
             self.composer.chain[self] = set()
@@ -117,6 +131,9 @@ class Tasklet(object):
     def get_composer(self):
         """Return composer object."""
         return self.composer
+    
+    def set_siblings(self, siblings):
+        self.siblings = siblings
 
     def get_root(self) -> Tasklet:
         """get_root returns a root tasklet."""

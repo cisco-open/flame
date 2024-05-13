@@ -16,6 +16,7 @@
 """flame role composer."""
 
 import logging
+import concurrent.futures
 from queue import Queue
 from types import TracebackType
 from typing import Optional, Type
@@ -104,8 +105,19 @@ class Composer(object):
         while not q.empty():
             tasklet = q.get()
 
-            # execute tasklet
-            tasklet.do()
+            if (len(tasklet.siblings)):
+                with concurrent.futures.ThreadPoolExecutor(max_workers=len(tasklet.siblings)) as executor:                    
+                    # execute sibling taskelts in parallel
+                    futures = [executor.submit(tasklet.do) for tasklet in [*tasklet.siblings]]
+
+                    # execute first sibling tasklet
+                    tasklet.do()
+
+                    # wait for all tasks to complete
+                    concurrent.futures.wait(futures)
+            else:
+                # execute single tasklet
+                tasklet.do()
 
             if tasklet.is_continue() or (
                 tasklet.is_last_in_loop() and not tasklet.is_loop_done()
