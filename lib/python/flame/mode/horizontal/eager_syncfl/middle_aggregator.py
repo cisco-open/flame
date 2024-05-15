@@ -37,31 +37,26 @@ class MiddleAggregator(BaseMiddleAggregator):
             return
 
         total = 0
-        received_ends = 0
 
-        while received_ends < len(channel.ends()):
-            # NOTE: first_k - number of ends to receive a msg from.
-            for msg, metadata in channel.recv_fifo(channel.ends(), first_k = 1):
-                end, _ = metadata
-                if not msg:
-                    logger.debug(f"No data from {end}; skipping it")
-                    continue
+        for msg, metadata in channel.recv_fifo(channel.ends()):
+            end, _ = metadata
+            if not msg:
+                logger.debug(f"No data from {end}; skipping it")
+                continue
 
-                if MessageType.WEIGHTS in msg:
-                    weights = msg[MessageType.WEIGHTS]
+            if MessageType.WEIGHTS in msg:
+                weights = msg[MessageType.WEIGHTS]
 
-                if MessageType.DATASET_SIZE in msg:
-                    count = msg[MessageType.DATASET_SIZE]
+            if MessageType.DATASET_SIZE in msg:
+                count = msg[MessageType.DATASET_SIZE]
 
-                logger.debug(f"{end}'s parameters trained with {count} samples")
+            logger.debug(f"{end}'s parameters trained with {count} samples")
 
-                if weights is not None and count > 0:
-                    total += count
-                    tres = TrainResult(weights, count)
-                    # save training result from trainer in a disk cache
-                    self.cache[end] = tres
-
-            logger.debug(f"received {len(self.cache)} trainer updates in cache")
+            if weights is not None and count > 0:
+                total += count
+                tres = TrainResult(weights, count)
+                # save training result from trainer in a disk cache
+                self.cache[end] = tres
 
             # optimizer conducts optimization (in this case, aggregation)
             global_weights = self.optimizer.do(
@@ -77,8 +72,7 @@ class MiddleAggregator(BaseMiddleAggregator):
 
             # set global weights
             self.weights = global_weights
-            self.dataset_size = total
 
-            received_ends += 1
+        logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
-            logger.debug(f"received {received_ends} trainer updates in total")
+        self.dataset_size = total
