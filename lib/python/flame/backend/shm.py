@@ -64,7 +64,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
         self.tx_tasks = dict()
         self._cleanup_ready = dict()
 
-        self._is_shm_buf_created = False
+        self._is_shm_buf_created = dict()
 
         # TODO: make them configurable
         self.sockmap_server_ip   = "127.0.0.1"
@@ -79,8 +79,6 @@ class LIFLSharedMemoryBackend(AbstractBackend):
             self._rx_queue = asyncio.Queue()
 
         _, _ = run_async(_setup_rx_queue(), self._loop)
-
-        self.data = None
 
         self._initialized = True
 
@@ -193,9 +191,24 @@ class LIFLSharedMemoryBackend(AbstractBackend):
         """
         logger.info("Clean up shared memory buffers.")
 
-        shm_buf = shared_memory.SharedMemory(name = self._id)
-        shm_buf.close()
-        shm_buf.unlink()
+        for end in channel.all_ends():
+            shm_buf = shared_memory.SharedMemory(name = end)
+            shm_buf.close()
+            if end == self._id:
+                shm_buf.unlink()
+
+        # NOTE: this method may recreate the shm dict.
+        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = 1024)
+        del shm_ends[self._id]
+
+        if len(shm_ends) == 0:
+            shm_ends.shm.close()
+            shm_ends.shm.unlink()
+            del shm_ends
+
+        # NOTE: this method may recreate the shm dict.
+        other_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = 1024)
+        other_ends.shm.close()
 
     def create_tx_task(
         self, channel_name: str, end_id: str, comm_type=CommType.UNICAST
@@ -272,7 +285,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
                 txq.task_done()
                 logger.debug("broadcast task got an empty msg from queue")
                 break
-            
+
             try:
                 self.send_data(end_id, channel.name(), data)
             except Exception as ex:
@@ -286,7 +299,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
 
     def send_data(self, other: str, ch_name: str, data: bytes) -> None:
         """Send data references to an end."""
-        msg = self._generate_data_messages(ch_name, data)
+        msg = self._generate_data_messages(ch_name, other, data)
 
         next_fn_id = bytes.fromhex(other)[-2:]
         next_fn_id_int = int.from_bytes(next_fn_id, byteorder = 'little')
@@ -295,8 +308,8 @@ class LIFLSharedMemoryBackend(AbstractBackend):
 
         self.sockmap_sock.sendall(skmsg_md_bytes)
 
-    def _generate_data_messages(self, ch_name: str, data: bytes) -> msg_pb2.Data:
-        self.set_data(data, self._id)
+    def _generate_data_messages(self, ch_name: str, other: str, data: bytes) -> msg_pb2.Data:
+        self.set_data(data, other)
 
         msg = msg_pb2.Data(
             end_id=self._id, # end_id == buf_id in shm backend
@@ -318,7 +331,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
 
             msg = msg_pb2.Data.FromString(skmsg_md[4:])
 
-            # Parse SKMSG; Check if SKMSG is allowed or not
+            # NOTE: Parse SK_MSG; Check if SK_MSG is allowed or not
             truncated_target_end_id = int.from_bytes(skmsg_md[0:3], "little")
             truncated_self_id = int.from_bytes(bytes.fromhex(self._id)[-2:], byteorder = 'little')
 
@@ -368,24 +381,24 @@ class LIFLSharedMemoryBackend(AbstractBackend):
         """
         pass
 
-    def get_data(self, buf_id, msg_size) -> Union[bytes, None]:
+    def get_data(self, other, msg_size) -> Union[bytes, None]:
         """Return the data buffer of shared memory."""
-        self.data = shared_memory.SharedMemory(buf_id)
-
-        data = bytes(self.data.buf[:msg_size])
+        read_buf = shared_memory.SharedMemory(other + "-" + self._id)
+        data = bytes(read_buf.buf[:msg_size])
 
         return data
 
-    def set_data(self, data: bytes, buf_id: str) -> None:
+    def set_data(self, data: bytes, other: str) -> None:
         """Write data to shared memory buffer."""
+        key = self._id + "-" + other
 
-        if self._is_shm_buf_created == False:
-            self.data = shared_memory.SharedMemory(name = buf_id, create = True, size = len(data))
-            self._is_shm_buf_created = True
+        if key not in self._is_shm_buf_created:
+            wrt_buf = shared_memory.SharedMemory(name = self._id + "-" + other, create = True, size = len(data))
+            self._is_shm_buf_created[self._id + "-" + other] = True
         else:
-            self.data = shared_memory.SharedMemory(name = buf_id)
+            wrt_buf = shared_memory.SharedMemory(name = self._id + "-" + other)
 
-        self.data.buf[:len(data)] = data
+        wrt_buf.buf[:len(data)] = data
 
     async def handle(self, msg: msg_pb2.Data, channel: Channel) -> None:
         """Process msg."""

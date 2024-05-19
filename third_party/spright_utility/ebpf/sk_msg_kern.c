@@ -20,20 +20,7 @@
 #include <linux/ptrace.h>
 #include <bpf/bpf_helpers.h>
 
-#define MAX_FUNC 100 // A kubernetes worker node can have up to 100 pods
 #define MAX_SOCK_MAP_MAP_ENTRIES 65535
-
-/* This is the data record stored in the map */
-struct datarec {
-	__u64 rx_packets;
-};
-
-struct bpf_map_def SEC("maps") skmsg_stats_map = {
-	.type        = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size    = sizeof(int),
-	.value_size  = sizeof(struct datarec),
-	.max_entries = MAX_FUNC,
-};
 
 struct bpf_map_def SEC("maps") sock_map = {
         .type = BPF_MAP_TYPE_SOCKMAP,
@@ -55,14 +42,6 @@ int bpf_skmsg_tx(struct sk_msg_md *msg)
     }
     int next_agg_id = *((int*)data);
     bpf_printk("[sk_msg] redirect to socket of aggregator %d", next_agg_id);
-
-	// struct datarec *rec = bpf_map_lookup_elem(&skmsg_stats_map, &next_agg_id);
-	// if (!rec)
-	// 	return SK_DROP;
-
-    // rec->rx_packets++;
-
-    // bpf_printk("[sk_msg] # of received references: %d", rec->rx_packets);
 
     int ret = 0;
     ret = bpf_msg_redirect_map(msg, &sock_map, next_agg_id, BPF_F_INGRESS);
