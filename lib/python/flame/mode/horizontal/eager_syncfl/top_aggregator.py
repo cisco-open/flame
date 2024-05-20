@@ -39,37 +39,34 @@ class TopAggregator(BaseTopAggregator):
             return
 
         total = 0
-        received_ends = 0
 
-        while received_ends < len(channel.ends()):
-            # NOTE: first_k - number of ends to receive a msg from.
-            for msg, metadata in channel.recv_fifo(channel.ends(), first_k = 1):
-                end, timestamp = metadata
-                if not msg:
-                    logger.debug(f"No data from {end}; skipping it")
-                    continue
+        for msg, metadata in channel.recv_fifo(channel.ends()):
+            end, timestamp = metadata
+            if not msg:
+                logger.debug(f"No data from {end}; skipping it")
+                continue
 
-                logger.debug(f"received data from {end}")
-                channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
+            logger.debug(f"received data from {end}")
+            channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
 
-                if MessageType.WEIGHTS in msg:
-                    weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
+            if MessageType.WEIGHTS in msg:
+                weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
-                if MessageType.DATASET_SIZE in msg:
-                    count = msg[MessageType.DATASET_SIZE]
+            if MessageType.DATASET_SIZE in msg:
+                count = msg[MessageType.DATASET_SIZE]
 
-                if MessageType.DATASAMPLER_METADATA in msg:
-                    self.datasampler.handle_metadata_from_trainer(
-                        msg[MessageType.DATASAMPLER_METADATA], end, channel,
-                    )
+            if MessageType.DATASAMPLER_METADATA in msg:
+                self.datasampler.handle_metadata_from_trainer(
+                    msg[MessageType.DATASAMPLER_METADATA], end, channel,
+                )
 
-                logger.debug(f"{end}'s parameters trained with {count} samples")
+            logger.debug(f"{end}'s parameters trained with {count} samples")
 
-                if weights is not None and count > 0:
-                    total += count
-                    tres = TrainResult(weights, count)
-                    # save training result from trainer in a disk cache
-                    self.cache[end] = tres
+            if weights is not None and count > 0:
+                total += count
+                tres = TrainResult(weights, count)
+                # save training result from trainer in a disk cache
+                self.cache[end] = tres
 
             logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
@@ -87,8 +84,6 @@ class TopAggregator(BaseTopAggregator):
 
             # set global weights
             self.weights = global_weights
-
-            received_ends += 1
 
         # update model with global weights
         self._update_model()
