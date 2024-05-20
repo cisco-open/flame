@@ -28,7 +28,6 @@ import (
 
 func TestMongoService_UpdateDeploymentStatus(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
 	mt.Run("success", func(mt *mtest.T) {
 		db := &MongoService{
 			deploymentCollection: mt.Coll,

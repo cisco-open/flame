@@ -26,7 +26,6 @@ import (
 
 func TestMongoService_DeleteDesign(t *testing.T) {
 	mt := mtest.New(t, mtest.NewOptions().ClientType(mtest.Mock))
-	defer mt.Close()
 
 	mt.Run("success_force_delete_true", func(mt *mtest.T) {
 		db := &MongoService{
