@@ -23,7 +23,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v3.0.0
       with:
-        go-version: 1.19.x
+        go-version: 1.21.x
 
     - name: Build
       run: go build -v ./...
@@ -41,7 +41,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v3.0.0
       with:
-        go-version: 1.19.x
+        go-version: 1.21.x
 
     - name: Start MongoDB
       uses: supercharge/mongodb-github-action@1.10.0
@@ -67,7 +67,7 @@ jobs:
     - name: Set up Go
       uses: actions/setup-go@cdcb36043654635271a94b9a6d1392de5bb323a7 # v3.0.0
       with:
-        go-version: 1.19.x
+        go-version: 1.21.x
 
     - name: golangci-lint
       uses: golangci/golangci-lint-action@a4f60bb28d35aeee14e6880718e0c85ff1882e64 # v3
