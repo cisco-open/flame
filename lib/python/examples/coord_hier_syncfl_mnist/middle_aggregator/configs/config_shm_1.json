@@ -1,5 +1,5 @@
 {
-    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa743",
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa800",
     "backend": "p2p",
     "brokers": [
         {
@@ -17,7 +17,7 @@
     ],
     "groupAssociation": {
         "middle-agg-coord-channel": "default",
-        "hier-channel": "default",
+        "param-channel": "default",
         "global-channel": "default"
     },
     "channels": [
@@ -69,25 +69,24 @@
             }
         },
         {
-            "description": "Model update is sent from mid aggregator to leaf aggregator and vice-versa",
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
             "groupBy": {
                 "type": "tag",
                 "value": [
                     "default"
                 ]
             },
-            "name": "hier-channel",
+            "name": "param-channel",
             "pair": [
                 "middle-aggregator",
-                "leaf-aggregator"
+                "trainer"
             ],
-            "backend": "shm",
             "funcTags": {
                 "middle-aggregator": [
                     "distribute",
                     "aggregate"
                 ],
-                "leaf-aggregator": [
+                "trainer": [
                     "fetch",
                     "upload"
                 ]

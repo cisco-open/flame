@@ -1,5 +1,5 @@
 {
-    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa744",
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa748",
     "backend": "p2p",
     "brokers": [
         {
@@ -16,16 +16,15 @@
         }
     ],
     "groupAssociation": {
-        "middle-agg-coord-channel": "default",
-        "hier-channel": "default",
-        "global-channel": "default"
+        "global-channel": "default",
+        "top-agg-coord-channel": "default"
     },
     "channels": [
         {
-            "name": "middle-agg-coord-channel",
-            "description": "Channel between middle aggregator and coordinator",
+            "name": "top-agg-coord-channel",
+            "description": "Channel between top aggregator and coordinator",
             "pair": [
-                "middle-aggregator",
+                "top-aggregator",
                 "coordinator"
             ],
             "groupBy": {
@@ -35,11 +34,11 @@
                 ]
             },
             "funcTags": {
-                "middle-aggregator": [
+                "top-aggregator": [
                     "coordinate"
                 ],
                 "coordinator": [
-                    "coordinateWithMidAgg"
+                    "coordinateWithTopAgg"
                 ]
             }
         },
@@ -67,31 +66,6 @@
                     "upload"
                 ]
             }
-        },
-        {
-            "description": "Model update is sent from mid aggregator to leaf aggregator and vice-versa",
-            "groupBy": {
-                "type": "tag",
-                "value": [
-                    "default"
-                ]
-            },
-            "name": "hier-channel",
-            "pair": [
-                "middle-aggregator",
-                "leaf-aggregator"
-            ],
-            "backend": "shm",
-            "funcTags": {
-                "middle-aggregator": [
-                    "distribute",
-                    "aggregate"
-                ],
-                "leaf-aggregator": [
-                    "fetch",
-                    "upload"
-                ]
-            }
         }
     ],
     "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
@@ -101,7 +75,7 @@
     "hyperparameters": {
         "batchSize": 32,
         "learningRate": 0.01,
-        "rounds": 5
+        "rounds": 10
     },
     "baseModel": {
         "name": "",
@@ -120,6 +94,6 @@
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "default-cluster",
-    "role": "middle-aggregator"
+    "realm": "",
+    "role": "top-aggregator"
 }
