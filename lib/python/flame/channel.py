@@ -261,7 +261,8 @@ class Channel(object):
         """Receive a message per end from a list of ends.
 
         The message arrival order among ends is not fixed.
-        Messages are yielded in a FIFO manner.
+        Messages are yielded in a FIFO manner. This allows recv_fifo to return
+        (msg, metadata) asynchronously to the caller method.
         This method is not thread-safe.
 
         Parameters

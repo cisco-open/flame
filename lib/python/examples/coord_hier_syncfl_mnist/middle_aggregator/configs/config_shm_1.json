@@ -1,0 +1,124 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa800",
+    "backend": "p2p",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        },
+        {
+            "host": "localhost:10105",
+            "sort": "shm"
+        }
+    ],
+    "groupAssociation": {
+        "middle-agg-coord-channel": "default",
+        "param-channel": "default",
+        "global-channel": "default"
+    },
+    "channels": [
+        {
+            "name": "middle-agg-coord-channel",
+            "description": "Channel between middle aggregator and coordinator",
+            "pair": [
+                "middle-aggregator",
+                "coordinator"
+            ],
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "funcTags": {
+                "middle-aggregator": [
+                    "coordinate"
+                ],
+                "coordinator": [
+                    "coordinateWithMidAgg"
+                ]
+            }
+        },
+        {
+            "description": "Model update is sent from mid aggregator to global aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "global-channel",
+            "pair": [
+                "top-aggregator",
+                "middle-aggregator"
+            ],
+            "backend": "shm",
+            "funcTags": {
+                "top-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        },
+        {
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "middle-aggregator",
+                "trainer"
+            ],
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.01,
+        "rounds": 5
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "mnist"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": "http://flame-mlflow:5000"
+    },
+    "selector": {
+        "sort": "default",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default-cluster",
+    "role": "middle-aggregator"
+}

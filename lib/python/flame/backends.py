@@ -16,6 +16,7 @@
 
 from flame.backend.mqtt import MqttBackend
 from flame.backend.p2p import PointToPointBackend
+from flame.backend.shm import LIFLSharedMemoryBackend
 from flame.config import BackendType
 from flame.object_factory import ObjectFactory
 
@@ -31,3 +32,4 @@ class BackendProvider(ObjectFactory):
 backend_provider = BackendProvider()
 backend_provider.register(BackendType.P2P, PointToPointBackend)
 backend_provider.register(BackendType.MQTT, MqttBackend)
+backend_provider.register(BackendType.SHM, LIFLSharedMemoryBackend)

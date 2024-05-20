@@ -41,6 +41,7 @@ class BackendType(str, Enum):
     LOCAL = "local"
     P2P = "p2p"
     MQTT = "mqtt"
+    SHM = "shm"
 
 
 class RegistryType(str, Enum):

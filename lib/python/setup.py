@@ -45,7 +45,8 @@ setup(
         "psutil",
         "numpy",
         "pathlib",
-        "fedscale"
+        "fedscale",
+        "shared-memory-dict==0.7.2"
     ],
     extras_require={
         "dev": [
