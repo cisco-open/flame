@@ -49,7 +49,7 @@ jobs:
     - name: Test
       run: go test -v -race -covermode=atomic -coverprofile=coverage.out ./...
     - name: Upload codecoverage
-      uses: codecov/codecov-action@6d798873df2b1b8e5846dba6fb86631229fbcb17 # 2.1.0
+      uses: codecov/codecov-action@125fc84a9a348dbcf27191600683ec096ec9021c # 2.1.0
       with:
         files: ./coverage.out
         verbose: true
