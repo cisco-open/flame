@@ -39,6 +39,8 @@ logger = logging.getLogger(__name__)
 # on write operations of shared memory  
 os.environ["SHARED_MEMORY_USE_LOCK"] = "1"
 
+SHM_DICT_SIZE = 1024
+
 class LIFLSharedMemoryBackend(AbstractBackend):
     """SharedMemoryBackend class.
 
@@ -159,7 +161,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
     def join(self, channel) -> None:
         """Join a channel."""
 
-        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = 1024)
+        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = SHM_DICT_SIZE)
         shm_ends[self._id] = 1
 
         logger.debug(f"{len(shm_ends)} {channel.name()}-{channel.my_role()} shm ends: {shm_ends}")
@@ -168,7 +170,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
             while True:
                 await asyncio.sleep(0.5)
 
-                peer_shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = 1024)
+                peer_shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = SHM_DICT_SIZE)
                 logger.debug(f"{len(peer_shm_ends)} peer shm ends: {peer_shm_ends}")
 
                 for peer_end_id in peer_shm_ends.keys():
@@ -198,7 +200,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
                 shm_buf.unlink()
 
         # NOTE: this method may recreate the shm dict.
-        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = 1024)
+        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = SHM_DICT_SIZE)
         del shm_ends[self._id]
 
         if len(shm_ends) == 0:
@@ -207,7 +209,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
             del shm_ends
 
         # NOTE: this method may recreate the shm dict.
-        other_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = 1024)
+        other_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = SHM_DICT_SIZE)
         other_ends.shm.close()
 
     def create_tx_task(
@@ -411,7 +413,7 @@ class LIFLSharedMemoryBackend(AbstractBackend):
             logger.debug(f"rxq not found for {msg.end_id}")
 
             # NOTE: We piggyback the handshake ack in the skmsg
-            # Thus, there is no need to send a explicit ack.
+            # Thus, there is no need to send an explicit ack.
             await channel.add(msg.end_id)
             rxq = channel.get_rxq(msg.end_id)
 
