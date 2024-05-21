@@ -20,10 +20,10 @@ import (
 	"context"
 	"time"
 
+	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.mongodb.org/mongo-driver/mongo/readpref"
-	"go.mongodb.org/mongo-driver/x/bsonx"
 	"go.uber.org/zap"
 
 	"github.com/cisco-open/flame/pkg/util"
@@ -68,7 +68,8 @@ func NewMongoService(uri string) (*MongoService, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
 
-	client, err := mongo.NewClient(options.Client().ApplyURI(uri))
+	clientOptions := options.Client().ApplyURI(uri)
+	client, err := mongo.Connect(ctx, clientOptions)
 	if err != nil {
 		return nil, err
 	}
@@ -83,7 +84,8 @@ func NewMongoService(uri string) (*MongoService, error) {
 	//	}
 	//}()
 
-	if err := client.Connect(ctx); err != nil {
+	err = client.Ping(ctx, nil)
+	if err != nil {
 		return nil, err
 	}
 
@@ -141,13 +143,13 @@ func NewMongoServiceWithClient(ctx context.Context, client *mongo.Client) (*Mong
 }
 
 func createUniqueIndex(coll *mongo.Collection, ctx context.Context, kv map[string]int32) error {
-	keysDoc := bsonx.Doc{}
+	keysDoc := bson.D{}
 
 	for key, val := range kv {
 		if val != orderAscend && val != orderDescend {
 			val = orderAscend
 		}
-		keysDoc = keysDoc.Append(key, bsonx.Int32(val))
+		keysDoc = append(keysDoc, bson.E{Key: key, Value: val})
 	}
 
 	model := mongo.IndexModel{
