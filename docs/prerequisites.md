@@ -86,7 +86,7 @@ Python 3.9.6
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment. This section describes how to set up a development environment in macOS (Intel chip) and Ubuntu.
 
 The following tools and packages are needed as minimum:
-- go 1.18+
+- go 1.19+
 - golangci-lint
 
 After installing above packages, you could try a development setup called `fiab`, an acronym for flame-in-a-box, which is found [here](system/fiab.md).
