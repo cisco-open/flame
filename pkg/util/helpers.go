@@ -35,10 +35,6 @@ const (
 	runes = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 )
 
-func init() {
-	rand.Seed(time.Now().UnixNano())
-}
-
 /*
 InitZapLog Zap Logger initialization
 
