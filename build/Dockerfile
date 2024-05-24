@@ -14,7 +14,7 @@
 #
 # SPDX-License-Identifier: Apache-2.0
 
-FROM golang:1.18.0 AS golang-build
+FROM golang:1.22.0 AS golang-build
 WORKDIR /src
 ENV CGO_ENABLED=0
 
