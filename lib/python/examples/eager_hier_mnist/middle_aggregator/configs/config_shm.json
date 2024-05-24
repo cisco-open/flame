@@ -1,5 +1,5 @@
 {
-    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa744",
     "backend": "p2p",
     "brokers": [
         {
@@ -9,9 +9,14 @@
         {
             "host": "localhost:10104",
             "sort": "p2p"
+        },
+        {
+            "host": "localhost:10105",
+            "sort": "shm"
         }
     ],
     "groupAssociation": {
+        "param-channel": "us",
         "global-channel": "default"
     },
     "channels": [
@@ -28,12 +33,38 @@
                 "top-aggregator",
                 "middle-aggregator"
             ],
+            "backend": "shm",
             "funcTags": {
                 "top-aggregator": [
                     "distribute",
                     "aggregate"
                 ],
                 "middle-aggregator": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        },
+        {
+            "description": "Model update is sent from mid aggregator to trainer and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "uk",
+                    "us"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "middle-aggregator",
+                "trainer"
+            ],
+            "funcTags": {
+                "middle-aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
                     "fetch",
                     "upload"
                 ]
@@ -59,13 +90,13 @@
     },
     "registry": {
         "sort": "dummy",
-        "uri": "http://flame-mlflow:5000"
+        "uri": ""
     },
     "selector": {
         "sort": "default",
         "kwargs": {}
     },
     "maxRunTime": 300,
-    "realm": "",
-    "role": "top-aggregator"
+    "realm": "default-cluster",
+    "role": "middle-aggregator"
 }
