@@ -71,6 +71,12 @@ We welcome feedback, questions, and issue reports.
 * Maintainers' email address: <flame-github-owners@cisco.com>
 * [GitHub Issues](https://github.com/cisco-open/flame/issues/new/choose)
 
+## Contributors
+
+<a href="https://github.com/cisco-open/flame/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=cisco-open/flame" />
+</a>
+
 ## Citation
 
 ```
