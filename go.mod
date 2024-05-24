@@ -7,7 +7,7 @@ toolchain go1.22.3
 require (
 	github.com/cbroglie/mustache v1.4.0
 	github.com/cenkalti/backoff/v4 v4.2.1
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/mux v1.8.1
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/spf13/afero v1.8.2
