@@ -55,5 +55,13 @@ requirements.lock
 # React dependencies
 node_modules
 
-# Dataset
+# FedScale Dataset
 third_party/benchmark/dataset/data/
+
+# Torchvision built-in datasets
+lib/python/examples/**/data/
+
+# Object and binary from SPRIGHT
+third_party/spright_utility/**/*.o
+third_party/spright_utility/**/*.d
+third_party/spright_utility/bin/
