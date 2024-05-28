@@ -16,7 +16,7 @@ require (
 	github.com/sv-tools/mongoifc v1.11.2
 	github.com/tryvium-travels/memongo v0.12.0
 	go.mongodb.org/mongo-driver v1.15.0
-	go.uber.org/zap v1.23.0
+	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.58.3
 	google.golang.org/protobuf v1.34.1
 	gopkg.in/yaml.v3 v3.0.1
@@ -134,7 +134,6 @@ require (
 	go.opentelemetry.io/otel/metric v1.19.0 // indirect
 	go.opentelemetry.io/otel/trace v1.19.0 // indirect
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
-	go.uber.org/atomic v1.10.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/crypto v0.23.0 // indirect
 	golang.org/x/net v0.21.0 // indirect
