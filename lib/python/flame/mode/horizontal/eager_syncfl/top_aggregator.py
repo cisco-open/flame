@@ -39,6 +39,7 @@ class TopAggregator(BaseTopAggregator):
             return
 
         total = 0
+        base_weights = deepcopy(self.weights)
 
         for msg, metadata in channel.recv_fifo(channel.ends()):
             end, timestamp = metadata
@@ -72,7 +73,7 @@ class TopAggregator(BaseTopAggregator):
 
             # optimizer conducts optimization (in this case, aggregation)
             global_weights = self.optimizer.do(
-                deepcopy(self.weights),
+                base_weights,
                 self.cache,
                 total=total,
                 num_trainers=len(channel.ends()),
@@ -82,8 +83,8 @@ class TopAggregator(BaseTopAggregator):
                 time.sleep(1)
                 return
 
-            # set global weights
-            self.weights = global_weights
+        # set global weights
+        self.weights = global_weights
 
         # update model with global weights
         self._update_model()
