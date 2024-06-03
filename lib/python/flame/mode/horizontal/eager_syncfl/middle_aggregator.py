@@ -37,6 +37,7 @@ class MiddleAggregator(BaseMiddleAggregator):
             return
 
         total = 0
+        base_weights = deepcopy(self.weights)
 
         for msg, metadata in channel.recv_fifo(channel.ends()):
             end, _ = metadata
@@ -60,18 +61,18 @@ class MiddleAggregator(BaseMiddleAggregator):
 
             # optimizer conducts optimization (in this case, aggregation)
             global_weights = self.optimizer.do(
-                deepcopy(self.weights), self.cache, total=total
+               base_weights, self.cache, total=total
             )
             if global_weights is None:
                 logger.debug("failed model aggregation")
                 time.sleep(1)
                 return
 
-            # save global weights before updating it
-            self.prev_weights = self.weights
+        # save global weights before updating it
+        self.prev_weights = self.weights
 
-            # set global weights
-            self.weights = global_weights
+        # set global weights
+        self.weights = global_weights
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
