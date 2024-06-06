@@ -2,7 +2,7 @@
 
 ### Prerequisites
 
-* Ubuntu 20.04
+* Ubuntu 20.04 or 22.04
 * Install [anaconda](https://www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
 * Clone repo (you could use `git clone https://github.com/cisco-open/flame.git`).
 

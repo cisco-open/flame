@@ -41,9 +41,9 @@ eval "$(pyenv init -)"
 echo -e '\nif command -v pyenv 1>/dev/null 2>&1; then\n    eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
 ```
 
-#### Ubuntu 20.04
+#### Ubuntu 20.04 or 22.04
 
-The following shows how to install the Python environment for SDK in Ubuntu 20.04.
+The following shows how to install the Python environment for SDK in Ubuntu 20.04 or 22.04.
 
 First, keep package list and their dependencies up to date.
 ```bash
@@ -101,9 +101,9 @@ Depending on Linux distributions, several package managers such as `apt`, `yum`,
 brew install go
 brew install golangci-lint
 ```
-### Ubuntu 20.04
+### Ubuntu 20.04 or 22.04
 
-The following shows how to install the above packages in Ubuntu 20.04.
+The following shows how to install the above packages in Ubuntu 20.04 or 22.04.
 
 First, keep package list and their dependencies up to date.
 ```bash
