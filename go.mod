@@ -15,7 +15,7 @@ require (
 	github.com/stretchr/testify v1.9.0
 	github.com/sv-tools/mongoifc v1.15.0
 	github.com/tryvium-travels/memongo v0.12.0
-	go.mongodb.org/mongo-driver v1.15.0
+	go.mongodb.org/mongo-driver v1.15.1
 	go.uber.org/zap v1.27.0
 	google.golang.org/grpc v1.59.0
 	google.golang.org/protobuf v1.34.1
