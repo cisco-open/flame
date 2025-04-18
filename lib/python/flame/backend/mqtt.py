@@ -125,7 +125,7 @@ class MqttBackend(AbstractBackend):
         self._job_id = job_id
         self._id = task_id
 
-        self._mqtt_client = mqtt.Client(self._id, protocol=MQTTv5)
+        self._mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, self._id, protocol=MQTTv5)
 
         self._health_check_topic = f"{MQTT_TOPIC_PREFIX}/{self._job_id}"
 
