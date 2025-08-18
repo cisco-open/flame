@@ -142,11 +142,9 @@ class RandomSelector(AbstractSelector):
         eligible_ends = ends
 
         logger.debug(f"len(ends), self.k: {len(ends)}, {self.k}")
-        # TODO (REMOVE HARDCODING): remove hard coded number of
         # trainers
-        hardcoded_init_ends_needed = 98
-        if len(ends) < hardcoded_init_ends_needed:
-            logger.debug(f"not enough ends, need atleast {hardcoded_init_ends_needed}")
+        if len(ends) < self.k:
+            logger.debug(f"not enough ends, need atleast {self.k}")
             time.sleep(0.1)
             return {}
 
