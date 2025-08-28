@@ -74,3 +74,8 @@ third_party/spright_utility/bin/
 *wandb
 fednlp_data*
 cache_dir
+
+# Files on server to ignore
+src/*
+lib/python/examples/fwdllm/expts/run_tc_expts/log/
+requirements_cifar_no_versions.txt
