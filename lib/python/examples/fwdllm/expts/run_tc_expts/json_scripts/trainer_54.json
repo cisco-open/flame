@@ -46,7 +46,7 @@
         "client_idx": 54,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 100,
+        "client_num_per_round": 5,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
