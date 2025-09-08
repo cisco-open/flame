@@ -74,3 +74,5 @@ third_party/spright_utility/bin/
 *wandb
 fednlp_data*
 cache_dir
+
+lib/python/examples/fwdllm/expts/run_tc_expts/mpi_host_file

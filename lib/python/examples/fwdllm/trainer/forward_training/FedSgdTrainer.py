@@ -161,7 +161,7 @@ class FedSGDTrainer(Trainer):
         """Write all training data for a client to a JSON file"""
         try:
             # Create output directory if it doesn't exist
-            output_dir = "client_data_files"
+            output_dir = "../../../../../../../client_data_files"
             os.makedirs(output_dir, exist_ok=True)
             
             # Include round information in filename if provided
