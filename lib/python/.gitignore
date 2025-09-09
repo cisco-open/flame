@@ -7,3 +7,5 @@ flame.egg-info
 # ignore dataset and wandb generated files
 data
 wandb
+
+examples/fwdllm/expts/run_tc_expts/mpi_host_file
