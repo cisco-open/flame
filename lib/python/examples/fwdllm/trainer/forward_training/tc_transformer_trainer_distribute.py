@@ -96,8 +96,11 @@ class ForwardTextClassificationTrainer:
         self.var = 0
         logger.info(f"Client Trainer learning rate: {self.args.learning_rate}")
         
+        # Initialize RNGs with client_ids and a non-static seed like 42, to avoid all trainers generating the same sequence of perturbations, which was stalling the accuracy increase
         self.torch_rng = torch.Generator(device="cpu")
-        self.torch_rng.manual_seed(42)
+        self.torch_rng.manual_seed(self.args.client_idx)
+        self.torch_cuda_rng = torch.Generator(device="cuda")
+        self.torch_cuda_rng.manual_seed(self.args.client_idx)
         
         self.total_rng_iter = 0
 
@@ -140,6 +143,7 @@ class ForwardTextClassificationTrainer:
         gc.collect()
         torch.cuda.empty_cache()
 
+        self.model.eval()
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model
         )
@@ -149,7 +153,10 @@ class ForwardTextClassificationTrainer:
         global_step, tr_loss = 0, 0.0
 
         if self.args.perturbation_sampling:
-            v_num = self.args.client_num_per_round
+            if not self.args.generate_extra_perturbations:
+                v_num = 1
+            else:
+                v_num = self.args.client_num_per_round
 
             if self.args.var_control:
                 # self.grad = self.old_grad
@@ -212,9 +219,13 @@ class ForwardTextClassificationTrainer:
                     labels = batch[4].to(device, non_blocking=True)
 
                     if self.args.perturbation_sampling and v_buffer != {}:
+                        selected_index = 0
+                        if self.args.generate_extra_perturbations:
+                            selected_index = curr_client_idx
+                            # selected_index = batch_idx
                         v_params = [
                             (
-                                v_buffer[i][curr_client_idx].to(device)
+                                v_buffer[i][selected_index].to(device)
                                 if p.requires_grad
                                 else torch.zeros_like(p)
                             )
@@ -223,24 +234,39 @@ class ForwardTextClassificationTrainer:
                     else:
                         v_params = [
                             (
-                                torch.randn_like(p, device=device)
+                                torch.randn_like(p, generator=self.torch_cuda_rng)
                                 if p.requires_grad
                                 else torch.zeros_like(p, device=device)
                             )
                             for p in self.params
                         ]
+                    logging.info(f"v_params hashes: {[(_calculate_hash(v), v.shape) for v in v_params if v.requires_grad]}")
+                    logging.info(f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}")
 
-                    def wrapped_func(p):
-                        return functional_get_loss(
-                            p,
-                            self.fmodel,
-                            x,
-                            labels,
-                            num_classes=self.num_labels,
-                            buffers=self.buffers,
-                        )
+                    torch.backends.cudnn.deterministic = True
+                    torch.backends.cudnn.benchmark = False
+                    # def wrapped_func(p):
+                    #     return functional_get_loss(
+                    #         p,
+                    #         self.fmodel,
+                    #         x,
+                    #         labels,
+                    #         num_classes=self.num_labels,
+                    #         buffers=self.buffers,
+                    #     )
+                    # loss, jvp = calculate_jvp_flame(wrapped_func, self.params, v_params)
+                    
 
-                    loss, jvp = calculate_jvp(wrapped_func, self.params, v_params)
+                    f = partial(
+                        functional_get_loss,
+                        model=self.fmodel,
+                        buffers = self.buffers,
+                        num_classes = self.num_labels,
+                        x=x,
+                        t=labels,
+                    )
+
+                    loss, jvp = calculate_jvp(f, self.params, v_params)
                     jvp = jvp.to(device)
 
                     for j, fg in enumerate(self.grad):
@@ -306,6 +332,7 @@ class ForwardTextClassificationTrainer:
             f"[MEM] Allocated Before/After: {allocated_before/1e6:.2f}MB → {allocated_after/1e6:.2f}MB, Δ: {(allocated_after-allocated_before)/1e6:.2f}MB | trainer id: {self.trainer_id}"
         )
 
+        self.model.train()
         return global_step, tr_loss / global_step if global_step > 0 else 0.0
 
     def eval_model(self, epoch=0, global_step=0, device=None):
@@ -313,6 +340,8 @@ class ForwardTextClassificationTrainer:
             device = self.device
 
         self.model.eval()
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model
         )

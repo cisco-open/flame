@@ -153,6 +153,7 @@ if __name__ == "__main__":
             "peft_method": config.hyperparameters.peft_method,
             "var_control": config.hyperparameters.var_control,
             "perturbation_sampling": config.hyperparameters.perturbation_sampling,
+            "generate_extra_perturbations": config.hyperparameters.generate_extra_perturbations,
         }
     )
     model_args.config["num_labels"] = num_labels

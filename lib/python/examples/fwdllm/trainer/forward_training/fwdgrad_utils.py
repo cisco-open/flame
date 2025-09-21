@@ -71,6 +71,18 @@ def calculate_jvp(func, params, v):
     Calculations Jacobian-vector product using numerical differentiation
     """
     h = 0.01
+    with torch.no_grad(), autocast():
+        loss = func(tuple([params[i]-h*v[i] for i in range(len(params))]))
+        terbulence_loss = func(tuple([params[i]+h*v[i] for i in range(len(params))]))
+    avg_loss = (terbulence_loss + loss)/2
+    jvp = (terbulence_loss - loss)/(2*h)
+    return avg_loss, jvp
+
+def calculate_jvp_flame(func, params, v):
+    """
+    Calculations Jacobian-vector product using numerical differentiation
+    """
+    h = 0.01
     # logger.info(f"[MEM] Before: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
     with torch.no_grad(), autocast():
         # logger.info(f"params[0].device = {params[0].device}, v[0].device = {v[0].device}")
