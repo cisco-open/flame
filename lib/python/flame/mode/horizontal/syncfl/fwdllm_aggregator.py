@@ -1131,6 +1131,7 @@ class TopAggregator(SyncTopAgg):
                     logger.info("incrementing round number now ")
                     self._round += 1
                     self.data_id = 0
+                    channel.set_property("round", self._round)
 
             else:
                 self.iteration_per_data_id += 1
@@ -1354,6 +1355,7 @@ class TopAggregator(SyncTopAgg):
                 logger.info("incrementing round number now ")
                 self._round += 1
                 self.data_id = 0
+                channel.set_property("round", self._round)
         else:
             self.iteration_per_data_id += 1
 
