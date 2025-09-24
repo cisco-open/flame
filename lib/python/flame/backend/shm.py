@@ -185,32 +185,98 @@ class LIFLSharedMemoryBackend(AbstractBackend):
         _, success = run_async(_create_join_inner_task(), self._loop)
         if not success:
             raise SystemError("_create_join_inner_task failure")
-
+    
     def leave(self, channel) -> None:
-        """Leave a given channel.
-        
-        TODO: notify the sockmap manager to remove the entry from eBPF map
-        """
         logger.info("Clean up shared memory buffers.")
 
+        # 1. Clean up per-end buffers
         for end in channel.all_ends():
-            shm_buf = shared_memory.SharedMemory(name = end)
-            shm_buf.close()
-            if end == self._id:
-                shm_buf.unlink()
+            if shared_memory_exists(end):
+                try:
+                    shm_buf = shared_memory.SharedMemory(name=end)
+                    shm_buf.close()
+                    if end == self._id:
+                        try:
+                            shm_buf.unlink()
+                            unregister(end, "shared_memory")
+                        except FileNotFoundError:
+                            logger.debug(f"Shared memory {end} already unlinked by another process.")
+                except FileNotFoundError:
+                    logger.debug(f"Shared memory segment {end} not found during cleanup.")
+            else:
+                logger.debug(f"Shared memory {end} does not exist, skipping.")
 
-        # NOTE: this method may recreate the shm dict.
-        shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = SHM_DICT_SIZE)
-        del shm_ends[self._id]
+        # 2. Clean up our role-specific dictionary
+        my_shm_name = channel.name() + "-" + channel.my_role()
+        if shared_memory_exists(my_shm_name):
+            try:
+                my_shm_ends = SharedMemoryDict(name=my_shm_name, size=SHM_DICT_SIZE)
+                if self._id in my_shm_ends:
+                    del my_shm_ends[self._id]
 
-        if len(shm_ends) == 0:
-            shm_ends.shm.close()
-            shm_ends.shm.unlink()
-            del shm_ends
+                if len(my_shm_ends) == 0:
+                    my_shm_ends.shm.close()
+                    try:
+                        my_shm_ends.shm.unlink()
+                        unregister(my_shm_name, "shared_memory")
+                    except FileNotFoundError:
+                        logger.debug(f"Shared memory dict {my_shm_name} already unlinked.")
+                else:
+                    my_shm_ends.shm.close()
+            except FileNotFoundError:
+                logger.debug(f"No shared memory dict found for {my_shm_name}")
+        else:
+            logger.debug(f"{my_shm_name} does not exist, skipping.")
 
-        # NOTE: this method may recreate the shm dict.
-        other_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = SHM_DICT_SIZE)
-        other_ends.shm.close()
+        # 3. Clean up all segments created in set_data()
+        #    These have names like self._id + "-" + other
+        #    Ensure we only unlink if this process created them.
+        for key in list(self._is_shm_buf_created.keys()):
+            # key is of the form self._id + "-" + other
+            if shared_memory_exists(key):
+                try:
+                    shm_buf = shared_memory.SharedMemory(name=key)
+                    shm_buf.close()
+                    # As the creator (since we track them in _is_shm_buf_created),
+                    # we can safely unlink here
+                    try:
+                        shm_buf.unlink()
+                        unregister(key, "shared_memory")
+                    except FileNotFoundError:
+                        logger.debug(f"Shared memory {key} already unlinked by another process.")
+                except FileNotFoundError:
+                    logger.debug(f"Shared memory segment {key} not found during cleanup.")
+            else:
+                logger.debug(f"Shared memory {key} does not exist, skipping.")
+        self._is_shm_buf_created.clear()
+
+        logger.debug("channel leave completed gracefully")
+
+    # def leave(self, channel) -> None:
+    #     """Leave a given channel.
+        
+    #     TODO: notify the sockmap manager to remove the entry from eBPF map
+    #     """
+    #     logger.info("Clean up shared memory buffers.")
+
+    #     for end in channel.all_ends():
+    #         shm_buf = shared_memory.SharedMemory(name = end)
+    #         shm_buf.close()
+    #         if end == self._id:
+    #             shm_buf.unlink()
+
+    #     # NOTE: this method may recreate the shm dict.
+    #     shm_ends = SharedMemoryDict(name = channel.name() + "-" + channel.my_role(), size = SHM_DICT_SIZE)
+    #     del shm_ends[self._id]
+
+    #     if len(shm_ends) == 0:
+    #         shm_ends.shm.close()
+    #         shm_ends.shm.unlink()
+    #         del shm_ends
+
+    #     # NOTE: this method may recreate the shm dict.
+    #     other_ends = SharedMemoryDict(name = channel.name() + "-" + channel.other_role(), size = SHM_DICT_SIZE)
+    #     other_ends.shm.close()
 
     def create_tx_task(
         self, channel_name: str, end_id: str, comm_type=CommType.UNICAST
