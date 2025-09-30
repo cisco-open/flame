@@ -70,7 +70,6 @@
         "learning_rate": 0.01,
         "var_control": true,
         "perturbation_sampling": true,
-        "generate_extra_perturbations": false,
         "evaluate_during_training_steps": 100,
         "fp16": false,
         "output_dir": "/tmp/",

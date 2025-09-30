@@ -145,7 +145,7 @@ class RandomSelector(AbstractSelector):
         # trainers
         if len(ends) < self.k:
             logger.debug(f"not enough ends, need atleast {self.k}")
-            time.sleep(8*4)
+            time.sleep(0.1)
             return {}
 
         k = min(len(ends), self.k)

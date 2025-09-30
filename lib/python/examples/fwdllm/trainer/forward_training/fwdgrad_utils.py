@@ -78,33 +78,32 @@ def calculate_jvp(func, params, v):
     jvp = (terbulence_loss - loss)/(2*h)
     return avg_loss, jvp
 
-def calculate_jvp_flame(func, params, v):
-    """
-    Calculations Jacobian-vector product using numerical differentiation
-    """
-    h = 0.01
-    # logger.info(f"[MEM] Before: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-    with torch.no_grad(), autocast():
-        # logger.info(f"params[0].device = {params[0].device}, v[0].device = {v[0].device}")
-        device = torch.device("cuda:0")
-        params = [p.to(device) for p in params]
-        v = [vi.to(device) for vi in v]
-        loss = func(tuple([params[i] - h * v[i] for i in range(len(params))]))
-        torch.cuda.empty_cache()  # optional, but can help with fragmentation
-        # logger.info(f"[MEM] After loss: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-
-        terbulence_loss = func(tuple([params[i] + h * v[i] for i in range(len(params))]))
-        torch.cuda.empty_cache()
-        # logger.info(f"[MEM] After turbulence loss: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+# Might contain useful memory optimizations. Look at this only if you're running into a memory bottleneck & you need ideas
+# def calculate_jvp_experiment(func, params, v):
+#     """
+#     This implementation is mathematically similar to the implementation provided by Vanilla FwdLLM with some memory optimizations
+#     Calculations Jacobian-vector product using numerical differentiation
+#     """
+#     h = 0.01
+#     # logger.info(f"[MEM] Before: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+#     with torch.no_grad(), autocast():
+#         # logger.info(f"params[0].device = {params[0].device}, v[0].device = {v[0].device}")
+#         device = torch.device("cuda:0")
+#         params = [p.to(device) for p in params]
+#         v = [vi.to(device) for vi in v]
+#         loss = func(tuple([params[i] - h * v[i] for i in range(len(params))]))
+#         torch.cuda.empty_cache()  # optional, but can help with fragmentation
+#         # logger.info(f"[MEM] After loss: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+#         terbulence_loss = func(tuple([params[i] + h * v[i] for i in range(len(params))]))
+#         torch.cuda.empty_cache()
+#         # logger.info(f"[MEM] After turbulence loss: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
         
-    avg_loss = (terbulence_loss + loss) / 2
-    jvp = (terbulence_loss - loss) / (2 * h)
-    del loss, terbulence_loss
-    torch.cuda.empty_cache()
-    # logger.info(f"[MEM] After cleanup: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-
-    
-    return avg_loss, jvp
+#     avg_loss = (terbulence_loss + loss) / 2
+#     jvp = (terbulence_loss - loss) / (2 * h)
+#     del loss, terbulence_loss
+#     torch.cuda.empty_cache()
+#     # logger.info(f"[MEM] After cleanup: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
+#     return avg_loss, jvp
 
 
 def calculate_var(fwdgrad_list):
