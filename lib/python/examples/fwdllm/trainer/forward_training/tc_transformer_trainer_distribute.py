@@ -96,8 +96,11 @@ class ForwardTextClassificationTrainer:
         self.var = 0
         logger.info(f"Client Trainer learning rate: {self.args.learning_rate}")
         
+        # Initialize RNGs with client_ids and a non-static seed like 42, to avoid all trainers generating the same sequence of perturbations, which was stalling the accuracy increase
         self.torch_rng = torch.Generator(device="cpu")
-        self.torch_rng.manual_seed(42)
+        self.torch_rng.manual_seed(self.args.client_idx)
+        self.torch_cuda_rng = torch.Generator(device="cuda")
+        self.torch_cuda_rng.manual_seed(self.args.client_idx)
         
         self.total_rng_iter = 0
 
@@ -140,6 +143,12 @@ class ForwardTextClassificationTrainer:
         gc.collect()
         torch.cuda.empty_cache()
 
+        """
+        If you want absolute determinism between runs, run the model in eval mode. Make sure to switch the model back to train model before the method returns: `self.model.train()`. 
+        Even though this seems to not affect training, this is commented as we're not sure how the model trains in eval mode. Any relative impact on accuracy without it isn't measured.
+        self.model.eval()
+        """
+        
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model
         )
@@ -148,13 +157,14 @@ class ForwardTextClassificationTrainer:
 
         global_step, tr_loss = 0, 0.0
 
+        # Perturbation selection logic slightly differs from the vanilla FwdLLM implementation. Their logic has a flaw which cannot be used in a true-FL setting 
+        # with distributed clients. As their clients are emulated in a for loop, they generate `num_clients` * 10 candidate perturbations & select the top `num_clients`
+        # perturbations based on cosine similarity. This is not the same as generating 10 candidate perturbations per client & selecting the top 1. We did not 
+        # observe any significant changes in accuracy, after assigning clients distinct RNG seeds, & hence we chose the later approach.
         if self.args.perturbation_sampling:
-            v_num = self.args.client_num_per_round
 
             if self.args.var_control:
-                # self.grad = self.old_grad
                 self.grad = None if self.old_grad is None else [g.clone() for g in self.old_grad]
-                # logging.info(f"self.grad for client_idx {self.args.client_idx} is {self.grad}")
 
             v_buffer = {}
             index = 0
@@ -162,33 +172,22 @@ class ForwardTextClassificationTrainer:
                 if self.grad is not None and v.requires_grad:
                     self.total_rng_iter += 1
                     shape = v.shape
-                    candidate_v = torch.randn((v_num * 10, *shape), device="cpu", generator=self.torch_rng)
+                    candidate_v = torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
                     target_grad = self.grad[index]
-                    # if self.args.client_idx == 0 or self.args.client_idx == 1:
-                    #     logging.info(f"target_grad for client_idx {self.args.client_idx} is {target_grad}")
 
                     target_grad = torch.flatten(target_grad)
                     candidate_v = torch.flatten(candidate_v, start_dim=1)
-                    # if (self.args.client_idx == 0 or self.args.client_idx == 1) and flag == True:
-                        # logging.info(f"self.grad for client_idx {self.args.client_idx} is {self.grad}")
-                        # logging.info(f"target_grad for client_idx {self.args.client_idx} is {target_grad}")
-                        # logging.info(f"candidate_v for client_idx {self.args.client_idx} is {candidate_v}")
-                        # flag = False
 
                     cos_sim = calculate_cos_sim(candidate_v, target_grad, device)
 
                     sorted_values, sorted_indices = torch.sort(cos_sim, descending=True)
                     v_buffer[index] = [
-                        candidate_v[i].reshape(v.shape) for i in sorted_indices[:v_num]
+                        candidate_v[i].reshape(v.shape) for i in sorted_indices[:1]
                     ]
-                    
+
                     del candidate_v, target_grad, cos_sim, sorted_indices, shape
                 index += 1
-                
-        # if self.args.client_idx == 0 or self.args.client_idx == 1:
-        #     logging.info(f"v_buffer shapes for client_idx {self.args.client_idx}: " + str({k: [v.shape for v in v_list] for k, v_list in v_buffer.items()}))
-        #     logging.info(f"v_buffer for client_idx {self.args.client_idx} after total_rng_iter {self.total_rng_iter} is {v_buffer}")
-                    
+
         # Efficient grad allocation / zeroing
         if (
             not hasattr(self, "grad")
@@ -214,7 +213,7 @@ class ForwardTextClassificationTrainer:
                     if self.args.perturbation_sampling and v_buffer != {}:
                         v_params = [
                             (
-                                v_buffer[i][curr_client_idx].to(device)
+                                v_buffer[i][0].to(device)
                                 if p.requires_grad
                                 else torch.zeros_like(p)
                             )
@@ -223,24 +222,34 @@ class ForwardTextClassificationTrainer:
                     else:
                         v_params = [
                             (
-                                torch.randn_like(p, device=device)
+                                torch.randn_like(p, device=p.device)
                                 if p.requires_grad
                                 else torch.zeros_like(p, device=device)
                             )
                             for p in self.params
                         ]
+                    # def wrapped_func(p):
+                    #     return functional_get_loss(
+                    #         p,
+                    #         self.fmodel,
+                    #         x,
+                    #         labels,
+                    #         num_classes=self.num_labels,
+                    #         buffers=self.buffers,
+                    #     )
+                    # loss, jvp = calculate_jvp_experiment(wrapped_func, self.params, v_params)
+                    
 
-                    def wrapped_func(p):
-                        return functional_get_loss(
-                            p,
-                            self.fmodel,
-                            x,
-                            labels,
-                            num_classes=self.num_labels,
-                            buffers=self.buffers,
-                        )
+                    f = partial(
+                        functional_get_loss,
+                        model=self.fmodel,
+                        buffers = self.buffers,
+                        num_classes = self.num_labels,
+                        x=x,
+                        t=labels,
+                    )
 
-                    loss, jvp = calculate_jvp(wrapped_func, self.params, v_params)
+                    loss, jvp = calculate_jvp(f, self.params, v_params)
                     jvp = jvp.to(device)
 
                     for j, fg in enumerate(self.grad):
@@ -306,12 +315,14 @@ class ForwardTextClassificationTrainer:
             f"[MEM] Allocated Before/After: {allocated_before/1e6:.2f}MB → {allocated_after/1e6:.2f}MB, Δ: {(allocated_after-allocated_before)/1e6:.2f}MB | trainer id: {self.trainer_id}"
         )
 
+        # self.model.train()        # See comment about self.model.eval() above. TL;DR: This is used to make training deterministic
         return global_step, tr_loss / global_step if global_step > 0 else 0.0
 
     def eval_model(self, epoch=0, global_step=0, device=None):
         if not device:
             device = self.device
 
+        # todo: Make sure that the model doesn't need to be put back into train mode using: `self.model.train()` before this method returns
         self.model.eval()
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model

@@ -46,7 +46,7 @@
         "client_idx": -1,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round":  5,
+        "client_num_per_round":  10,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
@@ -85,7 +85,7 @@
             "enabled": "False",
             "type": "NA"
         },
-        "aggGoal": 5 ,
+        "aggGoal": 10 ,
         "rounds": 300
     },
     "baseModel": {
