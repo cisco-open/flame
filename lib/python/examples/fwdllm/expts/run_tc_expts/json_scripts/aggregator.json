@@ -103,8 +103,8 @@
     "selector": {
         "sort": "random",
         "kwargs": {
-            "k": 5,
-            "minInitialTrainers": 5
+            "k": 10,
+            "minTrainersToStart": 50
         }
     },
     "optimizer": {

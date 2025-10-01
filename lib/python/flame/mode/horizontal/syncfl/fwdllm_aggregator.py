@@ -1127,7 +1127,9 @@ class TopAggregator(SyncTopAgg):
             if self.var_good_enough:
 
                 # evaluate model to calculate loss
+                self.iteration_per_data_id += 1
                 result, _, _ = self.eval_model()
+                
                 logger.info(f"eval loss = {result['eval_loss']}")
                 self.data_id += 1
                 self.iteration_per_data_id = 0
@@ -1441,7 +1443,7 @@ class TopAggregator(SyncTopAgg):
         results.update(result)
 
         # self.results.update(result)
-        logging.info(f"results after eval are: {results}, len(wrong) is: {len(wrong)}")
+        logging.info(f"results after eval are: {results}, len(wrong) is: {len(wrong)}, 'data_id_iterations': {self.iteration_per_data_id}")
 
         # TODO: Check if model needs to be moved back to cpu? Do we need to keep
         # moving the model between CPU and GPU repeatedly?

@@ -25,6 +25,93 @@ import os
 
 logger = logging.getLogger(__name__)
 
+import hashlib
+
+def _rng_state_hash(gen: torch.Generator, device=None):
+        """Return a short hash of RNG state for logging."""
+        state = gen.get_state()
+        return hashlib.sha256(state.numpy().tobytes()).hexdigest()
+
+def _calculate_hash(tensor):
+    if tensor is None:
+        return ""
+
+    """Calculate a hash for a tensor for logging."""
+    return hashlib.sha256(tensor.detach().cpu().numpy().tobytes()).hexdigest()
+
+def _calculate_rolling_hash(tensor: torch.Tensor, hash_str: str) -> str:
+    """Calculate a rolling hash for a tensor for logging."""
+    if hash_str is None:
+        return _calculate_hash(tensor)
+    
+    if tensor is None:
+        return ""
+    
+    # Encode the string to bytes before concatenating
+    return hashlib.sha256(tensor.detach().cpu().numpy().tobytes() + hash_str.encode('utf-8')).hexdigest()
+
+def _randn_wrapper(*size, device=None, generator=None, label="randn", logging_state=None, param_name=None, **kwargs):
+    """Wrapper for torch.randn that logs device + RNG info."""
+    if device is None:
+        device = torch.device("cpu")
+    else:
+        device = torch.device(device)
+
+    # Pick generator: provided or default one for this device
+    if generator is None:
+        if device.type == "cpu":
+            gen = torch.default_generator
+        else:
+            gen = torch.cuda.default_generators[device.index]
+    else:
+        gen = generator
+
+    pre_state = _rng_state_hash(gen)
+
+    res = torch.randn(*size, device=device, generator=gen, **kwargs)
+
+    logging.debug(f"[{label}] device={device}, generator={gen}, post_state={_rng_state_hash(gen)}, logging_state={logging_state}, size={size}, kwargs={kwargs}, pre_state={pre_state}, param_name={param_name}")
+    return res
+
+def _randn_like_wrapper(input_tensor, generator=None, label="randn_like", logging_state=None, param_name=None, device=None, **kwargs):
+    """Wrapper for torch.randn_like that logs device + RNG info (older PyTorch, no generator kwarg)."""
+    if not device:
+        device = input_tensor.device
+
+    # Choose generator if not provided
+    if generator is None:
+        if device.type == "cpu":
+            gen = torch.default_generator
+        else:
+            gen = torch.cuda.default_generators[device.index]
+    else:
+        gen = generator
+
+    pre_state = _rng_state_hash(gen)
+
+    # Build args to mimic randn_like
+    res = torch.randn(
+        tuple(input_tensor.shape),
+        dtype=kwargs.get("dtype", input_tensor.dtype),
+        layout=kwargs.get("layout", input_tensor.layout),
+        device=device,
+        generator=gen,
+        requires_grad=kwargs.get("requires_grad", input_tensor.requires_grad),
+    ).to(device)                      # then move to param’s device
+
+    # Force CUDA to flush RNG consumption so generator state actually updates
+    if device.type == "cuda":
+        torch.cuda.synchronize(device)
+    post_state = _rng_state_hash(gen)
+
+    logging.debug(
+        f"[{label}] device={device}, generator={gen}, "
+        f"input_shape={input_tensor.shape}, "
+        f"post_state={post_state}, pre_state={pre_state}, "
+        f"logging_state={logging_state}, "
+        f"kwargs={kwargs}, param_name={param_name}"
+    )
+    return res
 
 class ForwardTextClassificationTrainer:
     def __init__(
@@ -96,7 +183,7 @@ class ForwardTextClassificationTrainer:
         self.var = 0
         logger.info(f"Client Trainer learning rate: {self.args.learning_rate}")
         
-        # Initialize RNGs with client_ids and a non-static seed like 42, to avoid all trainers generating the same sequence of perturbations, which was stalling the accuracy increase
+        # Initialized RNGs with client_ids and the exact same static seed (42), to avoid all trainers generating the same sequence of perturbations, which was stalling the accuracy increase
         self.torch_rng = torch.Generator(device="cpu")
         self.torch_rng.manual_seed(self.args.client_idx)
         self.torch_cuda_rng = torch.Generator(device="cuda")
@@ -133,7 +220,7 @@ class ForwardTextClassificationTrainer:
             f"Device: {device}, trainer_id: {self.trainer_id}"
         )
 
-    def train_model(self, device=None):
+    def train_model(self, device=None, logging_state=None):
         if not device:
             device = self.device
 
@@ -167,16 +254,21 @@ class ForwardTextClassificationTrainer:
                 self.grad = None if self.old_grad is None else [g.clone() for g in self.old_grad]
 
             v_buffer = {}
+            all_perturbations_hash = ""
+            selected_perturbation_hash = ""
             index = 0
             for k, v in self.model.named_parameters():
                 if self.grad is not None and v.requires_grad:
                     self.total_rng_iter += 1
                     shape = v.shape
-                    candidate_v = torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
+                    candidate_v = _randn_wrapper((1 * 10, *shape), device="cpu", generator=self.torch_rng, logging_state=logging_state, param_name=k)torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
                     target_grad = self.grad[index]
 
                     target_grad = torch.flatten(target_grad)
                     candidate_v = torch.flatten(candidate_v, start_dim=1)
+
+                    logging.debug(f"candidate_v for client_idx {self.args.client_idx} is {_calculate_hash(candidate_v)} for param_name {k}")
+                    all_perturbations_hash = _calculate_rolling_hash(candidate_v, all_perturbations_hash)
 
                     cos_sim = calculate_cos_sim(candidate_v, target_grad, device)
 
@@ -201,10 +293,11 @@ class ForwardTextClassificationTrainer:
 
         with torch.no_grad():
             for epoch in range(self.args.epochs):
+                logging.info(f"train_dl size: {len(self.train_dl)}")
                 for batch_idx, batch in enumerate(self.train_dl):
                     curr_client_idx = self.args.client_idx
                     self.log_memory(
-                        f"epoch{epoch}_batch{curr_client_idx}_start", device
+                        f"epoch{epoch}_batch{batch_idx}_client{curr_client_idx}_start", device
                     )
 
                     x = batch[1].to(device, non_blocking=True)
@@ -228,6 +321,9 @@ class ForwardTextClassificationTrainer:
                             )
                             for p in self.params
                         ]
+                    logging.debug(f"v_params hashes: {[(_calculate_hash(v), v.shape) for v in v_params if v.requires_grad]}")
+                    logging.debug(f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}")
+
                     # def wrapped_func(p):
                     #     return functional_get_loss(
                     #         p,

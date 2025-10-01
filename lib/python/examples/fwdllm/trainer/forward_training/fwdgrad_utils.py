@@ -65,7 +65,6 @@ def functional_get_loss(
     y = model(params, buffers, x)[0]
     return _get_loss(y, t, num_classes)
 
-
 def calculate_jvp(func, params, v):
     """
     Calculations Jacobian-vector product using numerical differentiation
