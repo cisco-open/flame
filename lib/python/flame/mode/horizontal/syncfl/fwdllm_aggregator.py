@@ -117,6 +117,11 @@ class TopAggregator(SyncTopAgg):
 
         # maintain a set of all trainers that have sent heartbeats previously
         self.all_trainers = set()
+        try:
+            self.minInitialTrainers = self.config.selector.kwargs.get("minInitialTrainers")
+            assert self.minInitialTrainers is not None
+        except (KeyError, AssertionError):
+            raise KeyError("minInitialTrainers must be specified in selector config & must not be None for determinism")
         logger.info("finished init for sync agg")
 
     def pause_execution(self):
@@ -1131,6 +1136,7 @@ class TopAggregator(SyncTopAgg):
                     logger.info("incrementing round number now ")
                     self._round += 1
                     self.data_id = 0
+                    channel.set_property("round", self._round)
 
             else:
                 self.iteration_per_data_id += 1
@@ -1354,6 +1360,7 @@ class TopAggregator(SyncTopAgg):
                 logger.info("incrementing round number now ")
                 self._round += 1
                 self.data_id = 0
+                channel.set_property("round", self._round)
         else:
             self.iteration_per_data_id += 1
 

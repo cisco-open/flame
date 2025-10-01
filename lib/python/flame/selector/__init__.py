@@ -17,6 +17,8 @@
 
 from abc import ABC, abstractmethod
 from typing import Tuple, Union
+import logging
+import time
 
 from ..common.typing import Scalar
 from ..end import End
@@ -32,6 +34,20 @@ class AbstractSelector(ABC):
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.selected_ends = set()
+
+    def enforce_min_start(self, ends_count: int) -> bool:
+        """Return True if selection should wait due to min-start threshold.
+        """
+        threshold = int(self.minInitialTrainers) if hasattr(self, "minInitialTrainers") and self.minInitialTrainers is not None else -1
+        if threshold is None:
+            return False
+        if ends_count < threshold:
+            logging.getLogger(__name__).debug(
+                f"Not enough ends to start selection, need at least {threshold}"
+            )
+            time.sleep(0.1)
+            return True
+        return False
 
     @abstractmethod
     def select(
