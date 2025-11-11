@@ -108,6 +108,7 @@ class Trainer(Role, metaclass=ABCMeta):
         )
 
         self._round = 1
+        self._model_version = 1
         self._work_done = False
 
         self.framework = get_ml_framework_in_use()
@@ -130,6 +131,7 @@ class Trainer(Role, metaclass=ABCMeta):
         # for tracking trainer round progress and checking before sending
         # updates
         self._updates_returned_upto_round = 0
+        self._updates_returned_upto_model = 0
         self._trainer_online_channel_status = True
 
         self.task_to_perform = "train"
@@ -186,6 +188,9 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
+        if MessageType.MODEL_VERSION in msg:
+            self._model_version = msg[MessageType.MODEL_VERSION]
+
         if MessageType.DATA_ID in msg and MessageType.ITERATION_PER_DATA_ID in msg:
             if (
                 self.data_id is not None
@@ -196,7 +201,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 self.abort_training = True
                 logger.info(
                     f"Fetch weights aborted for given model version "
-                    f"{self._round} while trainer_id {self.trainer_id} has "
+                    f"{self._model_version} while trainer_id {self.trainer_id} has "
                     f"already sent updates "
                     f"upto iteration_per_data_id: {self.iteration_per_data_id}"
                 )
@@ -221,7 +226,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
         if MessageType.VAR in msg:
             logger.info(
-                f"Calc more variance received for trainer id: {self.trainer_id} and round {self._round}. Not updating weights"
+                f"Calc more variance received for trainer id: {self.trainer_id} and round {self._round}"
+                f" and model version {self._model_version}. Not updating weights"
             )
 
         elif MessageType.WEIGHTS in msg:
@@ -323,7 +329,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
         logger.info(
             f"### FETCH WEIGHTS complete for trainer_id {self.trainer_id}, "
-            f"round: {self._round}, data id: {self.data_id} and work_done: {self._work_done} ###"
+            f"round: {self._round}, data id: {self.data_id}, model version: {self._model_version} "
+            f" and work_done: {self._work_done} ###"
         )
 
         logger.debug(
@@ -440,7 +447,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 MessageType.GRADIENTS: grad_dict,
                 MessageType.GRADIENTS_FOR_VAR_CHECK: self.grad_for_var_check,
                 MessageType.DATASET_SIZE: self.dataset_size,
-                MessageType.MODEL_VERSION: self._round,
+                MessageType.MODEL_VERSION: self._model_version,
                 MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),
                 # MessageType.STAT_UTILITY: self._stat_utility, #uncomment later
                 # - rn FedSgdTrainer has no utility
@@ -448,7 +455,7 @@ class Trainer(Role, metaclass=ABCMeta):
             }
         else:
             msg = {
-                MessageType.MODEL_VERSION: self._round,
+                MessageType.MODEL_VERSION: self._model_version,
                 MessageType.STAT_UTILITY: self._stat_utility,
             }
 
@@ -458,16 +465,18 @@ class Trainer(Role, metaclass=ABCMeta):
             # To allow the trainer to participate in eval AND train in the same
             # round, we set _updates_returned_upto_round only over here.
             self._updates_returned_upto_round = self._round
+            self._updates_returned_upto_model = self._model_version
 
             logger.info(
                 f"sending grads done for trainer_id: {self.trainer_id} "
                 f"and _updates_returned_upto_round "
                 f"{self._updates_returned_upto_round}"
+                f", model version { self._updates_returned_upto_model}"
             )
         elif self.task_to_perform == "eval":
             logger.info(
                 f"sending eval stat utility done for trainer_id: {self.trainer_id} "
-                f"for model version: {self._round}"
+                f"for model version: {self._model_version}"
             )
         else:
             logger.error(

@@ -86,7 +86,8 @@
             "type": "NA"
         },
         "aggGoal": 10 ,
-        "rounds": 300
+        "rounds": 300,
+        "model_version_increment_per_update": true
     },
     "baseModel": {
         "name": "",

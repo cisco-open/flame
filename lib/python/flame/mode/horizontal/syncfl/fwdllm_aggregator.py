@@ -89,6 +89,7 @@ class TopAggregator(SyncTopAgg):
 
         self.data_id = 0
         self.total_data_bins = 150
+        self.model_version = 1
 
         self.grad_pool = []
         self.var = None
@@ -381,7 +382,7 @@ class TopAggregator(SyncTopAgg):
             if MessageType.MODEL_VERSION in msg:
                 version = msg[MessageType.MODEL_VERSION]
 
-            if version != self._round:
+            if version != self.model_version:
                 logger.info(
                     f"Rejecting trainer update of version {version}, "
                     f"agg self._round: {self._round}. Will return."
@@ -858,7 +859,7 @@ class TopAggregator(SyncTopAgg):
             if MessageType.MODEL_VERSION in msg:
                 version = msg[MessageType.MODEL_VERSION]
 
-            if version != self._round:
+            if version != self.model_version:
                 logger.info(
                     f"Rejecting trainer update of version {version}, "
                     f"agg self._round: {self._round}. Will return."
@@ -1363,6 +1364,11 @@ class TopAggregator(SyncTopAgg):
                 self._round += 1
                 self.data_id = 0
                 channel.set_property("round", self._round)
+            if self.config.hyperparameters.model_version_increment_per_update:
+                self.model_version += 1
+                logger.info(f"incrementing model version to {self.model_version} now, round id: {self._round}")
+            else:
+                self.model_version = self._round
         else:
             self.iteration_per_data_id += 1
 
@@ -1704,7 +1710,7 @@ class TopAggregator(SyncTopAgg):
                     MessageType.WEIGHTS: shared_weights,
                     MessageType.GRAD_POOL: shared_grad_pool_trainable,
                     MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round,
+                    MessageType.MODEL_VERSION: self.model_version,
                     MessageType.TASK_TO_PERFORM: task_to_perform,
                     MessageType.DATA_ID: self.data_id,
                     MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
@@ -1732,12 +1738,12 @@ class TopAggregator(SyncTopAgg):
                 self.grad_for_var_check_list = []
             else:
                 logger.info(
-                    f"sending var = bad to {end} with model_version: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
+                    f"sending var = bad to {end} with model_version: {self.model_version}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
                 payload = {
                     MessageType.VAR: "bad",
                     MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round,
+                    MessageType.MODEL_VERSION: self.model_version,
                     MessageType.TASK_TO_PERFORM: task_to_perform,
                     MessageType.DATA_ID: self.data_id,
                     MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
