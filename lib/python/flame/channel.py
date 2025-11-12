@@ -256,18 +256,6 @@ class Channel(object):
         self._selector._cleanup_recvd_ends(self._ends)
         logger.debug("Cleaned up ends successfully")
 
-    def cleanup_recvd_end(self, end):
-        """Performs cleanup of end states in the selector. Usually
-        only performed after aggregation of a round completes"""
-
-        # TODO: (DG) This function is named to cleanup recvd ends, but
-        # can extend beyond just "recvd" state. We might also want to
-        # send a subset of ends here not the entire self._ends?
-
-        self._selector._cleanup_recvd_end(end, self._ends[end])
-        logger.info(f"cleaning up {end}")
-        logger.debug(f"Cleaned up ends {self._ends[end]} successfully")
-
     def ends_digest(self) -> str:
         """Compute a digest of ends."""
         list_ends = self.ends()

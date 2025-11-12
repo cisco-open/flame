@@ -83,7 +83,7 @@ class FedSGDAggregator(TopAggregator):
             self.track_trainer_avail["enabled"]
             and self.track_trainer_avail["type"] == "ORACULAR"
         ):
-            self.trainer_event_dict = self.read_trainer_unavailability(self.track_trainer_avail["trace"])
+            self.trainer_event_dict = self.read_trainer_unavailability()
             print("self.trainer_event_dict: ", self.trainer_event_dict)
 
         self.loss_list = []
@@ -161,9 +161,6 @@ class FedSGDAggregator(TopAggregator):
 
         # old_param = self.get_global_model_params()
         old_param = self.trainer.model.parameters()
-        if training_num == 0 :
-            logger.warning("Not updating the model, division by 0 error")
-            return old_param
 
         # logger.info("################aggregate: %d" % len(model_list))
         (num0, averaged_params) = model_list[0]
@@ -180,7 +177,6 @@ class FedSGDAggregator(TopAggregator):
             )
         if self.args.var_control:
             if self.var <= self.var_threshold:
-                logger.debug("current model is good, variance under threshold")
                 self.var_good_enough = True
                 # 方差满足要求
                 self.cached_v = []
