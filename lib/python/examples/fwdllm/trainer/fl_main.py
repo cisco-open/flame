@@ -254,6 +254,20 @@ if __name__ == "__main__":
         fed_trainer,
         config,
     )
+
+    if trainer.client_notify['trace'] is not None:
+        logging.info(
+            f"Will initiate thread to update state of " f"trainer {trainer.trainer_id}"
+        )
+        if trainer.client_notify["enabled"] == "True":
+            logging.info(f"Will send avail notifications for trainer {trainer.trainer_id}")
+        # Note that even though trainer sends notifications, only
+        # async_oort will use it. Other selectors will not use it so
+        # it can remain enabled.
+        avail_notify_thread = threading.Thread(target=trainer.notify_trainer_avail)
+        avail_notify_thread.daemon = True
+        avail_notify_thread.start()
+
     trainer.compose()
     trainer.run()
     # # start FedAvg algorithm

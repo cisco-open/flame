@@ -22,6 +22,10 @@ import time
 from datetime import datetime
 import sklearn
 import numpy as np
+import ast
+import os
+import json
+from sortedcontainers import SortedDict
 from flame.channel import VAL_CH_STATE_HTBT_RECV, VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
@@ -51,6 +55,7 @@ from flame.selector.oort import (
 )
 import functorch as fc
 import torch
+import glob
 
 from torch.nn import CrossEntropyLoss
 
@@ -89,6 +94,7 @@ class TopAggregator(SyncTopAgg):
 
         self.data_id = 0
         self.total_data_bins = 150
+        self.model_version = 0
 
         self.grad_pool = []
         self.var = None
@@ -122,6 +128,8 @@ class TopAggregator(SyncTopAgg):
             assert self.minInitialTrainers is not None
         except (KeyError, AssertionError):
             raise KeyError("minInitialTrainers must be specified in selector config & must not be None for determinism")
+
+        self.trainer_unavail_durations = None
         logger.info("finished init for sync agg")
 
     def pause_execution(self):
@@ -267,6 +275,46 @@ class TopAggregator(SyncTopAgg):
         else:
             logger.warning(f"Got invalid {msg} while processing heartbeat")
 
+
+    def read_trainer_unavailability(self, trace=None) -> None:
+        logger.info(f"Came to read_trainer_unavailability, trace: {trace}")
+        trainer_events_dict = {}
+
+        # TODO(Aishwwarya): Set path to read JSON files without 'aish_test' after Twisha's PR merge
+        files_path = "/home/dgarg39/aish_test/flame/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts"
+
+        dirname = os.path.dirname(__file__)
+        search_pattern = os.path.join(dirname, files_path, "trainer_*.json")
+        json_files = glob.glob(search_pattern)
+
+        if not json_files:
+            logger.warning(f"No JSON files found matching pattern: {search_pattern}")
+            return {}
+
+        logger.info(f"Found {len(json_files)} JSON files to process.")
+        
+        for file_path in json_files:
+            with open(file_path) as f:
+                trainer_json = json.load(f)
+                curr_trainer_id = trainer_json["taskid"]
+                event_list = ast.literal_eval(
+                    trainer_json["hyperparameters"][trace]
+                )
+
+                # SortedDict for efficient timestamp lookup
+                state_dict = SortedDict()
+
+                # Process the events
+                for timestamp, event_name in event_list:
+                    state_dict[timestamp] = event_name
+
+                trainer_events_dict[curr_trainer_id] = state_dict
+                logger.info(f"Completed file read for {file_path}")
+
+        logger.info("Completed reading all trainer unavailability from files")
+        return trainer_events_dict
+
+
     def _aggregate_weights(self, tag: str) -> None:
         """Aggregate local model weights asynchronously.
 
@@ -381,7 +429,7 @@ class TopAggregator(SyncTopAgg):
             if MessageType.MODEL_VERSION in msg:
                 version = msg[MessageType.MODEL_VERSION]
 
-            if version != self._round:
+            if version != self.model_version:
                 logger.info(
                     f"Rejecting trainer update of version {version}, "
                     f"agg self._round: {self._round}. Will return."
@@ -858,7 +906,7 @@ class TopAggregator(SyncTopAgg):
             if MessageType.MODEL_VERSION in msg:
                 version = msg[MessageType.MODEL_VERSION]
 
-            if version != self._round:
+            if version != self.model_version:
                 logger.info(
                     f"Rejecting trainer update of version {version}, "
                     f"agg self._round: {self._round}. Will return."
@@ -1210,15 +1258,46 @@ class TopAggregator(SyncTopAgg):
         if channel.ends(VAL_CH_STATE_RECV) is None:
             logger.info("no ends yet")
             return
+        
+        recv_ends = channel.ends()
+        if self.ends_not_selected_yet and len(recv_ends) ==0:
+            logger.info("no ends selected yet")
+            return
 
         total = 0
 
+        num_min_req = self._agg_goal # change hardcoding, set it to aggGoal
+        logger.info(f"Total ends: {len(recv_ends)}, required : {num_min_req}")
+        num_min_req = min(num_min_req, len(recv_ends))
+        if self.ends_not_selected_yet:
+            # this is inefficient, but it will work
+            # can improve this by tracking how many clients need to be freed up
+            # If weights were not distributed in this iteration, async read messages from 
+            # one trainer until required trainers are available to distribute weights to
+            # while maintaining concurrency.
+            # This is best effort sync aggregation, if agg goal is not met, we default to async.
+            logger.info(f"We are waiting to clear up queue")
+            num_min_req = min(num_min_req,1) 
+
         # receive local model parameters from trainers
-        for msg, metadata in channel.recv_fifo(channel.ends()):
+        for msg, metadata in channel.recv_fifo(channel.ends(), num_min_req):
             end, timestamp = metadata
             if not msg:
                 logger.info(f"No data from {end}; skipping it")
                 continue
+
+            if MessageType.MODEL_VERSION in msg:
+                version = msg[MessageType.MODEL_VERSION]
+
+                if self.reject_stale_updates == True:
+                    if version != self.model_version:
+                        logger.info(
+                            f"Rejecting trainer update from {end} of version {version}, "
+                            f"agg self.model_version: {self.model_version}. Will return."
+                        )
+                        channel.cleanup_recvd_end(end)
+                        # channel._selector.ordered_updates_recv_ends.append(end)
+                        continue
 
             if (
                 MessageType.GRADIENTS in msg
@@ -1304,9 +1383,6 @@ class TopAggregator(SyncTopAgg):
                     end, PROP_DATASET_SIZE, msg[MessageType.DATASET_SIZE]
                 )
 
-            if MessageType.MODEL_VERSION in msg:
-                version = msg[MessageType.MODEL_VERSION]
-
             if MessageType.STAT_UTILITY in msg:
                 channel.set_end_property(
                     end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
@@ -1322,6 +1398,132 @@ class TopAggregator(SyncTopAgg):
                     f"Reached agg_goal of {self._agg_goal} since agg_goal_count is {self._agg_goal_cnt}. Breaking from for loop, proceeding to aggregate."
                 )
                 break
+
+        # second loop to poll more if needed
+        # TODO(Aishwwarya): This stalls indefinitely when we have distributed weights but there are no more update to read.
+        num_freed = 0 # if at least one is freed, exit loop
+        while self._agg_goal_cnt < self._agg_goal and not self.ends_not_selected_yet: 
+            for msg, metadata in channel.recv_fifo(channel.ends(), 1):
+                end, timestamp = metadata
+                if not msg:
+                    logger.info(f"No data from {end}; skipping it")
+                    continue
+
+                if MessageType.MODEL_VERSION in msg:
+                    version = msg[MessageType.MODEL_VERSION]
+
+                    if self.reject_stale_updates == True:
+                        if version != self.model_version:
+                            logger.info(
+                                f"Rejecting trainer update from {end} of version {version}, "
+                                f"agg self.model_version: {self.model_version}. Will return."
+                            )
+                            # num_freed += 1
+                            channel.cleanup_recvd_end(end)
+                            # channel._selector.ordered_updates_recv_ends.append(end)
+                            continue
+
+                if (
+                    MessageType.GRADIENTS in msg
+                    and MessageType.GRADIENTS_FOR_VAR_CHECK in msg
+                ):
+                    logger.info(
+                        f"received gradients from {end} "
+                        f"with model version {msg[MessageType.MODEL_VERSION]}"
+                    )
+                    self._agg_goal_cnt += 1
+
+                    # For OORT selector NOTE: (DG) Last selected round should have
+                    # ideally been set in distribute weights. But it was here in the
+                    # old oort code and ive kept it. Instead of
+                    # PROP_LAST_SELECTED_ROUND, it should have been
+                    # PROP_LAST_UPDATE_RECVD_ROUND.
+                    channel.set_end_property(
+                        end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
+                    )
+
+                    # Set last eval round for the trainer since training also means
+                    # that eval was done for the same round.
+                    channel.set_end_property(
+                        end, PROP_LAST_EVAL_ROUND, msg[MessageType.MODEL_VERSION]
+                    )
+                    # calculate round duration for this end, if the round number
+                    # information is identical with round_start_time
+                    logger.debug(
+                        f"Getting channel property {PROP_ROUND_START_TIME} for "
+                        f"end {end}"
+                    )
+                    round_start_time_tup = channel.get_end_property(
+                        end, PROP_ROUND_START_TIME
+                    )
+                    end = metadata[0]
+                    timestamp = metadata[1]
+                    logger.debug(
+                        f"Returned round_start_time_tup: {round_start_time_tup} for "
+                        f"end {end} and timestamp {timestamp}"
+                    )
+
+                    # TODO: (DG) Also set the end property for task=eval done at
+                    # timestamp=current.
+
+                else:
+                    logger.error(
+                        f"Invalid message received from {end} in aggregate_weights: {msg}"
+                    )
+                    return
+
+
+
+                logger.debug(f"received data from {end}")
+                channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
+
+                # logger.debug(f"received message in agg_grads_sync {msg} from {end}")
+                # capture telemetry on trainer participation in rounds
+                channel._selector.ordered_updates_recv_ends.append(end)
+                self._updates_in_queue += 1
+                self._per_round_update_list.append(end)
+
+                if end not in self._updates_recevied.keys():
+                    self._updates_recevied[end] = 1
+                else:
+                    self._updates_recevied[end] += 1
+
+                # Process the gradients
+                if MessageType.GRADIENTS in msg:
+                    # weights = weights_to_model_device(msg[MessageType.WEIGHTS],
+                    # self.model)
+                    trainer_gradients = msg[MessageType.GRADIENTS]
+                    self.aggregate_grads_from_trainers(trainer_gradients)
+
+                if MessageType.GRADIENTS_FOR_VAR_CHECK in msg:
+                    logger.info(
+                        f"received GRADIENTS_FOR_VAR_CHECK, {len(msg[MessageType.GRADIENTS_FOR_VAR_CHECK])}"
+                    )
+                    self.grad_for_var_check_list.append(
+                        msg[MessageType.GRADIENTS_FOR_VAR_CHECK]
+                    )
+
+                if MessageType.DATASET_SIZE in msg:
+                    count = msg[MessageType.DATASET_SIZE]
+                    channel.set_end_property(
+                        end, PROP_DATASET_SIZE, msg[MessageType.DATASET_SIZE]
+                    )
+
+                if MessageType.STAT_UTILITY in msg:
+                    channel.set_end_property(
+                        end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
+                    )
+                    stat_utility = msg[MessageType.STAT_UTILITY]
+
+                logger.info(
+                    f"Received grads from {end}. It was trained on model version {version}, with {count} samples"
+                )
+
+                if self._agg_goal_cnt == self._agg_goal:
+                    logger.info(
+                        f"Reached agg_goal of {self._agg_goal} since agg_goal_count is {self._agg_goal_cnt}. Breaking from for loop, proceeding to aggregate."
+                    )
+                    break
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
@@ -1339,6 +1541,18 @@ class TopAggregator(SyncTopAgg):
             self.model
         )
         self.grad = [torch.zeros_like(p) for p in self.params]
+
+        if self._agg_goal_cnt < self._agg_goal:
+            # we enter this only if we have not distributed weights to enough clients
+            # and want to free up resources
+
+            # skip the aggregation
+            # do not clean up the ends that we did not aggregate on yet
+            # we are already cleaning up the ends that gave back stale results
+            # channel.cleanup_recvd_ends()
+            logger.info(f"did not reach agg goal, not aggregating")
+            return 
+
 
         self.aggregate(self._round)
         self.print_trainable_params_stats(
@@ -1363,6 +1577,11 @@ class TopAggregator(SyncTopAgg):
                 self._round += 1
                 self.data_id = 0
                 channel.set_property("round", self._round)
+            if self.config.hyperparameters.inc_model_version_per_data_id:
+                self.model_version += 1
+                logger.info(f"incrementing model version to {self.model_version} now, round id: {self._round}")
+            else:
+                self.model_version = self._round
         else:
             self.iteration_per_data_id += 1
 
@@ -1378,6 +1597,8 @@ class TopAggregator(SyncTopAgg):
             f"After round: {round_to_print}, remaining _updates_in_queue: "
             f"{self._updates_in_queue}"
         )
+
+        channel.cleanup_recvd_ends()
 
         self.log_memory("end _aggregate_grads_sync", self.device)
 
@@ -1623,14 +1844,16 @@ class TopAggregator(SyncTopAgg):
         logger.debug(f"Ended busy wait at time {time.time()}")
 
         # before invoking channel.ends() to select, set the trainer_unavail if
-        # it isn't None if self.trainer_unavail_durations is not None:
-        # curr_unavail_trainer_list = self.get_curr_unavail_trainers()
-        #     channel.set_curr_unavailable_trainers(
-        #     trainer_unavail_list=curr_unavail_trainer_list )
-        #         logger.debug(f"Passed curr_unavail_trainer_list: "
-        #     f"{curr_unavail_trainer_list} to channel") else: # Handling the
-        #     case for oort's selector since it expects 3 # arguments
-        #                  channel.set_curr_unavailable_trainers(trainer_unavail_list=[])
+        # it isn't None
+        if self.trainer_event_dict is not None:
+            curr_unavail_trainer_list = self.get_curr_unavail_trainers()
+            channel.set_curr_unavailable_trainers(
+            trainer_unavail_list=curr_unavail_trainer_list )
+            logger.debug(f"Passed curr_unavail_trainer_list: "
+            f"{curr_unavail_trainer_list} to channel") 
+
+        else: # Handling the case for oort's selector since it expects 3 # arguments
+            channel.set_curr_unavailable_trainers(trainer_unavail_list=[])
 
         # check if there are any ends to send weights to
 
@@ -1704,7 +1927,7 @@ class TopAggregator(SyncTopAgg):
                     MessageType.WEIGHTS: shared_weights,
                     MessageType.GRAD_POOL: shared_grad_pool_trainable,
                     MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round,
+                    MessageType.MODEL_VERSION: self.model_version,
                     MessageType.TASK_TO_PERFORM: task_to_perform,
                     MessageType.DATA_ID: self.data_id,
                     MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
@@ -1732,12 +1955,12 @@ class TopAggregator(SyncTopAgg):
                 self.grad_for_var_check_list = []
             else:
                 logger.info(
-                    f"sending var = bad to {end} with model_version: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
+                    f"sending var = bad to {end} with model_version: {self.model_version}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
                 payload = {
                     MessageType.VAR: "bad",
                     MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round,
+                    MessageType.MODEL_VERSION: self.model_version,
                     MessageType.TASK_TO_PERFORM: task_to_perform,
                     MessageType.DATA_ID: self.data_id,
                     MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,

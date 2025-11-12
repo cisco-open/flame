@@ -202,15 +202,15 @@ class Channel(object):
                     self.trainer_unavail_list,
                     task_to_perform,
                 )
-                logger.debug(f"selected: {selected}")
-                if len(selected) is 0:
+                logger.debug(f"trainer unavail list available, selected: {selected}")
+                if len(selected) == 0:
                     return
             else:
                 selected = self._selector.select(
                     self._ends, self.properties, task_to_perform
                 )
-                logger.debug(f"selected: {selected}")
-                if len(selected) is 0:
+                logger.debug(f"trainer unavail list not available, selected: {selected}")
+                if len(selected) == 0:
                     return
             logger.debug(
                 f"selected for task {task_to_perform} and returned from select(): {selected}"
@@ -255,6 +255,19 @@ class Channel(object):
 
         self._selector._cleanup_recvd_ends(self._ends)
         logger.debug("Cleaned up ends successfully")
+
+    def cleanup_recvd_end(self, end):
+        """Performs cleanup of end states in the selector. Usually
+        only performed after aggregation of a round completes"""
+
+        # TODO: (DG) This function is named to cleanup recvd ends, but
+        # can extend beyond just "recvd" state. We might also want to
+        # send a subset of ends here not the entire self._ends?
+
+        self._selector._cleanup_recvd_end(end, self._ends[end])
+        logger.info(f"cleaning up {end}")
+        logger.debug(f"Cleaned up ends {self._ends[end]} successfully")
+
 
     def ends_digest(self) -> str:
         """Compute a digest of ends."""

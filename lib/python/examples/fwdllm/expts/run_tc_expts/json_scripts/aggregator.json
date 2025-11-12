@@ -83,10 +83,12 @@
         "warmup_ratio": 0,
         "trackTrainerAvail": {
             "enabled": "False",
-            "type": "NA"
+            "type": "ORACULAR",
+            "trace": "avl_events_syn_0"
         },
         "aggGoal": 10 ,
-        "rounds": 300
+        "rounds": 300,
+        "inc_model_version_per_data_id": true
     },
     "baseModel": {
         "name": "",
@@ -104,7 +106,8 @@
         "sort": "random",
         "kwargs": {
             "k": 10,
-            "minInitialTrainers": 50
+            "minInitialTrainers": 50,
+            "c": 13
         }
     },
     "optimizer": {
