@@ -223,6 +223,7 @@ class Trainer(Role, metaclass=ABCMeta):
             else:
                 self.abort_training = False
                 self.iteration_per_data_id = msg[MessageType.ITERATION_PER_DATA_ID]
+                self.data_id = msg[MessageType.DATA_ID]
 
         if MessageType.VAR in msg:
             logger.info(
