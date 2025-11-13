@@ -208,7 +208,7 @@ class RandomSelector(AbstractSelector):
                     self.round = round
 
                 logger.info("select in send state")
-                return {key: None for key in avl_candidates}
+                return {key: None for key in selected_candidates}
 
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
@@ -298,7 +298,7 @@ class RandomSelector(AbstractSelector):
 
                 
                 logger.info("select in send state")
-                return {key: None for key in avl_candidates}
+                return {key: None for key in selected_candidates}
         
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
