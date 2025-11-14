@@ -309,7 +309,10 @@ class BaseDataManager(ABC):
         data_file = h5py.File(self.args.data_file_path, "r", swmr=True)
         partition_file = h5py.File(self.args.partition_file_path, "r", swmr=True)
         partition_method = self.args.partition_method
-        original_client_idxs = [client_idx]
+        num_partitions = int(partition_file[partition_method]["n_clients"][()])
+        original_client_idxs = [client_idx % num_partitions]
+        if client_idx >= num_partitions:
+            logging.warning(f"There are no more unique partitions to read from. Client Id: {client_idx} will read data from partitionId: {client_idx % num_partitions}")
 
         train_data_local_dict = {}
         test_data_local_dict = {}

@@ -1,9 +1,17 @@
+# Ensure that you have set the FWDLLM_USER environment variable before running this script
+# Run to set as part of conda environment:
+# conda env config vars set FWDLLM_USER=<your-folder-name>
+
+
 client_num_per_round=$1
 LR=$2
 FL_ALG=$3
+total_client_num=$4
+LOG_LEVEL=$5
 
-pkill -f fl_main.py
+pkill -f $FWDLLM_USER.*fl_main.py
 sleep 10  # Wait for the system to stabilize
+nvidia-smi
 C_LR=0.01
 S_LR=0.1
 ROUND=10
@@ -53,9 +61,9 @@ fi
 LOG_FILE="fedavg_transformer_tc.log"
 CI=0
 
-REPO_PATH=/home/dgarg39/gaurav/flame/
+REPO_PATH=/home/dgarg39/$FWDLLM_USER/flame/
 # todo: Use pwd here
-DATA_DIR=$REPO_PATH/lib/python/examples/fwdllm/fednlp_data/
+DATA_DIR=/home/dgarg39/$FWDLLM_USER/fednlp_data/
 
 PROCESS_NUM=`expr $WORKER_NUM + 1`
 echo $PROCESS_NUM
@@ -115,6 +123,9 @@ elif [ $FL_ALG = FedSgd ];then
     > ./log/new/fedsgd_${model_type}_${DATA_NAME}_lr${LR}_client_num_${client_num_per_round}_full.log 2>&1
 else
   LOG_DIR=./log/new
+  # if [ -d "$LOG_DIR" ]; then
+  #   rm -rf "$LOG_DIR"
+  # fi
   mkdir -p "$LOG_DIR"
 
   # Generate timestamp once
@@ -123,24 +134,51 @@ else
   AGG_LOG_FILE="$LOG_DIR/test_agg_${LOG_SUFFIX}.log"
   TRAINER_LOG_FILE="$LOG_DIR/test_trainer_${LOG_SUFFIX}.log"
 
+  EXPANDED_TMP_DIR="${REPO_PATH}/tmp_expanded_configs_${RUN_TIMESTAMP}"
+  mkdir -p "$EXPANDED_TMP_DIR"
+
+  # Clean up expanded configs on exit (but keep log files!)
+  cleanup() {
+    echo "Cleaning up expanded JSONs: $EXPANDED_TMP_DIR"
+    rm -rf "$EXPANDED_TMP_DIR"
+  }
+  trap cleanup EXIT
+
+  # substitute env variables in the temp files
+  AGG_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/aggregator.json"
+  AGG_EXPANDED="$EXPANDED_TMP_DIR/aggregator_expanded.json"
+  envsubst < "$AGG_SRC" > "$AGG_EXPANDED"
+  echo "Wrote expanded aggregator config: $AGG_EXPANDED"
+
   # Run aggregator/main.py once with logging
   python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
-    --config "$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/aggregator.json" \
+    --config "$AGG_EXPANDED" \
     > "$AGG_LOG_FILE" 2>&1 &
+
+  echo "started agg"
 
   sleep 10  # Give aggregator time to set up
 
   NUM_AVAIL_GPUS=8
 
-  for X in $(seq 0 99)    # End value is inclusive
+  for X in $(seq 0 $(( total_client_num-1 )) )    # End value is inclusive
   do
     ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
+    TRAIN_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/trainer_${X}.json"
+    TRAIN_EXPANDED="$EXPANDED_TMP_DIR/trainer_${X}_expanded.json"
 
-    echo "Running client $X on GPU $ASSIGN_TO_GPU"
-    CUDA_VISIBLE_DEVICES="${ASSIGN_TO_GPU}" python $REPO_PATH/lib/python/examples/fwdllm/trainer/fl_main.py \
-      --config "$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/trainer_${X}.json" \
-      >> "$TRAINER_LOG_FILE" 2>&1 &
-    sleep 8
+    if [ -f "$TRAIN_SRC" ]; then
+      envsubst < "$TRAIN_SRC" > "$TRAIN_EXPANDED"
+      echo "  -> expanded trainer config: $TRAIN_EXPANDED"
+      echo "Running client $X on GPU $ASSIGN_TO_GPU"
+      CUDA_VISIBLE_DEVICES="${ASSIGN_TO_GPU}" python $REPO_PATH/lib/python/examples/fwdllm/trainer/fl_main.py \
+        --config "$TRAIN_EXPANDED" \
+        >> "$TRAINER_LOG_FILE" \
+      --log_level $LOG_LEVEL 2>&1 &
+      sleep 8
+    else
+      echo "Trainer config not found, skipping: $TRAIN_SRC"
+      fi
   done
 
   wait

@@ -54,6 +54,7 @@ class TopAggregator(SyncTopAgg):
 
     def internal_init(self) -> None:
         """Initialize internal state for role."""
+        logger.info("Calling internal init for SYNC from ASYNC")
         super().internal_init()
 
         self._agg_goal_cnt = 0
@@ -178,6 +179,7 @@ class TopAggregator(SyncTopAgg):
         This method is overriden from one in synchronous top
         aggregator (..top_aggregator).
         """
+        logger.info("Agg weights inside top_aggregator asyncfl")
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug("No channel found")
@@ -439,8 +441,9 @@ class TopAggregator(SyncTopAgg):
 
         self._updates_in_queue += 1
 
-        self._per_round_update_list.append(end)
+        self._per_round_update_list.append(end) #SC_TS: PER Round! In Async FwdLLM -> we need to decide whether per data bin or per iteration!
 
+        # SC_TS: what is even the diff between this and  self._updates_in_queue += 1??!!
         if end not in self._updates_recevied.keys():
             self._updates_recevied[end] = 1
         else:
@@ -470,7 +473,7 @@ class TopAggregator(SyncTopAgg):
             f"Received weights from {end}. It was trained on model version {version}, with {count} samples. Returned stat utility {stat_utility}"
         )
 
-        if weights is not None and count > 0:
+        if weights is not None and count > 0: #SC_TS: count = 0 means no data (it was trained on!), so ignore!
             tres = TrainResult(weights, count, version, stat_utility)
             # save training result from trainer in a disk cache
             self.cache[end] = tres
@@ -521,6 +524,7 @@ class TopAggregator(SyncTopAgg):
             #         discarding") return
 
             logger.info("proceeding to agg weights")
+            # SC_TS: append weights to this list, till agg goal reached! 
             self._agg_goal_weights = self.optimizer.do(
                 self._agg_goal_weights,
                 self.cache,

@@ -70,7 +70,13 @@ class AsyncOortSelector(AbstractSelector):
 
         # CONFIG CHANGES FOR ASYNCFL WITH OORT
         try:
-            self.c = kwargs["c"]
+            self.is_async = kwargs["is_async"]  
+        except KeyError:
+            logger.info("is_async param isn't specified in config. Defaulting to sync version")
+            self.is_async = False
+
+        try:
+            self.c = kwargs["c"]  
         except KeyError:
             raise KeyError("c (concurrency level) is not specified in config")
 
@@ -212,6 +218,7 @@ class AsyncOortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list,
         task_to_perform: str = "train",
+        **kwargs,        
     ) -> SelectorReturnType:
         """Return k number of ends from the given ends.
 
@@ -227,7 +234,10 @@ class AsyncOortSelector(AbstractSelector):
         include it for recv in return.
         """
         logger.debug("calling async oort select")
-
+        curr_triplet = kwargs.get("curr_triplet")
+        trainer_state_dict = kwargs.get("trainer_state_dict")
+        logger.debug(f"Current triplet of model_version, data_id, iteration_id: {curr_triplet}")
+        logger.debug(f"Current trainer_state_dict {trainer_state_dict}")
         # TODO: (DG) Update later, currently setting eval concurrency
         # to be twice of training concurrency
         if task_to_perform == "train":
@@ -243,6 +253,7 @@ class AsyncOortSelector(AbstractSelector):
                 concurrency = min(len(ends), self.c + self.curr_round_eval_slots_left)
             else:
                 concurrency = 0
+        
         logger.info(
             f"Task: {task_to_perform}, len(ends): {len(ends)}, c: {self.c}, chosen concurrency: {concurrency}"
         )
@@ -281,15 +292,19 @@ class AsyncOortSelector(AbstractSelector):
                 f"populated eligible_ends: {eligible_ends}"
             )
 
-        results = {}
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
+            logger.debug(f"Inside send state: current triplet of model_version, data_id, iteration_id: {curr_triplet}")
+            logger.debug(f"Inside send state: current trainer_state_dict {trainer_state_dict}")
             results = self._handle_send_state(
-                eligible_ends,
-                concurrency,
-                channel_props,
-                trainer_unavail_list,
-                task_to_perform,
+                ends=eligible_ends,
+                concurrency=concurrency,
+                channel_props=channel_props,
+                trainer_unavail_list=trainer_unavail_list,
+                task_to_perform=task_to_perform,
+                curr_triplet=curr_triplet,
+                trainer_state_dict=trainer_state_dict,
             )
+
             if len(results) is not 0:
                 self._select_run_counter += 1
                 
@@ -300,8 +315,8 @@ class AsyncOortSelector(AbstractSelector):
                 # Insert to queues tracking stat_util, speed, round
                 # data
                 for window in [50, 100, 200]:
-                    if end_stat_util is not None:
-                        self._selector_stats[task_to_perform]['data'][f'util_last_{window}'].append(end_stat_util)
+                    # if end_stat_util is not None:
+                    #     self._selector_stats[task_to_perform]['data'][f'util_last_{window}'].append(end_stat_util)
                     if end_speed is not None:
                         self._selector_stats[task_to_perform]['data'][f'speed_last_{window}'].append(end_speed.total_seconds())
                     if end_last_round is not None:
@@ -717,6 +732,38 @@ class AsyncOortSelector(AbstractSelector):
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 
         return utility_list
+
+    def _cleanup_provided_ends(self, ends_to_cleanup: dict[str, End], ends: dict[str, End]):
+        """Clean-up a specific end so it becomes eligible for sampling again - reject stale updates in FwdLLM (async)"""
+        
+        selected_ends = self.selected_ends.get(self.requester, set())
+        for end_id, _ in ends_to_cleanup.items():
+            state = ends[end_id].get_property(KEY_END_STATE)
+            logger.info(f"Cleaning end {end_id}, current state: {state}")
+
+            # reset only if it's in received state
+            if state == VAL_END_STATE_RECVD:
+                ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_NONE)
+                logger.debug(
+                    f"Setting {end_id} state to {VAL_END_STATE_NONE}, "
+                    f"and"
+                    f" removing from selected_ends and all_selected"
+                )
+
+            # remove from active selection tracking
+            if end_id in selected_ends:
+                selected_ends.remove(end_id)
+                logger.debug(f"Removed {end_id} from selected_ends")
+
+            if end_id in self.all_selected:
+                del self.all_selected[end_id]
+                logger.debug(f"Removed {end_id} from all_selected")
+
+        # update the mapping back
+        self.selected_ends[self.requester] = selected_ends
+        logger.info(f"Cleanup complete. Freed [{ends}] end(s) for resampling; state set to {VAL_END_STATE_NONE}.")
+
+
 
     # #### CHANGES BASED OFF FEDBUFF FOR ASYNCFL
     def _cleanup_recvd_ends(self, ends: dict[str, End]):
@@ -1179,9 +1226,12 @@ class AsyncOortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list = None,
         task_to_perform: str = "train",
+        curr_triplet=None,  
+        trainer_state_dict: dict[str, tuple[int, int, int]] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
-
+        logger.debug(f"Inside handle send state: current triplet {curr_triplet}")
+        logger.debug(f"Inside handle send state: current trainer_state_dict {trainer_state_dict}")
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
             if end_id not in ends:
@@ -1226,7 +1276,7 @@ class AsyncOortSelector(AbstractSelector):
             # Log to info level the property of LAST_EVAL_ROUND for
             # all the ends
             for end_id, end in ends.items():
-                logger.info(
+                logger.debug(
                     f"End ID: {end_id}, Last Eval Round: {end.get_property(PROP_LAST_EVAL_ROUND)}, Statistical Utility: {end.get_property(PROP_STAT_UTILITY)}"
                 )
 
@@ -1390,6 +1440,31 @@ class AsyncOortSelector(AbstractSelector):
         logger.info(
             f"Filtered ends created. count_avl_train: {count_avl_train}, count_avl_eval: {count_avl_eval}, count_ineligible: {count_ineligible}"
         )
+
+        if curr_triplet is not None and trainer_state_dict is not None:
+            curr_model_version, curr_data_id, curr_iteration_id = curr_triplet
+            logger.info(f"Trainer state dict: {trainer_state_dict}")
+            logger.info(f"Handle send state: current triplet {curr_triplet}")
+            # Filter out trainers who already received this same triplet
+            eligible_filtered_ends = {}
+            logger.debug(f"Filtered ends: {filtered_ends.items()}")
+            for end_id, end in filtered_ends.items():
+                prev_state = trainer_state_dict.get(end_id)
+                logger.debug(f"Prev triplet values: {prev_state}")
+
+                if prev_state != curr_triplet:
+                    logger.debug(
+                        f"Not skipping trainer: {end_id}"
+                    )
+                    eligible_filtered_ends[end_id] = end
+                else:
+                    logger.info(
+                        f"Skipping trainer: {end_id} already has same "
+                        f"(model_version={curr_model_version}, "
+                        f"iteration_id={curr_iteration_id}, data_id={curr_data_id})"
+                    )
+            filtered_ends = eligible_filtered_ends
+
         # extra informs about maximum possible available ends that can
         # be picked to meet the concurrency target. But it might count
         # infeasible ends too (ends that have already particpated in
@@ -1669,7 +1744,6 @@ class AsyncOortSelector(AbstractSelector):
         self, ends: dict[str, End], concurrency: int
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
-        logger.debug(f"selected_ends: {selected_ends}")
 
         # from the selected ends, remove those that are in recv state
         # already This is done to avoid waiting on trainers that you
@@ -1704,9 +1778,10 @@ class AsyncOortSelector(AbstractSelector):
             candidates = dict()
             for end_id, end in ends.items():
                 curr_end_state = end.get_property(KEY_END_STATE)
+                # candidates[end_id] = end
                 if end_id not in self.all_selected.keys():
                     if curr_end_state != VAL_END_STATE_NONE:
-                        logging.debug(
+                        logging.info(
                             f"end_id {end_id} not in all_selected and in state: {curr_end_state}, adding "
                             f"to candidates: key {end_id}, val: {end}"
                         )

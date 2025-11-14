@@ -137,6 +137,7 @@ class FedBuffSelector(AbstractSelector):
         ends: dict[str, End],
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list = None,
+        **kwargs,        
     ) -> SelectorReturnType:
         """Select ends from the given ends to meet concurrency level.
 
@@ -151,7 +152,6 @@ class FedBuffSelector(AbstractSelector):
         # TODO (DG): The recv state should also only select from ends
         # IF an update doesnt already exist in the cache
         logger.debug("calling fedbuff select")
-
         concurrency = min(len(ends), self.c)
         logger.info(f"len(ends): {len(ends)}, c: {self.c}, concurrency: {concurrency}")
 

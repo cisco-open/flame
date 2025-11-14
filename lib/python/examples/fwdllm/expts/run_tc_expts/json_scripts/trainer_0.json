@@ -46,12 +46,12 @@
         "client_idx": 0,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 10,
+        "client_num_per_round": 5,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
-        "data_file_path": "/home/dgarg39/gaurav/fednlp_data/data_files/agnews_data.h5",
-        "partition_file_path": "/home/dgarg39/gaurav/fednlp_data/partition_files/agnews_partition.h5",
+                "data_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/data_files/agnews_data.h5",
+        "partition_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/partition_files/agnews_partition.h5",
         "partition_method": "uniform",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
@@ -81,6 +81,8 @@
         "manual_seed": 42,
         "client_num_in_total": 0,
         "warmup_ratio": 1,
+        "training_delay_enabled": "True",
+        "training_delay_s": "4.0",
         "avl_events_mobiperf_3st_50": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (319273, 'AVL_EVAL'), (335119, 'AVL_TRAIN'), (338559, 'AVL_EVAL'), (344104, 'UN_AVL'), (345589, 'AVL_TRAIN'), (345593, 'UN_AVL'), (345607, 'AVL_TRAIN'), (348282, 'AVL_EVAL'), (362502, 'UN_AVL'), (385856, 'AVL_TRAIN'), (388120, 'AVL_EVAL'), (390794, 'AVL_TRAIN'), (393354, 'AVL_EVAL'), (398433, 'AVL_TRAIN'), (400757, 'UN_AVL')]",
         "avl_events_mobiperf_3st_75": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (319273, 'AVL_EVAL'), (327767, 'UN_AVL'), (335119, 'AVL_TRAIN'), (338559, 'UN_AVL'), (345589, 'AVL_TRAIN'), (345593, 'UN_AVL'), (345607, 'AVL_TRAIN'), (348282, 'UN_AVL'), (385856, 'AVL_TRAIN'), (388120, 'UN_AVL'), (390794, 'AVL_TRAIN'), (393354, 'AVL_EVAL'), (398433, 'AVL_TRAIN'), (400757, 'UN_AVL')]",
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (335119, 'AVL_TRAIN'), (338559, 'UN_AVL'), (345589, 'AVL_TRAIN'), (345593, 'UN_AVL'), (345607, 'AVL_TRAIN'), (348282, 'UN_AVL'), (385856, 'AVL_TRAIN'), (388120, 'UN_AVL'), (390794, 'AVL_TRAIN'), (393354, 'UN_AVL'), (398433, 'AVL_TRAIN'), (400757, 'UN_AVL')]",
@@ -109,7 +111,7 @@
     "selector": {
         "sort": "fedbuff",
         "kwargs": {
-            "c": 20,
+            "c": 5,
             "aggGoal": 1
         }
     },

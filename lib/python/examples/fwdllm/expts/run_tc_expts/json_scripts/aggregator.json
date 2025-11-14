@@ -50,8 +50,8 @@
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
-        "data_file_path": "/home/dgarg39/gaurav/fednlp_data/data_files/agnews_data.h5",
-        "partition_file_path": "/home/dgarg39/gaurav/fednlp_data/partition_files/agnews_partition.h5",
+        "data_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/data_files/agnews_data.h5",
+        "partition_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/partition_files/agnews_partition.h5",
         "partition_method": "uniform",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
@@ -83,11 +83,11 @@
         "warmup_ratio": 0,
         "trackTrainerAvail": {
             "enabled": "False",
-            "type": "ORACULAR",
-            "trace": "avl_events_syn_0"
+            "type": "NA"
         },
-        "aggGoal": 10 ,
+        "aggGoal": 10,
         "rounds": 300,
+        "rejectStaleUpdates": true,
         "inc_model_version_per_data_id": true
     },
     "baseModel": {
@@ -103,12 +103,18 @@
         "uri": ""
     },
     "selector": {
-        "sort": "random",
-        "kwargs": {
-            "k": 10,
-            "minInitialTrainers": 50,
-            "c": 13
-        }
+    "sort": "async_oort",
+    "kwargs": {
+        "//": "c: concurrency level",
+        "c": 30,
+        "aggGoal": 10,
+        "evalGoalFactor": 0.5,
+        "selectType": "default",
+        "roundNudgeType": "last_eval",
+         "minInitialTrainers": 5,
+         "k": 10,
+         "is_async": true
+    }
     },
     "optimizer": {
         "sort": "fedbuff",

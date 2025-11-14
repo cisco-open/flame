@@ -15,6 +15,7 @@
 # SPDX-License-Identifier: Apache-2.0
 """RandomSelector class."""
 
+#TODO: Add async support 
 import logging
 import random
 import time
@@ -46,6 +47,11 @@ class RandomSelector(AbstractSelector):
         """Initailize instance."""
         super().__init__(**kwargs)
 
+        try:
+            self.is_async = kwargs["is_async"]  
+        except KeyError:
+            logger.info("is_async param isn't specified in config. Defaulting to sync version")
+            self.is_async = False
         try:
             self.k = kwargs["k"]
         except KeyError:
@@ -138,6 +144,7 @@ class RandomSelector(AbstractSelector):
         ends: dict[str, End],
         channel_props: dict[str, Scalar],
         task_to_perform: str = "train",
+        **kwargs,
     ) -> SelectorReturnType:
         """Return ends from the given ends to maintain concurrency self.c.
         If it is not possible to maintain concurrency, fails fast and selects none.
@@ -225,6 +232,7 @@ class RandomSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list,
         task_to_perform: str = "train",
+        **kwargs,
     ) -> SelectorReturnType:
         """Return ends from the given ends to maintain concurrency self.c.
         If it is not possible to maintain concurrency, fails fast and selects none.

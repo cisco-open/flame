@@ -1,0 +1,113 @@
+{
+    "taskid": "505f9fc483cf4df68a2409257b5fad7d3c580512",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate",
+                    "heartbeat_recv"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload",
+                    "heartbeat_send"
+                ]
+            }
+        }
+    ],
+    "hyperparameters": {
+        "client_idx": 141,
+        "gpu_mapping_file": "gpu_mapping.yaml",
+        "gpu_mapping_key": "mapping_myMap",
+        "client_num_per_round": 10,
+        "comm_round": 3000,
+        "ci": 0,
+        "dataset": "agnews",
+        "data_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/data_files/agnews_data.h5",
+        "partition_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/partition_files/agnews_partition.h5",
+        "partition_method": "uniform",
+        "fl_algorithm": "FedFwd",
+        "model_type": "distilbert",
+        "model_name": "distilbert-base-uncased",
+        "frequency_of_the_test": 1,
+        "do_lower_case": true,
+        "train_batch_size": 8,
+        "eval_batch_size": 8,
+        "max_seq_length": 256,
+        "lr": "0.01",
+        "server_lr": "0.1",
+        "worker_num": "1",
+        "epochs": 1,
+        "peft_method": "adapter",
+        "forward_mode": true,
+        "learning_rate": 0.01,
+        "var_control": true,
+        "perturbation_sampling": true,
+        "evaluate_during_training_steps": 100,
+        "fp16": false,
+        "output_dir": "/tmp/",
+        "is_debug_mode": 0,
+        "fedprox_mu": 1,
+        "use_adapter": false,
+        "gradient_accumulation_steps": 1,
+        "freeze_layers": "",
+        "manual_seed": 42,
+        "client_num_in_total": 0,
+        "warmup_ratio": 1,
+        "training_delay_enabled": "True",
+        "training_delay_s": "15.0"
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "cifar-10"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "c": 20,
+            "aggGoal": 1
+        }
+    },
+    "optimizer": {
+        "sort": "fedavg",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default/us/west",
+    "role": "trainer"
+}

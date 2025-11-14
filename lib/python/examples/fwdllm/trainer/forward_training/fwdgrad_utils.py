@@ -104,9 +104,10 @@ def calculate_jvp(func, params, v):
 #     # logger.info(f"[MEM] After cleanup: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
 #     return avg_loss, jvp
 
-
+# Does not work for n == 1
 def calculate_var(fwdgrad_list):
     n = len(fwdgrad_list)
+
     # 计算前一半tensor的平均值
     first_half_mean = torch.mean(torch.stack(fwdgrad_list[: n // 2]), dim=0)
 

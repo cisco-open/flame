@@ -84,8 +84,8 @@ class FedSGDAggregator(TopAggregator):
             and self.track_trainer_avail["type"] == "ORACULAR"
         ):
             self.trainer_event_dict = self.read_trainer_unavailability(self.track_trainer_avail["trace"])
-            print("self.trainer_event_dict: ", self.trainer_event_dict)
-
+            logger.info(f"self.trainer_event_dict:{ self.trainer_event_dict}")
+      
         self.loss_list = []
         self.grad_for_var_check_list = []
         self.var_good_enough = True

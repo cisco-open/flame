@@ -20,6 +20,42 @@ import time
 
 logger = logging.getLogger(__name__)
 
+def timer_decorator(func):
+    """Decorator to time TopAggregator function and log round/data info."""
+    def wrapper(*args, **kwargs):
+        logger.debug("Inside timer_decorator wrapper")
+        self = args[0]  # TopAggregator
+
+        start = time.time()
+        result = func(*args, **kwargs)
+        end = time.time()
+        duration = end - start
+
+        stage = getattr(self, "fwd_llm_stage", None)
+        if stage:
+            logger.info(
+                f"[decorator] Runtime of {func.__name__}: {duration:.6f}s "
+                f"(Round={stage.round_id}, DataId={stage.data_id}, Iter={stage.iteration}, TrainerId={stage.trainer_id})"
+            )
+        else:
+            logger.info(
+                f"[decorator] Runtime of {func.__name__}: {duration:.6f}s (no stage info)")
+        return result
+
+    return wrapper
+
+class FwdLLMStage:
+    """Lightweight metadata object for each federated round of FwdLLM."""
+
+    def __init__(self, round_id, data_id, iteration, trainer_id=None):
+        self.round_id = round_id
+        self.data_id = data_id
+        self.iteration = iteration
+        self.trainer_id = trainer_id
+
+    def __repr__(self):
+        return f"FwdLLMStage(round={self.round_id}, data_id={self.data_id}, iter={self.iteration})"
+
 
 def time_tasklet(func):
     """Decorator to time Tasklet.do() function"""

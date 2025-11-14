@@ -46,12 +46,12 @@
         "client_idx": 5,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 10,
+        "client_num_per_round": 5,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
-        "data_file_path": "/home/dgarg39/gaurav/fednlp_data/data_files/agnews_data.h5",
-        "partition_file_path": "/home/dgarg39/gaurav/fednlp_data/partition_files/agnews_partition.h5",
+                "data_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/data_files/agnews_data.h5",
+        "partition_file_path": "/home/dgarg39/$FWDLLM_USER/fednlp_data/partition_files/agnews_partition.h5",
         "partition_method": "uniform",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
@@ -81,6 +81,8 @@
         "manual_seed": 42,
         "client_num_in_total": 0,
         "warmup_ratio": 1,
+        "training_delay_enabled": "True",
+        "training_delay_s": "5.0",
         "avl_events_mobiperf_3st_50": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (223349, 'AVL_TRAIN'), (223793, 'UN_AVL'), (223794, 'AVL_TRAIN'), (223795, 'UN_AVL'), (228077, 'AVL_TRAIN'), (231075, 'UN_AVL'), (235397, 'AVL_TRAIN'), (239058, 'AVL_EVAL'), (240725, 'UN_AVL')]",
         "avl_events_mobiperf_3st_75": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (223349, 'AVL_TRAIN'), (223793, 'UN_AVL'), (223794, 'AVL_TRAIN'), (223795, 'UN_AVL'), (228077, 'AVL_TRAIN'), (231075, 'UN_AVL'), (235397, 'AVL_TRAIN'), (239058, 'UN_AVL')]",
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (223349, 'AVL_TRAIN'), (223793, 'UN_AVL'), (223794, 'AVL_TRAIN'), (223795, 'UN_AVL'), (228077, 'AVL_TRAIN'), (231075, 'UN_AVL'), (235397, 'AVL_TRAIN'), (239058, 'UN_AVL')]",
@@ -108,7 +110,7 @@
     "selector": {
         "sort": "fedbuff",
         "kwargs": {
-            "c": 20,
+            "c": 5,
             "aggGoal": 1
         }
     },

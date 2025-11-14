@@ -262,6 +262,7 @@ class ForwardTextClassificationTrainer:
                     self.total_rng_iter += 1
                     shape = v.shape
                     candidate_v = _randn_wrapper((1 * 10, *shape), device="cpu", generator=self.torch_rng, logging_state=logging_state, param_name=k)
+                    # torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
                     target_grad = self.grad[index]
 
                     target_grad = torch.flatten(target_grad)
@@ -302,6 +303,18 @@ class ForwardTextClassificationTrainer:
 
                     x = batch[1].to(device, non_blocking=True)
                     labels = batch[4].to(device, non_blocking=True)
+
+                    # Stat-utility calculation
+                    with torch.no_grad():
+                        pred = self.model(x)
+                        if hasattr(pred, "logits"):
+                            logits = pred.logits
+                        elif isinstance(pred, (tuple, list)):
+                            logits = pred[0]
+                        else:
+                            logits = pred
+                        loss = self.base_trainer.oort_loss(logits, labels.view(-1), epoch=0, batch_idx=0, reduction="mean")
+                    logging.debug(f"stat_utility for trainerId: {self.trainer_id} is {self.base_trainer._stat_utility}, loss: {loss.mean().item()}")
 
                     if self.args.perturbation_sampling and v_buffer != {}:
                         v_params = [
@@ -378,6 +391,10 @@ class ForwardTextClassificationTrainer:
                     gc.collect()
                     torch.cuda.empty_cache()
                     self.log_memory(f"epoch{epoch}_batch{batch_idx}_end", device)
+                    
+                    if hasattr(self, "base_trainer"):
+                        self.base_trainer.normalize_stat_utility(epoch)
+                        logging.debug(f"stat_utility - normalized for trainerId: {self.trainer_id} = {self.base_trainer._stat_utility}")
 
         trainable_params = [p for p in self.model.parameters() if p.requires_grad]
         gradients = [p.grad for p in trainable_params if p.grad is not None]

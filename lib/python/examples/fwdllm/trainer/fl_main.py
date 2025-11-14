@@ -7,6 +7,8 @@ import setproctitle
 import torch
 import threading
 
+#TODO: Check the json and deprecate fields like client_num_per_round that may not be getting used
+
 # this is a temporal import, we will refactor FedML as a package installation
 # import wandb
 
@@ -69,12 +71,13 @@ if __name__ == "__main__":
     # parser = add_federated_args(parser)
     # args = parser.parse_args()
     parser.add_argument("--config", type=str, default="./config.json", required=True)
+    parser.add_argument("--log_level", type=str, default="INFO", required=False)
     args = parser.parse_args()
     config = Config(args.config)
 
     # customize the log format
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging._nameToLevel[args.log_level],
         format="%(process)s %(asctime)s.%(msecs)03d - {%(module)s.py (%(lineno)d)} - %(funcName)s(): %(message)s",
         datefmt="%Y-%m-%d,%H:%M:%S",
     )

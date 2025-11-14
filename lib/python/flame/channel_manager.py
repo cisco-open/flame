@@ -155,6 +155,7 @@ class ChannelManager(object):
         selector = selector_provider.get(
             self._config.selector.sort, **self._config.selector.kwargs
         )
+        logger.info(f"Selector created for channel {name}, selector: {selector}")
 
         if name in self._backends:
             backend = self._backends[name]
