@@ -49,7 +49,6 @@ PLOTTING_CONFIG = {
 
 # --- !! PROCESSING STRATEGIES !! ---
 # (These functions now return *absolute values*, not proportions)
-
 def multi_column(filepath):
     """
     "Strategy 1": Reads the last line of a CSV.
@@ -198,7 +197,6 @@ for section_label in all_sections:
 
 print("Plot generated successfully.")
 
-# --- !! START FIX !! ---
 # --- Add Total Labels on Top of Bars ---
 # Use ax.annotate for offsets and .iloc to fix warning
 for i in range(len(ind)):
@@ -213,7 +211,6 @@ for i in range(len(ind)):
         va='bottom',
         fontsize=9
     )
-# --- !! END FIX !! ---
 
 # --- Chart Customization ---
 ax.set_ylabel(PLOTTING_CONFIG['y_axis_label'])
@@ -232,6 +229,6 @@ ax.legend(title='Sections', bbox_to_anchor=(1.04, 1), loc='upper left')
 # Adjust layout to make room for legend
 plt.tight_layout(rect=[0, 0.03, 0.85, 0.95]) 
 
-plt.savefig("absolute_stacked_chart.png")
-print("Saved chart to 'absolute_stacked_chart.png'")
+plt.savefig("plots/absolute_stacked_chart.png")
+print("Saved chart to 'plots/absolute_stacked_chart.png'")
 # plt.show()

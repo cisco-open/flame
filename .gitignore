@@ -75,6 +75,10 @@ third_party/spright_utility/bin/
 fednlp_data*
 cache_dir
 
+scripts/logs/*
+scripts/plotters/output/*
+scripts/plotters/plots/*
+
 # Files on server to ignore
 src/*
 lib/python/examples/fwdllm/expts/run_tc_expts/log/
