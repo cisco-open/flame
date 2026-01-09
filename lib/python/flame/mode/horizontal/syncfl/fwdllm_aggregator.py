@@ -30,6 +30,7 @@ from sortedcontainers import SortedDict
 from flame.channel import VAL_CH_STATE_HTBT_RECV, VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
+from flame.config import OptimizerType
 from flame.mode.composer import CloneComposer
 import pickle
 from flame.mode.horizontal.syncfl.top_aggregator import (
@@ -114,6 +115,12 @@ class TopAggregator(AsyncTopAgg):
         self.var = None
         self.ends_not_selected_yet = False
         self.iteration_per_data_id = 0
+        self._optimizer_sort_value = self.config.optimizer.sort
+        OPTIMIZERS_SUPPORTING_GRAD_AGGREGATION = (OptimizerType.FEDBUFF, )
+        self._weighted_aggregation_enabled = (self._optimizer_sort_value in OPTIMIZERS_SUPPORTING_GRAD_AGGREGATION)
+        if not self._weighted_aggregation_enabled:
+            logger.info(f"Setting rate=1.0 for all updates because optimizer.sort is "
+                        f"{self._optimizer_sort_value}; weighted aggregation only supported by {OPTIMIZERS_SUPPORTING_GRAD_AGGREGATION}.")
         # variables related to checking trainer availability
         self._per_trainer_last_heartbeat_ts = {}
         if "heartbeat_freq_s" in self.config.hyperparameters.track_trainer_avail.keys():
@@ -327,7 +334,14 @@ class TopAggregator(AsyncTopAgg):
         logger.info("Completed reading all trainer unavailability from files")
         return trainer_events_dict
 
-    def aggregate_grads_from_trainers(self, trainer_grad):
+    def aggregate_grads_from_trainers(self, trainer_grad, version_for_rate: int, stat_utility: float = 0.0, grad_for_var_check=None):
+        """Aggregate a single trainer's gradients into self.grad.
+
+        All incoming tensors are scaled by `rate` before accumulation.
+        If `grad_for_var_check` is provided (list of tensors), it is scaled by the
+        same `rate` and appended to `self.grad_for_var_check_list` for variance checks.
+        """
+        # logger.info(f"trainer grad in {trainer_grad}")
         self.print_trainable_params_stats(
             location="[start,aggregate_grads_from_trainers()]"
         )
@@ -342,6 +356,33 @@ class TopAggregator(AsyncTopAgg):
         # trainer_grad.to(DeviceType.CPU)
         np = self.model.named_parameters()
 
+        # rate = scale * alpha(staleness) + (1 - scale) * beta(stat_utility)
+        # alpha: polynomial decay in staleness; beta: polynomial_upshift
+        if not self._weighted_aggregation_enabled:
+            rate = 1.0
+        else:
+            staleness_val = self._model_version - version_for_rate
+            try:
+                scale_val = self.optimizer.agg_rate_conf["scale"]
+                a_exp_val = self.optimizer.agg_rate_conf["a_exp"]
+                b_exp_val = self.optimizer.agg_rate_conf["b_exp"]
+                rate = self.optimizer.weight_factor(
+                    scale=scale_val,
+                    staleness=staleness_val,
+                    a_exp=a_exp_val,
+                    loss=stat_utility,
+                    b_exp=b_exp_val,
+                    alpha_type="polynomial",
+                    beta_type="polynomial_upshift",
+                )
+                if rate != 1.0:
+                    logger.info(
+                        f"Weighted received gradients by rate: {rate} with staleness: {staleness_val}, stat utility: {stat_utility}"
+                    )
+            except Exception as e:
+                logger.warning(f"Falling back to neutral rate due to error in weight_factor: {e}")
+                rate = 1.0
+
         for i, (name, param) in enumerate(np):  # Assuming self.params is a dict
             if param.requires_grad:
                 if name in trainer_grad:
@@ -349,9 +390,16 @@ class TopAggregator(AsyncTopAgg):
                     trainer_grad[name] = trainer_grad[name].to(grad_device)
                     # Ensure the layer name exists in trainer_grad
 
-                    self.grad[i].add_(trainer_grad[name])
+                    # Apply scalar rate: g'_i = rate * g_i
+                    self.grad[i].add_(trainer_grad[name] * rate)
                 else:
                     logger.warning(f"Gradient for {name} not found in trainer_grad.")
+
+        # Also accumulate var-check gradients with the same rate if provided.
+        # Assumption: grad_for_var_check is an iterable of tensors.
+        if grad_for_var_check is not None:
+            stacked = torch.stack(list(grad_for_var_check))
+            self.grad_for_var_check_list.append(stacked * rate)
 
         self.log_memory("end aggregate_grads_from_trainers", self.device)
         self.print_trainable_params_stats(
@@ -463,7 +511,21 @@ class TopAggregator(AsyncTopAgg):
         
         if MessageType.GRADIENTS in msg:
             trainer_gradients = msg[MessageType.GRADIENTS]
-            self.aggregate_grads_from_trainers(trainer_gradients)
+            version_for_rate = msg[MessageType.MODEL_VERSION]
+            
+            grad_for_var_check = (
+                msg[MessageType.GRADIENTS_FOR_VAR_CHECK]
+                if MessageType.GRADIENTS_FOR_VAR_CHECK in msg
+                else None
+            )
+            
+            self.aggregate_grads_from_trainers(
+                trainer_gradients,
+                version_for_rate=version_for_rate,
+                stat_utility=channel.get_end_property(end, PROP_STAT_UTILITY),
+                grad_for_var_check=grad_for_var_check,
+            )
+            
             # del trainer_gradients # Free memory
         
         if MessageType.GRADIENTS_FOR_VAR_CHECK in msg:
@@ -495,7 +557,8 @@ class TopAggregator(AsyncTopAgg):
             self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
                 self.model
             )
-            self.grad = [torch.zeros_like(p) for p in self.params]            
+            self.grad = [torch.zeros_like(p) for p in self.params]
+
             self.aggregate(self._round) # This sets self.var and self.var_good_enough
             
             if self.var_good_enough:
@@ -638,17 +701,20 @@ class TopAggregator(AsyncTopAgg):
 
             # Process the gradients
             if MessageType.GRADIENTS in msg:
-                # weights = weights_to_model_device(msg[MessageType.WEIGHTS],
-                # self.model)
                 trainer_gradients = msg[MessageType.GRADIENTS]
-                self.aggregate_grads_from_trainers(trainer_gradients)
+                version_for_rate = msg[MessageType.MODEL_VERSION]
 
-            if MessageType.GRADIENTS_FOR_VAR_CHECK in msg:
-                logger.info(
-                    f"received GRADIENTS_FOR_VAR_CHECK, {len(msg[MessageType.GRADIENTS_FOR_VAR_CHECK])}"
-                )
-                self.grad_for_var_check_list.append(
+                grad_for_var_check = (
                     msg[MessageType.GRADIENTS_FOR_VAR_CHECK]
+                    if MessageType.GRADIENTS_FOR_VAR_CHECK in msg
+                    else None
+                )
+                
+                self.aggregate_grads_from_trainers(
+                    trainer_gradients,
+                    version_for_rate=version_for_rate,
+                    stat_utility=channel.get_end_property(end, PROP_STAT_UTILITY),
+                    grad_for_var_check=grad_for_var_check,
                 )
 
             if MessageType.DATASET_SIZE in msg:
@@ -835,6 +901,7 @@ class TopAggregator(AsyncTopAgg):
         self.print_trainable_params_stats(
             location="[agg_start,_aggregate_grads_sync()]"
         )
+
         self.add_local_trained_result(0, self.grad, self._agg_goal_cnt)
         self.print_trainable_params_stats(
             location="[after_add_local,_aggregate_grads_sync()]"
@@ -1271,7 +1338,7 @@ class TopAggregator(AsyncTopAgg):
                 self.grad_for_var_check_list = []
             else:
                 logger.info(
-                    f"sending var = bad to {end} with model_version: {self._model_version},round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
+                    f"sending var = bad to {end} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
                 payload = {
                     MessageType.VAR: "bad",
@@ -1434,7 +1501,7 @@ class TopAggregator(AsyncTopAgg):
             
         else:
             logger.info(
-                f"sending var = bad to {ends} with model_version: {self._model_version}, data_id: {self.data_id} for task: {task_to_perform}"
+                f"sending var = bad to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
             )
             logger.info(
                 "Variance is BAD. Sending request for more variance checks."
@@ -1499,7 +1566,7 @@ class TopAggregator(AsyncTopAgg):
             logger.info("Inside sync aggregator")
             self._aggregate_grads_sync(tag)
 
-#TODO: Cleanup compose loop
+    #TODO: Cleanup compose loop
     def compose(self) -> None:
         """Compose role with tasklets."""
         logger.info(f"Fetch is_async value from config:")

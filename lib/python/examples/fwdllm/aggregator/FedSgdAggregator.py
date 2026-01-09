@@ -161,22 +161,22 @@ class FedSGDAggregator(TopAggregator):
 
         # old_param = self.get_global_model_params()
         old_param = self.trainer.model.parameters()
-        if training_num == 0 :
+        if (training_num == 0) :
             logger.warning("Not updating the model, division by 0 error")
             return old_param
 
-        # logger.info("################aggregate: %d" % len(model_list))
-        (num0, averaged_params) = model_list[0]
-        for id, k in enumerate(averaged_params):
+        # If weighted_aggregation_enabled is False, then the weight of each gradient in this sum is 1. Else, the weight the is determined by calling self.optimizer.weight_factor()
+        (_, weighted_gradient_sum) = model_list[0]
+        for id, k in enumerate(weighted_gradient_sum):
             for i in range(0, len(model_list)):
                 local_sample_number, local_model_params = model_list[i]
                 # w = local_sample_number / training_num
                 if i == 0:
-                    averaged_params[id] = local_model_params[id]
+                    weighted_gradient_sum[id] = local_model_params[id]
                 else:
-                    averaged_params[id] += local_model_params[id]
+                    weighted_gradient_sum[id] += local_model_params[id]
             next(old_param).detach().to("cpu").sub_(
-                learning_rate * averaged_params[id] / training_num
+                learning_rate * weighted_gradient_sum[id] / training_num
             )
         if self.args.var_control:
             if self.var <= self.var_threshold:

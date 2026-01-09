@@ -106,7 +106,7 @@
     "sort": "async_oort",
     "kwargs": {
         "//": "c: concurrency level",
-        "c": 30,
+        "c": 50,
         "aggGoal": 10,
         "evalGoalFactor": 0.5,
         "selectType": "default",
@@ -117,17 +117,8 @@
     }
     },
     "optimizer": {
-        "sort": "fedbuff",
-        "kwargs": {
-            "use_oort_lr": "True",
-            "dataset_name": "cifar-10",
-            "agg_rate_conf": {
-                "type": "new",
-                "scale": 0.4,
-                "a_exp": 0.25,
-                "b_exp": 0.1
-            }
-        }
+        "sort": "fedavg",
+        "kwargs": {}
     },
     "maxRunTime": 600,
     "realm": "default",
