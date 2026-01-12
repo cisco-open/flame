@@ -9,9 +9,15 @@ FL_ALG=$3
 total_client_num=$4
 LOG_LEVEL=$5
 
-pkill -f $FWDLLM_USER.*fl_main.py
+pkill -f "gaurav.*/fl_main.py"
+if [ $? -eq 0 ]; then
+    echo "Successfully killed some processes."
+else
+    echo "No matching process found or kill failed."
+fi
 sleep 10  # Wait for the system to stabilize
 nvidia-smi
+
 C_LR=0.01
 S_LR=0.1
 ROUND=10
@@ -61,9 +67,8 @@ fi
 LOG_FILE="fedavg_transformer_tc.log"
 CI=0
 
-REPO_PATH=/home/dgarg39/$FWDLLM_USER/flame/
-# todo: Use pwd here
-DATA_DIR=/home/dgarg39/$FWDLLM_USER/fednlp_data/
+REPO_PATH=/home/dgarg39/$FWDLLM_USER/flame
+DATA_DIR=/home/dgarg39/$FWDLLM_USER/fednlp_data
 
 PROCESS_NUM=`expr $WORKER_NUM + 1`
 echo $PROCESS_NUM
@@ -153,7 +158,8 @@ else
   # Run aggregator/main.py once with logging
   python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
     --config "$AGG_EXPANDED" \
-    > "$AGG_LOG_FILE" 2>&1 &
+    > "$AGG_LOG_FILE" \ 
+    --log_level $LOG_LEVEL 2>&1 &
 
   echo "started agg"
 
