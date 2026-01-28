@@ -92,7 +92,7 @@ if [ $FL_ALG = "FedAvg" ];then
     --do_lower_case True \
     --train_batch_size $train_batch_size \
     --frequency_of_the_test $frequency_of_the_test \
-    --eval_batch_size 8 \
+    --eval_batch_size 32 \
     --max_seq_length $max_seq_length \
     --lr $C_LR \
     --server_lr $S_LR \
@@ -118,7 +118,7 @@ elif [ $FL_ALG = FedSgd ];then
     --frequency_of_the_test $frequency_of_the_test \
     --do_lower_case True \
     --train_batch_size $train_batch_size \
-    --eval_batch_size 8 \
+    --eval_batch_size 32 \
     --max_seq_length $max_seq_length \
     --lr $C_LR \
     --server_lr $S_LR \
@@ -158,8 +158,8 @@ else
   # Run aggregator/main.py once with logging
   python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
     --config "$AGG_EXPANDED" \
-    > "$AGG_LOG_FILE" \ 
-    --log_level $LOG_LEVEL 2>&1 &
+    --log_level "$LOG_LEVEL" \
+    > "$AGG_LOG_FILE" 2>&1 &
 
   echo "started agg"
 
@@ -179,8 +179,8 @@ else
       echo "Running client $X on GPU $ASSIGN_TO_GPU"
       CUDA_VISIBLE_DEVICES="${ASSIGN_TO_GPU}" python $REPO_PATH/lib/python/examples/fwdllm/trainer/fl_main.py \
         --config "$TRAIN_EXPANDED" \
-        >> "$TRAINER_LOG_FILE" \
-      --log_level $LOG_LEVEL 2>&1 &
+        --log_level "$LOG_LEVEL" \
+        >> "$TRAINER_LOG_FILE" 2>&1 &
       sleep 8
     else
       echo "Trainer config not found, skipping: $TRAIN_SRC"
