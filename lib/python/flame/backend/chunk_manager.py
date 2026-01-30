@@ -103,7 +103,9 @@ class ChunkThread(Thread):
             # assemble is done in a chunk thread so that it won't
             # block asyncio task
             if self.chunk_store.seqno + 1 != msg.seqno:
-                logger.info(f"about to assemble message for end id: {msg.end_id}. Might get out-of-order")
+                logger.info(
+                    f"about to assemble message for end id: {msg.end_id}. Might get out-of-order"
+                )
             status = self.chunk_store.assemble(msg)
             logger.debug("Assemble attempted for chunkstore")
             if not status:

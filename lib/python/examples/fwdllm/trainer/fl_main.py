@@ -7,7 +7,7 @@ import setproctitle
 import torch
 import threading
 
-#TODO: Check the json and deprecate fields like client_num_per_round that may not be getting used
+# TODO: Check the json and deprecate fields like client_num_per_round that may not be getting used
 
 # this is a temporal import, we will refactor FedML as a package installation
 # import wandb
@@ -162,6 +162,7 @@ if __name__ == "__main__":
     model_config, client_model, tokenizer = create_model(
         model_args, formulation="classification"
     )
+
     def bytes_to_mb(num_bytes):
         return num_bytes / (1024 * 1024)
 
@@ -188,10 +189,16 @@ if __name__ == "__main__":
                 zero_frozen += numel
 
     logging.info(f"Total parameters: {total_params}")
-    logging.info(f"  Trainable: {trainable_params} | Zeroed: {zero_trainable} | Size: {bytes_to_mb(trainable_bytes):.2f} MB")
-    logging.info(f"  Frozen:    {frozen_params} | Zeroed: {zero_frozen} | Size: {bytes_to_mb(frozen_bytes):.2f} MB")
+    logging.info(
+        f"  Trainable: {trainable_params} | Zeroed: {zero_trainable} | Size: {bytes_to_mb(trainable_bytes):.2f} MB"
+    )
+    logging.info(
+        f"  Frozen:    {frozen_params} | Zeroed: {zero_frozen} | Size: {bytes_to_mb(frozen_bytes):.2f} MB"
+    )
     logging.info(f"Total size: {bytes_to_mb(trainable_bytes + frozen_bytes):.2f} MB")
-    logging.info(f"Total zero-weighted: {zero_trainable + zero_frozen} ({100 * (zero_trainable + zero_frozen) / total_params:.2f}%)")
+    logging.info(
+        f"Total zero-weighted: {zero_trainable + zero_frozen} ({100 * (zero_trainable + zero_frozen) / total_params:.2f}%)"
+    )
 
     # trainer
 
@@ -234,7 +241,9 @@ if __name__ == "__main__":
     logging.debug(f"NRL train_data_global: {train_data_global}")
     logging.debug(f"NRL test_data_local_dict: {test_data_local_dict}")
     logging.debug(f"NRL test_data_global: {test_data_global}")
-    logging.info(f"[Trainer {config.task_id}] PID: {os.getpid()}, Thread: {threading.get_ident()}")
+    logging.info(
+        f"[Trainer {config.task_id}] PID: {os.getpid()}, Thread: {threading.get_ident()}"
+    )
     client_trainer = ForwardTextClassificationTrainer(
         model_args,
         config.hyperparameters.client_idx % 8,
@@ -258,12 +267,14 @@ if __name__ == "__main__":
         config,
     )
 
-    if trainer.client_notify['trace'] is not None:
+    if trainer.client_notify["trace"] is not None:
         logging.info(
             f"Will initiate thread to update state of " f"trainer {trainer.trainer_id}"
         )
         if trainer.client_notify["enabled"] == "True":
-            logging.info(f"Will send avail notifications for trainer {trainer.trainer_id}")
+            logging.info(
+                f"Will send avail notifications for trainer {trainer.trainer_id}"
+            )
         # Note that even though trainer sends notifications, only
         # async_oort will use it. Other selectors will not use it so
         # it can remain enabled.

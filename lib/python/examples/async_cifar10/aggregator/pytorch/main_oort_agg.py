@@ -123,9 +123,13 @@ class PyTorchCifar10Aggregator(TopAggregator):
             self.track_trainer_avail["enabled"]
             and self.track_trainer_avail["type"] == "ORACULAR"
         ):
-            self.trainer_event_dict = self.read_trainer_unavailability(self.track_trainer_avail["trace"])
+            self.trainer_event_dict = self.read_trainer_unavailability(
+                self.track_trainer_avail["trace"]
+            )
         else:
-            print(f"Did not read oracular trainer jsons. Enabled value: {self.track_trainer_avail['enabled']}, type: {self.track_trainer_avail['type']}, trace: {self.track_trainer_avail['trace']}")
+            print(
+                f"Did not read oracular trainer jsons. Enabled value: {self.track_trainer_avail['enabled']}, type: {self.track_trainer_avail['type']}, trace: {self.track_trainer_avail['trace']}"
+            )
         print("self.trainer_event_dict: ", self.trainer_event_dict)
 
         self.loss_list = []
@@ -159,9 +163,7 @@ class PyTorchCifar10Aggregator(TopAggregator):
             with open(file_path) as f:
                 trainer_json = json.load(f)
                 curr_trainer_id = trainer_json["taskid"]
-                event_list = ast.literal_eval(
-                    trainer_json["hyperparameters"][trace]
-                )
+                event_list = ast.literal_eval(trainer_json["hyperparameters"][trace])
 
                 # SortedDict for efficient timestamp lookup
                 state_dict = SortedDict()
@@ -188,7 +190,10 @@ class PyTorchCifar10Aggregator(TopAggregator):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data", train=False, download=True, transform=transform_test
+            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            train=False,
+            download=True,
+            transform=transform_test,
         )
 
         test_kwargs = {

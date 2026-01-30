@@ -83,9 +83,11 @@ class FedSGDAggregator(TopAggregator):
             self.track_trainer_avail["enabled"]
             and self.track_trainer_avail["type"] == "ORACULAR"
         ):
-            self.trainer_event_dict = self.read_trainer_unavailability(self.track_trainer_avail["trace"])
+            self.trainer_event_dict = self.read_trainer_unavailability(
+                self.track_trainer_avail["trace"]
+            )
             logger.info(f"self.trainer_event_dict:{ self.trainer_event_dict}")
-      
+
         self.loss_list = []
         self.grad_for_var_check_list = []
         self.var_good_enough = True
@@ -161,7 +163,7 @@ class FedSGDAggregator(TopAggregator):
 
         # old_param = self.get_global_model_params()
         old_param = self.trainer.model.parameters()
-        if (training_num == 0) :
+        if training_num == 0:
             logger.warning("Not updating the model, division by 0 error")
             return old_param
 

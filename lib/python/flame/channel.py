@@ -179,7 +179,9 @@ class Channel(object):
         return end_list[0] if len(end_list) > 0 else None
 
     def ends(
-        self, state: Union[None, str] = None, task_to_perform: str = "train", 
+        self,
+        state: Union[None, str] = None,
+        task_to_perform: str = "train",
         curr_triplet: tuple[int, int, int] = None,
         trainer_state_dict: dict[str, tuple[int, int, int]] = None,
     ) -> list[str]:
@@ -200,28 +202,33 @@ class Channel(object):
             #     logger.info(f"sleeping till ends enough, current ends: {len(self._ends)}")
             #     time.sleep(5)
 
-            if self.trainer_unavail_list is not None and self.trainer_unavail_list != []:
+            if (
+                self.trainer_unavail_list is not None
+                and self.trainer_unavail_list != []
+            ):
                 selected = self._selector.select(
-                    ends= self._ends,
-                    channel_props = self.properties,
-                    trainer_unavail_list = self.trainer_unavail_list,
-                    task_to_perform = task_to_perform,
-                    curr_triplet = curr_triplet, 
-                    trainer_state_dict = trainer_state_dict,
+                    ends=self._ends,
+                    channel_props=self.properties,
+                    trainer_unavail_list=self.trainer_unavail_list,
+                    task_to_perform=task_to_perform,
+                    curr_triplet=curr_triplet,
+                    trainer_state_dict=trainer_state_dict,
                 )
                 logger.debug(f"trainer unavail list available, selected: {selected}")
                 if len(selected) == 0:
                     return
             else:
                 selected = self._selector.select(
-                    ends= self._ends,
-                    channel_props = self.properties,
-                    trainer_unavail_list = [],
-                    task_to_perform = task_to_perform,
-                    curr_triplet = curr_triplet, 
-                    trainer_state_dict = trainer_state_dict,
+                    ends=self._ends,
+                    channel_props=self.properties,
+                    trainer_unavail_list=[],
+                    task_to_perform=task_to_perform,
+                    curr_triplet=curr_triplet,
+                    trainer_state_dict=trainer_state_dict,
                 )
-                logger.debug(f"trainer unavail list not available, selected: {selected}")
+                logger.debug(
+                    f"trainer unavail list not available, selected: {selected}"
+                )
                 if len(selected) == 0:
                     return
             logger.info(
@@ -257,9 +264,6 @@ class Channel(object):
         alpha values)."""
         return list(self._ends.keys())
 
-       
-
-
     def cleanup_provided_ends(self, end_ids_to_cleanup: list[str]):
         """Cleans up ends which have sent stale updates."""
         if isinstance(end_ids_to_cleanup, str):
@@ -274,11 +278,9 @@ class Channel(object):
         #     logger.debug(f"Cleaning up end: {end_id} | end state: {self._ends[end_id].get_property(KEY_END_STATE)}")
 
         self._selector._cleanup_provided_ends(ends_to_cleanup, self._ends)
-        
+
         # for end_id in ends_to_cleanup:
         #     logger.debug(f"Cleanup end: {end_id} | end state: {self._ends[end_id].get_property(KEY_END_STATE)}")
-
-
 
     def cleanup_recvd_ends(self):
         """Performs cleanup of end states in the selector. Usually
@@ -302,7 +304,6 @@ class Channel(object):
         self._selector._cleanup_recvd_end(end, self._ends[end])
         logger.info(f"cleaning up {end}")
         logger.debug(f"Cleaned up ends {self._ends[end]} successfully")
-
 
     def ends_digest(self) -> str:
         """Compute a digest of ends."""
@@ -416,9 +417,7 @@ class Channel(object):
         -------
         The function yields a pair: end id and message
         """
-        logger.info(
-            f"Receive fifo: first_k = {first_k}, len(end_ids) = {len(end_ids)}"
-        )
+        logger.info(f"Receive fifo: first_k = {first_k}, len(end_ids) = {len(end_ids)}")
 
         first_k = min(first_k, len(end_ids))
         if first_k <= 0:
@@ -531,9 +530,7 @@ class Channel(object):
                 runs.append(_get_inner(end_id))
                 self._active_recv_fifo_tasks.add(end_id)
 
-                logger.info(
-                    f"active task added for {end_id}, runs length: {len(runs)}"
-                )
+                logger.info(f"active task added for {end_id}, runs length: {len(runs)}")
                 logger.info(
                     f"self._active_recv_fifo_tasks: {str(self._active_recv_fifo_tasks)}"
                 )

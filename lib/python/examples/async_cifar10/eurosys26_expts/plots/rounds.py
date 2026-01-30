@@ -5,8 +5,11 @@ import numpy as np
 
 ### CDF of agg time diff
 
+
 def extract_and_plot_time_diffs(log_path, suffix, syn_percent):
-    pattern = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}).*aggregation finished for round")
+    pattern = re.compile(
+        r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}).*aggregation finished for round"
+    )
     timestamps = []
 
     with open(log_path, "r") as file:
@@ -27,7 +30,9 @@ def extract_and_plot_time_diffs(log_path, suffix, syn_percent):
         print(f"[{suffix}] Not enough data after 10 minutes.")
         return
 
-    diffs = [(filtered[i] - filtered[i - 1]).total_seconds() for i in range(1, len(filtered))]
+    diffs = [
+        (filtered[i] - filtered[i - 1]).total_seconds() for i in range(1, len(filtered))
+    ]
 
     # Compute metrics
     sorted_diffs = np.sort(diffs)
@@ -46,7 +51,7 @@ def extract_and_plot_time_diffs(log_path, suffix, syn_percent):
 
     # Plot
     plt.figure(figsize=(8, 5))
-    plt.plot(sorted_diffs, cdf, linestyle='-')
+    plt.plot(sorted_diffs, cdf, linestyle="-")
 
     # plt.axvline(p50_val, color="black", linestyle="--", alpha=0.6)
     # plt.text(p50_val, 0.52, f"p50: {p50_val:.2f}", color="black", fontsize=10, rotation=0, va="bottom", ha="center")
@@ -55,11 +60,23 @@ def extract_and_plot_time_diffs(log_path, suffix, syn_percent):
     # plt.text(p90_val, 0.92, f"p90: {p90_val:.2f}", color="black", fontsize=10, rotation=0, va="bottom", ha="center")
 
     # P50 and P90 annotations
-    plt.axvline(p50_val, color='black', linestyle='--')
-    plt.text(p50_val + 1, 0.5, f'P50: {p50_val:.2f}s', verticalalignment='center', color='black')
+    plt.axvline(p50_val, color="black", linestyle="--")
+    plt.text(
+        p50_val + 1,
+        0.5,
+        f"P50: {p50_val:.2f}s",
+        verticalalignment="center",
+        color="black",
+    )
 
-    plt.axvline(p90_val, color='black', linestyle='--')
-    plt.text(p90_val + 1, 0.8, f'P90: {p90_val:.2f}s', verticalalignment='center', color='black')
+    plt.axvline(p90_val, color="black", linestyle="--")
+    plt.text(
+        p90_val + 1,
+        0.8,
+        f"P90: {p90_val:.2f}s",
+        verticalalignment="center",
+        color="black",
+    )
 
     plt.xlabel("Inter-round interval (s)")
     plt.ylabel("CDF")
@@ -70,18 +87,16 @@ def extract_and_plot_time_diffs(log_path, suffix, syn_percent):
     plt.close()
 
 
-
 # File paths
 log_path_j = "/home/dgarg39/flame/lib/python/examples/async_cifar10/eurosys26_expts/plots/agg_jayne_11_05_11_51_alpha0.1_cifar_70acc_TierFuse_TierSelect_TierTrack_syn_20.log"
 log_path_s = "/home/dgarg39/flame/lib/python/examples/async_cifar10/eurosys26_expts/plots/agg_sheph_11_05_11_36_alpha0.1_cifar_70acc_fedbuff_oortAsync_oracular_syn20.log"
 
 # Run for both logs
-extract_and_plot_time_diffs(log_path_j, "Felix","UNAVL(20%)")
-extract_and_plot_time_diffs(log_path_s, "OORT+Async","UNAVL(20%)")
+extract_and_plot_time_diffs(log_path_j, "Felix", "UNAVL(20%)")
+extract_and_plot_time_diffs(log_path_s, "OORT+Async", "UNAVL(20%)")
 
 log_path_s2 = "agg_sheph_11_05_15_21_alpha0.1_cifar_70acc_fedbuff_oortAsync_oracular_syn50_truncated.log"
 log_path_j2 = "agg_sheph_12_05_02_18_alpha0.1_cifar_70acc_TierFuse_TierSelect_TierTrack_syn_50_copy_truncate.log"
 
-extract_and_plot_time_diffs(log_path_j2, "Felix","UNAVL(50%)")
+extract_and_plot_time_diffs(log_path_j2, "Felix", "UNAVL(50%)")
 extract_and_plot_time_diffs(log_path_s2, "OORT+Async", "UNAVL(50%)")
-

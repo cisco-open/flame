@@ -173,7 +173,8 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
         alias="waitUntilNextAvail", default=False
     )
     inc_model_version_per_data_id: t.Optional[bool] = Field(
-        alias="incModelVersionPerDataId", default=False)
+        alias="incModelVersionPerDataId", default=False
+    )
 
 
 class Groups(FlameSchema):

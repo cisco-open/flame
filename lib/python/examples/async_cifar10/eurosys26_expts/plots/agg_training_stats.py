@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
+
 def extract_and_plot_p50(log_file, suffix, syn_percent):
     p50_staleness = []
     p50_utility = []
@@ -35,7 +36,9 @@ def extract_and_plot_p50(log_file, suffix, syn_percent):
         plt.title(f"{metric} Over Rounds {syn_percent}")
         plt.grid(True)
         plt.tight_layout()
-        plt.savefig(f"{filename_prefix}_{suffix}_syn{syn_percent}.png", bbox_inches="tight")
+        plt.savefig(
+            f"{filename_prefix}_{suffix}_syn{syn_percent}.png", bbox_inches="tight"
+        )
         plt.close()
 
     plot_metric(p50_staleness, "red", "Staleness", "staleness_p50")

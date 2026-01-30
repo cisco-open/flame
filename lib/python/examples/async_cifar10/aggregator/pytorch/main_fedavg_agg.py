@@ -126,7 +126,10 @@ class PyTorchCifar10Aggregator(TopAggregator):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data", train=False, download=True, transform=transform_test
+            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            train=False,
+            download=True,
+            transform=transform_test,
         )
 
         test_kwargs = {

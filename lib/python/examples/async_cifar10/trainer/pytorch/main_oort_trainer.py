@@ -198,7 +198,10 @@ class PyTorchCifar10Trainer(Trainer):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data", train=True, download=True, transform=transform_train
+            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            train=True,
+            download=True,
+            transform=transform_train,
         )
 
         # create indices into a list and convert to tensor

@@ -5,7 +5,10 @@ from torch.nn import CrossEntropyLoss
 from typing import Callable, Tuple
 from torch.cuda.amp import autocast
 import logging
+
 logger = logging.getLogger(__name__)
+
+
 def _get_loss(x: torch.Tensor, t: torch.Tensor, num_classes: int = 10) -> torch.Tensor:
     """Compute cross-entropy loss.
 
@@ -65,17 +68,21 @@ def functional_get_loss(
     y = model(params, buffers, x)[0]
     return _get_loss(y, t, num_classes)
 
+
 def calculate_jvp(func, params, v):
     """
     Calculations Jacobian-vector product using numerical differentiation
     """
     h = 0.01
     with torch.no_grad(), autocast():
-        loss = func(tuple([params[i]-h*v[i] for i in range(len(params))]))
-        terbulence_loss = func(tuple([params[i]+h*v[i] for i in range(len(params))]))
-    avg_loss = (terbulence_loss + loss)/2
-    jvp = (terbulence_loss - loss)/(2*h)
+        loss = func(tuple([params[i] - h * v[i] for i in range(len(params))]))
+        terbulence_loss = func(
+            tuple([params[i] + h * v[i] for i in range(len(params))])
+        )
+    avg_loss = (terbulence_loss + loss) / 2
+    jvp = (terbulence_loss - loss) / (2 * h)
     return avg_loss, jvp
+
 
 # Might contain useful memory optimizations. Look at this only if you're running into a memory bottleneck & you need ideas
 # def calculate_jvp_experiment(func, params, v):
@@ -96,13 +103,14 @@ def calculate_jvp(func, params, v):
 #         terbulence_loss = func(tuple([params[i] + h * v[i] for i in range(len(params))]))
 #         torch.cuda.empty_cache()
 #         # logger.info(f"[MEM] After turbulence loss: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
-        
+
 #     avg_loss = (terbulence_loss + loss) / 2
 #     jvp = (terbulence_loss - loss) / (2 * h)
 #     del loss, terbulence_loss
 #     torch.cuda.empty_cache()
 #     # logger.info(f"[MEM] After cleanup: {torch.cuda.memory_allocated() / 1024**2:.2f} MB")
 #     return avg_loss, jvp
+
 
 # Does not work for n == 1
 def calculate_var(fwdgrad_list):

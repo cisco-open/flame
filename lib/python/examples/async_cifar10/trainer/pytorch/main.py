@@ -172,21 +172,23 @@ class PyTorchCifar10Trainer(Trainer):
             self.config.hyperparameters.avl_events_syn_50
         )
 
-        if self.client_notify['trace'] == "mobiperf_3st":
+        if self.client_notify["trace"] == "mobiperf_3st":
             self.state_avl_event_ts = self.avl_events_3_state
             logger.info(
                 f"Set avl_events_3_state for trainer id {self.trainer_id} using battery threshold {self.event_battery_threshold}"
             )
-        elif self.client_notify['trace'] == "mobiperf_2st":
+        elif self.client_notify["trace"] == "mobiperf_2st":
             self.state_avl_event_ts = self.avl_events_mobiperf_2st
-            logger.info(f"Set avl_events_mobiperf_2st for trainer id {self.trainer_id}.")
-        elif self.client_notify['trace'] == "syn_0":
+            logger.info(
+                f"Set avl_events_mobiperf_2st for trainer id {self.trainer_id}."
+            )
+        elif self.client_notify["trace"] == "syn_0":
             self.state_avl_event_ts = self.avl_events_syn_0
             logger.info(f"Set avl_events_syn_0 for trainer id {self.trainer_id}.")
-        elif self.client_notify['trace'] == "syn_20":
+        elif self.client_notify["trace"] == "syn_20":
             self.state_avl_event_ts = self.avl_events_syn_20
             logger.info(f"Set avl_events_syn_20 for trainer id {self.trainer_id}.")
-        elif self.client_notify['trace'] == "syn_50":
+        elif self.client_notify["trace"] == "syn_50":
             self.state_avl_event_ts = self.avl_events_syn_50
             logger.info(f"Set avl_events_syn_50 for trainer id {self.trainer_id}.")
         else:
@@ -225,10 +227,14 @@ class PyTorchCifar10Trainer(Trainer):
                     )
                     if self.client_notify["enabled"] == "True":
                         self._perform_channel_state_update(
-                            tag="upload", state=self.avl_state, timestamp=str(time.time())
+                            tag="upload",
+                            state=self.avl_state,
+                            timestamp=str(time.time()),
                         )
             else:
-                logger.debug(f"No availability events pending for trainer {self.trainer_id}")
+                logger.debug(
+                    f"No availability events pending for trainer {self.trainer_id}"
+                )
         else:
             logger.info(
                 f"Channel manager not set yet for trainer {self.trainer_id}. "
@@ -261,7 +267,10 @@ class PyTorchCifar10Trainer(Trainer):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data", train=True, download=True, transform=transform_train
+            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            train=True,
+            download=True,
+            transform=transform_train,
         )
 
         # create indices into a list and convert to tensor
@@ -373,7 +382,7 @@ class PyTorchCifar10Trainer(Trainer):
         # 3. Trainer is unavailable and we don't want it to wait for availability
         if (
             self.task_to_perform != "eval"
-            or self.client_notify['trace'] == "two_state"
+            or self.client_notify["trace"] == "two_state"
             or (
                 self.avl_state == TrainerAvailState.UN_AVL
                 and self.wait_until_next_avl == "False"
@@ -499,7 +508,7 @@ def main():
         heartbeat_thread = threading.Thread(target=t.initiate_heartbeat)
         heartbeat_thread.daemon = True
         heartbeat_thread.start()
-    elif t.client_notify['trace'] is not None:
+    elif t.client_notify["trace"] is not None:
         logger.info(
             f"Will initiate thread to update state of " f"trainer {t.trainer_id}"
         )

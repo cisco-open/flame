@@ -441,7 +441,9 @@ class TopAggregator(SyncTopAgg):
 
         self._updates_in_queue += 1
 
-        self._per_round_update_list.append(end) #SC_TS: PER Round! In Async FwdLLM -> we need to decide whether per data bin or per iteration!
+        self._per_round_update_list.append(
+            end
+        )  # SC_TS: PER Round! In Async FwdLLM -> we need to decide whether per data bin or per iteration!
 
         # SC_TS: what is even the diff between this and  self._updates_in_queue += 1??!!
         if end not in self._updates_recevied.keys():
@@ -462,7 +464,7 @@ class TopAggregator(SyncTopAgg):
         if MessageType.MODEL_VERSION in msg:
             version = msg[MessageType.MODEL_VERSION]
 
-        stat_utility = 0        # default
+        stat_utility = 0  # default
         if MessageType.STAT_UTILITY in msg:
             channel.set_end_property(
                 end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
@@ -473,18 +475,26 @@ class TopAggregator(SyncTopAgg):
             f"Received weights from {end}. It was trained on model version {version}, with {count} samples. Returned stat utility {stat_utility}"
         )
 
-        if weights is not None and count > 0: #SC_TS: count = 0 means no data (it was trained on!), so ignore!
+        if (
+            weights is not None and count > 0
+        ):  # SC_TS: count = 0 means no data (it was trained on!), so ignore!
             tres = TrainResult(weights, count, version, stat_utility)
             # save training result from trainer in a disk cache
             self.cache[end] = tres
             logger.debug(f"received {len(self.cache)} trainer updates in cache")
             update_staleness_val = self._round - tres.version
-            logger.info(f"Received update from {end}. agg_version: {self._round}, trainer version: {tres.version}, update_staleness_val: {update_staleness_val}")
-            
+            logger.info(
+                f"Received update from {end}. agg_version: {self._round}, trainer version: {tres.version}, update_staleness_val: {update_staleness_val}"
+            )
+
             # Populate round statistics vars
             self._round_update_values["staleness"].append(update_staleness_val)
             self._round_update_values["stat_utility"].append(stat_utility)
-            self._round_update_values["trainer_speed"].append(channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION).total_seconds())
+            self._round_update_values["trainer_speed"].append(
+                channel.get_end_property(
+                    end_id=end, key=PROP_ROUND_DURATION
+                ).total_seconds()
+            )
 
             # capture per trainer staleness
             if end in self._per_trainer_staleness_track.keys():
@@ -524,7 +534,7 @@ class TopAggregator(SyncTopAgg):
             #         discarding") return
 
             logger.info("proceeding to agg weights")
-            # SC_TS: append weights to this list, till agg goal reached! 
+            # SC_TS: append weights to this list, till agg goal reached!
             self._agg_goal_weights = self.optimizer.do(
                 self._agg_goal_weights,
                 self.cache,
@@ -537,7 +547,9 @@ class TopAggregator(SyncTopAgg):
 
         if self._agg_goal_cnt < self._agg_goal:
             # didn't reach the aggregation goal; return
-            logger.debug(f"didn't reach agg goal. _agg_goal_cnt: {self._agg_goal_cnt} while _agg_goal is {self._agg_goal}")
+            logger.debug(
+                f"didn't reach agg goal. _agg_goal_cnt: {self._agg_goal_cnt} while _agg_goal is {self._agg_goal}"
+            )
 
             # Set trainer participation count property here to be used
             # later in selection.
@@ -554,7 +566,9 @@ class TopAggregator(SyncTopAgg):
         # set global weights, by adding scaled aggregated weights with
         # aggregation goal
         if self._agg_goal_cnt == self._agg_goal:
-            logger.info(f"reached agg goal since _agg_goal_cnt: {self._agg_goal_cnt} and _agg_goal is: {self._agg_goal}")
+            logger.info(
+                f"reached agg goal since _agg_goal_cnt: {self._agg_goal_cnt} and _agg_goal is: {self._agg_goal}"
+            )
             logger.debug(
                 f"Reached agg_goal {self._agg_goal}, "
                 f"current _updates_in_queue: {self._updates_in_queue}, "
@@ -614,7 +628,7 @@ class TopAggregator(SyncTopAgg):
                 f"top agg trainer participation in rounds, after round "
                 f"{self._round} is {self._trainer_participation_in_round}"
             )
-        
+
         self._compute_aggregator_stats()
         if self._round % 5 == 0:
             logger.info(f"_agg_training_stats: {self._agg_training_stats}")

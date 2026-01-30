@@ -66,6 +66,8 @@ class MessageType(Enum):
     VAR = 26  # variance of a group of updates
     DATA_ID = 27  # tracks specific data id to train on
     TOTAL_DATA_BINS = 28  # tracks per-client max data bins
-    GRADIENTS_FOR_VAR_CHECK = 29 # for sending only the gradients to be used for var check 
-    GRAD_POOL = 30 # stores all gradients until var isn't good enough
-    ITERATION_PER_DATA_ID = 31 #stores round within a data id
+    GRADIENTS_FOR_VAR_CHECK = (
+        29  # for sending only the gradients to be used for var check
+    )
+    GRAD_POOL = 30  # stores all gradients until var isn't good enough
+    ITERATION_PER_DATA_ID = 31  # stores round within a data id

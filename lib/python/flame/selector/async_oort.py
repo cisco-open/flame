@@ -70,13 +70,15 @@ class AsyncOortSelector(AbstractSelector):
 
         # CONFIG CHANGES FOR ASYNCFL WITH OORT
         try:
-            self.is_async = kwargs["is_async"]  
+            self.is_async = kwargs["is_async"]
         except KeyError:
-            logger.info("is_async param isn't specified in config. Defaulting to sync version")
+            logger.info(
+                "is_async param isn't specified in config. Defaulting to sync version"
+            )
             self.is_async = False
 
         try:
-            self.c = kwargs["c"]  
+            self.c = kwargs["c"]
         except KeyError:
             raise KeyError("c (concurrency level) is not specified in config")
 
@@ -154,7 +156,7 @@ class AsyncOortSelector(AbstractSelector):
         # between
         self.track_selected_trainers_which_left = dict()
         self.check_three_state_avl = True
-        
+
         # Track sliding window statistics for the selector
         self._selector_stats = {}
         for task in ["train", "eval"]:
@@ -162,10 +164,10 @@ class AsyncOortSelector(AbstractSelector):
             for metric in ["util", "speed", "round"]:
                 for window in [50, 100, 200]:
                     key = f"{metric}_last_{window}"
-                    self._selector_stats[task]['data'][key] = deque(maxlen=window)
-        
+                    self._selector_stats[task]["data"][key] = deque(maxlen=window)
+
         self._select_run_counter = 0
-        
+
     def compute_trainer_stat_summary(self):
         def compute_summary(values):
             # Filter out None values
@@ -198,19 +200,25 @@ class AsyncOortSelector(AbstractSelector):
 
         tasks = ["train", "eval"]
         metrics = [
-            "util_last_50", "util_last_100", "util_last_200",
-            "speed_last_50", "speed_last_100", "speed_last_200",
-            "round_last_50", "round_last_100", "round_last_200"
+            "util_last_50",
+            "util_last_100",
+            "util_last_200",
+            "speed_last_50",
+            "speed_last_100",
+            "speed_last_200",
+            "round_last_50",
+            "round_last_100",
+            "round_last_200",
         ]
 
         for task in tasks:
             for metric in metrics:
-                values = self._selector_stats[task]['data'].get(metric, [])
+                values = self._selector_stats[task]["data"].get(metric, [])
                 key = f"stat_{metric}" if "util" in metric else metric
                 self._selector_stats[task]["summary"][key] = compute_summary(values)
-        
+
     def _reset_selector_stats(self) -> None:
-        self._selector_stats = {}     
+        self._selector_stats = {}
 
     def select(
         self,
@@ -218,7 +226,7 @@ class AsyncOortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list,
         task_to_perform: str = "train",
-        **kwargs,        
+        **kwargs,
     ) -> SelectorReturnType:
         """Return k number of ends from the given ends.
 
@@ -236,7 +244,9 @@ class AsyncOortSelector(AbstractSelector):
         logger.debug("calling async oort select")
         curr_triplet = kwargs.get("curr_triplet")
         trainer_state_dict = kwargs.get("trainer_state_dict")
-        logger.debug(f"Current triplet of model_version, data_id, iteration_id: {curr_triplet}")
+        logger.debug(
+            f"Current triplet of model_version, data_id, iteration_id: {curr_triplet}"
+        )
         logger.debug(f"Current trainer_state_dict {trainer_state_dict}")
         # TODO: (DG) Update later, currently setting eval concurrency
         # to be twice of training concurrency
@@ -253,7 +263,7 @@ class AsyncOortSelector(AbstractSelector):
                 concurrency = min(len(ends), self.c + self.curr_round_eval_slots_left)
             else:
                 concurrency = 0
-        
+
         logger.info(
             f"Task: {task_to_perform}, len(ends): {len(ends)}, c: {self.c}, chosen concurrency: {concurrency}"
         )
@@ -293,8 +303,12 @@ class AsyncOortSelector(AbstractSelector):
             )
 
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
-            logger.debug(f"Inside send state: current triplet of model_version, data_id, iteration_id: {curr_triplet}")
-            logger.debug(f"Inside send state: current trainer_state_dict {trainer_state_dict}")
+            logger.debug(
+                f"Inside send state: current triplet of model_version, data_id, iteration_id: {curr_triplet}"
+            )
+            logger.debug(
+                f"Inside send state: current trainer_state_dict {trainer_state_dict}"
+            )
             results = self._handle_send_state(
                 ends=eligible_ends,
                 concurrency=concurrency,
@@ -307,25 +321,35 @@ class AsyncOortSelector(AbstractSelector):
 
             if len(results) is not 0:
                 self._select_run_counter += 1
-                
+
             for selected_end_id in results.keys():
                 end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
                 end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
-                end_last_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
+                end_last_round = ends[selected_end_id].get_property(
+                    PROP_LAST_EVAL_ROUND
+                )
                 # Insert to queues tracking stat_util, speed, round
                 # data
                 for window in [50, 100, 200]:
                     # if end_stat_util is not None:
                     #     self._selector_stats[task_to_perform]['data'][f'util_last_{window}'].append(end_stat_util)
                     if end_speed is not None:
-                        self._selector_stats[task_to_perform]['data'][f'speed_last_{window}'].append(end_speed.total_seconds())
+                        self._selector_stats[task_to_perform]["data"][
+                            f"speed_last_{window}"
+                        ].append(end_speed.total_seconds())
                     if end_last_round is not None:
-                        self._selector_stats[task_to_perform]['data'][f'round_last_{window}'].append(end_last_round)
-            
+                        self._selector_stats[task_to_perform]["data"][
+                            f"round_last_{window}"
+                        ].append(end_last_round)
+
             if self._select_run_counter % 5 == 0:
                 self.compute_trainer_stat_summary()
-                logger.info(f"Train selector stats summary: {self._selector_stats['train']['summary']}")
-                logger.info(f"Eval selector stats summary: {self._selector_stats['eval']['summary']}")
+                logger.info(
+                    f"Train selector stats summary: {self._selector_stats['train']['summary']}"
+                )
+                logger.info(
+                    f"Eval selector stats summary: {self._selector_stats['eval']['summary']}"
+                )
                 self._select_run_counter = 0
 
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
@@ -343,7 +367,7 @@ class AsyncOortSelector(AbstractSelector):
         logger.debug(
             f"channel state: {channel_props[KEY_CH_STATE]}, results: {results}"
         )
-        
+
         return results
 
     def cutoff_util(
@@ -733,9 +757,11 @@ class AsyncOortSelector(AbstractSelector):
 
         return utility_list
 
-    def _cleanup_provided_ends(self, ends_to_cleanup: dict[str, End], ends: dict[str, End]):
+    def _cleanup_provided_ends(
+        self, ends_to_cleanup: dict[str, End], ends: dict[str, End]
+    ):
         """Clean-up a specific end so it becomes eligible for sampling again - reject stale updates in FwdLLM (async)"""
-        
+
         selected_ends = self.selected_ends.get(self.requester, set())
         for end_id, _ in ends_to_cleanup.items():
             state = ends[end_id].get_property(KEY_END_STATE)
@@ -761,9 +787,9 @@ class AsyncOortSelector(AbstractSelector):
 
         # update the mapping back
         self.selected_ends[self.requester] = selected_ends
-        logger.info(f"Cleanup complete. Freed [{ends}] end(s) for resampling; state set to {VAL_END_STATE_NONE}.")
-
-
+        logger.info(
+            f"Cleanup complete. Freed [{ends}] end(s) for resampling; state set to {VAL_END_STATE_NONE}."
+        )
 
     # #### CHANGES BASED OFF FEDBUFF FOR ASYNCFL
     def _cleanup_recvd_ends(self, ends: dict[str, End]):
@@ -1226,12 +1252,14 @@ class AsyncOortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list = None,
         task_to_perform: str = "train",
-        curr_triplet=None,  
+        curr_triplet=None,
         trainer_state_dict: dict[str, tuple[int, int, int]] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
         logger.debug(f"Inside handle send state: current triplet {curr_triplet}")
-        logger.debug(f"Inside handle send state: current trainer_state_dict {trainer_state_dict}")
+        logger.debug(
+            f"Inside handle send state: current trainer_state_dict {trainer_state_dict}"
+        )
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
             if end_id not in ends:
@@ -1453,9 +1481,7 @@ class AsyncOortSelector(AbstractSelector):
                 logger.debug(f"Prev triplet values: {prev_state}")
 
                 if prev_state != curr_triplet:
-                    logger.debug(
-                        f"Not skipping trainer: {end_id}"
-                    )
+                    logger.debug(f"Not skipping trainer: {end_id}")
                     eligible_filtered_ends[end_id] = end
                 else:
                     logger.info(

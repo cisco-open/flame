@@ -30,7 +30,7 @@ from flame.selector.oort import (
     PROP_ROUND_DURATION,
     PROP_ROUND_START_TIME,
     PROP_STAT_UTILITY,
-    PROP_LAST_EVAL_ROUND
+    PROP_LAST_EVAL_ROUND,
 )
 
 from ..top_aggregator import TopAggregator as BaseTopAggregator
@@ -130,7 +130,7 @@ class TopAggregator(BaseTopAggregator):
         if self._round % 5 == 0:
             logger.info(f"_agg_training_stats: {self._agg_training_stats}")
         self._reset_aggregator_stats()
-        
+
         # set global weights
         self.weights = global_weights
 
@@ -235,8 +235,8 @@ class TopAggregator(BaseTopAggregator):
             logger.info(
                 f"End {end} sent a message with utility {msg[MessageType.STAT_UTILITY]}"
             )
-        
-        trainer_model_version = 0 # default
+
+        trainer_model_version = 0  # default
         if MessageType.MODEL_VERSION in msg:
             channel.set_end_property(
                 end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
@@ -245,14 +245,12 @@ class TopAggregator(BaseTopAggregator):
             logger.info(
                 f"End {end} sent a model update version {msg[MessageType.MODEL_VERSION]}, while current model version {self._round}"
             )
-            
+
         # Set last eval round for the trainer since training also
         # means that eval was done for the same round.
-        channel.set_end_property(
-            end, PROP_LAST_EVAL_ROUND, trainer_model_version
-        )
-            
-        stat_utility = 0        # default
+        channel.set_end_property(end, PROP_LAST_EVAL_ROUND, trainer_model_version)
+
+        stat_utility = 0  # default
         if MessageType.STAT_UTILITY in msg:
             channel.set_end_property(
                 end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
@@ -266,12 +264,16 @@ class TopAggregator(BaseTopAggregator):
             tres = TrainResult(weights, count, trainer_model_version)
             # save training result from trainer in a disk cache
             self.cache[end] = tres
-            
+
             update_staleness_val = self._round - tres.version
-                
+
             # Populate round statistics vars
             self._round_update_values["staleness"].append(update_staleness_val)
             self._round_update_values["stat_utility"].append(stat_utility)
-            self._round_update_values["trainer_speed"].append(channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION).total_seconds())
+            self._round_update_values["trainer_speed"].append(
+                channel.get_end_property(
+                    end_id=end, key=PROP_ROUND_DURATION
+                ).total_seconds()
+            )
 
         return total

@@ -20,6 +20,7 @@ logger = logging.getLogger(__name__)
 
 class NumpyEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle numpy types and PyTorch tensors"""
+
     def default(self, obj):
         if isinstance(obj, np.integer):
             return int(obj)
@@ -62,10 +63,10 @@ def _serialize_value(value):
 def _extract_sample_data(example):
     """Extract standardized data from an example object"""
     # Try to get text fields
-    text_a = getattr(example, 'text_a', None)
-    text_b = getattr(example, 'text_b', None)
-    text = getattr(example, 'text', None)
-    
+    text_a = getattr(example, "text_a", None)
+    text_b = getattr(example, "text_b", None)
+    text = getattr(example, "text", None)
+
     # If no specific text field, use string representation
     if text_a is None and text_b is None and text is None:
         text = str(example)
@@ -85,24 +86,20 @@ def _extract_sample_data(example):
             text_serialized = _serialize_value(text)
             text_parts.append(str(text_serialized))
         text = " [SEP] ".join(text_parts) if len(text_parts) > 1 else text_parts[0]
-    
+
     # Get label and serialize it properly
-    label = getattr(example, 'label', None)
+    label = getattr(example, "label", None)
     if label is None:
         label = str(example)
     else:
         # Serialize the label to handle numpy/torch types
         label = _serialize_value(label)
-    
+
     # Create a hash for easy comparison
     sample_str = f"{text}|{label}"
-    sample_hash = hashlib.md5(sample_str.encode('utf-8')).hexdigest()
-    
-    return {
-        "text": text,
-        "label": label,
-        "hash": sample_hash
-    }
+    sample_hash = hashlib.md5(sample_str.encode("utf-8")).hexdigest()
+
+    return {"text": text, "label": label, "hash": sample_hash}
 
 
 class FedSGDTrainer(Trainer):
@@ -122,7 +119,7 @@ class FedSGDTrainer(Trainer):
     ):
         self.trainer = model_trainer
         self.trainer_id = trainer_id
-        self.client_index = client_index # this variable is diff from client_idx because it contains a list of clients. we dont need it. was used by fwdllm
+        self.client_index = client_index  # this variable is diff from client_idx because it contains a list of clients. we dont need it. was used by fwdllm
 
         self.train_data_local_dict = train_data_local_dict
         self.test_data_local_dict = test_data_local_dict
@@ -163,7 +160,9 @@ class FedSGDTrainer(Trainer):
         self.total_data_bins = None
         self.grad_for_var_check = None
         self.data_written_to_file = False  # Flag to prevent writing data multiple times
-        setattr(self.trainer.model_trainer, "base_trainer", self) # for accessing FedSGDTrainer methods inside model_trainer - stat utility
+        setattr(
+            self.trainer.model_trainer, "base_trainer", self
+        )  # for accessing FedSGDTrainer methods inside model_trainer - stat utility
 
         # Check if client will emulate delays in training time
         self.training_delay_enabled = self.config.hyperparameters.training_delay_enabled
@@ -186,13 +185,13 @@ class FedSGDTrainer(Trainer):
 
         self.client_notify = self.config.hyperparameters.client_notify
 
-        if self.client_notify['trace'] == "syn_0":
+        if self.client_notify["trace"] == "syn_0":
             self.state_avl_event_ts = self.avl_events_syn_0
             logger.info(f"Set avl_events_syn_0 for trainer id {self.trainer_id}.")
-        elif self.client_notify['trace'] == "syn_20":
+        elif self.client_notify["trace"] == "syn_20":
             self.state_avl_event_ts = self.avl_events_syn_20
             logger.info(f"Set avl_events_syn_20 for trainer id {self.trainer_id}.")
-        elif self.client_notify['trace'] == "syn_50":
+        elif self.client_notify["trace"] == "syn_50":
             self.state_avl_event_ts = self.avl_events_syn_50
             logger.info(f"Set avl_events_syn_50 for trainer id {self.trainer_id}.")
         else:
@@ -201,9 +200,7 @@ class FedSGDTrainer(Trainer):
             )
 
         self.avl_state = TrainerAvailState.AVL_TRAIN
-        logger.info(
-                f"Set the available_state for {self.trainer_id} to AVL_TRAIN."
-            )
+        logger.info(f"Set the available_state for {self.trainer_id} to AVL_TRAIN.")
 
         # flag to decide whether the trainer upon unavailability will wait or exit
         self.wait_until_next_avl = self.config.hyperparameters.wait_until_next_avl
@@ -216,57 +213,73 @@ class FedSGDTrainer(Trainer):
             # Create output directory if it doesn't exist
             output_dir = "../../../../../../../client_data_files"
             os.makedirs(output_dir, exist_ok=True)
-            
+
             # Include round information in filename if provided
             if round_idx is not None:
-                filename = os.path.join(output_dir, f"flame_client_{client_id}_round_{round_idx}_training_data.json")
+                filename = os.path.join(
+                    output_dir,
+                    f"flame_client_{client_id}_round_{round_idx}_training_data.json",
+                )
             else:
-                filename = os.path.join(output_dir, f"flame_client_{client_id}_training_data.json")
-            
+                filename = os.path.join(
+                    output_dir, f"flame_client_{client_id}_training_data.json"
+                )
+
             # Prepare data structure
             client_data = {
                 "metadata": {
                     "client_id": int(client_id),  # Ensure it's a Python int
                     "round_idx": int(round_idx) if round_idx is not None else None,
                     "timestamp": datetime.now().isoformat(),
-                    "total_samples": int(len(train_data.examples)),  # Ensure it's a Python int
-                    "file_format_version": "1.0"
+                    "total_samples": int(
+                        len(train_data.examples)
+                    ),  # Ensure it's a Python int
+                    "file_format_version": "1.0",
                 },
-                "samples": []
+                "samples": [],
             }
-            
+
             # Extract all samples
             for i, example in enumerate(train_data.examples):
                 try:
                     sample_data = _extract_sample_data(example)
                     sample_data["sample_index"] = int(i)  # Ensure it's a Python int
-                    
+
                     # Verify all values are JSON serializable
                     for key, value in sample_data.items():
-                        if isinstance(value, (np.integer, np.floating, np.ndarray, torch.Tensor)):
+                        if isinstance(
+                            value, (np.integer, np.floating, np.ndarray, torch.Tensor)
+                        ):
                             sample_data[key] = _serialize_value(value)
-                    
+
                     client_data["samples"].append(sample_data)
                 except Exception as e:
-                    logger.error(f"Failed to extract sample {i} for client {client_id}: {e}")
+                    logger.error(
+                        f"Failed to extract sample {i} for client {client_id}: {e}"
+                    )
                     # Log the problematic example for debugging
                     logger.error(f"Problematic example type: {type(example)}")
                     logger.error(f"Example attributes: {dir(example)}")
-                    if hasattr(example, 'label'):
+                    if hasattr(example, "label"):
                         logger.error(f"Label type: {type(example.label)}")
                         logger.error(f"Label value: {example.label}")
                     raise  # Re-raise to see the full error
-            
+
             # Write to file using custom encoder
-            with open(filename, 'w', encoding='utf-8') as f:
-                json.dump(client_data, f, indent=2, ensure_ascii=False, cls=NumpyEncoder)
-            
-            logger.info(f"Successfully wrote {len(client_data['samples'])} samples to {filename}")
-            
+            with open(filename, "w", encoding="utf-8") as f:
+                json.dump(
+                    client_data, f, indent=2, ensure_ascii=False, cls=NumpyEncoder
+                )
+
+            logger.info(
+                f"Successfully wrote {len(client_data['samples'])} samples to {filename}"
+            )
+
         except Exception as e:
             logger.error(f"Failed to write data for client {client_id}: {e}")
             # Add more detailed error information
             import traceback
+
             logger.error(f"Full traceback: {traceback.format_exc()}")
 
     def initialize(self) -> None:
@@ -276,24 +289,40 @@ class FedSGDTrainer(Trainer):
         self.model.to(self.device)
         logger.debug(f"self.device: {self.device}")
         self.total_data_bins = len(self.train_local[0])
-        
+
         # Write training data to files during initialization (data doesn't change across rounds)
         # Use args.client_idx since that's what's used to set up the training data
-        if not self.data_written_to_file and hasattr(self.args, 'client_idx') and self.train_local is not None:
-            logger.info(f"Writing training data to files during initialization for client {self.args.client_idx}")
+        if (
+            not self.data_written_to_file
+            and hasattr(self.args, "client_idx")
+            and self.train_local is not None
+        ):
+            logger.info(
+                f"Writing training data to files during initialization for client {self.args.client_idx}"
+            )
             client_id = self.args.client_idx
             if len(self.train_local) > 0:
                 # Use None for round_idx since this is initialization, not a specific round
-                self._write_client_data_to_file(client_id, self.train_local[0], round_idx=None)
+                self._write_client_data_to_file(
+                    client_id, self.train_local[0], round_idx=None
+                )
                 self.data_written_to_file = True  # Mark as written
-                logger.info(f"Successfully wrote training data for client {client_id} during initialization")
+                logger.info(
+                    f"Successfully wrote training data for client {client_id} during initialization"
+                )
             else:
-                logger.warning(f"No training data available for client {client_id} during initialization")
+                logger.warning(
+                    f"No training data available for client {client_id} during initialization"
+                )
         elif self.data_written_to_file:
-            logger.info("Training data already written to files, skipping initialization write")
+            logger.info(
+                "Training data already written to files, skipping initialization write"
+            )
         else:
-            logger.warning("Cannot write training data during initialization: missing client_idx or train_local")
-        
+            logger.warning(
+                "Cannot write training data during initialization: missing client_idx or train_local"
+            )
+
         # loading data to gpu
         # NRL TODO: This didnt work. Error: expected all tensors to be on the same device. Needed to load them on gpu again during train_model
         for each_train_local in self.train_local[0]:
@@ -305,7 +334,7 @@ class FedSGDTrainer(Trainer):
             f"Task_id: {self.trainer_id} initialize completed at timestamp: "
             f"{time.time()}"
         )
-        self.init_oort_variables() #initialize oort variables for stat_utility calculation (fwdllm)
+        self.init_oort_variables()  # initialize oort variables for stat_utility calculation (fwdllm)
 
     def update_model(self, weights):
         # logger.info(f"NRL: Updated model weights: {weights}")
@@ -326,19 +355,27 @@ class FedSGDTrainer(Trainer):
         # Write all training data for each client to separate files
         # Only write if we haven't written during initialization
         if not self.data_written_to_file:
-            logger.info(f"Writing training data to files during update_dataset for clients {client_index}")
+            logger.info(
+                f"Writing training data to files during update_dataset for clients {client_index}"
+            )
             for i, client_id in enumerate(client_index):
                 if i < len(self.train_local):
-                    self._write_client_data_to_file(client_id, self.train_local[i], round_idx)
+                    self._write_client_data_to_file(
+                        client_id, self.train_local[i], round_idx
+                    )
             self.data_written_to_file = True
-            logger.info("Successfully wrote training data for all clients during update_dataset")
+            logger.info(
+                "Successfully wrote training data for all clients during update_dataset"
+            )
         else:
-            logger.info("Training data already written to files during initialization, skipping update_dataset write")
+            logger.info(
+                "Training data already written to files during initialization, skipping update_dataset write"
+            )
 
     def train(self, round_idx=None):
         logger.info("entered train where weights = params and not grad")
         self.args.round_idx = round_idx
-        
+
         self.trainer.train(self.train_local, self.device, self.args)
 
         weights = self.trainer.get_model_params()
@@ -348,19 +385,23 @@ class FedSGDTrainer(Trainer):
     @timer_decorator
     def train_with_data_id(self):
         # Create FwdLLMStage for timing/metrics logging
-        self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, self.trainer_id)
+        self.fwd_llm_stage = FwdLLMStage(
+            self._round, self.data_id, self.iteration_per_data_id, self.trainer_id
+        )
 
         if self.abort_training == True:
-            logger.info(f"Aborting training for trainer id: {self.trainer_id} because it has already sent updates for iteration_per_data_id: {self.iteration_per_data_id}")
+            logger.info(
+                f"Aborting training for trainer id: {self.trainer_id} because it has already sent updates for iteration_per_data_id: {self.iteration_per_data_id}"
+            )
             return
-        
+
         if self.avl_state != TrainerAvailState.AVL_TRAIN:
             if self.wait_until_next_avl:
                 logger.info(
                     f"Trainer id {self.trainer_id} is not available to train. Waiting for it to be available"
                 )
                 while self.avl_state != TrainerAvailState.AVL_TRAIN:
-                    time.sleep(1) 
+                    time.sleep(1)
                 logger.info(
                     f"Trainer id {self.trainer_id} is back to available to train."
                 )
@@ -377,16 +418,20 @@ class FedSGDTrainer(Trainer):
             f"train_local_list[0][0]: {len(self.train_local_list[0][0])}, {len(self.train_local_list)}"
         )
 
-        self.reset_stat_utility() #reset stat_utility for this databin (fwdllm)
-        
+        self.reset_stat_utility()  # reset stat_utility for this databin (fwdllm)
+
         # List Index to be used in case of both sync and async version.
         # In sync model version = round hence, Index = model version
         # In async: Index = model version % round
-        list_index = self._model_version % self._round if self._model_version  > self._round else self._model_version
+        list_index = (
+            self._model_version % self._round
+            if self._model_version > self._round
+            else self._model_version
+        )
         self.trainer.train(
             [self.train_local_list[0][list_index]], self.device, self.args
         )
-            
+
         self.grad_for_var_check = self.trainer.model_trainer.grad_for_var_check
         logger.debug(f"len of grad_for_var_check = {len(self.grad_for_var_check)}")
 
@@ -398,7 +443,8 @@ class FedSGDTrainer(Trainer):
             eval_delay = self.training_delay_s / 3.0
             time.sleep(eval_delay / self.speedup_factor)
             logger.info(
-                f"Delayed eval time for trainer " f"{self.trainer_id} by {eval_delay}s. Sleeping for {eval_delay / self.speedup_factor}s."
+                f"Delayed eval time for trainer "
+                f"{self.trainer_id} by {eval_delay}s. Sleeping for {eval_delay / self.speedup_factor}s."
             )
 
         logger.info(
@@ -443,13 +489,10 @@ class FedSGDTrainer(Trainer):
     def check_and_sleep(self) -> None:
         pass
 
-
     def check_and_update_state_avl(self):
         if hasattr(self, "cm") and self.cm is not None:
             if len(self.state_avl_event_ts) > 0:
-                next_event_ts = self.trainer_start_ts + (
-                    self.state_avl_event_ts[0][0]
-                )
+                next_event_ts = self.trainer_start_ts + (self.state_avl_event_ts[0][0])
                 if time.time() >= next_event_ts:
                     state_to_set = self.state_avl_event_ts.pop(0)[1]
                     old_status = self.avl_state.value
@@ -467,10 +510,14 @@ class FedSGDTrainer(Trainer):
                     if self.client_notify["enabled"] == "True":
                         logger.info("Trainer trying to notify aggregator")
                         self._perform_channel_state_update(
-                            tag="upload", state=self.avl_state, timestamp=str(time.time())
+                            tag="upload",
+                            state=self.avl_state,
+                            timestamp=str(time.time()),
                         )
             else:
-                logger.debug(f"No availability events pending for trainer {self.trainer_id}")
+                logger.debug(
+                    f"No availability events pending for trainer {self.trainer_id}"
+                )
         else:
             logger.info(
                 f"Channel manager not set yet for trainer {self.trainer_id}. "
@@ -478,7 +525,6 @@ class FedSGDTrainer(Trainer):
                 f"Sleep for 20s before checking again."
             )
             time.sleep(20)
-
 
     def notify_trainer_avail(self) -> None:
         logger.info("notify_trainer_avail thread running")

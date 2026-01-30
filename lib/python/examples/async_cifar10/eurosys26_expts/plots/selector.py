@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.ndimage import gaussian_filter1d
 
+
 def extract_selector_p50(log_file, log_line, suffix, syn_percent):
     x_ticks = []
     stat_util_50, stat_util_100, stat_util_200 = [], [], []
@@ -31,7 +32,8 @@ def extract_selector_p50(log_file, log_line, suffix, syn_percent):
                     round_200.append(stats["round_last_200"]["p50"])
                     x_ticks.append(len(x_ticks) * 5)
 
-    def smooth(data): return gaussian_filter1d(np.array(data), sigma=75)
+    def smooth(data):
+        return gaussian_filter1d(np.array(data), sigma=75)
 
     def plot_group(d50, d100, d200, ylabel, filename, colors):
         plt.figure(figsize=(6, 3))
@@ -41,7 +43,7 @@ def extract_selector_p50(log_file, log_line, suffix, syn_percent):
         plt.xlabel("Round")
         plt.ylabel(ylabel)
         plt.title(f"{ylabel} Selector p50 {syn_percent}")
-        plt.legend(ncol=3, loc='lower center', bbox_to_anchor=(0.5, -0.35))
+        plt.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, -0.35))
         plt.grid(True)
         plt.tight_layout()
         plt.savefig(filename, bbox_inches="tight")
@@ -61,35 +63,65 @@ def extract_selector_p50(log_file, log_line, suffix, syn_percent):
                 p90_val = sorted_data[p90_idx]
 
                 plt.axvline(p50_val, color="black", linestyle="--", alpha=0.6)
-                plt.text(p50_val, 0.52, f"p50: {p50_val:.2f}", color="black", fontsize=10, rotation=0, va="bottom", ha="center")
+                plt.text(
+                    p50_val,
+                    0.52,
+                    f"p50: {p50_val:.2f}",
+                    color="black",
+                    fontsize=10,
+                    rotation=0,
+                    va="bottom",
+                    ha="center",
+                )
 
                 plt.axvline(p90_val, color="black", linestyle="--", alpha=0.6)
-                plt.text(p90_val, 0.92, f"p90: {p90_val:.2f}", color="black", fontsize=10, rotation=0, va="bottom", ha="center")
+                plt.text(
+                    p90_val,
+                    0.92,
+                    f"p90: {p90_val:.2f}",
+                    color="black",
+                    fontsize=10,
+                    rotation=0,
+                    va="bottom",
+                    ha="center",
+                )
 
         plt.xlabel(title)
         plt.ylabel("CDF")
         plt.title(f"CDF of {title} {syn_percent}")
-        plt.legend(ncol=3, loc='lower center', bbox_to_anchor=(0.5, -0.35))
+        plt.legend(ncol=3, loc="lower center", bbox_to_anchor=(0.5, -0.35))
         plt.grid(True)
         plt.tight_layout()
         plt.savefig(filename, bbox_inches="tight")
         plt.close()
 
     # Line plots
-    plot_group(stat_util_50, stat_util_100, stat_util_200,
-               f"{suffix} Stat Utility",
-               f"{log_line}_selector_stat_util_{suffix}_syn{syn_percent}.png",
-               ["blue", "purple", "cyan"])
-    
-    plot_group(speed_50, speed_100, speed_200,
-               f"{suffix} Speed",
-               f"{log_line}_selector_speed_{suffix}_syn{syn_percent}.png",
-               ["green", "orange", "brown"])
-    
-    plot_group(round_50, round_100, round_200,
-               f"{suffix} Round",
-               f"{log_line}_selector_round_{suffix}_syn{syn_percent}.png",
-               ["red", "magenta", "gray"])
+    plot_group(
+        stat_util_50,
+        stat_util_100,
+        stat_util_200,
+        f"{suffix} Stat Utility",
+        f"{log_line}_selector_stat_util_{suffix}_syn{syn_percent}.png",
+        ["blue", "purple", "cyan"],
+    )
+
+    plot_group(
+        speed_50,
+        speed_100,
+        speed_200,
+        f"{suffix} Speed",
+        f"{log_line}_selector_speed_{suffix}_syn{syn_percent}.png",
+        ["green", "orange", "brown"],
+    )
+
+    plot_group(
+        round_50,
+        round_100,
+        round_200,
+        f"{suffix} Round",
+        f"{log_line}_selector_round_{suffix}_syn{syn_percent}.png",
+        ["red", "magenta", "gray"],
+    )
 
     # CDF plots
     plot_cdf(
@@ -97,7 +129,7 @@ def extract_selector_p50(log_file, log_line, suffix, syn_percent):
         labels=["last_50", "last_100", "last_200"],
         title=f"{suffix} Stat Utility",
         filename=f"{log_line}_selector_stat_util_cdf_{suffix}_syn{syn_percent}.png",
-        colors=["blue", "purple", "cyan"]
+        colors=["blue", "purple", "cyan"],
     )
 
     plot_cdf(
@@ -105,7 +137,7 @@ def extract_selector_p50(log_file, log_line, suffix, syn_percent):
         labels=["last_50", "last_100", "last_200"],
         title=f"{suffix} Speed",
         filename=f"{log_line}_selector_speed_cdf_{suffix}_syn{syn_percent}.png",
-        colors=["green", "orange", "brown"]
+        colors=["green", "orange", "brown"],
     )
 
 

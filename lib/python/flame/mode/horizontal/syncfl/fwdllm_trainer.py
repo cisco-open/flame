@@ -58,13 +58,17 @@ TAG_FETCH = "fetch"
 TAG_UPLOAD = "upload"
 TAG_HEARTBEAT = "heartbeat_send"
 
+
 @timer_decorator
 def recv_wrapper(self, channel, end_id):
     """Wrapper around recv to be used with timer_decorator."""
     # Create FwdLLMStage for timing/metrics logging
-    self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, self.trainer_id)
+    self.fwd_llm_stage = FwdLLMStage(
+        self._round, self.data_id, self.iteration_per_data_id, self.trainer_id
+    )
 
     return channel.recv(end_id)
+
 
 class Trainer(Role, metaclass=ABCMeta):
     """Trainer implements an ML training role."""
@@ -201,9 +205,11 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.MODEL_VERSION in msg:
             self._model_version = msg[MessageType.MODEL_VERSION]
 
-        logger.info(f"Checking DataID: {self.data_id}| MessageType.DATA_ID in msg: {msg[MessageType.DATA_ID]}| IterationPerDataID: {self.iteration_per_data_id}| MessageType.ITERATION_PER_DATA_ID in msg: {msg[MessageType.ITERATION_PER_DATA_ID]}")
+        logger.info(
+            f"Checking DataID: {self.data_id}| MessageType.DATA_ID in msg: {msg[MessageType.DATA_ID]}| IterationPerDataID: {self.iteration_per_data_id}| MessageType.ITERATION_PER_DATA_ID in msg: {msg[MessageType.ITERATION_PER_DATA_ID]}"
+        )
         logger.info(f"isMessageType.Weights?: {MessageType.WEIGHTS in msg}")
-        
+
         if MessageType.MODEL_VERSION in msg:
             self._model_version = msg[MessageType.MODEL_VERSION]
 
@@ -289,7 +295,7 @@ class Trainer(Role, metaclass=ABCMeta):
             full_state_dict.update(trainable_weights)
             self.weights = full_state_dict
             self._update_model()
-            
+
             if MessageType.DATA_ID in msg:
                 logger.info(
                     f"Trainer id {self.trainer_id} received data id for training : {msg[MessageType.DATA_ID]}"
@@ -368,7 +374,9 @@ class Trainer(Role, metaclass=ABCMeta):
         channel.cleanup_recvd_ends()
 
         # Create FwdLLMStage for timing/metrics logging
-        self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id)
+        self.fwd_llm_stage = FwdLLMStage(
+            self._round, self.data_id, self.iteration_per_data_id
+        )
 
     def put(self, tag: str) -> None:
         """Set data to remote role(s)."""
@@ -459,7 +467,9 @@ class Trainer(Role, metaclass=ABCMeta):
 
             # Log the gradient dictionary details
             if grad_dict:
-                total_bytes = sum(v.element_size() * v.nelement() for v in grad_dict.values())
+                total_bytes = sum(
+                    v.element_size() * v.nelement() for v in grad_dict.values()
+                )
                 size_mb = total_bytes / (1024 * 1024)
 
                 logger.info(
@@ -468,7 +478,7 @@ class Trainer(Role, metaclass=ABCMeta):
                 )
             else:
                 logger.info("No gradients exist; sending an empty dictionary.")
-               
+
             msg = {
                 MessageType.GRADIENTS: grad_dict,
                 MessageType.GRADIENTS_FOR_VAR_CHECK: self.grad_for_var_check,
@@ -680,7 +690,7 @@ class Trainer(Role, metaclass=ABCMeta):
         Measure the loss of a trainer during training. The trainer's statistical
         utility is measured at epoch 1.
         """
-        
+
         if "reduction" in kwargs.keys():
             reduction = kwargs["reduction"]
         else:
@@ -710,7 +720,7 @@ class Trainer(Role, metaclass=ABCMeta):
         self._stat_utility = self._batch_size * math.sqrt(
             self._stat_utility / self._batch_size
         )
-        
+
     def reset_stat_utility(self) -> None:
         """Reset the trainer's statistical utility to zero."""
         self._stat_utility = 0

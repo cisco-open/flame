@@ -1,21 +1,21 @@
 # Copyright 2022 Cisco Systems, Inc. and its affiliates
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you
-# may not use this file except in compliance with the License. You may
-# obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# permissions and limitations under the License.
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 """RandomSelector class."""
 
-#TODO: Add async support 
+# TODO: Add async support
 import logging
 import random
 import time
@@ -48,15 +48,17 @@ class RandomSelector(AbstractSelector):
         super().__init__(**kwargs)
 
         try:
-            self.is_async = kwargs["is_async"]  
+            self.is_async = kwargs["is_async"]
         except KeyError:
-            logger.info("is_async param isn't specified in config. Defaulting to sync version")
+            logger.info(
+                "is_async param isn't specified in config. Defaulting to sync version"
+            )
             self.is_async = False
         try:
             self.k = kwargs["k"]
         except KeyError:
             raise KeyError("k is not specified in config")
-        
+
         try:
             self.c = kwargs["c"]
         except KeyError:
@@ -67,23 +69,21 @@ class RandomSelector(AbstractSelector):
 
         self.round = 0
 
-        # Tracking selected ends to ensure selection correctness for
-        # each round (a trainer can participate only once per round).
+        # Tracking selected ends to ensure selection correctness for each round
+        # (a trainer can participate only once per round).
         self.all_selected = dict()
         self.selected_ends = dict()
 
-        # Tracks updates received from trainers and makes them
-        # available to select again
+        # Tracks updates received from trainers and makes them available to
+        # select again
         self.ordered_updates_recv_ends = list()
 
-        # Tracks timeouted trainers and number of times it happened to
-        # a trainer
+        # Tracks timeouted trainers and number of times it happened to a trainer
         self.track_trainer_timeouts = dict()
 
-        # Tracks trainers that were selected but left training in
-        # between
+        # Tracks trainers that were selected but left training in between
         self.track_selected_trainers_which_left = dict()
-        
+
         # Track sliding window statistics for the selector
         self._selector_stats = {}
         for task in ["train", "eval"]:
@@ -125,20 +125,26 @@ class RandomSelector(AbstractSelector):
 
         tasks = ["train", "eval"]
         metrics = [
-            "util_last_50", "util_last_100", "util_last_200",
-            "speed_last_50", "speed_last_100", "speed_last_200",
-            "round_last_50", "round_last_100", "round_last_200"
+            "util_last_50",
+            "util_last_100",
+            "util_last_200",
+            "speed_last_50",
+            "speed_last_100",
+            "speed_last_200",
+            "round_last_50",
+            "round_last_100",
+            "round_last_200",
         ]
 
         for task in tasks:
             for metric in metrics:
-                values = self._selector_stats[task]['data'].get(metric, [])
+                values = self._selector_stats[task]["data"].get(metric, [])
                 key = f"stat_{metric}" if "util" in metric else metric
                 self._selector_stats[task]["summary"][key] = compute_summary(values)
-        
+
     def _reset_selector_stats(self) -> None:
         self._selector_stats = {}
-    
+
     def select(
         self,
         ends: dict[str, End],
@@ -147,8 +153,9 @@ class RandomSelector(AbstractSelector):
         **kwargs,
     ) -> SelectorReturnType:
         """Return ends from the given ends to maintain concurrency self.c.
-        If it is not possible to maintain concurrency, fails fast and selects none.
-        It is left to the aggregator to make ends available for future selection.
+        If it is not possible to maintain concurrency, fails fast and selects
+        none. It is left to the aggregator to make ends available for future
+        selection.
         """
         logger.debug("calling random select")
         # self.requester = channel_props[KEY_CH_SELECT_REQUESTER] if
@@ -165,12 +172,14 @@ class RandomSelector(AbstractSelector):
         if k == 0:
             logger.debug("ends is empty")
             return {}
-        
+
         logger.debug(f"len(ends), self.k: {len(ends)}, {self.k}")
         # trainers
         trainers_in_use_cnt = len(set(self.selected_ends))
-        required_trainers  = min(len(ends), self.c - trainers_in_use_cnt)
-        logger.info(f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}")
+        required_trainers = min(len(ends), self.c - trainers_in_use_cnt)
+        logger.info(
+            f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}"
+        )
         if len(ends) < required_trainers:
             logger.info(f"not enough ends, need atleast {required_trainers}")
             time.sleep(0.1)
@@ -181,50 +190,59 @@ class RandomSelector(AbstractSelector):
             round = channel_props["round"]
         else:
             round = 0
-            logger.warning(f"round not found in channel_props: {channel_props}. Defaulting to 0")
-        
+            logger.warning(
+                f"round not found in channel_props: {channel_props}. Defaulting to 0"
+            )
+
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
 
-                trainers_in_use = self.selected_ends
-                logger.info(f"already_in_use: {trainers_in_use}")
-                avl_candidates = set()
-                for end_ in ends.keys():
-                    if end_ not in trainers_in_use:
-                        curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
-                        logger.info(f"state of {end_} : {curr_end_id_avl_state}")
-                        if curr_end_id_avl_state in (TrainerAvailState.AVL_TRAIN.value, None):
-                            avl_candidates.add(end_)
-                        else:
-                            logger.info(f"state of {end_} is not avail, skipping ")
-                            continue
+            trainers_in_use = self.selected_ends
+            logger.info(f"already_in_use: {trainers_in_use}")
+            avl_candidates = set()
+            for end_ in ends.keys():
+                if end_ not in trainers_in_use:
+                    curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
+                    logger.info(f"state of {end_} : {curr_end_id_avl_state}")
+                    if curr_end_id_avl_state in (
+                        TrainerAvailState.AVL_TRAIN.value,
+                        None,
+                    ):
+                        avl_candidates.add(end_)
+                    else:
+                        logger.info(f"state of {end_} is not avail, skipping ")
+                        continue
 
+            logger.info(f"available ends: {avl_candidates}")
 
-                logger.info(f"available ends: {avl_candidates}")
+            if len(avl_candidates) < required_trainers:
+                time.sleep(0.1)
+                # cannot handle concurrency, wait further to clear and reselect
+                logger.info(
+                    f" {len(avl_candidates)} new selection less than concurrency {required_trainers}"
+                )
+                return {}
 
-                if len(avl_candidates) < required_trainers:
-                    time.sleep(0.1)
-                    # cannot handle concurrency, wait further to clear and reselect
-                    logger.info(f" {len(avl_candidates)} new selection less than concurrency {required_trainers}")
-                    return {}
-                
-                selected_candidates = set(random.sample(list(avl_candidates), required_trainers))
-                logger.info(f"new selected ends: {selected_candidates}")
+            selected_candidates = set(
+                random.sample(list(avl_candidates), required_trainers)
+            )
+            logger.info(f"new selected ends: {selected_candidates}")
 
-                self.selected_ends = set(self.selected_ends).union(selected_candidates)
-                if round> self.round:
-                    self.round = round
+            self.selected_ends = set(self.selected_ends).union(selected_candidates)
+            if round > self.round:
+                self.round = round
 
-                logger.info("select in send state")
-                return {key: None for key in selected_candidates}
+            logger.info("select in send state")
+            return {key: None for key in selected_candidates}
 
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
             return {key: None for key in self.selected_ends}
 
-        logger.info(f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}")
+        logger.info(
+            f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}"
+        )
 
         return {key: None for key in self.selected_ends}
-
 
     def select(
         self,
@@ -235,8 +253,9 @@ class RandomSelector(AbstractSelector):
         **kwargs,
     ) -> SelectorReturnType:
         """Return ends from the given ends to maintain concurrency self.c.
-        If it is not possible to maintain concurrency, fails fast and selects none.
-        It is left to the aggregator to make ends available for future selection.
+        If it is not possible to maintain concurrency, fails fast and selects
+        none. It is left to the aggregator to make ends available for future
+        selection.
         """
         logger.debug("calling random select")
         # self.requester = channel_props[KEY_CH_SELECT_REQUESTER] if
@@ -253,12 +272,14 @@ class RandomSelector(AbstractSelector):
         if k == 0:
             logger.debug("ends is empty")
             return {}
-        
+
         logger.debug(f"len(ends), self.k: {len(ends)}, {self.k}")
         # trainers
         trainers_in_use_cnt = len(set(self.selected_ends))
-        required_trainers  = min(len(ends), self.c - trainers_in_use_cnt)
-        logger.info(f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}")
+        required_trainers = min(len(ends), self.c - trainers_in_use_cnt)
+        logger.info(
+            f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}"
+        )
         if len(ends) < required_trainers:
             logger.info(f"not enough ends, need atleast {required_trainers}")
             time.sleep(0.1)
@@ -271,48 +292,57 @@ class RandomSelector(AbstractSelector):
             round = channel_props["round"]
         else:
             round = 0
-            logger.warning(f"round not found in channel_props: {channel_props}. Defaulting to 0")
-        
+            logger.warning(
+                f"round not found in channel_props: {channel_props}. Defaulting to 0"
+            )
+
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
-                trainers_in_use = self.selected_ends
-                logger.info(f"already_in_use: {trainers_in_use}")
-                avl_candidates = set()
-                for end_ in ends.keys():
-                    if end_ not in trainers_in_use:
-                        curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
-                        logger.info(f"state of {end_} : {curr_end_id_avl_state}")
-                        if curr_end_id_avl_state in (TrainerAvailState.AVL_TRAIN.value, None):
-                            if  end_ not in trainer_unavail_list:
-                                avl_candidates.add(end_)
-                        else:
-                            logger.info(f"state of {end_} is not avail, skipping ")
-                            continue
-                        
-                
-                logger.info(f"available ends: {avl_candidates}")
+            trainers_in_use = self.selected_ends
+            logger.info(f"already_in_use: {trainers_in_use}")
+            avl_candidates = set()
+            for end_ in ends.keys():
+                if end_ not in trainers_in_use:
+                    curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
+                    logger.info(f"state of {end_} : {curr_end_id_avl_state}")
+                    if curr_end_id_avl_state in (
+                        TrainerAvailState.AVL_TRAIN.value,
+                        None,
+                    ):
+                        if end_ not in trainer_unavail_list:
+                            avl_candidates.add(end_)
+                    else:
+                        logger.info(f"state of {end_} is not avail, skipping ")
+                        continue
 
-                if len(avl_candidates) < required_trainers:
-                    time.sleep(0.1)
-                    # cannot handle concurrency, wait further to clear and reselect
-                    logger.info(f" {len(avl_candidates)} new selection less than concurrency {required_trainers}")
-                    return {}
-                
-                selected_candidates = set(random.sample(list(avl_candidates), required_trainers))
-                logger.info(f"new selected ends: {selected_candidates}")
-                
-                self.selected_ends = set(self.selected_ends).union(selected_candidates)
-                if round> self.round:
-                    self.round = round
+            logger.info(f"available ends: {avl_candidates}")
 
-                
-                logger.info("select in send state")
-                return {key: None for key in selected_candidates}
-        
+            if len(avl_candidates) < required_trainers:
+                time.sleep(0.1)
+                # cannot handle concurrency, wait further to clear and reselect
+                logger.info(
+                    f" {len(avl_candidates)} new selection less than concurrency {required_trainers}"
+                )
+                return {}
+
+            selected_candidates = set(
+                random.sample(list(avl_candidates), required_trainers)
+            )
+            logger.info(f"new selected ends: {selected_candidates}")
+
+            self.selected_ends = set(self.selected_ends).union(selected_candidates)
+            if round > self.round:
+                self.round = round
+
+            logger.info("select in send state")
+            return {key: None for key in selected_candidates}
+
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
             return {key: None for key in self.selected_ends}
 
-        logger.info(f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}")
+        logger.info(
+            f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}"
+        )
 
         logger.info("select in blank state")
         return {key: None for key in self.selected_ends}
@@ -321,11 +351,10 @@ class RandomSelector(AbstractSelector):
         """Clean up ends whose a message was received, from selected
         ends.
 
-        NOTE: It sets the end state to none which makes it eligible to
-        be sampled again. This can cause problems if sampled in the
-        same round. Thus, for aggregator, the _cleanup_recvd_ends
-        should be triggered only after aggregation of weights succeeds
-        on meeting agg_goal."""
+        NOTE: It sets the end state to none which makes it eligible to be
+        sampled again. This can cause problems if sampled in the same round.
+        Thus, for aggregator, the _cleanup_recvd_ends should be triggered only
+        after aggregation of weights succeeds on meeting agg_goal."""
         logger.debug("clean up recvd ends")
         logger.debug(f"ends: {ends.keys()}")
         logger.debug(f"selected ends: {self.selected_ends}")
@@ -342,8 +371,8 @@ class RandomSelector(AbstractSelector):
                 f" and selected_ends and all_selected"
             )
 
-            # removing the first agg-goal number of ends to free them
-            # to participate in the next round
+            # removing the first agg-goal number of ends to free them to
+            # participate in the next round
             self.ordered_updates_recv_ends = self.ordered_updates_recv_ends[
                 num_ends_to_remove:
             ]
@@ -355,17 +384,15 @@ class RandomSelector(AbstractSelector):
 
             for end_id in ends_to_remove:
                 if end_id not in ends:
-                    # something happened to end of end_id (e.g.,
-                    # connection loss) let's remove it from
-                    # selected_ends
+                    # something happened to end of end_id (e.g., connection
+                    # loss) let's remove it from selected_ends
                     logger.debug(
                         f"no end id {end_id} in ends, removing "
                         f"from selected_ends and all_selected"
                     )
-                    # NOTE: it is not a guarantee that selected_ends
-                    # will still contain the end_id. Thats because it
-                    # might have got disconnected/ rejoined in the
-                    # middle of a round
+                    # NOTE: it is not a guarantee that selected_ends will still
+                    # contain the end_id. Thats because it might have got
+                    # disconnected/ rejoined in the middle of a round
                     if end_id in selected_ends:
                         selected_ends.remove(end_id)
                         logger.debug(
@@ -409,11 +436,10 @@ class RandomSelector(AbstractSelector):
                                 f"{self.all_selected}"
                             )
                     elif state == VAL_END_STATE_NONE:
-                        # TODO: (DG) Recheck if it needs to be deleted
-                        # from here as well. Is the failure scenario
-                        # being handled correctly if the trainer
-                        # contributes, fails and then comes back
-                        # within the same round. TODO: (DG) Need a
+                        # TODO: (DG) Recheck if it needs to be deleted from here
+                        # as well. Is the failure scenario being handled
+                        # correctly if the trainer contributes, fails and then
+                        # comes back within the same round. TODO: (DG) Need a
                         # diagram in the paper to explain this?
                         logger.debug(
                             f"Found end {end_id} in state {VAL_END_STATE_NONE}. Might have "
@@ -446,12 +472,10 @@ class RandomSelector(AbstractSelector):
 
     def _cleanup_recvd_end(self, end_id, end):
         """Clean up ends whose a message was received, from selected
-        ends.
-        NOTE: It sets the end state to none which makes it eligible to
-        be sampled again. This can cause problems if sampled in the
-        same round. Thus, for aggregator, the _cleanup_recvd_ends
-        should be triggered only after aggregation of weights succeeds
-        on meeting agg_goal."""
+        ends. NOTE: It sets the end state to none which makes it eligible to be
+        sampled again. This can cause problems if sampled in the same round.
+        Thus, for aggregator, the _cleanup_recvd_ends should be triggered only
+        after aggregation of weights succeeds on meeting agg_goal."""
         logger.info("clean up recvd ends")
         logger.info(f"ends: {end_id}")
         logger.info(f"selected ends: {self.selected_ends}")
@@ -461,86 +485,83 @@ class RandomSelector(AbstractSelector):
         # num_ends_to_remove = min(len(self.ordered_updates_recv_ends), self.k)
 
         logger.debug(
-                f"Will remove these ends from "
-                f" {end_id}"
-                f"  selected_ends and all_selected"
-            )
+            f"Will remove these ends from "
+            f" {end_id}"
+            f"  selected_ends and all_selected"
+        )
 
         if end_id in selected_ends:
-                        selected_ends.remove(end_id)
-                        logger.info(
-                            f"No end id {end_id} in ends, removed from "
-                            f"selected_ends: "
-                            f"{selected_ends}"
-                        )
+            selected_ends.remove(end_id)
+            logger.info(
+                f"No end id {end_id} in ends, removed from "
+                f"selected_ends: "
+                f"{selected_ends}"
+            )
         if end_id in self.all_selected:
-                        del self.all_selected[end_id]
-                        logger.info(
-                            f"No end id {end_id} in ends, removed from "
-                            f"self.all_selected: {self.all_selected}"
-                        )
+            del self.all_selected[end_id]
+            logger.info(
+                f"No end id {end_id} in ends, removed from "
+                f"self.all_selected: {self.all_selected}"
+            )
 
         state = end.get_property(KEY_END_STATE)
         logger.info(
-                        f"End_id {end_id} found in selected_ends in state: {state}, "
-                        f"selected_ends: {selected_ends} and self.all_selected: "
-                        f"{self.all_selected}"
-                    )
+            f"End_id {end_id} found in selected_ends in state: {state}, "
+            f"selected_ends: {selected_ends} and self.all_selected: "
+            f"{self.all_selected}"
+        )
         if state == VAL_END_STATE_RECVD:
             end.set_property(KEY_END_STATE, VAL_END_STATE_NONE)
             logger.info(
-                            f"Setting {end_id} state to {VAL_END_STATE_NONE}, "
-                            f"and removing from selected_ends "
-                            f"and all_selected"
-                        )
+                f"Setting {end_id} state to {VAL_END_STATE_NONE}, "
+                f"and removing from selected_ends "
+                f"and all_selected"
+            )
             if end_id in selected_ends:
                 selected_ends.remove(end_id)
                 logger.info(
-                                f"FOUND end id {end_id} in state: {state}.. "
-                                f"removed from "
-                                f"selected_ends: {selected_ends}"
-                            )
+                    f"FOUND end id {end_id} in state: {state}.. "
+                    f"removed from "
+                    f"selected_ends: {selected_ends}"
+                )
             if end_id in self.all_selected:
                 del self.all_selected[end_id]
                 logger.info(
-                                f"FOUND end id {end_id} in state: {state}.. "
-                                f"removed from "
-                                f"self.all_selected: "
-                                f"{self.all_selected}"
-                            )
+                    f"FOUND end id {end_id} in state: {state}.. "
+                    f"removed from "
+                    f"self.all_selected: "
+                    f"{self.all_selected}"
+                )
         elif state == VAL_END_STATE_NONE:
-                        # TODO: (DG) Recheck if it needs to be deleted
-                        # from here as well. Is the failure scenario
-                        # being handled correctly if the trainer
-                        # contributes, fails and then comes back
-                        # within the same round. TODO: (DG) Need a
-                        # diagram in the paper to explain this?
-                        logger.info(
-                            f"Found end {end_id} in state {VAL_END_STATE_NONE}. Might have "
-                            f"left/rejoined. Need to remove it from "
-                            f"selected_ends and self.all_selected if it "
-                            f"was selected"
-                        )
-                        if end_id in selected_ends:
-                            selected_ends.remove(end_id)
-                            logger.info(
-                                f"FOUND end id {end_id} in state: {state}.. "
-                                f"removed from "
-                                f"selected_ends: {selected_ends}"
-                            )
-                        if end_id in self.all_selected:
-                            del self.all_selected[end_id]
-                            logger.debug(
-                                f"FOUND end id {end_id} in state: {state}.. "
-                                f"removed from "
-                                f"self.all_selected: "
-                                f"{self.all_selected} too"
-                            )
+            # TODO: (DG) Recheck if it needs to be deleted from here as well. Is
+            # the failure scenario being handled correctly if the trainer
+            # contributes, fails and then comes back within the same round.
+            # TODO: (DG) Need a diagram in the paper to explain this?
+            logger.info(
+                f"Found end {end_id} in state {VAL_END_STATE_NONE}. Might have "
+                f"left/rejoined. Need to remove it from "
+                f"selected_ends and self.all_selected if it "
+                f"was selected"
+            )
+            if end_id in selected_ends:
+                selected_ends.remove(end_id)
+                logger.info(
+                    f"FOUND end id {end_id} in state: {state}.. "
+                    f"removed from "
+                    f"selected_ends: {selected_ends}"
+                )
+            if end_id in self.all_selected:
+                del self.all_selected[end_id]
+                logger.debug(
+                    f"FOUND end id {end_id} in state: {state}.. "
+                    f"removed from "
+                    f"self.all_selected: "
+                    f"{self.all_selected} too"
+                )
         else:
-                        logger.info(
-                            f"FOUND end id {end_id} in state: {state}. "
-                            f"Not doing anything"
-                        )
+            logger.info(
+                f"FOUND end id {end_id} in state: {state}. " f"Not doing anything"
+            )
 
     def _cleanup_removed_ends(self, end_id):
         logger.debug(
@@ -550,9 +571,9 @@ class RandomSelector(AbstractSelector):
         if (end_id in self.all_selected) and (
             end_id not in self.ordered_updates_recv_ends
         ):
-            # remove end from all_selected if we havent got an update
-            # from it yet. It would have flushed the agg-weights after
-            # initiating channel.leave().
+            # remove end from all_selected if we havent got an update from it
+            # yet. It would have flushed the agg-weights after initiating
+            # channel.leave().
             logger.debug(
                 f"Removing end_id {end_id} from all_selected"
                 f" since no update received before it left the channel."
@@ -565,8 +586,8 @@ class RandomSelector(AbstractSelector):
                 # self.selected_ends[self.requester] = selected_ends
                 self.selected_ends = selected_ends
 
-            # Track trainers that were sent weights but dropped off
-            # before sending back an update
+            # Track trainers that were sent weights but dropped off before
+            # sending back an update
             if end_id in self.track_selected_trainers_which_left:
                 self.track_selected_trainers_which_left[end_id] += 1
             else:
@@ -587,13 +608,15 @@ class RandomSelector(AbstractSelector):
             logger.info(f"self.all_selected ${self.all_selected}")
             if end_id in self.all_selected.keys():
                 del self.all_selected[end_id]
-                logger.info(f"Deleted ${end_id} from self.all_selected ${self.all_selected}")
+                logger.info(
+                    f"Deleted ${end_id} from self.all_selected ${self.all_selected}"
+                )
         elif (end_id in self.all_selected) and (
             end_id in self.ordered_updates_recv_ends
         ):
-            # Dont remove it if it was in all_selected and we have got
-            # an update from it before it did channel.leave(). It has
-            # completed its participation for this round.
+            # Dont remove it if it was in all_selected and we have got an update
+            # from it before it did channel.leave(). It has completed its
+            # participation for this round.
             logger.debug(
                 f"Update was alreacy received from {end_id} before it left "
                 f"the channel. Not deleting from all_ends now."
@@ -603,27 +626,24 @@ class RandomSelector(AbstractSelector):
                 f"End_id {end_id} remove check from all_selected failed. "
                 f"Need to check"
             )
-        # logger.debug( f"Going to cleanup selector state for "
-        #     f"end_id {end_id} since it has left the channel" ) if
-        #     (end_id in self.all_selected) and ( end_id not in
-        # self.ordered_updates_recv_ends ): # remove end from
-        # all_selected if we havent got an update # from it yet. It
-        #     would have flushed the agg-weights after # initiating
-        # channel.leave(). logger.debug( f"Removing end_id {end_id}
-        #     from all_selected" f" since no update received before it
-        #     left the channel." ) selected_ends =
-        #     self.selected_ends[self.requester] if end_id in
-        #     selected_ends: selected_ends.remove(end_id)
-        #         logger.debug(f"Also removing end_id {end_id} from
-        #         selected_ends") self.selected_ends[self.requester] =
-        #     selected_ends
+        # logger.debug( f"Going to cleanup selector state for " f"end_id
+        #     {end_id} since it has left the channel" ) if (end_id in
+        #     self.all_selected) and ( end_id not in
+        # self.ordered_updates_recv_ends ): # remove end from all_selected if we
+        # havent got an update # from it yet. It would have flushed the
+        #     agg-weights after # initiating channel.leave(). logger.debug(
+        # f"Removing end_id {end_id} from all_selected" f" since no update
+        #     received before it left the channel." ) selected_ends =
+        #     self.selected_ends[self.requester] if end_id in selected_ends:
+        #     selected_ends.remove(end_id) logger.debug(f"Also removing end_id
+        #     {end_id} from selected_ends") self.selected_ends[self.requester] =
+        #         selected_ends
 
         #     # Track trainers that were sent weights but dropped off
         #     # before sending back an update
         #     if end_id in self.track_selected_trainers_which_left:
-        #         self.track_selected_trainers_which_left[end_id] += 1
-        #     else: self.track_selected_trainers_which_left[end_id] =
-        #         1
+        #         self.track_selected_trainers_which_left[end_id] += 1 else:
+        #     self.track_selected_trainers_which_left[end_id] = 1
 
         #     total_trainers_dropped_off = 0 for k, v in
         #     self.track_selected_trainers_which_left.items():
@@ -640,18 +660,19 @@ class RandomSelector(AbstractSelector):
         #     if end_id in self.all_selected.keys():
         #         del self.all_selected[end_id]
         # elif (end_id in self.all_selected) and ( end_id in
-        #     self.ordered_updates_recv_ends ): # Dont remove it if it
-        # was in all_selected and we have got # an update from it
-        #     before it did channel.leave(). It has # completed its
-        #     participation for this round. logger.debug( f"Update was
-        #     alreacy received from {end_id} before it left " f"the
-        #     channel. Not deleting from all_ends now." ) else:
-        #         logger.warn( f"End_id {end_id} remove check from
+        #     self.ordered_updates_recv_ends ): # Dont remove it if it was in
+        # all_selected and we have got # an update from it before it did
+        #     channel.leave(). It has # completed its participation for this
+        #     round. logger.debug( f"Update was alreacy received from {end_id}
+        #     before it left " f"the channel. Not deleting from all_ends now." )
+        #     else: logger.warn( f"End_id {end_id} remove check from
         #         all_selected failed. " f"Need to check" )
 
     def remove_from_selected_ends(self, ends: dict[str, End], end_id: str) -> None:
         """Remove an end from selected ends"""
-        logger.info("check to see if this method is called - random remove_from_selected_ends ")
+        logger.info(
+            "check to see if this method is called - random remove_from_selected_ends "
+        )
         # selected_ends = self.selected_ends[self.requester]
         selected_ends = self.selected_ends
         logger.info(f"self.all_selected {self.all_selected}")
@@ -678,17 +699,15 @@ class RandomSelector(AbstractSelector):
                 f"Attempted to remove end {end_id} from "
                 f"self.selected_ends {self.selected_ends}, but it wasnt in ends"
             )
-        # selected_ends = self.selected_ends[self.requester] if end_id
-        # in ends.keys(): if end_id in selected_ends: logger.debug(
-        #     f"Going to remove end_id {end_id} from selected_ends "
-        #         f"{selected_ends}" ) selected_ends.remove(end_id)
-        #             self.selected_ends[self.requester] =
-        #             selected_ends logger.debug(
-        #         f"self.selected_ends: {self.selected_ends} after "
-        #         f"removing end_id: {end_id}" ) else: logger.debug(
-        #         f"Attempted to remove end {end_id} from "
-        #         f"self.selected_ends {self.selected_ends}, but it
-        #             wasnt present" ) else: logger.debug( f"Attempted
-        #             to remove end {end_id} from "
-        #         f"self.selected_ends {self.selected_ends}, but it
-        #     wasnt in ends")
+        # selected_ends = self.selected_ends[self.requester] if end_id in
+        # ends.keys(): if end_id in selected_ends: logger.debug( f"Going to
+        #     remove end_id {end_id} from selected_ends " f"{selected_ends}" )
+        #         selected_ends.remove(end_id)
+        #             self.selected_ends[self.requester] = selected_ends
+        #             logger.debug( f"self.selected_ends: {self.selected_ends}
+        #         after " f"removing end_id: {end_id}" ) else: logger.debug(
+        #         f"Attempted to remove end {end_id} from " f"self.selected_ends
+        #         {self.selected_ends}, but it wasnt present" ) else:
+        #         logger.debug( f"Attempted to remove end {end_id} from "
+        #             f"self.selected_ends {self.selected_ends}, but it wasnt in
+        #             ends")

@@ -127,7 +127,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         self.agg_start_time_ts = time.time()
 
         self._updates_recevied = {}
-        
+
         self._agg_training_stats = {}
         self._round_update_stat_keys = [
             "staleness",
@@ -151,10 +151,10 @@ class TopAggregator(Role, metaclass=ABCMeta):
                     "p75": None,
                 }
                 continue
-            
+
             # Filter out None values
             values = [v for v in raw_values if v is not None]
-            
+
             if not values:
                 self._agg_training_stats[key] = {
                     "min": None,
@@ -174,12 +174,11 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 "p75": float(np.percentile(arr, 75)),
             }
 
-    
     def _reset_aggregator_stats(self) -> None:
         self._per_round_update_list = []
         for key in self._round_update_stat_keys:
             self._round_update_values[key] = []
-    
+
     def get(self, tag: str) -> None:
         """Get data from remote role(s)."""
         logger.debug(f"Invoking get() with tag {tag}")
@@ -258,8 +257,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
                     end,
                     channel,
                 )
-                
-            stat_utility = 0        # default
+
+            stat_utility = 0  # default
             if MessageType.STAT_UTILITY in msg:
                 channel.set_end_property(
                     end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
@@ -273,16 +272,20 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
-                
+
                 update_staleness_val = self._round - tres.version
-                
+
                 # Populate round statistics vars
                 self._round_update_values["staleness"].append(update_staleness_val)
                 self._round_update_values["stat_utility"].append(stat_utility)
-                self._round_update_values["trainer_speed"].append(channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION).total_seconds())
+                self._round_update_values["trainer_speed"].append(
+                    channel.get_end_property(
+                        end_id=end, key=PROP_ROUND_DURATION
+                    ).total_seconds()
+                )
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
-        
+
         self._compute_aggregator_stats()
         if self._round % 5 == 0:
             logger.info(f"_agg_training_stats: {self._agg_training_stats}")
@@ -308,14 +311,18 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
     def put(self, tag: str, task_to_perform: str = "train") -> None:
         """Set data to remote role(s)."""
-        logger.info(f"Sync distributing weights with task_to_perform = {task_to_perform}")
+        logger.info(
+            f"Sync distributing weights with task_to_perform = {task_to_perform}"
+        )
         if tag == TAG_DISTRIBUTE:
             self.dist_tag = tag
             self._distribute_weights(tag, task_to_perform)
 
     @timer_decorator
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
-        self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id)
+        self.fwd_llm_stage = FwdLLMStage(
+            self._round, self.data_id, self.iteration_per_data_id
+        )
 
         channel = self.cm.get_by_tag(tag)
         if not channel:
@@ -495,7 +502,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
     def compose(self) -> None:
         """Compose role with tasklets."""
-        
+
         with Composer() as composer:
             self.composer = composer
 

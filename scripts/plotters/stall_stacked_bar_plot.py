@@ -7,22 +7,22 @@ import numpy as np
 csv_files = [
     # 'output/sync_1hr_train_times.csv',
     # 'output/sync_stagglers_1hr_train_times.csv',
-    'output/train_times_noDelay_2_5hrs.csv',
+    "output/train_times_noDelay_2_5hrs.csv",
     # 'output/train_times_delayBy20_3hrs.csv',
     # 'output/train_times_noDelay_slow_4hr.csv',      # This actually had delay
     # 'output/train_times_noDelay_2_5hrs.csv',          # Assuming this will not show up in the proportion
     # 'output/train_times_delay_slow_6hr.csv',
-    'output/train_times_delayBy3_2.5hr_sample.csv',
-    'async_with_stragglers.csv',
-    'async_no_stragglers.csv',
+    "output/train_times_delayBy3_2.5hr_sample.csv",
+    "async_with_stragglers.csv",
+    "async_no_stragglers.csv",
 ]
 
 # X-axis labels for the bars
 x_labels = [
-    'Sync\n(no stragglers)',
-    'Sync\n(stragglers)',
-    'Async\n(no stragglers)',
-    'Async\n(stragglers)',
+    "Sync\n(no stragglers)",
+    "Sync\n(stragglers)",
+    "Async\n(no stragglers)",
+    "Async\n(stragglers)",
 ]
 
 # --- Data Processing ---
@@ -54,10 +54,10 @@ for file in csv_files:
         #     source = f"fallback to last row (no model_version == {second_highest_version}), idx: {idx}"
 
         # todo: verify if this fixed the issue with incorrect stall times being graphed & then remove the comment block of code above
-        tuple_cols = ['round_id', 'data_id', 'iteration_id']
+        tuple_cols = ["round_id", "data_id", "iteration_id"]
         if all(col in df.columns for col in tuple_cols):
             # Extract the tuples
-            tuples = list(zip(df['round_id'], df['data_id'], df['iteration_id']))
+            tuples = list(zip(df["round_id"], df["data_id"], df["iteration_id"]))
             # Remove rows with NaN in any of the tuple columns
             tuples = [t for t in tuples if not any(pd.isna(x) for x in t)]
             # Sort the tuples according to the cyclic nested order (iteration_id changes fastest, then data_id, then round_id)
@@ -68,9 +68,9 @@ for file in csv_files:
                 target_tuple = unique_tuples[-2]
                 # Find the index of the last row in the df that matches the target_tuple
                 mask = (
-                    (df['round_id'] == target_tuple[0]) &
-                    (df['data_id'] == target_tuple[1]) &
-                    (df['iteration_id'] == target_tuple[2])
+                    (df["round_id"] == target_tuple[0])
+                    & (df["data_id"] == target_tuple[1])
+                    & (df["iteration_id"] == target_tuple[2])
                 )
                 if mask.any():
                     idx = df[mask].index[-1]
@@ -81,9 +81,9 @@ for file in csv_files:
             elif len(unique_tuples) == 1:
                 target_tuple = unique_tuples[-1]
                 mask = (
-                    (df['round_id'] == target_tuple[0]) &
-                    (df['data_id'] == target_tuple[1]) &
-                    (df['iteration_id'] == target_tuple[2])
+                    (df["round_id"] == target_tuple[0])
+                    & (df["data_id"] == target_tuple[1])
+                    & (df["iteration_id"] == target_tuple[2])
                 )
                 if mask.any():
                     idx = df[mask].index[-1]
@@ -99,13 +99,15 @@ for file in csv_files:
             source = f"fallback to last row (tuple columns missing), idx: {idx}"
 
         # Collect and print picked values
-        avg_training_time = df.loc[idx, 'mean:cumulative_recv_weights_time']
-        total_time = df.loc[idx, 'time_since_start']
+        avg_training_time = df.loc[idx, "mean:cumulative_recv_weights_time"]
+        total_time = df.loc[idx, "time_since_start"]
         label_name = x_labels[len(training_proportions)]
-        print(f"[DEBUG][{label_name}] {source}, avg_training_time: {avg_training_time}, total_time: {total_time}")
+        print(
+            f"[DEBUG][{label_name}] {source}, avg_training_time: {avg_training_time}, total_time: {total_time}"
+        )
 
         # Calculate proportions
-        
+
         train_proportion = avg_training_time / total_time
         idle_proportion = 1 - train_proportion
 
@@ -113,12 +115,16 @@ for file in csv_files:
         idle_proportions.append(idle_proportion)
 
     except FileNotFoundError:
-        print(f"Error: The file '{file}' was not found. Please check the filename and path.")
+        print(
+            f"Error: The file '{file}' was not found. Please check the filename and path."
+        )
         # Add placeholder data to allow the script to continue for demonstration
         training_proportions.append(0)
         idle_proportions.append(0)
     except KeyError as e:
-        print(f"Error: Column {e} not found in '{file}'. Please check your CSV file's header.")
+        print(
+            f"Error: Column {e} not found in '{file}'. Please check your CSV file's header."
+        )
         training_proportions.append(0)
         idle_proportions.append(0)
 
@@ -134,21 +140,23 @@ idle_proportions = np.array(idle_proportions)
 ind = np.arange(len(x_labels))
 
 # Create the stacked bar chart
-ax.bar(ind, training_proportions, label='Stall Time')
-ax.bar(ind, idle_proportions, bottom=training_proportions, label='Train Time')
+ax.bar(ind, training_proportions, label="Stall Time")
+ax.bar(ind, idle_proportions, bottom=training_proportions, label="Train Time")
 
 # --- Chart Customization ---
-ax.set_ylabel('Proportion of Time')
-ax.set_title('Proportion of Time Spent in Training vs. Idle')
+ax.set_ylabel("Proportion of Time")
+ax.set_title("Proportion of Time Spent in Training vs. Idle")
 ax.set_xticks(ind)
 ax.set_xticklabels(x_labels)
 ax.legend()
 
 # Add a note about the number of clients
-plt.figtext(0.5, 0.01, 'Average across 10 clients', ha='center', fontsize=10, style='italic')
+plt.figtext(
+    0.5, 0.01, "Average across 10 clients", ha="center", fontsize=10, style="italic"
+)
 
 
 # Display the plot
-plt.tight_layout(rect=[0, 0.03, 1, 0.95]) # Adjust layout to make room for the figtext
+plt.tight_layout(rect=[0, 0.03, 1, 0.95])  # Adjust layout to make room for the figtext
 plt.savefig("plots/stacked_bar_chart.png")
 plt.show()

@@ -13,8 +13,7 @@
 # permissions and limitations under the License.
 #
 # SPDX-License-Identifier: Apache-2.0
-"""Google Speech horizontal FL trainer for PyTorch.
-"""
+"""Google Speech horizontal FL trainer for PyTorch."""
 
 import ast
 import calendar

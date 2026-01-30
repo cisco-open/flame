@@ -20,8 +20,10 @@ import time
 
 logger = logging.getLogger(__name__)
 
+
 def timer_decorator(func):
     """Decorator to time TopAggregator function and log round/data info."""
+
     def wrapper(*args, **kwargs):
         logger.debug("Inside timer_decorator wrapper")
         self = args[0]  # TopAggregator
@@ -39,10 +41,12 @@ def timer_decorator(func):
             )
         else:
             logger.info(
-                f"[decorator] Runtime of {func.__name__}: {duration:.6f}s (no stage info)")
+                f"[decorator] Runtime of {func.__name__}: {duration:.6f}s (no stage info)"
+            )
         return result
 
     return wrapper
+
 
 class FwdLLMStage:
     """Lightweight metadata object for each federated round of FwdLLM."""
