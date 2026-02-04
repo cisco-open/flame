@@ -182,10 +182,15 @@ class Channel(object):
         self,
         state: Union[None, str] = None,
         task_to_perform: str = "train",
-        curr_triplet: tuple[int, int, int] = None,
-        trainer_state_dict: dict[str, tuple[int, int, int]] = None,
+        agg_version_state: tuple[int, int, int] = None,
+        trainer_version_states: dict[str, tuple[int, int, int]] = None,
     ) -> list[str]:
-        """Return a list of end ids."""
+        """Return a list of end ids.
+        
+        Args:
+            agg_version_state: Aggregator version as (model_version, data_id, iteration_id)
+            trainer_version_states: Map of trainer_id to their version triplets
+        """
         logger.info(
             f"ends() for channel name: {self._name}, "
             f"current self._ends: {self._ends}"
@@ -211,8 +216,8 @@ class Channel(object):
                     channel_props=self.properties,
                     trainer_unavail_list=self.trainer_unavail_list,
                     task_to_perform=task_to_perform,
-                    curr_triplet=curr_triplet,
-                    trainer_state_dict=trainer_state_dict,
+                    agg_version_state=agg_version_state,
+                    trainer_version_states=trainer_version_states,
                 )
                 logger.debug(f"trainer unavail list available, selected: {selected}")
                 if len(selected) == 0:
@@ -223,8 +228,8 @@ class Channel(object):
                     channel_props=self.properties,
                     trainer_unavail_list=[],
                     task_to_perform=task_to_perform,
-                    curr_triplet=curr_triplet,
-                    trainer_state_dict=trainer_state_dict,
+                    agg_version_state=agg_version_state,
+                    trainer_version_states=trainer_version_states,
                 )
                 logger.debug(
                     f"trainer unavail list not available, selected: {selected}"

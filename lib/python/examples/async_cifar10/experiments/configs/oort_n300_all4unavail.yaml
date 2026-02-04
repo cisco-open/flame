@@ -1,0 +1,87 @@
+# Batch Experiment: Run all 4 availability traces sequentially
+# Equivalent to oort_n300_oracular_1feb_all4unavail.sh
+
+experiments:
+  - name: oort_n300_alpha0.1_syn0
+    description: "Oort with 300 trainers, alpha=0.1, synthetic 0% unavailability"
+    
+    trainer:
+      num_trainers: 300
+      dataset:
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn0.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 10
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 5.0
+      aggregator_warmup_time: 600
+  
+  - name: oort_n300_alpha0.1_syn20
+    description: "Oort with 300 trainers, alpha=0.1, synthetic 20% unavailability"
+    
+    trainer:
+      num_trainers: 300
+      dataset:
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_20
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn20.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 10
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 5.0
+      aggregator_warmup_time: 600
+  
+  - name: oort_n300_alpha0.1_syn50
+    description: "Oort with 300 trainers, alpha=0.1, synthetic 50% unavailability"
+    
+    trainer:
+      num_trainers: 300
+      dataset:
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_50
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn50.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 10
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 5.0
+      aggregator_warmup_time: 600
+  
+  - name: oort_n300_alpha0.1_mobiperf2st
+    description: "Oort with 300 trainers, alpha=0.1, MobiPerf 2-state traces"
+    
+    trainer:
+      num_trainers: 300
+      dataset:
+        dirichlet_alpha: 0.1
+      availability:
+        mode: mobiperf_2st
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_mobiperf.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 10
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 5.0
+      aggregator_warmup_time: 600

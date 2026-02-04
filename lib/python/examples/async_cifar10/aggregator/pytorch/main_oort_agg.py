@@ -243,7 +243,8 @@ class PyTorchCifar10Aggregator(TopAggregator):
         self.update_metrics({"test-loss": test_loss, "test-accuracy": test_accuracy})
 
         # add metrics to wandb log
-        wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
+        if self.log_to_wandb:
+            wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
         self.loss_list.append(test_loss)
 
         # print to save to file

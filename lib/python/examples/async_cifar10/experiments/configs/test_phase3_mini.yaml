@@ -1,0 +1,20 @@
+experiments:
+  - name: test_oort_syn0_mini
+    
+    trainer:
+      num_trainers: 5
+      start_id: 1
+      dataset:
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+    
+    aggregator:
+      selector: oort
+      tracking_mode: oracular
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn0.json
+    
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1
+      aggregator_warmup_time: 5

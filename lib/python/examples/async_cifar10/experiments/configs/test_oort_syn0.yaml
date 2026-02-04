@@ -1,0 +1,28 @@
+# Example Experiment Configuration
+# Single experiment with Oort selector
+
+experiments:
+  - name: oort_test_alpha0.1_syn0
+    description: "Test experiment with Oort selector, alpha=0.1, synthetic trace (always available)"
+    
+    trainer:
+      num_trainers: 10  # Small test
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0  # Always available for quick testing
+      battery_threshold: 50
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn0.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 10
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 10

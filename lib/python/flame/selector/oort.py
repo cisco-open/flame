@@ -159,9 +159,22 @@ class OortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list,
         task_to_perform: str,
+        **kwargs,
     ) -> SelectorReturnType:
-        """Return k number of ends from the given ends."""
+        """Return k number of ends from the given ends.
+        
+        Additional kwargs (used in async FL contexts, unused in sync Oort):
+        - agg_version_state: Aggregator's (model_version, data_id, iteration_id)
+        - trainer_version_states: Map of trainer_id to version triplets
+        """
         logger.debug("calling oort select")
+        # Extract async FL params for forward compatibility (unused in sync Oort)
+        agg_version_state = kwargs.get("agg_version_state")
+        trainer_version_states = kwargs.get("trainer_version_states")
+        if agg_version_state is not None:
+            logger.debug(f"Received aggregator version state: {agg_version_state}")
+        if trainer_version_states is not None:
+            logger.debug(f"Received trainer version states for {len(trainer_version_states)} trainers")
 
         num_of_ends = min(len(ends), self.num_of_ends)
         if num_of_ends == 0:

@@ -24,6 +24,7 @@ import ast
 import calendar
 import gc
 import logging
+import os
 import threading
 import time
 import math
@@ -146,29 +147,44 @@ class PyTorchCifar10Trainer(Trainer):
         logger.info(
             f"Trainer id {self.trainer_id} has battery threshold set to {self.event_battery_threshold}"
         )
+        
+        # Helper function to handle both string and list formats
+        def parse_trace(value):
+            if isinstance(value, list):
+                return value  # Already parsed (from JSON config)
+            else:
+                # String format (from file config) - validate it's a safe list literal
+                try:
+                    parsed = ast.literal_eval(value)
+                    if not isinstance(parsed, list):
+                        raise ValueError(f"Expected list, got {type(parsed)}")
+                    return parsed
+                except (ValueError, SyntaxError) as e:
+                    raise ValueError(f"Invalid trace format: {e}")
+        
         if self.event_battery_threshold == 50:
-            self.avl_events_3_state = ast.literal_eval(
+            self.avl_events_3_state = parse_trace(
                 self.config.hyperparameters.avl_events_mobiperf_3st_50
             )
         elif self.event_battery_threshold == 75:
-            self.avl_events_3_state = ast.literal_eval(
+            self.avl_events_3_state = parse_trace(
                 self.config.hyperparameters.avl_events_mobiperf_3st_75
             )
 
-        self.avl_events_mobiperf_2st = ast.literal_eval(
+        self.avl_events_mobiperf_2st = parse_trace(
             self.config.hyperparameters.avl_events_mobiperf_2st
         )
 
         # Storing synthetic avail traces
-        self.avl_events_syn_0 = ast.literal_eval(
+        self.avl_events_syn_0 = parse_trace(
             self.config.hyperparameters.avl_events_syn_0
         )
 
-        self.avl_events_syn_20 = ast.literal_eval(
+        self.avl_events_syn_20 = parse_trace(
             self.config.hyperparameters.avl_events_syn_20
         )
 
-        self.avl_events_syn_50 = ast.literal_eval(
+        self.avl_events_syn_50 = parse_trace(
             self.config.hyperparameters.avl_events_syn_50
         )
 
@@ -466,9 +482,14 @@ class PyTorchCifar10Trainer(Trainer):
 
 def main():
     import argparse
+    import json
 
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("--config", type=str, default="./config.json", required=True)
+    parser.add_argument("--config", type=str, default="./config.json", 
+                        help="Path to config JSON file", required=False)
+    parser.add_argument("--config-json", type=str, 
+                        help="Config as JSON string (alternative to --config file)",
+                        required=False)
 
     # Add a parser argument to get battery threshold (either 50 or 75)
     parser.add_argument(
@@ -490,7 +511,28 @@ def main():
     )
 
     args = parser.parse_args()
-    config = Config(args.config)
+    
+    # Handle config loading: either from file or JSON string
+    if args.config_json:
+        # Load config from JSON string (new programmatic spawning mode)
+        config_dict = json.loads(args.config_json)
+        # Create a temporary config file or pass dict directly
+        # For now, write to temp file for compatibility with Config class
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+            json.dump(config_dict, f)
+            temp_config_path = f.name
+        
+        try:
+            config = Config(temp_config_path)
+        finally:
+            # Clean up temp file even if Config() fails
+            os.unlink(temp_config_path)
+    elif args.config:
+        # Load config from file (legacy mode)
+        config = Config(args.config)
+    else:
+        raise ValueError("Must provide either --config or --config-json")
 
     t = PyTorchCifar10Trainer(config, args.battery_threshold, args.speedup_factor)
     print(

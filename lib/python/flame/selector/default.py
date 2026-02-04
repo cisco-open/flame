@@ -33,9 +33,16 @@ class DefaultSelector(AbstractSelector):
         self.round = 0
 
     def select(
-        self, ends: dict[str, End], channel_props: dict[str, Scalar]
+        self, ends: dict[str, End], channel_props: dict[str, Scalar], **kwargs
     ) -> SelectorReturnType:
-        """Return all ends from the given ends."""
+        """Return all ends from the given ends.
+        
+        Additional kwargs (for compatibility, unused in default selector):
+        - trainer_unavail_list: List of unavailable trainers
+        - task_to_perform: Task type (train/eval)
+        - agg_version_state: Aggregator's (model_version, data_id, iteration_id)
+        - trainer_version_states: Map of trainer_id to version triplets
+        """
         logger.debug("calling default select")
 
         round = channel_props["round"] if "round" in channel_props else 0

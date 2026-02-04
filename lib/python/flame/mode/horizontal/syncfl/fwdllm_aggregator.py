@@ -1473,13 +1473,13 @@ class TopAggregator(AsyncTopAgg):
             self.iteration_per_data_id,
         )
         logger.debug(
-            f"Current triplet of model_version, data_id, iteration_id set in aggregator: {self._curr_agg_version}"
+            f"Aggregator version state (model_version, data_id, iteration_id): {self._curr_agg_version}"
         )
         ends = channel.ends(
             state=VAL_CH_STATE_SEND,
             task_to_perform=task_to_perform,
-            curr_triplet=self._curr_agg_version,
-            trainer_state_dict=self._trainer_state_dict,
+            agg_version_state=self._curr_agg_version,
+            trainer_version_states=self._trainer_state_dict,
         )
         logger.info(f"ends: {ends}")
         # TODO: check in agg_weights if ends is None

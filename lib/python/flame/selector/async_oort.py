@@ -242,12 +242,13 @@ class AsyncOortSelector(AbstractSelector):
         include it for recv in return.
         """
         logger.debug("calling async oort select")
-        curr_triplet = kwargs.get("curr_triplet")
-        trainer_state_dict = kwargs.get("trainer_state_dict")
+        # Extract aggregator version and trainer version states for staleness tracking
+        agg_version_state = kwargs.get("agg_version_state")
+        trainer_version_states = kwargs.get("trainer_version_states")
         logger.debug(
-            f"Current triplet of model_version, data_id, iteration_id: {curr_triplet}"
+            f"Aggregator version state (model_version, data_id, iteration_id): {agg_version_state}"
         )
-        logger.debug(f"Current trainer_state_dict {trainer_state_dict}")
+        logger.debug(f"Trainer version states: {trainer_version_states}")
         # TODO: (DG) Update later, currently setting eval concurrency
         # to be twice of training concurrency
         if task_to_perform == "train":
@@ -304,10 +305,10 @@ class AsyncOortSelector(AbstractSelector):
 
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
             logger.debug(
-                f"Inside send state: current triplet of model_version, data_id, iteration_id: {curr_triplet}"
+                f"Inside send state: aggregator version state (model_version, data_id, iteration_id): {agg_version_state}"
             )
             logger.debug(
-                f"Inside send state: current trainer_state_dict {trainer_state_dict}"
+                f"Inside send state: trainer version states: {trainer_version_states}"
             )
             results = self._handle_send_state(
                 ends=eligible_ends,
@@ -315,8 +316,8 @@ class AsyncOortSelector(AbstractSelector):
                 channel_props=channel_props,
                 trainer_unavail_list=trainer_unavail_list,
                 task_to_perform=task_to_perform,
-                curr_triplet=curr_triplet,
-                trainer_state_dict=trainer_state_dict,
+                agg_version_state=agg_version_state,
+                trainer_version_states=trainer_version_states,
             )
 
             if len(results) is not 0:
@@ -1252,13 +1253,13 @@ class AsyncOortSelector(AbstractSelector):
         channel_props: dict[str, Scalar],
         trainer_unavail_list: list = None,
         task_to_perform: str = "train",
-        curr_triplet=None,
-        trainer_state_dict: dict[str, tuple[int, int, int]] = None,
+        agg_version_state=None,  # (model_version, data_id, iteration_id)
+        trainer_version_states: dict[str, tuple[int, int, int]] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
-        logger.debug(f"Inside handle send state: current triplet {curr_triplet}")
+        logger.debug(f"Inside handle send state: aggregator version state {agg_version_state}")
         logger.debug(
-            f"Inside handle send state: current trainer_state_dict {trainer_state_dict}"
+            f"Inside handle send state: trainer version states {trainer_version_states}"
         )
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
@@ -1469,18 +1470,18 @@ class AsyncOortSelector(AbstractSelector):
             f"Filtered ends created. count_avl_train: {count_avl_train}, count_avl_eval: {count_avl_eval}, count_ineligible: {count_ineligible}"
         )
 
-        if curr_triplet is not None and trainer_state_dict is not None:
-            curr_model_version, curr_data_id, curr_iteration_id = curr_triplet
-            logger.info(f"Trainer state dict: {trainer_state_dict}")
-            logger.info(f"Handle send state: current triplet {curr_triplet}")
+        if agg_version_state is not None and trainer_version_states is not None:
+            curr_model_version, curr_data_id, curr_iteration_id = agg_version_state
+            logger.info(f"Trainer version states: {trainer_version_states}")
+            logger.info(f"Handle send state: aggregator version state {agg_version_state}")
             # Filter out trainers who already received this same triplet
             eligible_filtered_ends = {}
             logger.debug(f"Filtered ends: {filtered_ends.items()}")
             for end_id, end in filtered_ends.items():
-                prev_state = trainer_state_dict.get(end_id)
-                logger.debug(f"Prev triplet values: {prev_state}")
+                prev_state = trainer_version_states.get(end_id)
+                logger.debug(f"Prev version state: {prev_state}")
 
-                if prev_state != curr_triplet:
+                if prev_state != agg_version_state:
                     logger.debug(f"Not skipping trainer: {end_id}")
                     eligible_filtered_ends[end_id] = end
                 else:
