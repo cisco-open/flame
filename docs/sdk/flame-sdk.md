@@ -185,9 +185,12 @@ Users are able to implement new selectors in `lib/python/flame/selector/` which 
 "selector": {
     "sort": "random",
     "kwargs": {
-        "k": 1
+        "//": "c: concurrency level",
+        "c": 30,
+        "minInitialTrainers": 10,
+        "k": 10
     }
-}
+},
 ```
 3. Oort ([OSDI'21](https://arxiv.org/pdf/2010.06081.pdf))
 ```json

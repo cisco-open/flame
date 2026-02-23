@@ -46,7 +46,7 @@
         "client_idx": -1,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round":  10,
+        "client_num_per_round": 10,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
@@ -59,8 +59,8 @@
         "frequency_of_the_test": 1,
         "do_lower_case": true,
         "train_batch_size": 8,
-        "eval_batch_size": 8,
-        "max_seq_length": 256,
+        "eval_batch_size": 256,
+        "max_seq_length": 128,
         "lr": "0.01",
         "server_lr": "0.1",
         "worker_num": "1",
@@ -71,7 +71,7 @@
         "var_control": true,
         "perturbation_sampling": true,
         "evaluate_during_training_steps": 100,
-        "fp16": false,
+        "fp16": true,
         "output_dir": "/tmp/",
         "is_debug_mode": 0,
         "fedprox_mu": 1,
@@ -103,18 +103,13 @@
         "uri": ""
     },
     "selector": {
-    "sort": "async_oort",
-    "kwargs": {
-        "//": "c: concurrency level",
-        "c": 50,
-        "aggGoal": 10,
-        "evalGoalFactor": 0.5,
-        "selectType": "default",
-        "roundNudgeType": "last_eval",
-         "minInitialTrainers": 5,
-         "k": 10,
-         "is_async": true
-    }
+        "sort": "random",
+        "kwargs": {
+            "//": "c: concurrency level",
+            "c": 30,
+            "minInitialTrainers": 10,
+            "k": 10
+        }
     },
     "optimizer": {
         "sort": "fedavg",

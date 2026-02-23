@@ -78,6 +78,8 @@ cache_dir
 scripts/logs/*
 scripts/plotters/output/*
 scripts/plotters/plots/*
+scripts/plotters/old_output/*
+scripts/plotters/old_plots/*
 
 # Files on server to ignore
 src/*
@@ -87,7 +89,8 @@ lib/python/examples/fwdllm/expts/run_tc_expts/mpi_host_file
 scripts/logs/*
 scripts/plotters/output/*
 scripts/plotters/plots/*
-
+scripts/plotters/old_output/*
+scripts/plotters/old_plots/*
 
 # Local json files (fwdllm) - populated with $USER - do not commit
 /tmp_expanded_configs_*

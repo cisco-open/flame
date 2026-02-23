@@ -3,21 +3,68 @@ import pandas as pd
 from pathlib import Path
 from collections import defaultdict
 from typing import List, Dict, Any, Callable, Optional, Tuple
-from configs import LOG_CONFIG, EXPORT_CONFIG
+from configs import LOG_CONFIG, EXPORT_CONFIG, CONSTANTS
+
+# def configure():
+#     output_dir = Path("output/")
+
+#     log_file_type = "flame_fwdllm_aggregator"
+#     # log_file = Path("/Users/gaurav/Library/CloudStorage/OneDrive-GeorgiaInstituteofTechnology/SysML_experiment_logs/logs/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_14_11_11_02.log")
+#     # suffix = "reject_stale"
+#     log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_5_numerical_07_01_21_52.log")
+#     suffix = "baseline"
+#     EXPORT_CONFIG['flame_fwdllm_aggregator']['evaluation_metrics']['default_output_filename'] = f'sync_k5_c5_n5-{suffix}.csv'
+
+#     ## Post processors on the parsed data
+#     row_proc_steps = [
+#         create_sequential_id_processor(eval_log_name='eval_model', iter_log_name='var'),
+#         create_time_calculator_processor(start_log_name='first_distribute_weights'),
+#     ]
+
+#     df_proc_steps = []
+
+#     return log_file_type, row_proc_steps, df_proc_steps, log_file, output_dir
 
 
 def configure():
     output_dir = Path("output/")
 
-    log_file_type = "flame_fwdllm_aggregator"
-    log_file = Path(
-        "/Users/gaurav/Library/CloudStorage/OneDrive-GeorgiaInstituteofTechnology/SysML_experiment_logs/logs/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_14_11_11_02.log"
-    )
-    suffix = "reject_stale"
-    EXPORT_CONFIG["flame_fwdllm_aggregator"]["evaluation_metrics"][
-        "default_output_filename"
-    ] = f"sync_k10_c50_n150-{suffix}.csv"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_5_numerical_07_01_21_52.log")
+    # log_file_type = "flame_fwdllm_aggregator"
+    # CONSTANTS['file_prefix'] = "sync_nck_5_baseline_agg"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_08_01_02_53.log")
+    # log_file_type = "flame_fwdllm_aggregator"
+    # CONSTANTS['file_prefix'] = "sync_n100_c30_k10_baseline_agg"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_trainer_fedFwd_distilbert_agnews_lr0.01_client_num_5_numerical_07_01_21_52.log")
+    # log_file_type = "flame_fwdllm_trainer"
+    # CONSTANTS['file_prefix'] = "sync_nck_5_baseline_trainer"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_trainer_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_08_01_02_53.log")
+    # log_file_type = "flame_fwdllm_trainer"
+    # CONSTANTS['file_prefix'] = "sync_n100_c30_k10_baseline_trainer"
 
+
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_5_numerical_27_01_19_57.log")
+    # log_file_type = "flame_fwdllm_aggregator"
+    # CONSTANTS['file_prefix'] = "sync_nck_5_eval256_agg"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_trainer_fedFwd_distilbert_agnews_lr0.01_client_num_5_numerical_27_01_19_57.log")
+    # log_file_type = "flame_fwdllm_trainer"
+    # CONSTANTS['file_prefix'] = "sync_nck_5_eval256_trainer"
+
+
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_28_01_01_16.log")
+    # log_file_type = "flame_fwdllm_aggregator"
+    # CONSTANTS['file_prefix'] = "sync_n100_c30_k10_eval32_agg"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_trainer_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_28_01_01_16.log")
+    # log_file_type = "flame_fwdllm_trainer"
+    # CONSTANTS['file_prefix'] = "sync_n100_c30_k10_eval32_trainer"
+    log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_agg_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_28_01_01_56.log")
+    log_file_type = "flame_fwdllm_aggregator"
+    CONSTANTS['file_prefix'] = "sync_n100_c30_k10_eval256_agg"
+    # log_file = Path("/Users/gaurav/Projects/flame/scripts/logs/runtime_optimizations/test_trainer_fedFwd_distilbert_agnews_lr0.01_client_num_10_numerical_28_01_01_56.log")
+    # log_file_type = "flame_fwdllm_trainer"
+    # CONSTANTS['file_prefix'] = "sync_n100_c30_k10_eval256_trainer"
+
+    ## Post processors on the parsed data
     row_proc_steps = [
         create_sequential_id_processor(eval_log_name="eval_model", iter_log_name="var"),
         create_time_calculator_processor(start_log_name="first_distribute_weights"),
@@ -66,25 +113,43 @@ def create_sequential_id_processor(eval_log_name: str, iter_log_name: str) -> Ca
         seq_counter = state.setdefault("sequential_id_counter", 0)
         iter_counter = state.setdefault("iteration_id_counter", 0)
 
+        # TODO: This is only for the current AGNews dataset. Need to parametrize this for other datasets.
         round_id = seq_counter // 150
         data_id = seq_counter % 150
 
-        if row["log_name"] == eval_log_name:
-            row["round_id"], row["data_id"] = round_id, data_id
-            row["iteration_id"], row["_model_version"] = iter_counter, seq_counter
-            state["sequential_id_counter"] += 1
-            state["iteration_id_counter"] = 0
-            state["current_round_id"], state["current_data_id"] = round_id, data_id
-        elif row["log_name"] == iter_log_name:
-            row["round_id"], row["data_id"] = round_id, data_id
-            row["iteration_id"], row["_model_version"] = iter_counter, seq_counter
-            state["iteration_id_counter"] += 1
+        # Don't override if any of row['iteration_id'], row['data_id'] and row['round_id'] are present
+        has_ids = any(pd.notna(row.get(k)) for k in ['iteration_id', 'data_id', 'round_id'])
+
+        if row['log_name'] == eval_log_name:
+            if not has_ids:
+                row['round_id'], row['data_id'] = round_id, data_id
+                row['iteration_id'] = iter_counter
+            
+            if pd.isna(row.get('_model_version')):
+                row['_model_version'] = seq_counter
+
+            state['sequential_id_counter'] += 1
+            state['iteration_id_counter'] = 0
+            state['current_round_id'], state['current_data_id'] = round_id, data_id
+        elif row['log_name'] == iter_log_name:
+            if not has_ids:
+                row['round_id'], row['data_id'] = round_id, data_id
+                row['iteration_id'] = iter_counter
+
+            if pd.isna(row.get('_model_version')):
+                row['_model_version'] = seq_counter
+
+            state['iteration_id_counter'] += 1
         else:
-            row["round_id"], row["data_id"] = pd.NA, pd.NA
-            row["iteration_id"] = pd.NA
+            if not has_ids:
+                row['round_id'], row['data_id'] = pd.NA, pd.NA 
+                row['iteration_id'] = pd.NA
         return row
 
     return process
+
+# def time_per_iteration_processor(start_log_name: str) -> Callable:
+#     def process(row: pd.Series, state: dict) -> pd.Series:
 
 
 def create_time_calculator_processor(start_log_name: str) -> Callable:
@@ -341,7 +406,7 @@ class LogParser:
         """
         main_df = self.to_dataframe()
         if main_df.empty or not self.export_configs:
-            print("ℹ️ No data or export configurations to process.")
+            print(f"ℹ️ No data or export configurations to process. Double check if the `log_file_type` config is correctly set e.g: {list[str](LOG_CONFIG.keys())[:2]}")
             return
 
         output_dir.mkdir(parents=True, exist_ok=True)
@@ -363,7 +428,7 @@ class LogParser:
                 if name == "iteration_timing" or name == "communication_summary":
                     df_filtered.drop_duplicates(subset=existing_cols, inplace=True)
 
-                output_path = output_dir / config["default_output_filename"]
+                output_path = output_dir / config['default_output_filename']()
                 df_filtered[existing_cols].to_csv(output_path, index=False)
                 print(
                     f"✅ Successfully wrote {len(df_filtered)} records for '{name}' to {os.path.abspath(output_path)}"

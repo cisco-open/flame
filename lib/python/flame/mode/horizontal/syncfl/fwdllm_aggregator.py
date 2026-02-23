@@ -79,7 +79,6 @@ def recv_fifo_wrapper(channel, ends):
         yield msg, metadata
     logger.debug("Exiting recv_fifo_wrapper")
 
-
 class TopAggregator(AsyncTopAgg):
     """Top level Aggregator implements an ML aggregation
     role."""
@@ -161,6 +160,7 @@ class TopAggregator(AsyncTopAgg):
                 "minInitialTrainers must be specified in selector config & must not be None for determinism"
             )
         self.trainer_unavail_durations = None
+        self._cached_test_data = None
         logger.info("finished init for sync agg")
 
     def pause_execution(self):
@@ -622,14 +622,12 @@ class TopAggregator(AsyncTopAgg):
             )
             channel.cleanup_recvd_ends()
 
-    # TODO: Refactor / rename and modify docstring
-    def aggregate_and_collect(self, tag, channel):
+    @timer_decorator
+    def collect_and_accumulate_grads(self, tag, channel):
         """Aggregate trainer gradients synchronously, with timing and stage metadata."""
         # Create FwdLLMStage for timing/metrics logging
-        self.fwd_llm_stage = FwdLLMStage(
-            self._round, self.data_id, self.iteration_per_data_id
-        )
-
+        self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, trainer_id=None)
+        
         recv_ends = channel.ends()
         if self.ends_not_selected_yet and len(recv_ends) == 0:
             logger.info("no ends selected yet")
@@ -920,7 +918,7 @@ class TopAggregator(AsyncTopAgg):
             return
 
         # receive local model parameters from trainers
-        self.aggregate_and_collect(tag, channel)
+        self.collect_and_accumulate_grads(tag, channel)
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
@@ -1009,6 +1007,17 @@ class TopAggregator(AsyncTopAgg):
 
         self.log_memory("end _aggregate_grads_sync", self.device)
 
+    @timer_decorator
+    def _force_cuda_memory_cleanup(self):
+        torch.cuda.empty_cache()
+        gc.collect()
+
+    @timer_decorator
+    def invoke_gc(self, payload):
+        del payload
+        gc.collect()
+
+    @timer_decorator
     def eval_model(self, epoch=0, global_step=0, device=None):
         if not device:
             device = self.device
@@ -1018,17 +1027,10 @@ class TopAggregator(AsyncTopAgg):
 
         results = {}
 
-        eval_loss = 0.0
-        nb_eval_steps = 0
-        n_batches = len(self.test_global)
+        eval_loss_total = torch.tensor(0.0, device=device)
+        num_eval_steps = 0
         test_sample_len = len(self.test_global.dataset)
-        preds = np.empty((test_sample_len, self.num_labels))
-
-        logger.info(
-            f"Created n_batches: {n_batches}, test_sample_len: {test_sample_len} and preds.shape: {preds.shape}, location of model: {next(self.model.parameters()).device}"
-        )
-
-        out_label_ids = np.empty(test_sample_len)
+        
         # Move model to device before performing the eval
         self.model.to(device)
         self.model.eval()
@@ -1036,36 +1038,59 @@ class TopAggregator(AsyncTopAgg):
             self.model
         )
 
-        for i, batch in enumerate(self.test_global):
-            with torch.no_grad():
-                batch = tuple(t for t in batch)
-                x = batch[1].to(device)
-                labels = batch[4].to(device)
+        # One-time GPU data transfer for caching test data
+        if not hasattr(self, "_cached_test_data") or self._cached_test_data is None:
+            logger.info("One-time GPU data transfer for evaluation dataset")
+            self._cached_test_data = [t.to(device) for t in self.test_global.dataset.tensors]
+
+        input_ids_all = self._cached_test_data[1]
+        labels_all = self._cached_test_data[4]
+
+        # Accumulate predictions on GPU
+        preds_gpu = torch.empty((test_sample_len, self.num_labels), device=device)
+        out_label_ids_gpu = torch.empty(test_sample_len, dtype=labels_all.dtype, device=device)
+
+        batch_size = self.args.eval_batch_size
+        loss_fct = CrossEntropyLoss()
+
+        from torch.cuda.amp import autocast
+        import contextlib
+        autocast_cm = autocast() if self.args.fp16 else contextlib.nullcontext()
+        with torch.no_grad(), autocast_cm:
+            for batch_start_idx in range(0, test_sample_len, batch_size):
+                batch_end_idx = min(batch_start_idx + batch_size, test_sample_len)
+                
+                x = input_ids_all[batch_start_idx:batch_end_idx]
+                labels = labels_all[batch_start_idx:batch_end_idx]
 
                 output = self.model(x)
-                logits = output[0]
+                if hasattr(output, "logits"):
+                    logits = output.logits
+                elif isinstance(output, (tuple, list)):
+                    logits = output[0]
+                else:
+                    logits = output
 
-                loss_fct = CrossEntropyLoss()
                 loss = loss_fct(logits.view(-1, self.num_labels), labels.view(-1))
-                eval_loss += loss.item()
+                eval_loss_total += loss
 
-            nb_eval_steps += 1
-            start_index = self.args.eval_batch_size * i
+                preds_gpu[batch_start_idx:batch_end_idx] = logits
+                out_label_ids_gpu[batch_start_idx:batch_end_idx] = labels
+                num_eval_steps += 1
 
-            end_index = (
-                start_index + self.args.eval_batch_size
-                if i != (n_batches - 1)
-                else test_sample_len
-            )
-            preds[start_index:end_index] = logits.detach().cpu().numpy()
-            out_label_ids[start_index:end_index] = labels.detach().cpu().numpy()
+        # Move to CPU only once at the end
+        eval_loss = (eval_loss_total / num_eval_steps).item()
+        preds = preds_gpu.cpu().numpy()
+        out_label_ids = out_label_ids_gpu.cpu().numpy()
 
-        eval_loss = eval_loss / nb_eval_steps
+        logger.info(
+            f"# of batches: {num_eval_steps} with (batch_size, seq_len): {input_ids_all.shape}. test_sample_len: {test_sample_len}, preds.shape: {preds.shape}, location of model: {next(self.model.parameters()).device}"
+        )
 
         model_outputs = preds
-        preds = np.argmax(preds, axis=1)
+        preds_argmax = np.argmax(preds, axis=1)
         result, wrong = self.compute_metrics(
-            preds, out_label_ids, self.test_global.examples
+            preds_argmax, out_label_ids, self.test_global.examples
         )
         result["eval_loss"] = eval_loss
         results.update(result)
@@ -1077,9 +1102,9 @@ class TopAggregator(AsyncTopAgg):
 
         # TODO: Check if model needs to be moved back to cpu? Do we need to keep
         # moving the model between CPU and GPU repeatedly?
-        del x, labels, output, logits, loss
-        torch.cuda.empty_cache()
-        gc.collect()
+
+        # Can delete x, labels, output, logits, loss in case we run out of memory
+        self._force_cuda_memory_cleanup()
 
         self.log_memory("end eval_model", self.device)
 
@@ -1313,19 +1338,6 @@ class TopAggregator(AsyncTopAgg):
         self.print_trainable_params_stats(location="[populate_params, _distr_weights]")
         trainable_params = self.get_trainable_param_state_dict()
         self.print_param_dict_stats(trainable_params, location="After filtering")
-        shared_weights = weights_to_device(trainable_params, DeviceType.CPU)
-
-        shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
-
-        shared_grad_pool_trainable = []
-        if shared_grad_pool == None:
-            shared_grad_pool_trainable = None
-        else:
-            idx = 0
-            for param in self.model.parameters():
-                if param.requires_grad:
-                    shared_grad_pool_trainable.append(shared_grad_pool[idx].clone())
-                idx += 1
 
         for end in ends:
             # setting start time for OORT TODO: (DG) round_start_time for all
@@ -1345,6 +1357,19 @@ class TopAggregator(AsyncTopAgg):
                 logger.info(
                     f"sending weights to {end} with model_version: {self._model_version}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
+                
+                shared_weights = weights_to_device(trainable_params, DeviceType.CPU)
+
+                shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
+                shared_grad_pool_trainable = []
+                if shared_grad_pool == None:
+                    shared_grad_pool_trainable = None
+                else:
+                    idx = 0
+                    for param in self.model.parameters():
+                        if param.requires_grad:
+                            shared_grad_pool_trainable.append(shared_grad_pool[idx].clone())
+                        idx += 1
 
                 payload = {
                     MessageType.WEIGHTS: shared_weights,
@@ -1395,8 +1420,7 @@ class TopAggregator(AsyncTopAgg):
                 channel.send(end, payload)
                 # Added a 0.5 second sleep so as to not overwhelm mqtt
                 # time.sleep(0.5)
-            del payload
-            gc.collect()
+            self.invoke_gc(payload)
 
             # Update send_time in training_duration_s
             if end not in self._track_trainer_version_duration_s.keys():

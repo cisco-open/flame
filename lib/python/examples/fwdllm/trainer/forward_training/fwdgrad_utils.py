@@ -48,8 +48,8 @@ def functional_get_loss(
     model: Callable[[Tuple[torch.nn.Parameter, ...], torch.Tensor], torch.Tensor],
     x: torch.Tensor,
     t: torch.Tensor,
-    num_classes: int = 10,
-    buffers=None,
+    num_classes: int,
+    buffers: list,
 ) -> torch.Tensor:
     """Functional cross-entropy loss. Given a functional version of a pytorch model, which can be obtained with
     `fmodel, params = functorch.make_functional(model)`, it computes the cross-entropy loss.

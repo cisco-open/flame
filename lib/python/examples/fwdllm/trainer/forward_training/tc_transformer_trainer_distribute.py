@@ -19,9 +19,9 @@ from transformers import (
 )
 from functools import partial
 import functorch as fc
-from torch.cuda.amp import autocast
 import gc
 import os
+from flame.monitor.runtime import timer_decorator, FwdLLMStage
 
 logger = logging.getLogger(__name__)
 
@@ -248,80 +248,162 @@ class ForwardTextClassificationTrainer:
             f"Device: {device}, trainer_id: {self.trainer_id}"
         )
 
+    @timer_decorator
+    def _make_model_functional(self, device):
+        self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
+            self.model
+        )
+        self.buffers = [b.to(device) for b in self.buffers]
+
+    @timer_decorator
+    def _select_optimal_perturbations(self, device, logging_state):
+        if self.args.var_control:
+            self.grad = None if self.old_grad is None else [g.clone() for g in self.old_grad]
+
+        v_buffer = {}
+        all_perturbations_hash = ""
+        selected_perturbation_hash = ""
+        index = 0
+        for k, v in self.model.named_parameters():
+            if self.grad is not None and v.requires_grad:
+                self.total_rng_iter += 1
+                shape = v.shape
+                candidate_v = _randn_wrapper((1 * 10, *shape), device="cpu", generator=self.torch_rng, logging_state=logging_state, param_name=k)
+                # torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
+                target_grad = self.grad[index]
+
+                target_grad = torch.flatten(target_grad)
+                candidate_v = torch.flatten(candidate_v, start_dim=1)
+
+                logging.debug(f"candidate_v for client_idx {self.args.client_idx} is {_calculate_hash(candidate_v)} for param_name {k}")
+                all_perturbations_hash = _calculate_rolling_hash(candidate_v, all_perturbations_hash)
+
+                cos_sim = calculate_cos_sim(candidate_v, target_grad, device)
+
+                sorted_values, sorted_indices = torch.sort(cos_sim, descending=True)
+                v_buffer[index] = [
+                    candidate_v[i].reshape(v.shape) for i in sorted_indices[:1]
+                ]
+
+                del candidate_v, target_grad, cos_sim, sorted_indices, shape
+            index += 1
+        return v_buffer
+
+    @timer_decorator
+    def _compute_batch_stat_utility(self, device, x, labels):
+        with torch.no_grad():
+            pred = self.model(x)
+            if hasattr(pred, "logits"):
+                logits = pred.logits
+            elif isinstance(pred, (tuple, list)):
+                logits = pred[0]
+            else:
+                logits = pred
+            loss = self.base_trainer.oort_loss(logits, labels.view(-1), epoch=0, batch_idx=0, reduction="mean")
+        logging.debug(f"stat_utility for trainerId: {self.trainer_id} is {self.base_trainer._stat_utility}, loss: {loss.mean().item()}")
+
+    @timer_decorator
+    def _prepare_perturbation_tensors(self, device, v_buffer):
+        if self.args.perturbation_sampling and v_buffer != {}:
+            v_params = [
+                (
+                    v_buffer[i][0].to(device)
+                    if p.requires_grad
+                    else torch.zeros_like(p)
+                )
+                for i, p in enumerate(self.params)
+            ]
+        else:
+            v_params = [
+                (
+                    torch.randn_like(p, device=p.device)
+                    if p.requires_grad
+                    else torch.zeros_like(p, device=device)
+                )
+                for p in self.params
+            ]
+        return v_params
+
+    @timer_decorator
+    def _compute_forward_jvp(self, device, x, labels, v_params):
+        # def wrapped_func(p):
+        #     return functional_get_loss(
+        #         p,
+        #         self.fmodel,
+        #         x,
+        #         labels,
+        #         num_classes=self.num_labels,
+        #         buffers=self.buffers,
+        #     )
+        # loss, jvp = calculate_jvp_experiment(wrapped_func, self.params, v_params)
+        
+        f = partial(
+            functional_get_loss,
+            model=self.fmodel,
+            buffers = self.buffers,
+            num_classes = self.num_labels,
+            x=x,
+            t=labels,
+        )
+
+        loss, jvp = calculate_jvp(f, self.params, v_params)
+        jvp = jvp.to(device)
+        return loss, jvp
+
+    @timer_decorator
+    def _accumulate_and_extract_grads(self, device, jvp, v_params):
+        for j, fg in enumerate(self.grad):
+            updated = (jvp * v_params[j]).detach().cpu()
+            fg.add_(updated)
+            if self.args.var_control and j == self.layer_id_for_check:
+                self.grad_for_var_check = updated.clone()
+
+        for p, fg in zip(self.model.parameters(), self.grad):
+            if p.requires_grad:
+                p.grad = fg.clone().to(device)
+
+    @timer_decorator
+    def _force_cuda_memory_cleanup(self, device, tag):
+        gc.collect()
+        torch.cuda.empty_cache()
+        self.log_memory(tag, device)
+
     def train_model(self, device=None, logging_state=None):
         if not device:
             device = self.device
 
+        if logging_state:
+            self.fwd_llm_stage = FwdLLMStage(
+                logging_state.get("round_id"),
+                logging_state.get("data_id"),
+                logging_state.get("iteration"),
+                self.trainer_id
+            )
+
         self.log_memory("train_model_start", device)
         allocated_before = torch.cuda.memory_allocated(device)
 
-        gc.collect()
-        torch.cuda.empty_cache()
+        # TODO: Figure out if this _force_cuda_memory_cleanup() is needed
+        self._force_cuda_memory_cleanup(device, "before_train_model")
 
         """
         If you want absolute determinism between runs, run the model in eval mode. Make sure to switch the model back to train model before the method returns: `self.model.train()`. 
         Even though this seems to not affect training, this is commented as we're not sure how the model trains in eval mode. Any relative impact on accuracy without it isn't measured.
         self.model.eval()
         """
-
-        self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
-            self.model
-        )
-        self.buffers = [b.to(device) for b in self.buffers]
+        
+        self._make_model_functional(device)
         self.log_memory("after_fmodel_setup", device)
 
         global_step, tr_loss = 0, 0.0
 
-        # Perturbation selection logic slightly differs from the vanilla FwdLLM implementation. Their logic has a flaw which cannot be used in a true-FL setting
+        v_buffer = {}
+        # Perturbation selection logic slightly differs from the vanilla FwdLLM implementation. Their logic has a flaw which cannot be used in a true-FL setting 
         # with distributed clients. As their clients are emulated in a for loop, they generate `num_clients` * 10 candidate perturbations & select the top `num_clients`
         # perturbations based on cosine similarity. This is not the same as generating 10 candidate perturbations per client & selecting the top 1. We did not
         # observe any significant changes in accuracy, after assigning clients distinct RNG seeds, & hence we chose the later approach.
         if self.args.perturbation_sampling:
-
-            if self.args.var_control:
-                self.grad = (
-                    None
-                    if self.old_grad is None
-                    else [g.clone() for g in self.old_grad]
-                )
-
-            v_buffer = {}
-            all_perturbations_hash = ""
-            selected_perturbation_hash = ""
-            index = 0
-            for k, v in self.model.named_parameters():
-                if self.grad is not None and v.requires_grad:
-                    self.total_rng_iter += 1
-                    shape = v.shape
-                    candidate_v = _randn_wrapper(
-                        (1 * 10, *shape),
-                        device="cpu",
-                        generator=self.torch_rng,
-                        logging_state=logging_state,
-                        param_name=k,
-                    )
-                    # torch.randn((1 * 10, *shape), device="cpu", generator=self.torch_rng)
-                    target_grad = self.grad[index]
-
-                    target_grad = torch.flatten(target_grad)
-                    candidate_v = torch.flatten(candidate_v, start_dim=1)
-
-                    logging.debug(
-                        f"candidate_v for client_idx {self.args.client_idx} is {_calculate_hash(candidate_v)} for param_name {k}"
-                    )
-                    all_perturbations_hash = _calculate_rolling_hash(
-                        candidate_v, all_perturbations_hash
-                    )
-
-                    cos_sim = calculate_cos_sim(candidate_v, target_grad, device)
-
-                    sorted_values, sorted_indices = torch.sort(cos_sim, descending=True)
-                    v_buffer[index] = [
-                        candidate_v[i].reshape(v.shape) for i in sorted_indices[:1]
-                    ]
-
-                    del candidate_v, target_grad, cos_sim, sorted_indices, shape
-                index += 1
+            v_buffer = self._select_optimal_perturbations(device, logging_state)
 
         # Efficient grad allocation / zeroing
         if (
@@ -348,82 +430,15 @@ class ForwardTextClassificationTrainer:
                     labels = batch[4].to(device, non_blocking=True)
 
                     # Stat-utility calculation
-                    with torch.no_grad():
-                        pred = self.model(x)
-                        if hasattr(pred, "logits"):
-                            logits = pred.logits
-                        elif isinstance(pred, (tuple, list)):
-                            logits = pred[0]
-                        else:
-                            logits = pred
-                        loss = self.base_trainer.oort_loss(
-                            logits,
-                            labels.view(-1),
-                            epoch=0,
-                            batch_idx=0,
-                            reduction="mean",
-                        )
-                    logging.debug(
-                        f"stat_utility for trainerId: {self.trainer_id} is {self.base_trainer._stat_utility}, loss: {loss.mean().item()}"
-                    )
+                    self._compute_batch_stat_utility(device, x, labels)
 
-                    if self.args.perturbation_sampling and v_buffer != {}:
-                        v_params = [
-                            (
-                                v_buffer[i][0].to(device)
-                                if p.requires_grad
-                                else torch.zeros_like(p)
-                            )
-                            for i, p in enumerate(self.params)
-                        ]
-                    else:
-                        v_params = [
-                            (
-                                torch.randn_like(p, device=p.device)
-                                if p.requires_grad
-                                else torch.zeros_like(p, device=device)
-                            )
-                            for p in self.params
-                        ]
-                    logging.debug(
-                        f"v_params hashes: {[(_calculate_hash(v), v.shape) for v in v_params if v.requires_grad]}"
-                    )
-                    logging.debug(
-                        f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}"
-                    )
+                    v_params = self._prepare_perturbation_tensors(device, v_buffer)
+                    logging.debug(f"v_params hashes: {[(_calculate_hash(v), v.shape) for v in v_params if v.requires_grad]}")
+                    logging.debug(f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}")
 
-                    # def wrapped_func(p):
-                    #     return functional_get_loss(
-                    #         p,
-                    #         self.fmodel,
-                    #         x,
-                    #         labels,
-                    #         num_classes=self.num_labels,
-                    #         buffers=self.buffers,
-                    #     )
-                    # loss, jvp = calculate_jvp_experiment(wrapped_func, self.params, v_params)
+                    loss, jvp = self._compute_forward_jvp(device, x, labels, v_params)
 
-                    f = partial(
-                        functional_get_loss,
-                        model=self.fmodel,
-                        buffers=self.buffers,
-                        num_classes=self.num_labels,
-                        x=x,
-                        t=labels,
-                    )
-
-                    loss, jvp = calculate_jvp(f, self.params, v_params)
-                    jvp = jvp.to(device)
-
-                    for j, fg in enumerate(self.grad):
-                        updated = (jvp * v_params[j]).detach().cpu()
-                        fg.add_(updated)
-                        if self.args.var_control and j == self.layer_id_for_check:
-                            self.grad_for_var_check = updated.clone()
-
-                    for p, fg in zip(self.model.parameters(), self.grad):
-                        if p.requires_grad:
-                            p.grad = fg.clone().to(device)
+                    self._accumulate_and_extract_grads(device, jvp, v_params)
 
                     current_loss = loss.item()
                     tr_loss += current_loss
@@ -442,10 +457,8 @@ class ForwardTextClassificationTrainer:
                         break
 
                     del x, labels, jvp, v_params, loss
-                    gc.collect()
-                    torch.cuda.empty_cache()
-                    self.log_memory(f"epoch{epoch}_batch{batch_idx}_end", device)
-
+                    self._force_cuda_memory_cleanup(device, f"epoch{epoch}_batch{batch_idx}_end")
+                    
                     if hasattr(self, "base_trainer"):
                         self.base_trainer.normalize_stat_utility(epoch)
                         logging.debug(
@@ -486,6 +499,7 @@ class ForwardTextClassificationTrainer:
 
         # self.model.train()        # See comment about self.model.eval() above. TL;DR: This is used to make training deterministic
         return global_step, tr_loss / global_step if global_step > 0 else 0.0
+
 
     def eval_model(self, epoch=0, global_step=0, device=None):
         if not device:

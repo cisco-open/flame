@@ -3,12 +3,11 @@ import logging
 import random
 import time
 import math
-
 import numpy as np
 import torch
-
 from flame.mode.horizontal.syncfl.fwdllm_aggregator import TopAggregator
 from examples.fwdllm.trainer.forward_training.fwdgrad_utils import calculate_var
+from flame.monitor.runtime import timer_decorator, FwdLLMStage
 
 logger = logging.getLogger(__name__)
 import functorch as fc
@@ -119,6 +118,7 @@ class FedSGDAggregator(TopAggregator):
             self.flag_client_model_uploaded_dict[idx] = False
         return True
 
+    @timer_decorator
     def aggregate(self, current_round):
         start_time = time.time()
         self.var = calculate_var(self.grad_for_var_check_list)

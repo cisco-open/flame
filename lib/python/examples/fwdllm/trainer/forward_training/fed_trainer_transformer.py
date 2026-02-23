@@ -19,11 +19,15 @@ class FedTransformerTrainer(ModelTrainer):
     def set_model_params(self, model_parameters):
         self.model.load_state_dict(model_parameters)
 
-    def train(self, train_data, device, args):
+    def train(self, train_data, device, args=None, kwargs=None):
         logging.info(
             "Client(%d)" % self.id + ":| Local Train Data Size = %d" % (len(train_data))
         )
-        logging_state = {"round_id": None, "data_id": None}
+        logging_state = {
+                        "round_id": kwargs.get("round_id", None), 
+                        "data_id": kwargs.get("data_id", None),
+                        "iteration": kwargs.get("iteration", None),
+                        "trainer_id": kwargs.get("trainer_id", None)}
         self.model_trainer.train_dl = train_data
         self.model_trainer.train_model(device=device, logging_state=logging_state)
 

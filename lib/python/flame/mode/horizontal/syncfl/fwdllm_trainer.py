@@ -653,14 +653,6 @@ class Trainer(Role, metaclass=ABCMeta):
         self.model = self.model_arch().to(self.device)
         logger.debug(f"Loaded model on gpu for trainer_id: {self.trainer_id}")
 
-    def _evict_model_from_gpu(self):
-        self.model.cpu()
-        self.model = None
-        torch.cuda.empty_cache()
-        gc.collect()  # Force garbage collection
-        torch.cuda.empty_cache()  # Clear the CUDA cache again, just in case
-        logger.debug(f"Evicted model from gpu for trainer_id: {self.trainer_id}")
-
     def send_heartbeat_to_agg(self) -> None:
         logger.debug("Inside trainer.py will call self.put(heartbeat)")
         self.put(TAG_HEARTBEAT)

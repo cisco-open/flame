@@ -58,7 +58,10 @@ class FwdLLMStage:
         self.trainer_id = trainer_id
 
     def __repr__(self):
-        return f"FwdLLMStage(round={self.round_id}, data_id={self.data_id}, iter={self.iteration})"
+        if self.trainer_id:
+            return f"FwdLLMStage(round={self.round_id}, data_id={self.data_id}, iter={self.iteration}, trainer_id={self.trainer_id})"
+        else:
+            return f"FwdLLMStage(round={self.round_id}, data_id={self.data_id}, iter={self.iteration})"
 
 
 def time_tasklet(func):
