@@ -46,7 +46,7 @@ fi
 
 PARTITION_METHOD="uniform"
 if [ $DATA_NAME = "agnews" ];then
-  max_seq_length=64
+  max_seq_length=64  # this is set in aggregator.json, this will be overwritten
   frequency_of_the_test=1
 elif [ $DATA_NAME = "20news" ];then
   max_seq_length=256
