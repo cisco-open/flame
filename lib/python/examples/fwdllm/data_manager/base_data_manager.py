@@ -11,6 +11,7 @@ import numpy as np
 import pickle
 import os
 
+import hashlib
 
 class BaseDataManager(ABC):
     @abstractmethod
@@ -306,7 +307,9 @@ class BaseDataManager(ABC):
         partition_file = h5py.File(self.args.partition_file_path, "r", swmr=True)
         partition_method = self.args.partition_method
         num_partitions = int(partition_file[partition_method]["n_clients"][()])
-        original_client_idxs = [client_idx % num_partitions]
+        original_client_idxs = [client_idx % num_partitions] # If num_partitions are smaller than num_clients, same partition is shared with more trainers(?)
+        logging.debug(f"data_file: {self.args.data_file_path} and partition_file: {self.args.partition_file_path} and num_partitions: {num_partitions}")
+        logging.debug(f"original_client_idxs data used to load from parition file: {original_client_idxs} ")
         if client_idx >= num_partitions:
             logging.warning(
                 f"There are no more unique partitions to read from. Client Id: {client_idx} will read data from partitionId: {client_idx % num_partitions}"
@@ -494,6 +497,12 @@ class BaseDataManager(ABC):
             drop_last=False,
         )
 
+        # Hash a sample of the actual tensors to ensure data parity
+        sample_batch = next(iter(train_loader))
+        data_hash = hashlib.sha256(sample_batch[0].cpu().numpy().tobytes()).hexdigest()
+        logging.info(f"CLIENT {client_idx} DATA HASH: {data_hash}")
+
+
         # test_loader = BaseDataLoader(test_examples, test_features, test_dataset,
         #                         batch_size=self.eval_batch_size,
         #                         num_workers=0,
@@ -587,6 +596,7 @@ class BaseDataManager(ABC):
             + "_"
             + str(client_id),
         )
+        # comment reading from cache logic if you want to reload an updated partition
         if os.path.exists(cached_features_file) and (
             (not model_args.reprocess_input_data and not model_args.no_cache)
             or (model_args.use_cached_eval_features and not model_args.no_cache)

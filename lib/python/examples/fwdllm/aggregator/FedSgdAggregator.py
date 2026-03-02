@@ -12,6 +12,14 @@ from flame.monitor.runtime import timer_decorator, FwdLLMStage
 logger = logging.getLogger(__name__)
 import functorch as fc
 
+import hashlib
+
+def _calculate_hash(tensor):
+    if tensor is None:
+        return ""
+
+    """Calculate a hash for a tensor for logging."""
+    return hashlib.sha256(tensor.detach().cpu().numpy().tobytes()).hexdigest()
 
 class FedSGDAggregator(TopAggregator):
 
@@ -123,6 +131,8 @@ class FedSGDAggregator(TopAggregator):
         start_time = time.time()
         self.var = calculate_var(self.grad_for_var_check_list)
         logger.info(f"self.var = {self.var}")
+        logger.debug(f"self.grad_for_var_check_list size: {len(self.grad_for_var_check_list)}")
+        logger.debug(f"self.grad_for_var_check_list hashes: {[(_calculate_hash(p), p.shape) for p in self.grad_for_var_check_list]}")
 
         model_list = []
         training_num = 0
@@ -137,14 +147,16 @@ class FedSGDAggregator(TopAggregator):
                 / float(max(1, self.args.comm_round - self.warmup_rounds)),
             )
         learning_rate = self.args.learning_rate * ratio
+        # learning_rate =0.01 # Current learning rate is 0.0099..
         logger.info(f"learning rate: {learning_rate}")
 
         # Will use 0th grads from model_dict since worker_num = 1
         for idx in range(self.worker_num):
             model_list.append((self.sample_num_dict[idx], self.model_dict[idx]))
             training_num += self.sample_num_dict[idx]
+            logger.info(f"Model dict length (should be same as total layers in the model) : {len(self.model_dict[idx])}")
 
-        # logger.info(f"len(model_list): {model_list}")
+        # logger.info(f"len(model_list): {len(model_list)}")
 
         # self.model_dict在聚合的过程中会被改变,很奇怪，这里先存一个deepcopy吧，
         # 用于后面cache_v
@@ -156,10 +168,14 @@ class FedSGDAggregator(TopAggregator):
             logger.info(f"len of cached v: {len(self.cached_v)}")
             for cached_v in self.cached_v:
                 model_list.append(cached_v)
+                format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+                logger.info(f"cached-v[i] - length : {len(cached_v[1])} (should be same as grad pool):  {format_hash(cached_v[1])}")
+
                 training_num += cached_v[0]
             logger.info(f"training_num : {training_num}")
 
         logger.info("len of self.model_dict[idx] = " + str(len(self.model_dict)))
+        logger.info(f"length of model list : {len(model_list)} - (should be same as # of iterations in the mini-batch completed so far)")
 
         # old_param = self.get_global_model_params()
         old_param = self.trainer.model.parameters()
@@ -169,6 +185,10 @@ class FedSGDAggregator(TopAggregator):
 
         # If weighted_aggregation_enabled is False, then the weight of each gradient in this sum is 1. Else, the weight the is determined by calling self.optimizer.weight_factor()
         (_, weighted_gradient_sum) = model_list[0]
+        format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+        logger.debug(f"model_list[0] - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}")
+
+        logger.info(f"Length of model_list : {len(model_list)}")
         for id, k in enumerate(weighted_gradient_sum):
             for i in range(0, len(model_list)):
                 local_sample_number, local_model_params = model_list[i]
@@ -182,7 +202,10 @@ class FedSGDAggregator(TopAggregator):
             )
         if self.args.var_control:
             if self.var <= self.var_threshold:
-                logger.debug("current model is good, variance under threshold")
+                format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+                logger.debug(f"weighted_gradient_sum - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}")
+                self.last_round_update = [p.clone().detach() for p in weighted_gradient_sum]
+                logger.info("current model is good, variance under threshold")
                 self.var_good_enough = True
                 # 方差满足要求
                 self.cached_v = []

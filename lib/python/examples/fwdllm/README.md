@@ -1,3 +1,10 @@
+# Data
+The system by default caches the data on each run and builds a key based on max sequence length and partition type. 
+If you change the partition itself keeping the partition ID same, you need to refresh the cache. 
+
+
+Comment [this](https://github.com/dhruvsgarg/flame/blob/bc0c43c04ce0be2e0df85e5e1c0860b362ce7880/lib/python/examples/fwdllm/data_manager/base_data_manager.py#L590-L619) to force re-load and fetch from cache. TODO(ARM) : Change this to a flag.
+
 # Aggregator Class Hierarchy in FwdLLM
 
 This document outlines the inheritance hierarchy of the Aggregator classes used in FwdLLM to help understand where specific methods are defined and why some might be redundant.
