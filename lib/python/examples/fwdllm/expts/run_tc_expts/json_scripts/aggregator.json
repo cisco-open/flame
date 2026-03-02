@@ -87,7 +87,7 @@
         },
         "aggGoal": 10,
         "rounds": 300,
-        "rejectStaleUpdates": true,
+        "rejectStaleUpdates": false,
         "inc_model_version_per_data_id": true
     },
     "baseModel": {
@@ -103,12 +103,17 @@
         "uri": ""
     },
     "selector": {
-        "sort": "random",
+        "sort": "async_oort",
         "kwargs": {
             "//": "c: concurrency level",
             "c": 30,
-            "minInitialTrainers": 10,
-            "k": 10
+            "aggGoal": 10,
+            "evalGoalFactor": 0.5,
+            "selectType": "default",
+            "roundNudgeType": "last_eval",
+            "minInitialTrainers": 5,
+            "k": 10,
+            "is_async": true
         }
     },
     "optimizer": {

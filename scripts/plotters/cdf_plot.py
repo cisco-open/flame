@@ -161,6 +161,69 @@ AGGREGATOR_PLOTTING_CONFIG = {
             'y_label': 'CDF',
             'title': lambda: f'Aggregate Runtime Latency ({CONSTANTS["file_prefix"]})'
         },
+        {
+            'latency_type': 'aggregate_grads_sync_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-aggregate_grads_sync_latency.csv',
+            'latency_column': 'aggregate_grads_sync_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_grads_sync_latency_cdf.png',
+            'x_label': '_aggregate_grads_sync Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_aggregate_grads_sync Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'process_single_trainer_message_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-process_single_trainer_message_latency.csv',
+            'latency_column': 'process_single_trainer_message_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_single_trainer_message_latency_cdf.png',
+            'x_label': '_process_single_trainer_message Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_process_single_trainer_message Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'process_aggregation_goal_met_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-process_aggregation_goal_met_latency.csv',
+            'latency_column': 'process_aggregation_goal_met_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_aggregation_goal_met_latency_cdf.png',
+            'x_label': '_process_aggregation_goal_met Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_process_aggregation_goal_met Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'agg_force_cuda_memory_cleanup_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-agg_force_cuda_memory_cleanup_latency.csv',
+            'latency_column': 'agg_force_cuda_memory_cleanup_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-agg_force_cuda_memory_cleanup_latency_cdf.png',
+            'x_label': 'agg_force_cuda_memory_cleanup Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'agg_force_cuda_memory_cleanup Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'prepare_distribution_payload_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-prepare_distribution_payload_latency.csv',
+            'latency_column': 'prepare_distribution_payload_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-prepare_distribution_payload_latency_cdf.png',
+            'x_label': '_prepare_distribution_payload Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_prepare_distribution_payload Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'distribute_weights_sync_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-distribute_weights_sync_latency.csv',
+            'latency_column': 'distribute_weights_sync_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_sync_latency_cdf.png',
+            'x_label': '_distribute_weights_sync Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_distribute_weights_sync Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'distribute_weights_async_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-distribute_weights_async_latency.csv',
+            'latency_column': 'distribute_weights_async_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_async_latency_cdf.png',
+            'x_label': '_distribute_weights_async Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'_distribute_weights_async Latency ({CONSTANTS["file_prefix"]})'
+        },
     ],
     'directory_name': 'plots/',
     'x_lim_left': 0,
