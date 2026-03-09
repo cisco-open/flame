@@ -22,7 +22,8 @@ logger = logging.getLogger(__name__)
 
 
 def timer_decorator(func):
-    """Decorator to time TopAggregator function and log round/data info."""
+    """Decorator to time TopAggregator function and log round/data info.
+    Make sure to populate fwd_llm_stage within the function or in the same class for detailed logging."""
 
     def wrapper(*args, **kwargs):
         logger.debug("Inside timer_decorator wrapper")

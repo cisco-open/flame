@@ -8,8 +8,9 @@ LR=$2
 FL_ALG=$3
 total_client_num=$4
 LOG_LEVEL=$5
+ENABLE_WATCHDOG=${6:-false}  # Set to "true" to enable error checking, defaults to "false"
 
-pkill -f "gaurav.*/fl_main.py"
+pkill -f "$FWDLLM_USER.*fl_main.py"
 if [ $? -eq 0 ]; then
     echo "Successfully killed some processes."
 else
@@ -44,7 +45,7 @@ else
   peft_method=bitfit
 fi
 
-PARTITION_METHOD="uniform"
+PARTITION_METHOD="niid_label_clients=100_alpha=100" # this is set in aggregator.json, this will be overwritten
 if [ $DATA_NAME = "agnews" ];then
   max_seq_length=64  # this is set in aggregator.json, this will be overwritten
   frequency_of_the_test=1
@@ -136,18 +137,58 @@ else
   # Generate timestamp once
   RUN_TIMESTAMP=$(date +%d_%m_%H_%M)
   LOG_SUFFIX="fedFwd_${model_type}_${DATA_NAME}_lr${LR}_client_num_${client_num_per_round}_numerical_${RUN_TIMESTAMP}"
-  AGG_LOG_FILE="$LOG_DIR/test_agg_${LOG_SUFFIX}.log"
-  TRAINER_LOG_FILE="$LOG_DIR/test_trainer_${LOG_SUFFIX}.log"
+  AGG_LOG_FILE=$(readlink -f "$LOG_DIR/test_agg_${LOG_SUFFIX}.log")
+  TRAINER_LOG_FILE=$(readlink -f "$LOG_DIR/test_trainer_${LOG_SUFFIX}.log")
+  PARENT_PID=$$
+
+  # Function to check logs for errors and kill all processes if found
+  check_errors() {
+    # Find the first file that contains a real error (ignoring known false positives)
+    FOUND_ERR_FILE=$(grep -E -H "Error|Exception|Traceback" "$AGG_LOG_FILE" "$TRAINER_LOG_FILE" | \
+                     grep -vE "Error Distribution Analysis|log_error_distribution" | \
+                     head -n 1 | cut -d: -f1)     # Extracts the name that the first grep matches
+
+    if [ ! -z "$FOUND_ERR_FILE" ]; then
+      echo "--------------------------------------------------------"
+      echo "ERROR DETECTED in $FOUND_ERR_FILE! Shutting down..."
+      echo "--------------------------------------------------------"
+      # Show the first few errors, excluding known false positives
+      ERR_MSG=$(grep -E "Error|Exception|Traceback" "$FOUND_ERR_FILE" | \
+                grep -vE "Error Distribution Analysis|log_error_distribution" | head -n 20)
+      
+      # Append termination message to both logs
+      TERMINATION_MSG="Killed spawned processes due to error in $FOUND_ERR_FILE\n\n$ERR_MSG"
+      echo -e "$TERMINATION_MSG" >> "$AGG_LOG_FILE"
+      echo -e "$TERMINATION_MSG" >> "$TRAINER_LOG_FILE"
+      echo -e "$TERMINATION_MSG"
+
+      # Trigger the graceful cleanup and exit
+      # We kill the parent process with TERM; the trap will handle the rest.
+      kill -TERM $PARENT_PID
+      exit 1
+    fi
+  }
 
   EXPANDED_TMP_DIR="${REPO_PATH}/tmp_expanded_configs_${RUN_TIMESTAMP}"
   mkdir -p "$EXPANDED_TMP_DIR"
 
-  # Clean up expanded configs on exit (but keep log files!)
+  # Clean up expanded configs and background processes on exit
   cleanup() {
-    echo "Cleaning up expanded JSONs: $EXPANDED_TMP_DIR"
-    rm -rf "$EXPANDED_TMP_DIR"
+    echo "Cleaning up processes and temporary files..."
+    # 1. Kill the watchdog first to prevent recursive calls
+    if [ ! -z "$WATCHDOG_PID" ]; then
+      kill $WATCHDOG_PID 2>/dev/null
+    fi
+    # 2. Kill all python trainer/aggregator processes
+    pkill -f "$FWDLLM_USER.*fl_main.py"
+    # 3. Remove temp directory
+    if [ -d "$EXPANDED_TMP_DIR" ]; then
+      echo "Removing temporary directory: $EXPANDED_TMP_DIR"
+      rm -rf "$EXPANDED_TMP_DIR"
+    fi
   }
-  trap cleanup EXIT
+  # Trap common termination signals
+  trap cleanup EXIT INT TERM    # cleanup function is called no matter how the script ends (normal exit, error, or manual termination)
 
   # substitute env variables in the temp files
   AGG_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/aggregator.json"
@@ -164,6 +205,9 @@ else
   echo "started agg"
 
   sleep 10  # Give aggregator time to set up
+  if [ "$ENABLE_WATCHDOG" = "true" ]; then
+    check_errors
+  fi
 
   NUM_AVAIL_GPUS=8
 
@@ -181,11 +225,28 @@ else
         --config "$TRAIN_EXPANDED" \
         --log_level "$LOG_LEVEL" \
         >> "$TRAINER_LOG_FILE" 2>&1 &
+      if [ "$ENABLE_WATCHDOG" = "true" ]; then
+        check_errors
+      fi
       sleep 8
     else
       echo "Trainer config not found, skipping: $TRAIN_SRC"
       fi
   done
 
+  # Start background periodic check (every 30 seconds)
+  # The watchdog will automatically exit if the parent process ($PARENT_PID) dies
+  if [ "$ENABLE_WATCHDOG" = "true" ]; then
+    (
+      while kill -0 $PARENT_PID 2>/dev/null; do   # Checks if the parent script is still alive
+        check_errors
+        sleep 30
+      done
+    ) &
+    WATCHDOG_PID=$!
+  fi
+
   wait
+  # Clean up watchdog on normal exit
+  kill $WATCHDOG_PID 2>/dev/null
 fi

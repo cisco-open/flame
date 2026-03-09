@@ -773,10 +773,10 @@ class TopAggregator(AsyncTopAgg):
         channel.cleanup_recvd_ends()
         
         # Centralized cleanup
-        self._force_cuda_memory_cleanup()
+        # self._force_cuda_memory_cleanup()
 
     @timer_decorator
-    def collect_and_accumulate_grads(self, tag, channel):
+    def sync_collect_and_accumulate_grads(self, tag, channel):
         """Aggregate trainer gradients synchronously, with timing and stage metadata."""
         self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, trainer_id=None)
         
@@ -843,7 +843,7 @@ class TopAggregator(AsyncTopAgg):
             return
 
         # receive local model parameters from trainers
-        self.collect_and_accumulate_grads(tag, channel)
+        self.sync_collect_and_accumulate_grads(tag, channel)
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
@@ -853,7 +853,6 @@ class TopAggregator(AsyncTopAgg):
 
         self._process_aggregation_goal_met(tag, channel, is_async=False)
         self.log_memory("end _aggregate_grads_sync", self.device)
-
 
     @timer_decorator
     def _force_cuda_memory_cleanup(self):
@@ -903,6 +902,8 @@ class TopAggregator(AsyncTopAgg):
         from torch.cuda.amp import autocast
         import contextlib
         autocast_cm = autocast() if self.args.fp16 else contextlib.nullcontext()
+        if not self.args.fp16: logging.warning(f"Autocast is disabled: {self.args.fp16}")
+
         with torch.no_grad(), autocast_cm:
             for batch_start_idx in range(0, test_sample_len, batch_size):
                 batch_end_idx = min(batch_start_idx + batch_size, test_sample_len)
@@ -956,8 +957,8 @@ class TopAggregator(AsyncTopAgg):
 
         # TODO: Check if model needs to be moved back to cpu? Do we need to keep
         # moving the model between CPU and GPU repeatedly?
-
-        # Can delete x, labels, output, logits, loss in case we run out of memory
+        
+        # Can delete x, labels, output, logits, loss in case we run into any memory issues
         self._force_cuda_memory_cleanup()
 
         self.log_memory("end eval_model", self.device)
@@ -1084,7 +1085,7 @@ class TopAggregator(AsyncTopAgg):
         self.print_trainable_params_stats(location="[_prepare_distribution_payload]")
         trainable_params = self.get_trainable_param_state_dict()
         
-        shared_weights = weights_to_device(trainable_params, DeviceType.CPU)
+        shared_weights = weights_to_device(trainable_params, DeviceType.CPU)        # Need to move to CPU for sending over MQTT
 
         shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
         shared_grad_pool_trainable = []
@@ -1107,12 +1108,16 @@ class TopAggregator(AsyncTopAgg):
             MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
         }
 
+        return payload
+
+    def _update_state_after_payload_prepared(self):
+        """Update state after preparing payload.
+        Reset grad pools if the model was updated.
+        """
         if self._is_model_updated:
             self.grad_pool = []
             self.grad_for_var_check_list = []
             self._is_model_updated = False
-
-        return payload
 
     @timer_decorator
     def _distribute_weights_sync(
@@ -1168,6 +1173,7 @@ class TopAggregator(AsyncTopAgg):
             return
             
         payload = self._prepare_distribution_payload(task_to_perform)
+        self._update_state_after_payload_prepared()
 
         for end in ends:
             logger.debug(
@@ -1182,14 +1188,34 @@ class TopAggregator(AsyncTopAgg):
                 logger.info(
                     f"sending weights to {end} with model_version: {self._model_version}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
+
+                sizes_mb = {
+                    key.name if hasattr(key, "name") else str(key): len(
+                        pickle.dumps(value)
+                    )
+                    / (1024 * 1024)
+                    for key, value in payload.items()
+                }
+                total_size_mb = sum(sizes_mb.values())
+
+                logger.info(
+                    f"[DEBUG] Payload size breakdown for {end}: "
+                    + ", ".join([f"{k}: {v:.2f} MB" for k, v in sizes_mb.items()])
+                    + f", Total: {total_size_mb:.2f} MB"
+                )
             else:
                 logger.info(
                     f"sending var = bad to {end} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
                 )
+
+                msg_bytes = pickle.dumps(payload)
+                logger.info(
+                    f"[DEBUG] Payload size for {end}: {len(msg_bytes) / (1024 * 1024):.2f} MB"
+                )
             
             channel.send(end, payload)
             logger.info(f"Sent weights to {end}")
-
+            # self.invoke_gc()
 
     @timer_decorator
     def _distribute_weights_async(
@@ -1266,36 +1292,15 @@ class TopAggregator(AsyncTopAgg):
         else:
             logger.info(
                 "Sending variance = bad to trainers since variance is greater than threshold"
-            )
-            
+            )    
+        
+        payload = self._prepare_distribution_payload(task_to_perform)
+        self._update_state_after_payload_prepared()
+
         if self.var_good_enough:
             logger.info(
-                f"sending weights to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
+                f"Async: sending weights to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
             )
-            logger.info(
-                "Variance is GOOD. Preparing and sending new model weights and grad_pool."
-            )
-            
-            payload = self._prepare_distribution_payload(task_to_perform)
-
-            if self._is_model_updated:
-                self.grad_pool = []
-                self.grad_for_var_check_list = []
-                self._is_model_updated = False
-
-        else:
-            logger.info(
-                f"sending var = bad to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
-            )
-            logger.info("Variance is BAD. Sending request for more samples.")
-            payload = {
-                MessageType.VAR: "bad",
-                MessageType.ROUND: self._round,
-                MessageType.MODEL_VERSION: self._model_version,
-                MessageType.TASK_TO_PERFORM: task_to_perform,
-                MessageType.DATA_ID: self.data_id,
-                MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
-            }
 
         for end in ends:
             logger.debug(

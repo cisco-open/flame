@@ -340,38 +340,6 @@ class FedSGDTrainer(Trainer):
         # logger.info(f"NRL: Updated model weights: {weights}")
         self.trainer.set_model_params(weights)
 
-    def update_dataset(self, client_index, round_idx=None):
-        logger.info(f"NRL: Updated client index: {client_index}, round: {round_idx}")
-        self.client_index = client_index
-        self.train_local = [self.train_data_local_dict[id] for id in client_index]
-        self.local_sample_number = self.train_data_local_num_dict[client_index[0]]
-
-        self.test_local = self.test_data_local_dict[client_index[0]]
-
-        self.train_local_list = [
-            [data for data in self.train_local[i]] for i in range(len(self.train_local))
-        ]
-
-        # Write all training data for each client to separate files
-        # Only write if we haven't written during initialization
-        if not self.data_written_to_file:
-            logger.info(
-                f"Writing training data to files during update_dataset for clients {client_index}"
-            )
-            for i, client_id in enumerate(client_index):
-                if i < len(self.train_local):
-                    self._write_client_data_to_file(
-                        client_id, self.train_local[i], round_idx
-                    )
-            self.data_written_to_file = True
-            logger.info(
-                "Successfully wrote training data for all clients during update_dataset"
-            )
-        else:
-            logger.info(
-                "Training data already written to files during initialization, skipping update_dataset write"
-            )
-
     def train(self, round_idx=None):
         logger.info("entered train where weights = params and not grad")
         self.args.round_idx = round_idx
@@ -383,18 +351,7 @@ class FedSGDTrainer(Trainer):
         return weights, self.local_sample_number
 
     @timer_decorator
-    def train_with_data_id(self):
-        # Create FwdLLMStage for timing/metrics logging
-        self.fwd_llm_stage = FwdLLMStage(
-            self._round, self.data_id, self.iteration_per_data_id, self.trainer_id
-        )
-
-        if self.abort_training == True:
-            logger.info(
-                f"Aborting training for trainer id: {self.trainer_id} because it has already sent updates for iteration_per_data_id: {self.iteration_per_data_id}"
-            )
-            return
-
+    def _check_availability(self):
         if self.avl_state != TrainerAvailState.AVL_TRAIN:
             if self.wait_until_next_avl:
                 logger.info(
@@ -409,8 +366,11 @@ class FedSGDTrainer(Trainer):
                 logger.info(
                     f"Trainer id {self.trainer_id} is not available to train. Exiting training."
                 )
-                return
+                return False
+        return True
 
+    @timer_decorator
+    def _perform_training(self):
         logger.info(
             f"starting training for trainer id: {self.trainer_id}, data_id = {self.data_id}"
         )
@@ -430,12 +390,10 @@ class FedSGDTrainer(Trainer):
             [self.train_local_list[0][list_index]], self.device, self.args,
             {"round_id": self._round, "data_id": self.data_id, "iteration": self.iteration_per_data_id}
         )
-
         self.grad_for_var_check = self.trainer.model_trainer.grad_for_var_check
-        logger.debug(f"len of grad_for_var_check = {len(self.grad_for_var_check)}")
 
-        # emulate delays in training (due to compute resource and/or
-        # dataset size and/or network latency)
+    @timer_decorator
+    def _emulate_training_delay(self):
         if self.training_delay_enabled == "True":
             # Eval is 3X faster than training on CPU
             # Eval on NPUs is 10-50X is faster than training on CPUs. We could take 20X if we wanted to consider an all-NPU client cohort for Eval (NPUs don't support training)
@@ -445,6 +403,28 @@ class FedSGDTrainer(Trainer):
                 f"Delayed eval time for trainer "
                 f"{self.trainer_id} by {eval_delay}s. Sleeping for {eval_delay / self.speedup_factor}s."
             )
+
+    @timer_decorator
+    def train_with_data_id(self):
+        # Create FwdLLMStage for timing/metrics logging
+        self.fwd_llm_stage = FwdLLMStage(
+            self._round, self.data_id, self.iteration_per_data_id, self.trainer_id
+        )
+
+        if self.abort_training == True:
+            logger.info(
+                f"Aborting training for trainer id: {self.trainer_id} because it has already sent updates for iteration_per_data_id: {self.iteration_per_data_id}"
+            )
+            return
+
+        if not self._check_availability():
+            return
+        
+        self._perform_training()
+
+        # emulate delays in training (due to compute resource and/or
+        # dataset size and/or network latency)
+        self._emulate_training_delay()
 
         logger.info(
             f"completed training for trainer id: {self.trainer_id}, data_id = {self.data_id}"

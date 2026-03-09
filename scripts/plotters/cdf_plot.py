@@ -14,7 +14,7 @@ TRAINER_PLOTTING_CONFIG = {
             'input_csv': lambda: f'output/{CONSTANTS['file_prefix']}-train_latency.csv',
             'latency_column': 'train_time_sec',
             'output_filename': lambda: f'{CONSTANTS['file_prefix']}-train_latency_cdf.png',
-            'x_label': 'Train Latency (seconds)',
+            'x_label': 'Overall Train Latency (seconds)',
             'y_label': 'CDF',
             'title': lambda: f'Train Latency ({CONSTANTS['file_prefix']})'
         },
@@ -107,6 +107,87 @@ TRAINER_PLOTTING_CONFIG = {
             'x_label': 'Force CUDA Memory Cleanup Latency (seconds)',
             'y_label': 'CDF',
             'title': lambda: f'Force CUDA Memory Cleanup Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'setup_training_state_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-setup_training_state_latency.csv',
+            'latency_column': 'setup_training_state_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-setup_training_state_latency_cdf.png',
+            'x_label': 'Setup Training State Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Setup Training State Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'train_one_batch_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-train_one_batch_latency.csv',
+            'latency_column': 'train_one_batch_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-train_one_batch_latency_cdf.png',
+            'x_label': 'Train One Batch Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Train One Batch Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'training_loop_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-training_loop_latency.csv',
+            'latency_column': 'training_loop_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-training_loop_latency_cdf.png',
+            'x_label': 'Training Loop Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Training Loop Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'finalize_training_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-finalize_training_latency.csv',
+            'latency_column': 'finalize_training_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-finalize_training_latency_cdf.png',
+            'x_label': 'Finalize Training Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Finalize Training Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'trainer_train_model_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-trainer_train_model_latency.csv',
+            'latency_column': 'trainer_train_model_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-trainer_train_model_latency_cdf.png',
+            'x_label': 'Trainer Train Model Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Trainer Train Model Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'trainer_eval_model_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-trainer_eval_model_latency.csv',
+            'latency_column': 'trainer_eval_model_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-trainer_eval_model_latency_cdf.png',
+            'x_label': 'Trainer Eval Model Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Trainer Eval Model Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'check_availability_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-check_availability_latency.csv',
+            'latency_column': 'check_availability_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-check_availability_latency_cdf.png',
+            'x_label': 'Check Availability Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Check Availability Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'perform_training_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-perform_training_latency.csv',
+            'latency_column': 'perform_training_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-perform_training_latency_cdf.png',
+            'x_label': 'Perform Training Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Perform Training Latency ({CONSTANTS["file_prefix"]})'
+        },
+        {
+            'latency_type': 'emulate_training_delay_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-emulate_training_delay_latency.csv',
+            'latency_column': 'emulate_training_delay_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-emulate_training_delay_latency_cdf.png',
+            'x_label': 'Emulate Training Delay Latency (seconds)',
+            'y_label': 'CDF',
+            'title': lambda: f'Emulate Training Delay Latency ({CONSTANTS["file_prefix"]})'
         }
     ],
     'directory_name': 'plots/',
@@ -144,13 +225,13 @@ AGGREGATOR_PLOTTING_CONFIG = {
             'title': lambda: f'Eval Model Latency ({CONSTANTS["file_prefix"]})'
         },
         {
-            'latency_type': 'collect_and_accumulate_grads_latency',
-            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-collect_and_accumulate_grads_latency.csv',
-            'latency_column': 'collect_and_accumulate_grads_latency',
-            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-collect_and_accumulate_grads_latency_cdf.png',
-            'x_label': 'collect_and_accumulate_grads latency (seconds)',
+            'latency_type': 'sync_collect_and_accumulate_grads_latency',
+            'input_csv': lambda: f'output/{CONSTANTS["file_prefix"]}-sync_collect_and_accumulate_grads_latency.csv',
+            'latency_column': 'sync_collect_and_accumulate_grads_latency',
+            'output_filename': lambda: f'{CONSTANTS["file_prefix"]}-sync_collect_and_accumulate_grads_latency_cdf.png',
+            'x_label': 'sync_collect_and_accumulate_grads latency (seconds)',
             'y_label': 'CDF',
-            'title': lambda: f'collect_and_accumulate_grads latency ({CONSTANTS["file_prefix"]})'
+            'title': lambda: f'sync_collect_and_accumulate_grads latency ({CONSTANTS["file_prefix"]})'
         },
         {
             'latency_type': 'aggregate_runtime_latency',

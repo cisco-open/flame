@@ -61,6 +61,7 @@ def functional_get_loss(
         x (torch.Tensor): Input tensor for the PyTorch model.
         t (torch.Tensor): Targets.
         num_classes (int, optional): Maximum number of classes. Defaults to 10.
+        buffers (list): Model buffers.
 
     Returns:
         torch.Tensor: Cross-entropy loss.

@@ -547,6 +547,12 @@ class Trainer(Role, metaclass=ABCMeta):
 
         channel._selector._cleanup_send_ends()
 
+        # Optimization: Perform GC and CUDA memory cleanup after sending gradients.
+        # This moves the "stop the world" synchronous flushes out of the measured 
+        # training/evaluation phases and into the idle time between rounds.
+        gc.collect()
+        torch.cuda.empty_cache()
+
     def _perform_channel_leave(self, tag: str) -> None:
         logger.debug(
             f"In _perform_channel_leave for tag: {tag} "

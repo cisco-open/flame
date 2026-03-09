@@ -119,16 +119,16 @@ LOG_CONFIG = {
             }
         },
         {
-            'name': 'collect_and_accumulate_grads_latency',
+            'name': 'sync_collect_and_accumulate_grads_latency',
             'regex': re.compile(
                 r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of collect_and_accumulate_grads:\s(?P<runtime>[\d\.]+)s\s"
+                r"\[decorator\]\sRuntime of sync_collect_and_accumulate_grads:\s(?P<runtime>[\d\.]+)s\s"
                 r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
             ),
             'type': 'EXTRACT',
             'group_to_columns': {
                 'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('collect_and_accumulate_grads_latency', float),
+                'runtime': ('sync_collect_and_accumulate_grads_latency', float),
                 'round_id': ('round_id', int),
                 'data_id': ('data_id', int),
                 'iter_id': ('iteration_id', int),
@@ -498,6 +498,159 @@ LOG_CONFIG = {
                 'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
             }
         },
+        {
+            'name': 'setup_training_state_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _setup_training_state:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('setup_training_state_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'train_one_batch_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _train_one_batch:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('train_one_batch_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'training_loop_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _training_loop:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('training_loop_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'finalize_training_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _finalize_training:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('finalize_training_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'trainer_train_model_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of train_model:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('trainer_train_model_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'trainer_eval_model_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of eval_model:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('trainer_eval_model_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'check_availability_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _check_availability:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('check_availability_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'perform_training_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _perform_training:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('perform_training_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
+        {
+            'name': 'emulate_training_delay_latency',
+            'regex': re.compile(
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+                r"\[decorator\]\sRuntime of _emulate_training_delay:\s(?P<runtime>[\d\.]+)s\s"
+                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+            ),
+            'type': 'EXTRACT',
+            'group_to_columns': {
+                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+                'runtime': ('emulate_training_delay_latency', float),
+                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+                'trainer_id': ('trainer_id', lambda x: None if x == 'None' else str(x))
+            }
+        },
     ],
     "flame_fwdllm_trainer_old": [
         {
@@ -621,10 +774,10 @@ EXPORT_CONFIG = {
             'log_names': ['eval_model_latency'],
             'columns': ['timestamp', 'eval_model_latency', 'round_id', 'data_id', 'iteration_id']
         },
-        'collect_and_accumulate_grads_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-collect_and_accumulate_grads_latency.csv',
-            'log_names': ['collect_and_accumulate_grads_latency'],
-            'columns': ['timestamp', 'collect_and_accumulate_grads_latency', 'round_id', 'data_id', 'iteration_id']
+        'sync_collect_and_accumulate_grads_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-sync_collect_and_accumulate_grads_latency.csv',
+            'log_names': ['sync_collect_and_accumulate_grads_latency'],
+            'columns': ['timestamp', 'sync_collect_and_accumulate_grads_latency', 'round_id', 'data_id', 'iteration_id']
         },
         'aggregate_runtime_latency': {
             'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_runtime_latency.csv',
@@ -738,6 +891,51 @@ EXPORT_CONFIG = {
             'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-force_cuda_memory_cleanup_latency.csv',
             'log_names': ['force_cuda_memory_cleanup_latency'],
             'columns': ['timestamp', 'trainer_id', 'force_cuda_memory_cleanup_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'setup_training_state_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-setup_training_state_latency.csv',
+            'log_names': ['setup_training_state_latency'],
+            'columns': ['timestamp', 'trainer_id', 'setup_training_state_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'train_one_batch_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-train_one_batch_latency.csv',
+            'log_names': ['train_one_batch_latency'],
+            'columns': ['timestamp', 'trainer_id', 'train_one_batch_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'training_loop_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-training_loop_latency.csv',
+            'log_names': ['training_loop_latency'],
+            'columns': ['timestamp', 'trainer_id', 'training_loop_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'finalize_training_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-finalize_training_latency.csv',
+            'log_names': ['finalize_training_latency'],
+            'columns': ['timestamp', 'trainer_id', 'finalize_training_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'trainer_train_model_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-trainer_train_model_latency.csv',
+            'log_names': ['trainer_train_model_latency'],
+            'columns': ['timestamp', 'trainer_id', 'trainer_train_model_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'trainer_eval_model_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-trainer_eval_model_latency.csv',
+            'log_names': ['trainer_eval_model_latency'],
+            'columns': ['timestamp', 'trainer_id', 'trainer_eval_model_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'check_availability_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-check_availability_latency.csv',
+            'log_names': ['check_availability_latency'],
+            'columns': ['timestamp', 'trainer_id', 'check_availability_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'perform_training_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-perform_training_latency.csv',
+            'log_names': ['perform_training_latency'],
+            'columns': ['timestamp', 'trainer_id', 'perform_training_latency', 'round_id', 'data_id', 'iteration_id']
+        },
+        'emulate_training_delay_latency': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-emulate_training_delay_latency.csv',
+            'log_names': ['emulate_training_delay_latency'],
+            'columns': ['timestamp', 'trainer_id', 'emulate_training_delay_latency', 'round_id', 'data_id', 'iteration_id']
         }
     },
     "flame_fwdllm_trainer_old": {
