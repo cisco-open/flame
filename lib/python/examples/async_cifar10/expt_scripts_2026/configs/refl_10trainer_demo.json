@@ -1,0 +1,109 @@
+{
+  "taskid": "refl_10trainer_demo_baseline",
+  "backend": "mqtt",
+  "brokers": [
+    {
+      "host": "localhost",
+      "sort": "mqtt"
+    },
+    {
+        "host": "localhost:10104",
+        "sort": "p2p"
+    }
+  ],
+  "groupAssociation": {
+    "param-channel": "default"
+  },
+  "channels": [
+    {
+      "description": "Model update is sent from trainer to aggregator and vice-versa",
+      "groupBy": {
+        "type": "tag",
+        "value": [
+          "default"
+        ]
+      },
+      "name": "param-channel",
+      "pair": [
+        "trainer",
+        "aggregator"
+      ],
+      "funcTags": {
+        "aggregator": [
+          "distribute",
+          "aggregate"
+        ],
+        "trainer": [
+          "fetch",
+          "upload"
+        ]
+      }
+    }
+  ],
+  "selector": {
+    "sort": "refl_oort",
+    "kwargs": {
+      "aggr_num": 5,
+      "avail_priority": 1,
+      "blacklist_rounds": 50,
+      "pacer_step": 20,
+      "pacer_delta": 5,
+      "availability_trace_file": "metadata/availability_traces/synthetic_traces.yaml",
+      "trainer_registry_file": "metadata/trainer_registry.yaml",
+      "exploration_factor": 0.9,
+      "exploration_decay": 0.98,
+      "exploration_min": 0.2,
+      "round_threshold": 30,
+      "alpha": 2,
+      "max_selection_retries": 20,
+      "selection_retry_wait": 20.0,
+      "min_trainers_ratio": 1.3,
+      "comment": "REFL Oort selector - availability-aware utility-based selection. Retry: 20 retries, 20s wait, require full desired_selection"
+    }
+  },
+  "optimizer": {
+    "sort": "reflfedavg",
+    "kwargs": {
+      "deadline": 100,
+      "stale_update": 5,
+      "stale_factor": -4,
+      "stale_beta": 0.35,
+      "scale_coff": 10.0,
+      "target_ratio": 0.8,
+      "initial_deadline": 100.0,
+      "comment": "REFL for CIFAR-10: staleness-aware aggregation with FedAvg (no YoGi per REFL paper)"
+    }
+  },
+  "registry": {
+    "sort": "dummy",
+    "uri": ""
+  },
+  "job": {
+    "id": "refl_demo_10trainers",
+    "name": "cifar-10"
+  },
+  "hyperparameters": {
+    "rounds": 200,
+    "epochs": 1,
+    "batchSize": 10,
+    "learningRate": 0.01,
+    "aggGoal": 5,
+    "trackTrainerAvail": {
+      "enabled": "True",
+      "type": "ORACULAR",
+      "trace": "avl_events_syn_0",
+      "comment": "Oracular mode - perfect knowledge of trainer availability"
+    }
+  },
+  "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+  "dependencies": [
+    "numpy >= 1.2.0"
+  ],
+  "baseModel": {
+    "name": "",
+    "version": 2
+  },
+  "maxRunTime": 300,
+  "realm": "default",
+  "role": "aggregator"
+}

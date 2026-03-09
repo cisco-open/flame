@@ -8,6 +8,9 @@
 # log files
 .txt
 
+# Third party
+*/third_party/*
+
 # Binaries for programs and plugins
 *.exe
 *.exe~

@@ -1,0 +1,114 @@
+{
+    "taskid": "refl_n300_syn20_prob0.7",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "selector": {
+        "sort": "refl_oort",
+        "kwargs": {
+            "aggr_num": 10,
+            "avail_priority": 1,
+            "avail_probability": 0.7,
+            "blacklist_rounds": 50,
+            "pacer_step": 20,
+            "pacer_delta": 5,
+            "availability_trace_file": "metadata/availability_traces/synthetic_traces.yaml",
+            "trainer_registry_file": "metadata/trainer_registry.yaml",
+            "exploration_factor": 0.9,
+            "exploration_decay": 0.98,
+            "exploration_min": 0.2,
+            "round_threshold": 30,
+            "alpha": 2,
+            "max_selection_retries": 20,
+            "selection_retry_wait": 20.0,
+            "min_trainers_ratio": 1.3,
+            "comment": "REFL selector with 70% predictor accuracy - syn20 (20% unavailability), alpha=0.1 heterogeneity. Retry config: 20 retries, 20s wait (400s total), require 100% of desired_selection (13 trainers with overcommitment)"
+        }
+    },
+    "optimizer": {
+        "sort": "refl",
+        "kwargs": {
+            "deadline": 100,
+            "stale_update": 5,
+            "stale_factor": -4,
+            "stale_beta": 0.35,
+            "scale_coff": 10.0,
+            "target_ratio": 0.8,
+            "initial_deadline": 100.0,
+            "comment": "REFL for CIFAR-10: staleness-aware aggregation with FedAvg (no YoGi), beta=0.35 per paper"
+        }
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "job": {
+        "id": "refl_n300_syn20_prob0.7",
+        "name": "cifar-10"
+    },
+    "hyperparameters": {
+        "rounds": 20000,
+        "epochs": 1,
+        "batchSize": 10,
+        "learningRate": 0.01,
+        "lrDecayEnabled": true,
+        "lrDecayFactor": 0.98,
+        "lrDecayEpoch": 10,
+        "minLearningRate": 0.0001,
+        "aggGoal": 10,
+        "trackTrainerAvail": {
+            "enabled": "True",
+            "type": "ORACULAR",
+            "trace": "syn_20",
+            "comment": "Oracular mode with 70% prediction accuracy - syn_20 = 20% unavailability"
+        }
+    },
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "baseModel": {
+        "name": "",
+        "version": 2
+    },
+    "maxRunTime": 600,
+    "realm": "default",
+    "role": "aggregator"
+}

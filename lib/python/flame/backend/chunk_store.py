@@ -1,16 +1,16 @@
 # Copyright 2022 Cisco Systems, Inc. and its affiliates
 #
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 """ChunkStore."""
@@ -64,9 +64,9 @@ class ChunkStore(object):
         """
         Return a chunk of data.
 
-        The method returns None as the first part of the triplet
-        if its internal index is pointing beyond the end of data.
-        Otherwise, it returns a chunk every time it is called.
+        The method returns None as the first part of the triplet if its internal
+        index is pointing beyond the end of data. Otherwise, it returns a chunk
+        every time it is called.
         """
         data_len = len(self.data)
 
@@ -92,8 +92,8 @@ class ChunkStore(object):
     def assemble(self, msg: msg_pb2.Data) -> bool:
         """Assemble message.
 
-        This method pushes message payload into a receive buffer.
-        If eom (end of message) is set, bytes in the array are joined.
+        This method pushes message payload into a receive buffer. If eom (end of
+        message) is set, bytes in the array are joined.
         """
         # out of order delivery
         if self.seqno + 1 != msg.seqno:

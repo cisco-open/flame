@@ -39,6 +39,10 @@ dependencies:
 hyperparameters:
   batchSize: 32
   learningRate: 0.04
+  lrDecayEnabled: false  # Disable by default, enable for REFL experiments
+  lrDecayFactor: 0.98  # REFL default
+  lrDecayEpoch: 10  # Apply decay every N rounds (REFL default)
+  minLearningRate: 0.0001  # Minimum LR floor
   rounds: 5
   # trainer_indices_list: injected at runtime from metadata
   epochs: 1

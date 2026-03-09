@@ -19,10 +19,38 @@
 class TrainResult(object):
     """TrainResult class."""
 
-    def __init__(self, weights=None, count=0, version=0, stat_utility=0):
-        """Initialize."""
+    def __init__(
+        self,
+        weights=None,
+        count=0,
+        version=0,
+        stat_utility=0,
+        completion_time=None,
+        round_duration=None,
+        staleness=0,
+        end_id=None,
+    ):
+        """
+        Initialize TrainResult.
+
+        Args:
+            weights: Model weights
+            count: Number of samples used for training
+            version: Version number of the model
+            stat_utility: Statistical utility (e.g., loss value)
+            completion_time: Timestamp when training completed (for REFL)
+            round_duration: Duration of training round (for REFL)
+            staleness: Number of rounds this update is stale (for REFL)
+            end_id: Identifier of the trainer/end that produced this result
+        """
 
         self.weights = weights
         self.count = count
         self.version = version
         self.stat_utility = stat_utility
+
+        # REFL-specific fields
+        self.completion_time = completion_time
+        self.round_duration = round_duration
+        self.staleness = staleness
+        self.end_id = end_id

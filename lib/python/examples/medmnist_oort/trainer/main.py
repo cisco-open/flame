@@ -175,7 +175,7 @@ class PyTorchMedMNistTrainer(Trainer):
             output = self.model(data)
 
             # calculate statistical utility of a trainer while calculating loss
-            loss = self.oort_loss(output, target.squeeze(), epoch, batch_idx)
+            loss = self.oort_loss(output, target, epoch, batch_idx)
 
             loss.backward()
             self.optimizer.step()

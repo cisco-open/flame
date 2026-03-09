@@ -725,7 +725,7 @@ class PyTorchSpeechCommandsTrainer(Trainer):
             elif self.use_oort_loss_fn == "True":
                 # Calculate statistical utility of a trainer while
                 # calculating loss
-                loss = self.oort_loss(output, target.squeeze(), epoch, batch_idx)
+                loss = self.oort_loss(output, target, epoch, batch_idx)
 
             loss.backward()
 

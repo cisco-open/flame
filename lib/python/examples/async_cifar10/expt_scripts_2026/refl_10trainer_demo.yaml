@@ -1,0 +1,68 @@
+# REFL: 10-Trainer Demo Experiment
+# 
+# This experiment demonstrates REFL's three core capabilities:
+# 1. CLIENT SELECTION: REFL Oort selector (availability-aware utility-based selection)
+# 2. AGGREGATION: REFL FedAvg optimizer (staleness-aware weighted averaging)
+# 3. CLIENT TRACKING: Oracular mode (perfect availability knowledge)
+#
+# KEY: This is REFL - uses staleness-aware aggregation and availability-aware selection
+# Trainers still have client_notify disabled (using oracular tracking only)
+#
+# Purpose: Compare with Oracular Oort baseline to show REFL improvements
+# Use case: Quick validation of REFL system with interpretable results
+#
+# Expected runtime: ~10-15 minutes (200 rounds, 10 trainers)
+# Target accuracy: ~70% (CIFAR-10 with alpha=0.1 non-IID split)
+
+experiments:
+  - name: refl_10trainer_demo_syn0
+    description: "REFL: Availability-aware selection + Staleness-aware aggregation + Oracular tracking (10 trainers, syn_0 trace)"
+    
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1  # Highly non-IID data distribution
+      availability:
+        mode: syn_0  # Always available (no straggler failures)
+      battery_threshold: 50
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_10trainer_demo.json
+      selector: refl_oort  # Availability-aware selection
+      tracking_mode: oracular  # Perfect availability knowledge
+      agg_goal: 5  # Aggregate when 5 trainers complete
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+
+  - name: refl_10trainer_demo_syn20
+    description: "REFL with failures: Availability-aware + Staleness-aware + Oracular (10 trainers, syn_20 trace)"
+    
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_20  # 20% unavailability (simulates stragglers)
+      battery_threshold: 50
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_10trainer_demo_syn20.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15

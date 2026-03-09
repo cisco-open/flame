@@ -1,16 +1,16 @@
 # Copyright 2023 Cisco Systems, Inc. and its affiliates
 #
-# Licensed under the Apache License, Version 2.0 (the "License"); you
-# may not use this file except in compliance with the License. You may
-# obtain a copy of the License at
+# Licensed under the Apache License, Version 2.0 (the "License"); you may not
+# use this file except in compliance with the License. You may obtain a copy of
+# the License at
 #
 #      http://www.apache.org/licenses/LICENSE-2.0
 #
 # Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
-# implied. See the License for the specific language governing
-# permissions and limitations under the License.
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+# License for the specific language governing permissions and limitations under
+# the License.
 #
 # SPDX-License-Identifier: Apache-2.0
 """Chunk Manager."""
@@ -63,8 +63,8 @@ class ChunkThread(Thread):
     def run(self):
         """Override run function of Thread.
 
-        The function assembles chunks into a full-size message and
-        passes the message to its designated receive queue.
+        The function assembles chunks into a full-size message and passes the
+        message to its designated receive queue.
         """
 
         async def inner(end_id: str, data: bytes, timestamp: datetime):
@@ -79,16 +79,20 @@ class ChunkThread(Thread):
                 if cleanup_ready_future is not None:
                     await cleanup_ready_future
                 else:
-                    # NOTE: (DG) Attempted fix for set_cleanup_ready
-                    # in mqtt.py. Downgraded log from error to warning
-                    # since it no longer blocks the training from that
-                    # client.
+                    # NOTE: (DG) Attempted fix for set_cleanup_ready in mqtt.py.
+                    # Downgraded log from error to warning since it no longer
+                    # blocks the training from that client.
                     logger.warning(
                         f"set_cleanup_ready_async returned None for end_id: {end_id}"
                     )
                 return
             logger.debug(f"rxq {rxq} found for {end_id}, will await put")
+            # Log queue depth before putting message
+            queue_depth = rxq.qsize() if hasattr(rxq, 'qsize') else 'unknown'
+            logger.info(f"[MSG_ARRIVAL] Putting message into rxq for end_id ...{end_id[-8:]}, queue_depth_before={queue_depth}, msg_size={len(data)} bytes")
             await rxq.put((data, timestamp))
+            queue_depth_after = rxq.qsize() if hasattr(rxq, 'qsize') else 'unknown'
+            logger.info(f"[MSG_ARRIVAL] Message put into rxq for end_id ...{end_id[-8:]}, queue_depth_after={queue_depth_after}")
 
         while not self._done:
             try:
@@ -100,8 +104,8 @@ class ChunkThread(Thread):
 
             timestamp = datetime.now()
 
-            # assemble is done in a chunk thread so that it won't
-            # block asyncio task
+            # assemble is done in a chunk thread so that it won't block asyncio
+            # task
             if self.chunk_store.seqno + 1 != msg.seqno:
                 logger.info(
                     f"about to assemble message for end id: {msg.end_id}. Might get out-of-order"
@@ -121,8 +125,8 @@ class ChunkThread(Thread):
                 logger.debug(f"Status is {status}")
                 if not self.chunk_store.eom:
                     logger.debug(f"self.chunk_store.eom is {self.chunk_store.eom}")
-                    # not an end of message, hence, can't get a
-                    # payload out of chunk store yet
+                    # not an end of message, hence, can't get a payload out of
+                    # chunk store yet
 
                     # set cleanup ready event for a given end id
                     self._backend.set_cleanup_ready(msg.end_id)
@@ -137,8 +141,7 @@ class ChunkThread(Thread):
                     inner(msg.end_id, payload, timestamp), self._backend.loop()
                 )
 
-                # message was completely assembled, reset the chunk
-                # store
+                # message was completely assembled, reset the chunk store
                 self.chunk_store.reset()
 
         logger.debug(f"finished chunk thread for {self._end_id}")

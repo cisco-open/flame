@@ -135,7 +135,8 @@ class PyTorchCifar10Aggregator(TopAggregator):
         test_kwargs = {
             "batch_size": self.batch_size,
             "shuffle": False,
-            "num_workers": 2,
+            "num_workers": 0,  # Changed from 2 to 0 - reduces CPU RAM usage
+            "pin_memory": True,  # Use pinned memory for faster CPU->GPU transfers
         }
 
         self.test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)

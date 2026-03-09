@@ -1257,7 +1257,9 @@ class AsyncOortSelector(AbstractSelector):
         trainer_version_states: dict[str, tuple[int, int, int]] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
-        logger.debug(f"Inside handle send state: aggregator version state {agg_version_state}")
+        logger.debug(
+            f"Inside handle send state: aggregator version state {agg_version_state}"
+        )
         logger.debug(
             f"Inside handle send state: trainer version states {trainer_version_states}"
         )
@@ -1473,7 +1475,9 @@ class AsyncOortSelector(AbstractSelector):
         if agg_version_state is not None and trainer_version_states is not None:
             curr_model_version, curr_data_id, curr_iteration_id = agg_version_state
             logger.info(f"Trainer version states: {trainer_version_states}")
-            logger.info(f"Handle send state: aggregator version state {agg_version_state}")
+            logger.info(
+                f"Handle send state: aggregator version state {agg_version_state}"
+            )
             # Filter out trainers who already received this same triplet
             eligible_filtered_ends = {}
             logger.debug(f"Filtered ends: {filtered_ends.items()}")

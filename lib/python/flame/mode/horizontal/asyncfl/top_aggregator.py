@@ -179,7 +179,7 @@ class TopAggregator(SyncTopAgg):
         This method is overriden from one in synchronous top
         aggregator (..top_aggregator).
         """
-        logger.info("Agg weights inside top_aggregator asyncfl")
+        logger.info(f"[AGG_START] Agg weights inside top_aggregator asyncfl, current model_version={self._round}")
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug("No channel found")
@@ -193,7 +193,7 @@ class TopAggregator(SyncTopAgg):
         msg, metadata = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
         end, _ = metadata
         if not msg:
-            logger.debug(f"No data from {end}; skipping it")
+            logger.debug(f"[AGG_RECV] No data from {end}; skipping it, agg_model_version={self._round}")
             return
 
         # NOTE: Only 2 types of messages are expected here: (i) model
@@ -205,8 +205,9 @@ class TopAggregator(SyncTopAgg):
         # contain stat_utility too but will processed later.
         if MessageType.WEIGHTS in msg:
             logger.info(
-                f"received model updates from {end} "
-                f"with model version {msg[MessageType.MODEL_VERSION]}"
+                f"[AGG_RECV_WEIGHTS] received model updates from {end} "
+                f"with trainer_model_version={msg[MessageType.MODEL_VERSION]}, "
+                f"agg_current_version={self._round}"
             )
 
             # For OORT selector NOTE: (DG) Last selected round should
@@ -242,9 +243,10 @@ class TopAggregator(SyncTopAgg):
         # Case #2: Message after task_to_perform=EVAL
         elif MessageType.STAT_UTILITY in msg:
             logger.info(
-                f"received eval message {msg} in agg_weights from {end}, "
-                f"with stat_utility {msg[MessageType.STAT_UTILITY]} after "
-                f"round {msg[MessageType.MODEL_VERSION]}. Updating end property"
+                f"[AGG_RECV_EVAL] received eval message from {end}, "
+                f"with stat_utility={msg[MessageType.STAT_UTILITY]}, "
+                f"trainer_model_version={msg[MessageType.MODEL_VERSION]}, "
+                f"agg_current_version={self._round}"
             )
 
             channel.set_end_property(
@@ -831,7 +833,35 @@ class TopAggregator(SyncTopAgg):
             return
 
         # send out global model parameters to trainers
-        for end in ends:
+        ends_list = list(ends)
+        for idx, end in enumerate(ends_list):
+            # AsyncFL checks: Similar to FedBuff, prevent sending weights to trainers that:
+            # 1. Already have been sent weights for current version and haven't responded
+            # 2. Are already selected in the current round
+            
+            # Check 1: Has trainer been sent this version but not responded yet?
+            if end in self._track_trainer_version_duration_s.keys():
+                sent_versions = self._track_trainer_version_duration_s[end]["sent_wts_version_ts"]
+                recv_versions = self._track_trainer_version_duration_s[end]["recv_wts_version_ts"]
+                
+                # If current version was sent but not received, skip
+                if self._round in sent_versions and self._round not in recv_versions:
+                    logger.warning(
+                        f"[SELECTION_CHECK] Skipping {end}: already sent model_version={self._round} "
+                        f"but no response received yet. Sent at {sent_versions[self._round]}, "
+                        f"sent_versions={list(sent_versions.keys())}, recv_versions={list(recv_versions.keys())}"
+                    )
+                    continue
+                
+                # Check 2: Are there any unreturned versions (sent but not received)?
+                unreturned_versions = [v for v in sent_versions.keys() if v not in recv_versions.keys()]
+                if unreturned_versions:
+                    logger.warning(
+                        f"[SELECTION_CHECK] Trainer {end} has {len(unreturned_versions)} unreturned versions: "
+                        f"{unreturned_versions}. Current version to send: {self._round}. "
+                        f"This may indicate concurrent selection - proceeding but this could cause issues."
+                    )
+            
             # Send shouldn't be allowed if already sent to a trainer
             # in that same round
             logger.info(
@@ -888,6 +918,12 @@ class TopAggregator(SyncTopAgg):
             self._track_trainer_version_duration_s[end]["sent_wts_version_ts"][
                 self._round
             ] = datetime.now()
+            
+            # Add small delay between sends to distribute MQTT broker load
+            # This prevents overwhelming the broker with many concurrent large messages
+            # and allows the event loop to process keepalive packets
+            if idx < len(ends_list) - 1:  # Don't sleep after last send
+                time.sleep(0.5)
 
     def compose(self) -> None:
         """Compose role with tasklets."""

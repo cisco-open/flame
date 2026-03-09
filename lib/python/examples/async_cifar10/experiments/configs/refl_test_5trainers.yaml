@@ -1,0 +1,28 @@
+# REFL Test Experiment - Small Scale (5 trainers)
+# Tests REFL implementation with minimal resources
+
+experiments:
+  - name: refl_test_5trainers_syn0
+    description: "Test REFL with 5 trainers, always available (syn_0)"
+    
+    trainer:
+      num_trainers: 5
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0  # Always available for quick testing
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_config_test.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 3  # Select 3 out of 5
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 10

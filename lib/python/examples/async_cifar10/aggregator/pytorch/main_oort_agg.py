@@ -21,9 +21,11 @@ https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html.
 """
 
 import ast
+import glob
 import json
 import logging
 import os
+import time
 
 import torch
 import torch.nn as nn
@@ -47,10 +49,14 @@ def initialize_wandb(run_name=None):
         name=run_name,  # Set the run name
         # track hyperparameters and run metadata
         config={
-            # fedbuff "server_learning_rate": 40.9,
-            # "client_learning_rate": 0.000195,
-            # oort
-            "client_learning_rate": 0.04,
+            # REFL/Oort CIFAR-10 uses client LR = 0.01 (from REFL config)
+            # REFL uses LR decay: decay_factor=0.98 every decay_epoch=10 rounds
+            # Oort baselines don't use LR decay
+            "client_learning_rate": 0.01,
+            "lr_decay_enabled": True,  # For REFL experiments
+            "lr_decay_factor": 0.98,
+            "lr_decay_epoch": 10,
+            "min_learning_rate": 0.0001,
             "architecture": "CNN",
             "dataset": "CIFAR-10",
             "fl-type": "sync, oort",
@@ -144,38 +150,82 @@ class PyTorchCifar10Aggregator(TopAggregator):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = Net().to(self.device)
+        
+        # Initialize aggregator start time for oracular availability tracking
+        self.agg_start_time_ts = time.time()
+        logger.info(f"Aggregator initialized at timestamp: {self.agg_start_time_ts}")
 
     def read_trainer_unavailability(self, trace=None) -> dict:
-        print(f"Came to read_trainer_unavailability, trace: {trace}")
+        """
+        Read availability trace from trainer JSON files.
+        
+        For oracular mode, reads the specified trace (e.g., 'syn_20') from each
+        trainer's JSON config and builds a SortedDict for efficient timestamp lookups.
+        
+        Args:
+            trace: Name of the trace field (e.g., 'syn_20' for avl_events_syn_20)
+        
+        Returns:
+            dict: trainer_id -> SortedDict(timestamp -> state)
+        """
+        logger.info(f"Reading trainer unavailability for trace: {trace}")
         trainer_events_dict = {}
-
-        # Set path to read JSON files from (TODO: Remove hardcoding later)
-        files_path = "../../trainer/config_dir0.1_num300_traceFail_6d_3state_oort"
-
-        # Set range of trainer IDs to read from
-        trainer_start_num = 1
-        trainer_end_num = 300
-
-        for i in range(trainer_start_num, trainer_end_num + 1):
-            dirname = os.path.dirname(__file__)
-            file_path = os.path.join(dirname, files_path, f"trainer_{i}.json")
-
-            with open(file_path) as f:
-                trainer_json = json.load(f)
-                curr_trainer_id = trainer_json["taskid"]
-                event_list = ast.literal_eval(trainer_json["hyperparameters"][trace])
-
-                # SortedDict for efficient timestamp lookup
-                state_dict = SortedDict()
-
-                # Process the events
-                for timestamp, event_name in event_list:
-                    state_dict[timestamp] = event_name
-
-                trainer_events_dict[curr_trainer_id] = state_dict
-                print(f"Completed file read for {file_path}")
-
-        print("Completed reading all trainer unavailability from files")
+        
+        # Build the full trace field name (e.g., 'avl_events_syn_20')
+        trace_field = f"avl_events_{trace}"
+        logger.info(f"Looking for trace field: {trace_field}")
+        
+        # Use pre-generated trainer configs from static config directory
+        # This bypasses the timing issue with spawner-generated JSONs
+        config_dir = "/home/dgarg39/flame/lib/python/examples/async_cifar10/trainer/config_dir0.1_num300_traceFail_6d_3state_oort"
+        search_pattern = os.path.join(config_dir, "trainer_*.json")
+        
+        logger.info(f"Searching for trainer JSONs: {search_pattern}")
+        json_files = glob.glob(search_pattern)
+        
+        if not json_files:
+            logger.warning(f"No JSON files found matching pattern: {search_pattern}")
+            logger.warning("Will attempt to work without oracular tracking")
+            return None
+        
+        logger.info(f"Found {len(json_files)} trainer JSON files to process")
+        
+        for file_path in json_files:
+            try:
+                with open(file_path) as f:
+                    trainer_json = json.load(f)
+                    curr_trainer_id = trainer_json["taskid"]
+                    
+                    # Parse the availability events for this trace
+                    if trace_field not in trainer_json["hyperparameters"]:
+                        logger.warning(
+                            f"Trace {trace_field} not found in {file_path}, skipping"
+                        )
+                        continue
+                    
+                    event_list = ast.literal_eval(
+                        trainer_json["hyperparameters"][trace_field]
+                    )
+                    
+                    # Create SortedDict for efficient timestamp lookup
+                    state_dict = SortedDict()
+                    
+                    # Process the events: [(timestamp, state), ...]
+                    for timestamp, event_name in event_list:
+                        state_dict[timestamp] = event_name
+                    
+                    trainer_events_dict[curr_trainer_id] = state_dict
+                    logger.debug(
+                        f"Loaded {len(state_dict)} events for {curr_trainer_id}"
+                    )
+            
+            except Exception as e:
+                logger.error(f"Error reading {file_path}: {e}")
+                continue
+        
+        logger.info(
+            f"Completed reading availability traces for {len(trainer_events_dict)} trainers"
+        )
         return trainer_events_dict
 
     def load_data(self) -> None:
@@ -199,7 +249,8 @@ class PyTorchCifar10Aggregator(TopAggregator):
         test_kwargs = {
             "batch_size": self.batch_size,
             "shuffle": False,
-            "num_workers": 2,
+            "num_workers": 0,  # Changed from 2 to 0 - reduces CPU RAM usage
+            "pin_memory": True,  # Use pinned memory for faster CPU->GPU transfers
         }
 
         self.test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
@@ -249,6 +300,64 @@ class PyTorchCifar10Aggregator(TopAggregator):
 
         # print to save to file
         logger.debug(f"loss list at cifar agg: {self.loss_list}")
+
+    def get_curr_unavail_trainers(self) -> list:
+        """
+        Get list of currently unavailable trainers based on oracular traces.
+        
+        Uses binary search to find the most recent event for each trainer
+        at the current time, and returns trainers that are in UN_AVL state.
+        
+        Returns:
+            list: List of trainer IDs that are currently unavailable
+        """
+        curr_unavail_trainer_list = []
+        
+        if self.trainer_event_dict is None:
+            return curr_unavail_trainer_list
+        
+        # Get aggregator time since start
+        agg_time_since_start_s = time.time() - self.agg_start_time_ts
+        
+        for trainer_id, event_dict in list(self.trainer_event_dict.items()):
+            logger.debug(
+                f"Checking trainer {trainer_id}'s availability at time {agg_time_since_start_s}s"
+            )
+            
+            if not event_dict:
+                continue  # Skip if no events for trainer
+            
+            # Binary search for closest past event
+            # bisect_right returns insertion point, subtract 1 for last event <= time
+            idx = event_dict.bisect_right(agg_time_since_start_s) - 1
+            logger.debug(f"Trainer {trainer_id}: event index = {idx}")
+            
+            if idx >= 0:
+                # Get the most recent event
+                most_recent_event = event_dict.peekitem(idx)
+                most_recent_event_ts = most_recent_event[0]
+                most_recent_event_state = most_recent_event[1]
+                
+                logger.debug(
+                    f"Trainer {trainer_id}: most recent event at {most_recent_event_ts}s -> {most_recent_event_state}"
+                )
+                
+                if most_recent_event_state == "UN_AVL":
+                    logger.debug(f"Marking trainer {trainer_id} as unavailable")
+                    curr_unavail_trainer_list.append(trainer_id)
+                elif most_recent_event_state == "AVL_TRAIN":
+                    logger.debug(f"Trainer {trainer_id} is available")
+                else:
+                    logger.warning(
+                        f"Trainer {trainer_id} has unknown state: {most_recent_event_state}"
+                    )
+        
+        logger.info(
+            f"[ORACULAR] Current unavailable trainers: {len(curr_unavail_trainer_list)} "
+            f"out of {len(self.trainer_event_dict)} total @ time={agg_time_since_start_s:.1f}s"
+        )
+        
+        return curr_unavail_trainer_list
 
     def check_and_sleep(self) -> None:
         """Induce transient unavailability"""

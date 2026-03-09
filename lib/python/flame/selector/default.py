@@ -36,7 +36,7 @@ class DefaultSelector(AbstractSelector):
         self, ends: dict[str, End], channel_props: dict[str, Scalar], **kwargs
     ) -> SelectorReturnType:
         """Return all ends from the given ends.
-        
+
         Additional kwargs (for compatibility, unused in default selector):
         - trainer_unavail_list: List of unavailable trainers
         - task_to_perform: Task type (train/eval)

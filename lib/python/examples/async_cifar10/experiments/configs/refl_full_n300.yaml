@@ -1,0 +1,37 @@
+# REFL Full Scale Experiment (300 trainers)
+# Full-scale REFL with syn_0 availability traces (always available)
+
+experiments:
+  - name: refl_n300_syn0
+    description: "Full REFL with 300 trainers, syn_0 traces (0% unavailability)"
+    
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0  # Synthetic trace - 0% unavailability (always available)
+      speedup_factor: 1.0
+      enable_training_delays: true  # Enable per-trainer training delays from metadata
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_config_n300.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 30  # Select 30 out of 300
+      log_to_wandb: true
+      wandb_run_name: refl_n300_syn0
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 8.0
+      aggregator_warmup_time: 120
+      monitoring:
+        enabled: true
+        check_interval_seconds: 30
+        ram_warning_percent: 80.0
+        ram_critical_percent: 90.0
+        gpu_warning_percent: 80.0
+        gpu_critical_percent: 90.0

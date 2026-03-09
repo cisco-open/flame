@@ -1,0 +1,68 @@
+# Oracular Oort Baseline: 10-Trainer Demo Experiment
+# 
+# This experiment demonstrates the Oracular Oort baseline system:
+# 1. CLIENT SELECTION: Oort selector (utility-based, exploits system heterogeneity)
+# 2. AGGREGATION: FedAvg optimizer (weighted averaging)
+# 3. CLIENT TRACKING: Oracular mode (perfect availability knowledge)
+#
+# KEY: This is NOT FeLiX - trainers do NOT use client_notify (proactive notifications)
+# Trainers have client_notify disabled in trainer_base.yaml
+#
+# Purpose: Establish Oracular Oort baseline before comparing with FeLiX and REFL
+# Use case: Quick validation of orchestration system with interpretable results
+#
+# Expected runtime: ~10-15 minutes (200 rounds, 10 trainers)
+# Target accuracy: ~70% (CIFAR-10 with alpha=0.1 non-IID split)
+
+experiments:
+  - name: oort_oracular_10trainer_demo_syn0
+    description: "Oracular Oort baseline: Oort selection + FedAvg aggregation + Oracular tracking (10 trainers, syn_0 trace)"
+    
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1  # Highly non-IID data distribution
+      availability:
+        mode: syn_0  # Always available (no straggler failures)
+      battery_threshold: 50
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_oracular_10trainer_demo.json
+      selector: oort  # Utility-based selection
+      tracking_mode: oracular  # Perfect availability knowledge
+      agg_goal: 5  # Aggregate when 5 trainers complete
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+
+  - name: oort_oracular_10trainer_demo_syn20
+    description: "Oracular Oort with failures: Oort + FedAvg + Oracular (10 trainers, syn_20 trace)"
+    
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_20  # 20% unavailability (simulates stragglers)
+      battery_threshold: 50
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/oort_oracular_10trainer_demo_syn20.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15

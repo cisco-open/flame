@@ -66,6 +66,10 @@ class OptimizerType(str, Enum):
     FEDDYN = "feddyn"
     SCAFFOLD = "scaffold"
     FEDGFT = "fedgft"
+    REFL = "refl"  # REFL: Resource-Efficient Federated Learning with staleness-aware aggregation
+    REFLFEDAVG = (
+        "reflfedavg"  # Backward compatibility alias for REFL
+    )
 
     DEFAULT = FEDAVG
 
@@ -78,6 +82,7 @@ class SelectorType(str, Enum):
     FEDBUFF = "fedbuff"
     OORT = "oort"
     ASYNC_OORT = "async_oort"
+    REFL_OORT = "refl_oort"  # REFL-enhanced Oort with priority selection and availability tracking
     ASYNC_RANDOM = "async_random"
 
 

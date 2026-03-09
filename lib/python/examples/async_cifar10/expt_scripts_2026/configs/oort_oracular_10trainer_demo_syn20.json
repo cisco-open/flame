@@ -1,0 +1,84 @@
+{
+    "taskid": "oort_oracular_10trainer_demo_syn20",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 32,
+        "learningRate": 0.3,
+        "rounds": 200,
+        "aggGoal": 5,
+        "trackTrainerAvail": {
+            "enabled": "True",
+            "type": "ORACULAR",
+            "trace": "avl_events_syn_20",
+            "comment": "20% unavailability - tests robustness to failures"
+        }
+    },
+    "baseModel": {
+        "name": "",
+        "version": 2
+    },
+    "job": {
+        "id": "oort_oracular_demo_10trainers_syn20",
+        "name": "cifar-10"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "oort",
+        "kwargs": {
+            "aggr_num": 5
+        }
+    },
+    "optimizer": {
+        "sort": "fedavg",
+        "kwargs": {}
+    },
+    "maxRunTime": 300,
+    "realm": "default",
+    "role": "aggregator"
+}

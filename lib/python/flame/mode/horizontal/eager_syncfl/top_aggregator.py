@@ -70,6 +70,15 @@ class TopAggregator(BaseTopAggregator):
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
+                
+                # CRITICAL FIX: Track received ends so selector can clean up in-flight set
+                # This prevents re-selecting trainers that haven't returned their updates yet
+                if hasattr(channel, '_selector') and hasattr(channel._selector, 'ordered_updates_recv_ends'):
+                    channel._selector.ordered_updates_recv_ends.append(end)
+                    logger.info(
+                        f"[REFL_FIX] Added {end[-8:]} to ordered_updates_recv_ends. "
+                        f"Total received this round: {len(channel._selector.ordered_updates_recv_ends)}"
+                    )
 
             logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
@@ -90,3 +99,13 @@ class TopAggregator(BaseTopAggregator):
 
         # update model with global weights
         self._update_model()
+        
+        # CRITICAL FIX: Clean up received ends from selector's in-flight tracking
+        # This must happen AFTER aggregation completes to free up trainers for next round
+        if hasattr(channel, '_selector') and hasattr(channel._selector, '_cleanup_recvd_ends'):
+            logger.info(
+                f"[REFL_FIX] Calling _cleanup_recvd_ends after aggregation. "
+                f"Received {len(self.cache)} updates this round."
+            )
+            channel._selector._cleanup_recvd_ends(channel._ends)
+            logger.info("[REFL_FIX] _cleanup_recvd_ends completed")

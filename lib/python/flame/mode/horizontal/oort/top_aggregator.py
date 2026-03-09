@@ -61,8 +61,39 @@ class TopAggregator(BaseTopAggregator):
         # aggregating when received weights from k ends (k *
         # overcommitment is selected for training with Oort)
 
-        end_ids = channel.ends()
-        aggr_num = min(self.config.selector.kwargs["aggr_num"], len(end_ids))
+        # CRITICAL: Use ALL in-flight trainers (selected_ends), not just newly selected
+        # This allows us to receive stale updates from slow trainers selected in previous rounds
+        # while also receiving fresh updates from trainers selected in this round.
+        # This is essential for SyncFL with overcommitment where we select more than we wait for.
+        if hasattr(channel._selector, 'selected_ends'):
+            end_ids = list(channel._selector.selected_ends)
+            logger.info(
+                f"[AGGREGATE] Round {self._round}: Listening to ALL in-flight trainers. "
+                f"Total in-flight={len(end_ids)} (includes old stragglers + newly selected)"
+            )
+        else:
+            # Fallback to channel.ends() if selected_ends doesn't exist
+            end_ids = channel.ends()
+            logger.warning(
+                f"[AGGREGATE] Round {self._round}: selected_ends not found, using channel.ends(). "
+                f"Stale updates may not be consumed!"
+            )
+        
+        configured_aggr_num = self.config.selector.kwargs.get("aggr_num", 10)
+        aggr_num = min(configured_aggr_num, len(end_ids))
+        
+        # CRITICAL: Log mismatch between configured and actual aggregation count
+        if len(end_ids) < configured_aggr_num:
+            logger.warning(
+                f"[AGGREGATE] Round {self._round}: Aggregating with FEWER trainers than configured! "
+                f"in_flight={len(end_ids)} < configured_aggr_num={configured_aggr_num}. "
+                f"Will wait for {aggr_num} updates."
+            )
+        else:
+            logger.info(
+                f"[AGGREGATE] Round {self._round}: Waiting for {aggr_num} updates "
+                f"from {len(end_ids)} in-flight trainers"
+            )
 
         received_end_count = 0
 
@@ -70,12 +101,64 @@ class TopAggregator(BaseTopAggregator):
             end, _ = metadata
 
             if not msg:
-                logger.debug(f"No data from {end}; skipping it")
+                logger.info(f"[MSG_SKIP] No data from ...{end[-8:]}; skipping it")
                 continue
 
-            if self._round != msg[MessageType.MODEL_VERSION]:
-                logger.debug(f"Stale message from {end}; skipping it")
-                continue
+            # Calculate staleness
+            trainer_round = msg.get(MessageType.MODEL_VERSION, 0)
+            staleness = self._round - trainer_round
+
+            # Check if optimizer supports REFL staleness (has stale_update_max attribute)
+            stale_update_max = getattr(self.optimizer, 'stale_update_max', None)
+            
+            # If staleness > 0, check if we should accept or reject based on REFL config
+            if staleness > 0:
+                    # CRITICAL FIX: Even if we reject stale message, we MUST clean up the trainer
+                    # from in-flight tracking. Otherwise, with overcommitment, trainers that don't
+                    # make the top-K will be permanently stuck in selected_ends.
+                    # This fixes the issue where 177 trainers accumulate over 400 rounds.
+                    should_reject = False
+                    
+                    if stale_update_max is not None:
+                        # REFL mode: check against stale_update_max threshold
+                        if stale_update_max >= 0 and staleness > stale_update_max:
+                            logger.info(
+                                f"[MSG_SKIP] Message from ...{end[-8:]} TOO STALE: "
+                                f"staleness={staleness} > stale_update_max={stale_update_max}; skipping it"
+                            )
+                            should_reject = True
+                        else:
+                            logger.info(
+                                f"[MSG_ACCEPT_STALE] Stale message from ...{end[-8:]}, "
+                                f"staleness={staleness} <= stale_update_max={stale_update_max}, "
+                                f"accepting with weight degradation"
+                            )
+                    else:
+                        # Non-REFL mode (standard Oort): reject all stale messages
+                        logger.info(
+                            f"[MSG_SKIP] Stale message from ...{end[-8:]}, "
+                            f"expected_round={self._round}, got_round={trainer_round}; skipping it"
+                        )
+                        should_reject = True
+                    
+                    # Clean up trainer from in-flight set even if rejecting the update
+                    if should_reject:
+                        # Check if trainer is currently in selected_ends (in-flight)
+                        is_in_flight = end in getattr(channel._selector, 'selected_ends', set())
+                        channel._selector.ordered_updates_recv_ends.append(end)
+                        logger.info(
+                            f"[CLEANUP_STALE] Added stale trainer ...{end[-8:]} to cleanup queue. "
+                            f"trainer_round={trainer_round}, current_round={self._round}, staleness={staleness}, "
+                            f"currently_in_flight={is_in_flight}, cleanup_queue_size={len(channel._selector.ordered_updates_recv_ends)}"
+                        )
+                        # Track specific trainer ID for detailed debugging
+                        test_id = '505f9fc483cf4df68a2409257b5fad7d3c580411'
+                        if end == test_id:
+                            logger.info(
+                                f"[TRACK_411] Round {self._round}: Trainer 411 marked for cleanup. "
+                                f"Was in_flight={is_in_flight}, staleness={staleness}"
+                            )
+                        continue
 
             total = self._handle_weights_msg(msg, metadata, channel, total)
 
@@ -83,11 +166,20 @@ class TopAggregator(BaseTopAggregator):
                 self._updates_recevied[end] = 1
             else:
                 self._updates_recevied[end] += 1
+            
+            # CRITICAL: Notify selector that this trainer has returned its update
+            # This prevents the selector from re-selecting this trainer in the next round
+            # before it has returned its update (key for SyncFL with overcommitment)
+            channel._selector.ordered_updates_recv_ends.append(end)
+            
+            logger.info(f"[MSG_ACCEPTED] Message from ...{end[-8:]} accepted, received_end_count={received_end_count + 1}/{aggr_num}")
 
             # remove end_id if it sends a valid message with correct
             # round info break the for loop if k valid messages arrive
             received_end_count += 1
-            end_ids.remove(end)
+            # Only remove if end is in end_ids (stale messages from previous rounds won't be)
+            if end in end_ids:
+                end_ids.remove(end)
             if received_end_count == aggr_num:
                 break
 
@@ -98,20 +190,78 @@ class TopAggregator(BaseTopAggregator):
                 end, _ = metadata
 
                 if not msg:
-                    logger.debug(f"No data from {end}; skipping it")
+                    logger.info(f"[MSG_SKIP] (loop2) No data from ...{end[-8:]}; skipping it")
                     continue
 
-                if self._round != msg[MessageType.MODEL_VERSION]:
-                    logger.info(f"Stale message from {end}; skipping it")
-                    continue
+                # Calculate staleness
+                trainer_round = msg.get(MessageType.MODEL_VERSION, 0)
+                staleness = self._round - trainer_round
+
+                # Check if optimizer supports REFL staleness (has stale_update_max attribute)
+                stale_update_max = getattr(self.optimizer, 'stale_update_max', None)
+                
+                # If staleness > 0, check if we should accept or reject based on REFL config
+                if staleness > 0:
+                    # CRITICAL FIX: Even if we reject stale message, we MUST clean up the trainer
+                    # from in-flight tracking. Otherwise, with overcommitment, trainers that don't
+                    # make the top-K will be permanently stuck in selected_ends.
+                    should_reject = False
+                    
+                    if stale_update_max is not None:
+                        # REFL mode: check against stale_update_max threshold
+                        if stale_update_max >= 0 and staleness > stale_update_max:
+                            logger.info(
+                                f"[MSG_SKIP] (loop2) Message from ...{end[-8:]} TOO STALE: "
+                                f"staleness={staleness} > stale_update_max={stale_update_max}; skipping it"
+                            )
+                            should_reject = True
+                        else:
+                            logger.info(
+                                f"[MSG_ACCEPT_STALE] (loop2) Stale message from ...{end[-8:]}, "
+                                f"staleness={staleness} <= stale_update_max={stale_update_max}, "
+                                f"accepting with weight degradation"
+                            )
+                    else:
+                        # Non-REFL mode (standard Oort): reject all stale messages
+                        logger.info(
+                            f"[MSG_SKIP] (loop2) Stale message from ...{end[-8:]}, "
+                            f"expected_round={self._round}, got_round={trainer_round}; skipping it"
+                        )
+                        should_reject = True
+                    
+                    # Clean up trainer from in-flight set even if rejecting the update
+                    if should_reject:
+                        # Check if trainer is currently in selected_ends (in-flight)
+                        is_in_flight = end in getattr(channel._selector, 'selected_ends', set())
+                        channel._selector.ordered_updates_recv_ends.append(end)
+                        logger.info(
+                            f"[CLEANUP_STALE] (loop2) Added stale trainer ...{end[-8:]} to cleanup queue. "
+                            f"trainer_round={trainer_round}, current_round={self._round}, staleness={staleness}, "
+                            f"currently_in_flight={is_in_flight}, cleanup_queue_size={len(channel._selector.ordered_updates_recv_ends)}"
+                        )
+                        # Track specific trainer ID for detailed debugging
+                        test_id = '505f9fc483cf4df68a2409257b5fad7d3c580411'
+                        if end == test_id:
+                            logger.info(
+                                f"[TRACK_411] Round {self._round}: (loop2) Trainer 411 marked for cleanup. "
+                                f"Was in_flight={is_in_flight}, staleness={staleness}"
+                            )
+                        continue
 
                 total = self._handle_weights_msg(msg, metadata, channel, total)
+                
+                # CRITICAL: Notify selector that this trainer has returned its update
+                channel._selector.ordered_updates_recv_ends.append(end)
+                
+                logger.info(f"[MSG_ACCEPTED] (loop2) Message from ...{end[-8:]} accepted, received_end_count={received_end_count + 1}/{aggr_num}")
 
                 # remove end_id if it sends a valid message with
                 # correct round info break the for loop if k valid
                 # messages arrive
                 received_end_count += 1
-                end_ids.remove(end)
+                # Only remove if end is in end_ids (stale messages from previous rounds won't be)
+                if end in end_ids:
+                    end_ids.remove(end)
                 if received_end_count == aggr_num:
                     break
 
@@ -137,6 +287,44 @@ class TopAggregator(BaseTopAggregator):
         # update model with global weights
         self._update_model()
 
+        # CRITICAL: Clean up trainers who returned updates, freeing them from in-flight set
+        # This must happen immediately after aggregation to prevent race condition where
+        # trainers finishing after agg_goal but before next select() remain incorrectly
+        # marked as busy, allowing them to be sent new work while still processing old work
+        num_to_cleanup = len(channel._selector.ordered_updates_recv_ends)
+        cleanup_list = channel._selector.ordered_updates_recv_ends.copy()
+        in_flight_before = len(getattr(channel._selector, 'selected_ends', set()))
+        
+        # Check if specific test trainer is in cleanup list
+        test_id = '505f9fc483cf4df68a2409257b5fad7d3c580411'
+        test_in_cleanup = test_id in cleanup_list
+        test_in_flight_before = test_id in getattr(channel._selector, 'selected_ends', set())
+        
+        logger.info(
+            f"[CLEANUP_INVOKE] Round {self._round}: About to cleanup {num_to_cleanup} trainers. "
+            f"in_flight_before={in_flight_before}"
+        )
+        if test_in_cleanup or test_in_flight_before:
+            logger.info(
+                f"[TRACK_411] Round {self._round}: Before cleanup - in_cleanup_list={test_in_cleanup}, "
+                f"in_flight={test_in_flight_before}"
+            )
+        
+        channel.cleanup_recvd_ends()
+        
+        in_flight_after = len(getattr(channel._selector, 'selected_ends', set()))
+        test_in_flight_after = test_id in getattr(channel._selector, 'selected_ends', set())
+        
+        logger.info(
+            f"[CLEANUP_COMPLETE] Round {self._round}: Freed {num_to_cleanup} trainers. "
+            f"in_flight: {in_flight_before} -> {in_flight_after} (delta={in_flight_before - in_flight_after})"
+        )
+        if test_in_cleanup or test_in_flight_before:
+            logger.info(
+                f"[TRACK_411] Round {self._round}: After cleanup - in_flight={test_in_flight_after}, "
+                f"successfully_freed={test_in_flight_before and not test_in_flight_after}"
+            )
+
         logger.info(
             f"====== aggregation finished for round {self._round}, "
             f"self._updates_recevied: "
@@ -161,6 +349,32 @@ class TopAggregator(BaseTopAggregator):
 
         # this call waits for at least one peer to join this channel
         channel.await_join()
+        
+        # Get desired number of trainers
+        aggr_num = self.config.selector.kwargs.get("aggr_num", 10)
+        overcommitment = getattr(channel._selector, 'overcommitment', 1.3)
+        desired_selection = int(aggr_num * overcommitment)
+        
+        # Configuration for wait-retry mechanism
+        max_retries = self.config.selector.kwargs.get('max_selection_retries', 5)
+        retry_wait_seconds = self.config.selector.kwargs.get('selection_retry_wait', 2.0)
+        min_trainers_ratio = self.config.selector.kwargs.get('min_trainers_ratio', 0.5)  # At least 50% of aggr_num
+        
+        # CRITICAL: If min_trainers_ratio >= overcommitment, wait for FULL desired_selection
+        # This prevents sending weights to partial sets that may never respond
+        if min_trainers_ratio >= overcommitment:
+            min_required_trainers = desired_selection  # Wait for all 13 trainers
+            logger.info(
+                f"[DISTRIBUTE] Round {self._round}: Strict mode - will wait for FULL desired_selection={desired_selection} trainers"
+            )
+        else:
+            min_required_trainers = max(1, int(aggr_num * min_trainers_ratio))
+        
+        logger.info(
+            f"[DISTRIBUTE] Round {self._round}: Desired selection={desired_selection} "
+            f"(aggr_num={aggr_num}, overcommit={overcommitment}), "
+            f"min_required={min_required_trainers}"
+        )
 
         # before distributing weights, update it from global model
         self._update_weights()
@@ -180,9 +394,97 @@ class TopAggregator(BaseTopAggregator):
         logger.debug(
             f"Sending weights to trainers with task_to_perform = {task_to_perform}"
         )
+        
+        # CRITICAL FIX: Implement wait-retry mechanism for trainer selection
+        # If insufficient trainers are available, wait and retry instead of proceeding
+        selected_ends = None
+        retry_count = 0
+        
+        while retry_count <= max_retries:
+            # Get currently available trainer ends
+            all_ends = list(channel._ends.keys())
+            
+            # Get unavailable trainers
+            if self.trainer_event_dict is not None:
+                unavail_trainers = set(self.get_curr_unavail_trainers())
+            else:
+                unavail_trainers = set()
+            
+            # Get in-flight trainers (already selected, waiting for updates)
+            in_flight_trainers = getattr(channel._selector, 'selected_ends', set())
+            if not isinstance(in_flight_trainers, set):
+                in_flight_trainers = set(in_flight_trainers) if in_flight_trainers else set()
+            
+            # Calculate eligible trainers
+            eligible_trainers = [
+                end for end in all_ends
+                if end not in unavail_trainers and end not in in_flight_trainers
+            ]
+            
+            num_eligible = len(eligible_trainers)
+            
+            logger.info(
+                f"[DISTRIBUTE] Round {self._round}, Attempt {retry_count + 1}/{max_retries + 1}: "
+                f"total_ends={len(all_ends)}, unavailable={len(unavail_trainers)}, "
+                f"in_flight={len(in_flight_trainers)}, eligible={num_eligible}, "
+                f"required={min_required_trainers}"
+            )
+            
+            # Check if we have enough eligible trainers
+            if num_eligible >= min_required_trainers:
+                logger.info(
+                    f"[DISTRIBUTE] Round {self._round}: Sufficient trainers available "
+                    f"({num_eligible} >= {min_required_trainers}), proceeding with selection. "
+                    f"Will select min({desired_selection}, {num_eligible}) trainers."
+                )
+                break
+            else:
+                # Insufficient trainers - log warning
+                logger.warning(
+                    f"[DISTRIBUTE] Round {self._round}, Attempt {retry_count + 1}: "
+                    f"INSUFFICIENT trainers! eligible={num_eligible} < required={min_required_trainers}. "
+                    f"Breakdown: total={len(all_ends)}, unavail={len(unavail_trainers)}, "
+                    f"in_flight={len(in_flight_trainers)}"
+                )
+                
+                if retry_count < max_retries:
+                    logger.warning(
+                        f"[DISTRIBUTE] Waiting {retry_wait_seconds}s before retry {retry_count + 2}/{max_retries + 1}..."
+                    )
+                    time.sleep(retry_wait_seconds)
+                    retry_count += 1
+                    # Update unavailability list before retry
+                    if self.trainer_event_dict is not None:
+                        curr_unavail_trainer_list = self.get_curr_unavail_trainers()
+                        channel.set_curr_unavailable_trainers(
+                            trainer_unavail_list=curr_unavail_trainer_list
+                        )
+                else:
+                    # Max retries exceeded - proceed with warning
+                    logger.error(
+                        f"[DISTRIBUTE] Round {self._round}: Max retries ({max_retries}) exceeded. "
+                        f"Proceeding with ONLY {num_eligible} trainers (required: {min_required_trainers}, "
+                        f"desired: {desired_selection}). THIS MAY IMPACT TRAINING QUALITY!"
+                    )
+                    break
+        
+        # Now perform the actual selection
+        selected_ends = channel.ends()
+        
+        if not selected_ends or len(selected_ends) == 0:
+            logger.error(
+                f"[DISTRIBUTE] Round {self._round}: No trainers selected! "
+                f"Cannot proceed with weight distribution."
+            )
+            return
+        
+        logger.info(
+            f"[DISTRIBUTE] Round {self._round}: Selected {len(selected_ends)} trainers. "
+            f"Will aggregate when {min(aggr_num, len(selected_ends))} updates received."
+        )
 
         # send out global model parameters to trainers
-        for end in channel.ends():
+        for end in selected_ends:
             logger.info(
                 f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
             )
@@ -212,6 +514,7 @@ class TopAggregator(BaseTopAggregator):
         end = metadata[0]
         timestamp = metadata[1]
 
+        logger.info(f"[MSG_PROCESSING] Processing message from end ...{end[-8:]}, round={self._round}, msg_version={msg.get(MessageType.MODEL_VERSION, 'N/A')}")
         logger.debug(f"received data from {end}")
 
         # calculate round duration for this end, if the round number
@@ -261,19 +564,45 @@ class TopAggregator(BaseTopAggregator):
 
         if weights is not None and count > 0:
             total += count
-            tres = TrainResult(weights, count, trainer_model_version)
-            # save training result from trainer in a disk cache
+            
+            # Calculate staleness BEFORE creating TrainResult
+            update_staleness_val = self._round - trainer_model_version
+            
+            # Get round duration if available
+            round_duration_obj = channel.get_end_property(end, PROP_ROUND_DURATION)
+            round_duration_seconds = None
+            if round_duration_obj:
+                round_duration_seconds = round_duration_obj.total_seconds()
+            
+            # Create TrainResult with all REFL-required fields
+            tres = TrainResult(
+                weights=weights,
+                count=count,
+                version=trainer_model_version,
+                stat_utility=stat_utility,
+                staleness=update_staleness_val,
+                round_duration=round_duration_seconds,
+                end_id=end
+            )
+            
+            # Save training result from trainer in a disk cache
             self.cache[end] = tres
-
-            update_staleness_val = self._round - tres.version
+            
+            logger.debug(
+                f"Created TrainResult for {end}: staleness={update_staleness_val}, "
+                f"stat_utility={stat_utility}, round_duration={round_duration_seconds}"
+            )
 
             # Populate round statistics vars
             self._round_update_values["staleness"].append(update_staleness_val)
             self._round_update_values["stat_utility"].append(stat_utility)
-            self._round_update_values["trainer_speed"].append(
-                channel.get_end_property(
-                    end_id=end, key=PROP_ROUND_DURATION
-                ).total_seconds()
-            )
+            # Only append trainer_speed if round_duration is available
+            if round_duration_seconds is not None:
+                self._round_update_values["trainer_speed"].append(round_duration_seconds)
+            else:
+                logger.debug(
+                    f"Skipping trainer_speed for {end} - round_duration is None "
+                    f"(stale update: msg_version={trainer_model_version}, current_round={self._round})"
+                )
 
         return total

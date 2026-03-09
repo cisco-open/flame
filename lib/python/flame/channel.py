@@ -186,7 +186,7 @@ class Channel(object):
         trainer_version_states: dict[str, tuple[int, int, int]] = None,
     ) -> list[str]:
         """Return a list of end ids.
-        
+
         Args:
             agg_version_state: Aggregator version as (model_version, data_id, iteration_id)
             trainer_version_states: Map of trainer_id to their version triplets
@@ -295,8 +295,22 @@ class Channel(object):
         # can extend beyond just "recvd" state. We might also want to
         # send a subset of ends here not the entire self._ends?
 
+        # Log cleanup invocation with detailed state
+        num_pending = len(getattr(self._selector, 'ordered_updates_recv_ends', []))
+        in_flight_before = len(getattr(self._selector, 'selected_ends', set()))
+        
+        logger.info(
+            f"[CHANNEL_CLEANUP] Invoking selector cleanup: "
+            f"pending_updates={num_pending}, in_flight_before={in_flight_before}"
+        )
+        
         self._selector._cleanup_recvd_ends(self._ends)
-        logger.debug("Cleaned up ends successfully")
+        
+        in_flight_after = len(getattr(self._selector, 'selected_ends', set()))
+        logger.info(
+            f"[CHANNEL_CLEANUP] Cleanup completed: "
+            f"in_flight_after={in_flight_after}, freed={in_flight_before - in_flight_after}"
+        )
 
     def cleanup_recvd_end(self, end):
         """Performs cleanup of end states in the selector. Usually
@@ -477,7 +491,8 @@ class Channel(object):
 
             if msg is not None:
                 if MessageType.MODEL_VERSION in msg:
-                    logger.info(f"msg of type MODEL_VERSION recvd for end {end_id}")
+                    model_version = msg[MessageType.MODEL_VERSION]
+                    logger.info(f"msg of type MODEL_VERSION recvd for end {end_id}, model_version={model_version}")
                 elif MessageType.HEARTBEAT in msg:
                     logger.info(f"msg of type HEARTBEAT recvd for end {end_id}")
                     # TODO: (DG) Check if it helps here- can reset
@@ -509,45 +524,62 @@ class Channel(object):
         async def _get_inner(end_id) -> tuple[str, Any]:
             if not self.has(end_id):
                 # can't receive message from end_id
-                logger.info(f"Cannot receive message from end_id {end_id}")
+                logger.warning(f"[RECV_FIFO] Cannot receive message from end_id {end_id} - end not in channel")
                 yield end_id, None
 
             payload = None
             try:
                 logger.info(
-                    f"channel {self._name} awaiting get() on end_id {end_id} in self.ends"
+                    f"[RECV_FIFO] channel {self._name} awaiting get() on end_id {end_id} in self.ends"
                 )
                 payload = await self._ends[end_id].get()
                 if payload:
                     # ignore timestamp for measuring bytes received
                     self.mc.accumulate("bytes", "recv", len(payload[0]))
-            except KeyError:
+                    logger.info(f"[RECV_FIFO] Received payload from end_id {end_id}, size={len(payload[0])} bytes")
+                else:
+                    logger.warning(f"[RECV_FIFO] Got empty/None payload from end_id {end_id}")
+            except KeyError as e:
+                logger.error(f"[RECV_FIFO] KeyError when getting from end_id {end_id}: {e}")
                 yield end_id, None
 
-            logger.info(f"_get_inner() invoked for end_id: {end_id}")
+            logger.info(f"[RECV_FIFO] _get_inner() yielding for end_id: {end_id}, payload={'present' if payload else 'None'}")
             yield end_id, payload
 
         runs = []
+        skipped_ends = []
         for end_id in end_ids:
-            if not self.has(end_id) or end_id in self._active_recv_fifo_tasks:
+            if not self.has(end_id):
+                logger.warning(f"[RECV_FIFO] Skipping end_id {end_id} - not in channel")
+                skipped_ends.append(f"{end_id}:not_in_channel")
                 continue
-            else:
-                runs.append(_get_inner(end_id))
-                self._active_recv_fifo_tasks.add(end_id)
-
-                logger.info(f"active task added for {end_id}, runs length: {len(runs)}")
-                logger.info(
-                    f"self._active_recv_fifo_tasks: {str(self._active_recv_fifo_tasks)}"
-                )
+            if end_id in self._active_recv_fifo_tasks:
+                # Check queue depth for this end to see if messages are piling up
+                queue_depth = self._ends[end_id].qsize() if hasattr(self._ends[end_id], 'qsize') else 'unknown'
+                logger.warning(f"[RECV_FIFO] Skipping end_id {end_id} - already has active task, queue_depth={queue_depth}")
+                skipped_ends.append(f"{end_id}:already_active:qd={queue_depth}")
+                continue
+            
+            runs.append(_get_inner(end_id))
+            self._active_recv_fifo_tasks.add(end_id)
+            logger.info(f"[RECV_FIFO] active task added for {end_id}, total runs: {len(runs)}")
+        
+        if skipped_ends:
+            logger.warning(f"[RECV_FIFO] Skipped {len(skipped_ends)} ends: {skipped_ends[:10]}...")  # Show first 10
+        logger.info(f"[RECV_FIFO] Starting merge stream with {len(runs)} tasks, active_tasks={len(self._active_recv_fifo_tasks)}")
 
         merged = stream.merge(*runs)
         async with merged.stream() as streamer:
+            msg_count = 0
             async for result in streamer:
                 (end_id, _) = result
+                msg_count += 1
 
                 await self._rx_queue.put(result)
                 self._active_recv_fifo_tasks.remove(end_id)
-                logger.info(f"active task removed for {end_id}")
+                logger.info(f"[RECV_FIFO] active task removed for {end_id}, delivered message {msg_count}/{len(runs)}")
+        
+        logger.info(f"[RECV_FIFO] Merge stream completed, delivered {msg_count} messages from {len(runs)} tasks")
 
     def peek(self, end_id):
         """Peek rxq of end_id and return data if queue is not
@@ -741,16 +773,22 @@ class Channel(object):
 
     async def remove(self, end_id):
         """Remove an end from the channel."""
-        logger.info(f"Removing end {end_id} from channel {self._name}")
+        logger.warning(f"[CHANNEL REMOVE] Removing end {end_id} from channel {self._name}")
         if not self.has(end_id):
             logger.info(
                 f"Noting to remove since end {end_id} not in channel {self._name}"
             )
             return
 
+        # Check if there are pending messages
         rxq = self._ends[end_id].get_rxq()
         txq = self._ends[end_id].get_txq()
+        rxq_size = rxq.qsize() if rxq else 0
+        txq_size = txq.qsize() if txq else 0
+        logger.warning(f"[CHANNEL REMOVE] End {end_id}: rxq has {rxq_size} pending messages, txq has {txq_size}")
+        
         del self._ends[end_id]
+        logger.warning(f"[CHANNEL REMOVE] Deleted end {end_id} from self._ends")
 
         # put bogus data to unblock a get() call
         await rxq.put(EMPTY_PAYLOAD)

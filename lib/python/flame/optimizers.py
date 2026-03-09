@@ -26,6 +26,7 @@ from flame.optimizer.fedgft import FedGFT
 from flame.optimizer.fedprox import FedProx
 from flame.optimizer.fedyogi import FedYogi
 from flame.optimizer.scaffold import Scaffold
+from flame.optimizer.reflfedavg import REFL, REFLFedAvg
 
 
 class OptimizerProvider(ObjectFactory):
@@ -46,3 +47,5 @@ optimizer_provider.register(OptimizerType.FEDPROX, FedProx)
 optimizer_provider.register(OptimizerType.FEDDYN, FedDyn)
 optimizer_provider.register(OptimizerType.SCAFFOLD, Scaffold)
 optimizer_provider.register(OptimizerType.FEDGFT, FedGFT)
+optimizer_provider.register("refl", REFL)  # Preferred name
+optimizer_provider.register("reflfedavg", REFLFedAvg)  # Backward compatibility

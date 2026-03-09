@@ -1,0 +1,114 @@
+# REFL Comparison: 300 trainers, syn50 availability, alpha=0.1 heterogeneity
+# 
+# Purpose: Compare REFL performance with different availability prediction accuracies
+# under 50% unavailability and non-IID data distribution (alpha=0.1)
+#
+# REFL Gradient Policy for CIFAR-10:
+# - Per original REFL paper: "we use yogi for all benchmarks except for CIFAR10"
+# - CIFAR-10 uses FedAvg gradient policy (default, no post-processing)
+# - No gradient_policy parameter = FedAvg (correct for CIFAR-10)
+#
+# Critical CIFAR-10 Hyperparameters (matching third_party/REFL):
+# - Client learning rate: 0.01 (NOT 0.04 - that's too high and causes loss plateau!)
+# - Batch size: 10 (NOT 32 - larger batches slow convergence)
+# - stale_beta: 0.35 (REFL paper default, balances staleness vs utility)
+# - stale_factor: -4 (REFL method for staleness-aware weighting)
+#
+# Experiment Setup:
+# - 300 trainers, CIFAR-10, alpha=0.1 (non-IID), syn_50 (50% unavailability)
+# - aggGoal=10, batchSize=10 (REFL default for CIFAR-10)
+# - Client LR=0.01 (REFL default for CIFAR-10)
+# - REFL optimizer with FedAvg gradient policy (no YoGi for CIFAR-10, per REFL paper)
+# - stale_beta=0.35 (REFL paper default), stale_factor=-4 (REFL method)
+# - Sequential execution: each experiment runs to completion before next starts
+#
+# Experiments:
+# 1. REFL with 90% predictor accuracy (REFL paper setting)
+# 2. REFL with 70% predictor accuracy (poor predictor, lower bound)
+#
+# Expected Results:
+# - prob=0.9: Good REFL performance under high unavailability
+# - prob=0.7: Tests robustness to poor predictions with 50% unavailability
+
+experiments:
+  - name: refl_n300_syn50_prob0.9
+    description: "REFL with 90% predictor accuracy, syn50 availability, alpha=0.1 heterogeneity"
+    
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_50  # 50% unavailability
+      speedup_factor: 1.0
+      enable_training_delays: true
+      hyperparameters:
+        batchSize: 10  # Trainer batch size (matching REFL default for CIFAR-10)
+        learningRate: 0.01  # Client learning rate (REFL CIFAR-10 default)
+        lrDecayEnabled: true  # Enable LR decay for REFL
+        lrDecayFactor: 0.98  # Decay factor (REFL default)
+        lrDecayEpoch: 10  # Apply decay every N rounds (REFL default)
+        minLearningRate: 0.0001  # Minimum LR floor
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_n300_syn50_prob0.9.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 10
+      log_to_wandb: true
+      wandb_run_name: refl_n300_syn50_prob0.9_alpha0.1
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 8.0
+      aggregator_warmup_time: 120
+      monitoring:
+        enabled: true
+        check_interval_seconds: 30
+        ram_warning_percent: 80.0
+        ram_critical_percent: 90.0
+        gpu_warning_percent: 80.0
+        gpu_critical_percent: 90.0
+
+  - name: refl_n300_syn50_prob0.7
+    description: "REFL with 70% predictor accuracy, syn50 availability, alpha=0.1 heterogeneity"
+    
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_50  # 50% unavailability
+      speedup_factor: 1.0
+      enable_training_delays: true
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        lrDecayEnabled: true
+        lrDecayFactor: 0.98
+        lrDecayEpoch: 10
+        minLearningRate: 0.0001
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_n300_syn50_prob0.7.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 10
+      log_to_wandb: true
+      wandb_run_name: refl_n300_syn50_prob0.7_alpha0.1
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 8.0
+      aggregator_warmup_time: 120
+      monitoring:
+        enabled: true
+        check_interval_seconds: 30
+        ram_warning_percent: 80.0
+        ram_critical_percent: 90.0
+        gpu_warning_percent: 80.0
+        gpu_critical_percent: 90.0

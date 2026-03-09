@@ -1,0 +1,55 @@
+execution_timestamp: '2026-02-06T16:13:41.457405'
+git_info:
+  commit: 51f901f6ff1c8115303b9fc9803f919b74d204f3
+  branch: dg/updated_refl_expts
+  dirty: true
+metadata_refs:
+  trainer_registry: metadata/trainer_registry.yaml
+  dataset_split_key: cifar10_alpha0.1_n10
+  availability_trace_key: syn_0
+aggregator:
+  config_file: expt_scripts_2026/configs/oort_oracular_10trainer_demo.json
+  selector: oort
+  tracking_mode: oracular
+  agg_goal: 5
+experiment:
+  name: oort_oracular_10trainer_demo_syn0
+  description: 'Oracular Oort baseline: Oort selection + FedAvg aggregation + Oracular
+    tracking (10 trainers, syn_0 trace)'
+  trainer:
+    num_trainers: 10
+    start_id: 1
+    trainer_id_range:
+    - 1
+    - 10
+    dataset:
+      name: cifar10
+      alpha: 0.1
+      split_key: cifar10_alpha0.1_n10
+    availability:
+      mode: syn_0
+      trace_key: syn_0
+    battery_threshold: 50
+    speedup_factor: 1.0
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 15
+spawn_commands:
+  aggregator:
+  - /coc/scratch/dgarg/miniconda3/envs/dg_flame/bin/python3
+  - /home/dgarg39/flame/lib/python/examples/async_cifar10/aggregator/pytorch/main_oort_agg.py
+  - /home/dgarg39/flame/lib/python/examples/async_cifar10/expt_scripts_2026/configs/oort_oracular_10trainer_demo.json
+  trainers:
+  - python3
+  - launch/spawner.py
+  - --alpha
+  - '0.1'
+  - --availability
+  - syn_0
+  - --num-trainers
+  - '10'
+  - --start-id
+  - '1'
+  - --num-gpus
+  - '8'

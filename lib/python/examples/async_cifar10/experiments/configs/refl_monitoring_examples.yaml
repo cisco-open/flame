@@ -1,0 +1,109 @@
+# Example: REFL with Resource Monitoring
+# 
+# This configuration shows how to enable and configure resource monitoring
+# to diagnose OOM kills and resource exhaustion issues
+
+experiments:
+  - name: refl_n300_syn0_monitored
+    description: "REFL with 300 trainers and resource monitoring"
+    
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0  # 0% unavailability (always available)
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_n300_syn0.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 30
+      log_to_wandb: true
+      wandb_run_name: refl_n300_syn0_monitored
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 4.0
+      aggregator_warmup_time: 120
+      
+      # Resource Monitoring Configuration
+      monitoring:
+        enabled: true
+        check_interval_seconds: 30  # Check every 30 seconds
+        
+        # RAM thresholds (percentage)
+        ram_warning_percent: 80.0   # Warn when RAM exceeds 80%
+        ram_critical_percent: 90.0  # Critical alert when RAM exceeds 90%
+        
+        # GPU memory thresholds (percentage)
+        gpu_warning_percent: 80.0   # Warn when GPU memory exceeds 80%
+        gpu_critical_percent: 90.0  # Critical alert when GPU memory exceeds 90%
+
+  # Example with more aggressive monitoring for high-memory nodes
+  - name: refl_n300_syn0_aggressive_monitoring
+    description: "REFL with aggressive resource monitoring for high-capacity systems"
+    
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_n300_syn0.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 30
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 4.0
+      aggregator_warmup_time: 120
+      
+      # More aggressive monitoring for systems with lots of RAM
+      monitoring:
+        enabled: true
+        check_interval_seconds: 15  # Check more frequently
+        ram_warning_percent: 85.0   # Higher threshold before warning
+        ram_critical_percent: 95.0  # Only critical alert very close to OOM
+        gpu_warning_percent: 85.0
+        gpu_critical_percent: 95.0
+
+  # Example with monitoring disabled (for known-stable configurations)
+  - name: refl_n10_syn0_no_monitoring
+    description: "Small REFL test without monitoring overhead"
+    
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      speedup_factor: 1.0
+    
+    aggregator:
+      config_template: expt_scripts_2026/configs/refl_10trainer_demo.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+    
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      
+      # Disable monitoring for small experiments
+      monitoring:
+        enabled: false

@@ -139,8 +139,8 @@ class Trainer(Role, metaclass=ABCMeta):
 
     def _fetch_weights(self, tag: str) -> None:
         logger.debug(
-            f"### FETCH WEIGHTS start for tag: {tag} "
-            f"and trainer_id {self.trainer_id}"
+            f"### FETCH WEIGHTS start for tag: {tag}, "
+            f"trainer_id: {self.trainer_id}, current_model_version: {self._round}"
         )
 
         self.fetch_success = False
@@ -180,7 +180,9 @@ class Trainer(Role, metaclass=ABCMeta):
         logger.debug(f"New message received for trainer_id {self.trainer_id}")
 
         if MessageType.ROUND in msg:
+            prev_round = self._round
             self._round = msg[MessageType.ROUND]
+            logger.debug(f"[TRAINER_FETCH] Updated round from {prev_round} to {self._round} for trainer_id {self.trainer_id}")
 
         if MessageType.WEIGHTS in msg:
             # Before proceeding, check if this model version is newer
@@ -193,7 +195,7 @@ class Trainer(Role, metaclass=ABCMeta):
             # message was dropped.
             if self._round <= self._updates_returned_upto_round:
                 logger.info(
-                    f"Fetch weights aborted for given model version "
+                    f"[TRAINER_FETCH_ABORT] Fetch weights aborted for given model version "
                     f"{self._round} while trainer_id {self.trainer_id} has "
                     f"already sent updates "
                     f"upto round: {self._updates_returned_upto_round}"
@@ -238,7 +240,7 @@ class Trainer(Role, metaclass=ABCMeta):
 
         logger.info(
             f"### FETCH WEIGHTS complete for trainer_id {self.trainer_id}, "
-            f"round: {self._round}, task_to_perform (can be default): {self.task_to_perform}, work_done: {self._work_done} ###"
+            f"round: {self._round}, model_version: {self._round}, task_to_perform (can be default): {self.task_to_perform}, work_done: {self._work_done} ###"
         )
 
         logger.debug(
@@ -294,7 +296,7 @@ class Trainer(Role, metaclass=ABCMeta):
     def _send_weights(self, tag: str) -> None:
         logger.debug(
             f"### SEND WEIGHTS for tag: {tag} "
-            f"and trainer_id: {self.trainer_id} and avl_state = {self.avl_state}"
+            f"and trainer_id: {self.trainer_id}, model_version: {self._round}, and avl_state = {self.avl_state}"
         )
         # if switch to do three_state_avl is on and the trainer is
         # unavailable - check the wait_to_become_avl switch depending
@@ -365,15 +367,15 @@ class Trainer(Role, metaclass=ABCMeta):
             self._updates_returned_upto_round = self._round
 
             logger.info(
-                f"Sent weights for trainer_id: {self.trainer_id}, "
-                f"_updates_returned_upto_round "
-                f"{self._updates_returned_upto_round}, "
-                f", stat_utility: {self._stat_utility}, dataset_size: {self.dataset_size}"
+                f"[TRAINER_SEND_WEIGHTS] Sent weights for trainer_id: {self.trainer_id}, "
+                f"model_version: {self._round}, "
+                f"_updates_returned_upto_round: {self._updates_returned_upto_round}, "
+                f"stat_utility: {self._stat_utility}, dataset_size: {self.dataset_size}"
             )
         elif self.task_to_perform == "eval":
             logger.info(
-                f"Sent stat utility of {self._stat_utility} for trainer_id: {self.trainer_id} "
-                f"at round: {self._round}"
+                f"[TRAINER_SEND_EVAL] Sent stat utility of {self._stat_utility} for trainer_id: {self.trainer_id} "
+                f"at round: {self._round}, model_version: {self._round}"
             )
         else:
             logger.error(

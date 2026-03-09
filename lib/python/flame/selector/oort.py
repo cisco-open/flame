@@ -90,6 +90,12 @@ class OortSelector(AbstractSelector):
         # present there
         self.ordered_updates_recv_ends = list()
 
+        # CRITICAL: Initialize selected_ends as a set to track in-flight trainers
+        # For SyncFL with overcommitment, this prevents re-selecting trainers
+        # that haven't returned their updates yet
+        if not hasattr(self, 'selected_ends'):
+            self.selected_ends = set()
+
         # Track sliding window statistics for the selector
         self._selector_stats = {}
         for task in ["train", "eval"]:
@@ -162,7 +168,7 @@ class OortSelector(AbstractSelector):
         **kwargs,
     ) -> SelectorReturnType:
         """Return k number of ends from the given ends.
-        
+
         Additional kwargs (used in async FL contexts, unused in sync Oort):
         - agg_version_state: Aggregator's (model_version, data_id, iteration_id)
         - trainer_version_states: Map of trainer_id to version triplets
@@ -174,7 +180,9 @@ class OortSelector(AbstractSelector):
         if agg_version_state is not None:
             logger.debug(f"Received aggregator version state: {agg_version_state}")
         if trainer_version_states is not None:
-            logger.debug(f"Received trainer version states for {len(trainer_version_states)} trainers")
+            logger.debug(
+                f"Received trainer version states for {len(trainer_version_states)} trainers"
+            )
 
         num_of_ends = min(len(ends), self.num_of_ends)
         if num_of_ends == 0:
@@ -186,13 +194,55 @@ class OortSelector(AbstractSelector):
             f"let's select {num_of_ends} ends for new round {round}, task: {task_to_perform}"
         )
 
+        # NOTE: Cleanup of ordered_updates_recv_ends and selected_ends is now done
+        # in _cleanup_recvd_ends() immediately after aggregation completes.
+        # This fixes a race condition where trainers returning updates between
+        # agg_goal and next select() would be incorrectly kept in the in-flight set.
+
         # Return existing selected end_ids if the round did not
         # proceed
-        if round <= self.round and len(self.selected_ends) != 0:
+        if round <= self.round and hasattr(self, 'selected_ends') and len(self.selected_ends) != 0:
             return {key: None for key in self.selected_ends}
 
         # Run pacer that controls round_threshold
         self.pacer()
+
+        # CRITICAL FOR SYNCFL WITH OVERCOMMITMENT:
+        # Filter out trainers that are currently "in flight" (selected but haven't returned)
+        in_flight_trainers = self.selected_ends if hasattr(self, 'selected_ends') and isinstance(self.selected_ends, set) else set()
+        
+        # Filter ends to exclude in-flight trainers
+        eligible_ends = {
+            end_id: end
+            for end_id, end in ends.items()
+            if end_id not in in_flight_trainers
+        }
+        
+        logger.info(
+            f"[OORT_SELECT] Round {round}: Eligible ends: {len(eligible_ends)} out of {len(ends)} "
+            f"(in_flight: {len(in_flight_trainers)}, desired: {num_of_ends})"
+        )
+        
+        # CRITICAL: Check if we have enough eligible trainers
+        if len(eligible_ends) == 0:
+            logger.error(
+                f"[OORT_SELECT] Round {round}: NO eligible trainers! "
+                f"total_ends={len(ends)}, in_flight={len(in_flight_trainers)}"
+            )
+            return {}
+        
+        if len(eligible_ends) < num_of_ends:
+            shortage = num_of_ends - len(eligible_ends)
+            logger.warning(
+                f"[OORT_SELECT] Round {round}: TRAINER SHORTAGE! "
+                f"Can only select {len(eligible_ends)}/{num_of_ends} trainers (shortage: {shortage}). "
+                f"total_ends={len(ends)}, in_flight={len(in_flight_trainers)}"
+            )
+            # Adjust num_of_ends to available eligible ends
+            num_of_ends = len(eligible_ends)
+        
+        # Use eligible_ends instead of ends for selection
+        ends = eligible_ends
 
         # Make a filter of blocklist ends
         blocklist_end_ids = self.find_blocklists(ends)
@@ -258,7 +308,12 @@ class OortSelector(AbstractSelector):
             explore_end_ids = self.sample_by_speed(unexplored_end_ids, exploration_len)
         logger.debug(f"explore-selected ends: {explore_end_ids}")
 
-        self.selected_ends = [*explore_end_ids, *exploit_end_ids]
+        # Store as set to track in-flight trainers for SyncFL with overcommitment
+        # Add newly selected trainers to existing in-flight ones instead of replacing
+        newly_selected = set([*explore_end_ids, *exploit_end_ids])
+        old_selected = self.selected_ends if hasattr(self, 'selected_ends') else set()
+        self.selected_ends = old_selected | newly_selected
+
 
         # save the history of exploited utility at this round for
         # pacer
@@ -636,6 +691,110 @@ class OortSelector(AbstractSelector):
             f"Going to cleanup selector state for "
             f"end_id {end_id} since it has left the channel"
         )
+
+    def _cleanup_recvd_ends(self, ends: dict[str, End]):
+        """Clean up ends whose updates were received, freeing them from selected_ends.
+
+        This method is called immediately after aggregation completes (when agg_goal is met).
+        It processes trainers who returned updates and removes them from the in-flight set,
+        making them eligible for selection in the next round.
+
+        CRITICAL: This fixes a race condition where trainers returning updates between
+        agg_goal completion and the next select() call would remain incorrectly marked
+        as in-flight, preventing their re-selection even though they're available.
+
+        For SyncFL with overcommitment (e.g., select 27, wait for 20):
+        - When 20 trainers return → agg_goal met → aggregation happens → cleanup called
+        - Any trainers in ordered_updates_recv_ends are freed from selected_ends
+        - If 7 stragglers return after this but before next select(), they're also freed
+          immediately when their updates arrive (cleanup is called again)
+        """
+        logger.info(
+            f"[CLEANUP_DEBUG] Starting cleanup: "
+            f"selected_ends has {len(self.selected_ends) if hasattr(self, 'selected_ends') else 0} trainers, "
+            f"ordered_updates_recv_ends has {len(self.ordered_updates_recv_ends)} pending"
+        )
+
+        if not hasattr(self, 'selected_ends'):
+            self.selected_ends = set()
+
+        # Process all trainers in ordered_updates_recv_ends
+        # (These are trainers who returned updates since last cleanup)
+        num_ends_to_remove = len(self.ordered_updates_recv_ends)
+        
+        # DEBUG: Check if specific test trainers are involved in cleanup
+        test_trainer_389 = '505f9fc483cf4df68a2409257b5fad7d3c580389'
+        test_trainer_411 = '505f9fc483cf4df68a2409257b5fad7d3c580411'
+        
+        trainer_389_in_cleanup = test_trainer_389 in self.ordered_updates_recv_ends
+        trainer_389_in_selected = test_trainer_389 in self.selected_ends
+        trainer_411_in_cleanup = test_trainer_411 in self.ordered_updates_recv_ends
+        trainer_411_in_selected = test_trainer_411 in self.selected_ends
+        
+        logger.info(
+            f"[DEBUG_CLEANUP] Before cleanup: 389_in_cleanup={trainer_389_in_cleanup}, "
+            f"389_in_selected={trainer_389_in_selected}, 411_in_cleanup={trainer_411_in_cleanup}, "
+            f"411_in_selected={trainer_411_in_selected}, selected_ends_size={len(self.selected_ends)}"
+        )
+        
+        if num_ends_to_remove != 0:
+            ends_to_remove = self.ordered_updates_recv_ends.copy()
+            logger.info(
+                f"[CLEANUP_DEBUG] Will remove {num_ends_to_remove} ends from selected_ends"
+            )
+            logger.info(
+                f"[CLEANUP_DEBUG] IDs to remove: {ends_to_remove[:10]}"
+            )
+
+            # Clear the list since we're processing all of them
+            self.ordered_updates_recv_ends = []
+
+            # Remove from selected_ends (in-flight set)
+            removed_count = 0
+            not_found_count = 0
+            removed_ids = []
+            not_found_ids = []
+            
+            for end_id in ends_to_remove:
+                if end_id in self.selected_ends:
+                    self.selected_ends.remove(end_id)
+                    removed_count += 1
+                    removed_ids.append(end_id)
+                    logger.debug(f"Freed trainer ...{end_id[-8:]} from in-flight set")
+                    
+                    # Track specific test trainers
+                    if end_id == test_trainer_389:
+                        logger.info(f"[TRACK_389] Successfully removed trainer 389 from selected_ends in cleanup")
+                    if end_id == test_trainer_411:
+                        logger.info(f"[TRACK_411] Successfully removed trainer 411 from selected_ends in cleanup")
+                else:
+                    not_found_count += 1
+                    not_found_ids.append(end_id)
+                    logger.debug(
+                        f"Trainer ...{end_id[-8:]} was not in selected_ends "
+                        f"(may have been cleaned up already)"
+                    )
+                    
+                    # Track specific test trainers
+                    if end_id == test_trainer_389:
+                        logger.warning(f"[TRACK_389] Trainer 389 was NOT in selected_ends during cleanup!")
+                    if end_id == test_trainer_411:
+                        logger.warning(f"[TRACK_411] Trainer 411 was NOT in selected_ends during cleanup!")
+
+            logger.info(
+                f"[CLEANUP_DEBUG] Cleanup complete: "
+                f"Removed {removed_count} trainers, {not_found_count} were not in selected_ends. "
+                f"selected_ends now has {len(self.selected_ends)} trainers, "
+                f"ordered_updates_recv_ends has {len(self.ordered_updates_recv_ends)} trainers"
+            )
+            
+            # Log sample IDs for verification
+            if removed_count > 0:
+                logger.info(f"[CLEANUP_DEBUG] Removed IDs (first 5): {[id[-8:] for id in removed_ids[:5]]}")
+            if not_found_count > 0:
+                logger.info(f"[CLEANUP_DEBUG] Not-found IDs (first 5): {[id[-8:] for id in not_found_ids[:5]]}")
+        else:
+            logger.info("[CLEANUP_DEBUG] No ends to clean up (ordered_updates_recv_ends is empty)")
 
     def remove_from_selected_ends(self, ends: dict[str, End], end_id: str) -> None:
         """Remove an end from selected ends"""
