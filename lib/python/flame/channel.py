@@ -312,6 +312,13 @@ class Channel(object):
             f"in_flight_after={in_flight_after}, freed={in_flight_before - in_flight_after}"
         )
 
+    def remove_from_selected_ends(self, end):
+        """Performs cleanup of end states in the selector. Usually
+        only performed after aggregation of a round completes"""
+
+        self._selector.remove_from_selected_ends(self._ends, end)
+        logger.debug("removed from selected ends successfully")
+
     def cleanup_recvd_end(self, end):
         """Performs cleanup of end states in the selector. Usually
         only performed after aggregation of a round completes"""

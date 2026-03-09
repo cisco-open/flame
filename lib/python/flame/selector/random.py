@@ -38,6 +38,7 @@ from flame.config import TrainerAvailState
 
 logger = logging.getLogger(__name__)
 PROP_AVL_STATE = "avl_state"
+SEND_TIMEOUT_WAIT_S = 90
 
 
 class RandomSelector(AbstractSelector):
@@ -73,6 +74,8 @@ class RandomSelector(AbstractSelector):
         # (a trainer can participate only once per round).
         self.all_selected = dict()
         self.selected_ends = dict()
+        self.stale_ends = set() # Track timed-out trainers here
+        self.time_sent = dict()
 
         # Tracks updates received from trainers and makes them available to
         # select again
@@ -297,11 +300,24 @@ class RandomSelector(AbstractSelector):
             )
 
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
+            # --- START TIMEOUT LOGIC ---
+            current_time = time.time()
+            # We use list() to avoid "dictionary changed size during iteration" errors
+            current_time = time.time()
+            for end_id in list(self.selected_ends):
+                if end_id in self.time_sent:
+                    if (current_time - self.time_sent[end_id]) > SEND_TIMEOUT_WAIT_S:
+                        logger.info(f"Moving {end_id} to stale_ends (Timeout).")
+                        self.selected_ends.remove(end_id)
+                        del self.all_selected[end_id] # This is needed if we want to resample from timed out ends
+                        self.stale_ends.add(end_id)
+            # --- END TIMEOUT LOGIC ---
             trainers_in_use = self.selected_ends
+            trainers_used_in_iteration = self.all_selected
             logger.info(f"already_in_use: {trainers_in_use}")
             avl_candidates = set()
             for end_ in ends.keys():
-                if end_ not in trainers_in_use:
+                if end_ not in trainers_used_in_iteration:
                     curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
                     logger.info(f"state of {end_} : {curr_end_id_avl_state}")
                     if curr_end_id_avl_state in (
@@ -315,6 +331,12 @@ class RandomSelector(AbstractSelector):
                         continue
 
             logger.info(f"available ends: {avl_candidates}")
+
+            # update this in case clients timed out
+            required_trainers = min(len(ends), self.c - len(trainers_in_use))
+            logger.info(
+                f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}"
+            )
 
             if len(avl_candidates) < required_trainers:
                 time.sleep(0.1)
@@ -330,6 +352,10 @@ class RandomSelector(AbstractSelector):
             logger.info(f"new selected ends: {selected_candidates}")
 
             self.selected_ends = set(self.selected_ends).union(selected_candidates)
+            self.all_selected.update({key: None for key in self.selected_ends})
+            for candidate in selected_candidates:
+                self.time_sent[candidate] = time.time()
+            
             if round > self.round:
                 self.round = round
 
@@ -339,6 +365,12 @@ class RandomSelector(AbstractSelector):
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
             return {key: None for key in self.selected_ends}
+        
+            ## USE THIS TO NOT CLOG THE MESSAGE QUEUE
+            # logger.info("Listening for both active and stale updates")
+            # combined_recv_queue = set(self.selected_ends).union(self.stale_ends)
+            # logger.info(f"combined queue: {combined_recv_queue}")
+            # return {key: None for key in combined_recv_queue}
 
         logger.info(
             f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}"
@@ -388,8 +420,14 @@ class RandomSelector(AbstractSelector):
                     # loss) let's remove it from selected_ends
                     logger.debug(
                         f"no end id {end_id} in ends, removing "
-                        f"from selected_ends and all_selected"
+                        f"from selected_ends and all_selected, stale_ends and time_sent"
                     )
+                    if end_id in self.stale_ends:
+                        self.stale_ends.remove(end_id)
+                        logger.info(f"Removed latecomer {end_id} from stale_ends.")
+                    
+                    if end_id in self.time_sent:
+                        del self.time_sent[end_id]
                     # NOTE: it is not a guarantee that selected_ends will still
                     # contain the end_id. Thats because it might have got
                     # disconnected/ rejoined in the middle of a round
@@ -435,6 +473,11 @@ class RandomSelector(AbstractSelector):
                                 f"self.all_selected: "
                                 f"{self.all_selected}"
                             )
+                        if end_id in self.stale_ends:
+                            self.stale_ends.remove(end_id)
+                            logger.info(f"Removed latecomer {end_id} from stale_ends.")
+                        if end_id in self.time_sent:
+                            del self.time_sent[end_id]
                     elif state == VAL_END_STATE_NONE:
                         # TODO: (DG) Recheck if it needs to be deleted from here
                         # as well. Is the failure scenario being handled
@@ -462,6 +505,12 @@ class RandomSelector(AbstractSelector):
                                 f"self.all_selected: "
                                 f"{self.all_selected} too"
                             )
+                        if end_id in self.stale_ends:
+                            self.stale_ends.remove(end_id)
+                            logger.info(f"Removed latecomer {end_id} from stale_ends.")
+                        
+                        if end_id in self.time_sent:
+                            del self.time_sent[end_id]
                     else:
                         logger.debug(
                             f"FOUND end id {end_id} in state: {state}. "
@@ -493,16 +542,22 @@ class RandomSelector(AbstractSelector):
         if end_id in selected_ends:
             selected_ends.remove(end_id)
             logger.info(
-                f"No end id {end_id} in ends, removed from "
+                f"End id {end_id} in ends, removed from "
                 f"selected_ends: "
                 f"{selected_ends}"
             )
         if end_id in self.all_selected:
             del self.all_selected[end_id]
             logger.info(
-                f"No end id {end_id} in ends, removed from "
+                f"End id {end_id} removed from "
                 f"self.all_selected: {self.all_selected}"
             )
+        if end_id in self.stale_ends:
+            self.stale_ends.remove(end_id)
+            logger.info(f"Removed latecomer {end_id} from stale_ends.")
+                        
+        if end_id in self.time_sent:
+            del self.time_sent[end_id]
 
         state = end.get_property(KEY_END_STATE)
         logger.info(
@@ -585,6 +640,13 @@ class RandomSelector(AbstractSelector):
                 logger.debug(f"Also removing end_id {end_id} from selected_ends")
                 # self.selected_ends[self.requester] = selected_ends
                 self.selected_ends = selected_ends
+
+            if end_id in self.stale_ends:
+                self.stale_ends.remove(end_id)
+                logger.info(f"Removed latecomer {end_id} from stale_ends.")
+                            
+            if end_id in self.time_sent:
+                del self.time_sent[end_id]
 
             # Track trainers that were sent weights but dropped off before
             # sending back an update
@@ -676,29 +738,24 @@ class RandomSelector(AbstractSelector):
         # selected_ends = self.selected_ends[self.requester]
         selected_ends = self.selected_ends
         logger.info(f"self.all_selected {self.all_selected}")
-        if end_id in ends.keys():
-            if end_id in selected_ends:
-                logger.debug(
-                    f"Going to remove end_id {end_id} from selected_ends "
-                    f"{selected_ends}"
-                )
-                selected_ends.remove(end_id)
-                # self.selected_ends[self.requester] = selected_ends
-                self.selected_ends = selected_ends
-                logger.debug(
-                    f"self.selected_ends: {self.selected_ends} after "
-                    f"removing end_id: {end_id}"
-                )
-            else:
-                logger.debug(
-                    f"Attempted to remove end {end_id} from "
-                    f"self.selected_ends {self.selected_ends}, but it wasnt present"
-                )
+        if end_id in selected_ends:
+            logger.debug(
+                f"Going to remove end_id {end_id} from selected_ends "
+                f"{selected_ends}"
+            )
+            selected_ends.remove(end_id)
+            # self.selected_ends[self.requester] = selected_ends
+            self.selected_ends = selected_ends
+            logger.debug(
+                f"self.selected_ends: {self.selected_ends} after "
+                f"removing end_id: {end_id}"
+            )
         else:
             logger.debug(
                 f"Attempted to remove end {end_id} from "
-                f"self.selected_ends {self.selected_ends}, but it wasnt in ends"
+                f"self.selected_ends {self.selected_ends}, but it wasnt present"
             )
+
         # selected_ends = self.selected_ends[self.requester] if end_id in
         # ends.keys(): if end_id in selected_ends: logger.debug( f"Going to
         #     remove end_id {end_id} from selected_ends " f"{selected_ends}" )

@@ -700,6 +700,7 @@ class TopAggregator(AsyncTopAgg):
         logger.info(
             f"Received grads from {end}. It was trained on model version {version}, with {count} samples"
         )
+        channel.remove_from_selected_ends( end )
         return True
 
 
@@ -781,9 +782,6 @@ class TopAggregator(AsyncTopAgg):
         self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, trainer_id=None)
         
         recv_ends = channel.ends()
-        if self.ends_not_selected_yet and len(recv_ends) == 0:
-            logger.info("no ends selected yet")
-            return
 
         num_min_req = self._agg_goal  # change hardcoding, set it to aggGoal
         logger.info(f"Total ends: {len(recv_ends)}, required : {num_min_req}")
@@ -792,7 +790,7 @@ class TopAggregator(AsyncTopAgg):
             logger.info(f"We are waiting to clear up queue")
             num_min_req = min(num_min_req, 1)
 
-        for msg, metadata in channel.recv_fifo(channel.ends()):
+        for msg, metadata in channel.recv_fifo(channel.ends(), num_min_req):
             end, timestamp = metadata
             if not msg:
                 logger.info(f"No data from {end}; skipping it")
@@ -807,19 +805,6 @@ class TopAggregator(AsyncTopAgg):
                 break
 
         # Second loop
-        while self._agg_goal_cnt < self._agg_goal and not self.ends_not_selected_yet:
-            for msg, metadata in channel.recv_fifo(channel.ends(), 1):
-                end, timestamp = metadata
-                if not msg:
-                    continue
-                
-                self._process_single_trainer_message(channel, msg, end, timestamp)
-
-                if self._agg_goal_cnt >= self._agg_goal:
-                    logger.info(
-                        f"Reached agg_goal of {self._agg_goal} since agg_goal_count is {self._agg_goal_cnt}. Breaking from for loop, proceeding to aggregate."
-                    )
-                    break
 
 
     @timer_decorator
@@ -829,9 +814,6 @@ class TopAggregator(AsyncTopAgg):
         self.log_memory("start _aggregate_grads_sync", self.device)
         self.print_trainable_params_stats(location="[start,_aggregate_grads_sync()]")
         
-        if self.ends_not_selected_yet:
-            logger.info("no ends selected yet")
-            return
 
         channel = self.cm.get_by_tag(tag)
         if not channel:
@@ -1160,7 +1142,7 @@ class TopAggregator(AsyncTopAgg):
 
         ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
         logger.info(f"ends: {ends}")
-        if ends is None:
+        if ends is None or len(ends) >= self._agg_goal:
             self.ends_not_selected_yet = True
         else:
             self.ends_not_selected_yet = False
