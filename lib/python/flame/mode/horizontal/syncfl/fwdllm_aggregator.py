@@ -63,6 +63,7 @@ import glob
 from torch.nn import CrossEntropyLoss
 import flame.monitor.runtime
 from flame.monitor.runtime import FwdLLMStage, timer_decorator
+import math
 
 
 logger = logging.getLogger(__name__)
@@ -488,28 +489,34 @@ class TopAggregator(AsyncTopAgg):
             rate = 1.0
         else:
             staleness_val = self._model_version - version_for_rate
-            try:
-                scale_val = self.optimizer.agg_rate_conf["scale"]
-                a_exp_val = self.optimizer.agg_rate_conf["a_exp"]
-                b_exp_val = self.optimizer.agg_rate_conf["b_exp"]
-                rate = self.optimizer.weight_factor(
-                    scale=scale_val,
-                    staleness=staleness_val,
-                    a_exp=a_exp_val,
-                    loss=stat_utility,
-                    b_exp=b_exp_val,
-                    alpha_type="polynomial",
-                    beta_type="polynomial_upshift",
-                )
-                if rate != 1.0:
-                    logger.info(
-                        f"Weighted received gradients by rate: {rate} with staleness: {staleness_val}, stat utility: {stat_utility}"
+
+            if self.optimizer.agg_rate_conf["type"] == "old":
+                rate = 1 / math.sqrt(1 + staleness_val)                 # As per the Fedbuff paper
+
+            elif self.optimizer.agg_rate_conf["type"] == "new":
+                try:
+                    scale_val = self.optimizer.agg_rate_conf["scale"]
+                    a_exp_val = self.optimizer.agg_rate_conf["a_exp"]
+                    b_exp_val = self.optimizer.agg_rate_conf["b_exp"]
+                    rate = self.optimizer.weight_factor(
+                        scale=scale_val,
+                        staleness=staleness_val,
+                        a_exp=a_exp_val,
+                        loss=stat_utility,
+                        b_exp=b_exp_val,
+                        alpha_type="polynomial",
+                        beta_type="polynomial_upshift",
                     )
-            except Exception as e:
-                logger.warning(
-                    f"Falling back to neutral rate due to error in weight_factor: {e}"
-                )
-                rate = 1.0
+                except Exception as e:
+                    logger.warning(
+                        f"Falling back to neutral rate due to error in weight_factor: {e}"
+                    )
+                    rate = 1.0
+
+        if rate != 1.0:
+            logger.info(
+                f"Weighted received gradients by rate: {rate} with staleness: {staleness_val}, stat utility: {stat_utility}"
+            )
 
         for i, (name, param) in enumerate(np):  # Assuming self.params is a dict
             if param.requires_grad:

@@ -22,7 +22,7 @@ import os
 SRC_DIR = "../lib/python/examples/async_cifar10/trainer/config_dir100_num300_traceFail_6d_3state"
 DST_DIR = "../lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts"
 
-FIELDS_TO_COPY = ["training_delay_enabled", "training_delay_s"]
+FIELDS_TO_COPY = ["training_delay_enabled", "training_delay_s", "training_delay_factor"]
 FILE_INDICES = (0, 150)  # exclusive (0 -> 149)
 
 

@@ -167,6 +167,7 @@ class FedSGDTrainer(Trainer):
         # Check if client will emulate delays in training time
         self.training_delay_enabled = self.config.hyperparameters.training_delay_enabled
         self.training_delay_s = float(self.config.hyperparameters.training_delay_s)
+        self.training_delay_factor = float(self.config.hyperparameters.training_delay_factor)
         self.speedup_factor = 1.0
 
         self.trainer_start_ts = time.time()
@@ -419,7 +420,7 @@ class FedSGDTrainer(Trainer):
         if self.training_delay_enabled == "True":
             # Eval is 3X faster than training on CPU
             # Eval on NPUs is 10-50X is faster than training on CPUs. We could take 20X if we wanted to consider an all-NPU client cohort for Eval (NPUs don't support training)
-            eval_delay = self.training_delay_s / 3.0
+            eval_delay = self.training_delay_s / self.training_delay_factor
             time.sleep(eval_delay / self.speedup_factor)
             logger.info(
                 f"Delayed eval time for trainer "

@@ -197,7 +197,7 @@ else
   echo "Wrote expanded aggregator config: $AGG_EXPANDED"
 
   # Run aggregator/main.py once with logging
-  python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
+  CUDA_VISIBLE_DEVICES="7" python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
     --config "$AGG_EXPANDED" \
     --log_level "$LOG_LEVEL" \
     > "$AGG_LOG_FILE" 2>&1 &
@@ -213,7 +213,8 @@ else
 
   for X in $(seq 0 $(( total_client_num-1 )) )    # End value is inclusive
   do
-    ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
+    # ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
+    ASSIGN_TO_GPU=7
     TRAIN_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/trainer_${X}.json"
     TRAIN_EXPANDED="$EXPANDED_TMP_DIR/trainer_${X}_expanded.json"
 
@@ -233,6 +234,8 @@ else
       echo "Trainer config not found, skipping: $TRAIN_SRC"
       fi
   done
+
+  echo "Log files created: \n - $AGG_LOG_FILE \n - $TRAINER_LOG_FILE"
 
   # Start background periodic check (every 30 seconds)
   # The watchdog will automatically exit if the parent process ($PARENT_PID) dies
