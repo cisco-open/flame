@@ -170,6 +170,7 @@ class FedSGDTrainer(Trainer):
         self.speedup_factor = 1.0
 
         self.trainer_start_ts = time.time()
+        #TODO (ARM): Fix this to read traces better!
         # Storing synthetic avail traces
         self.avl_events_syn_0 = ast.literal_eval(
             self.config.hyperparameters.avl_events_syn_0
@@ -183,6 +184,18 @@ class FedSGDTrainer(Trainer):
             self.config.hyperparameters.avl_events_syn_50
         )
 
+        self.avl_events_syn_train_100_eval_0_unavail_0 = ast.literal_eval(
+            self.config.hyperparameters.avl_events_syn_train_100_eval_0_unavail_0
+        )
+
+        self.avl_events_syn_train_90_eval_10_unavail_0 = ast.literal_eval(
+            self.config.hyperparameters.avl_events_syn_train_90_eval_10_unavail_0
+        )
+
+        self.avl_events_syn_train_50_eval_30_unavail_20 = ast.literal_eval(
+            self.config.hyperparameters.avl_events_syn_train_50_eval_30_unavail_20
+        )
+
         self.client_notify = self.config.hyperparameters.client_notify
 
         if self.client_notify["trace"] == "syn_0":
@@ -194,6 +207,15 @@ class FedSGDTrainer(Trainer):
         elif self.client_notify["trace"] == "syn_50":
             self.state_avl_event_ts = self.avl_events_syn_50
             logger.info(f"Set avl_events_syn_50 for trainer id {self.trainer_id}.")
+        elif self.client_notify["trace"] == "avl_events_syn_train_100_eval_0_unavail_0":
+            self.state_avl_event_ts = self.avl_events_syn_train_100_eval_0_unavail_0
+            logger.info(f"Set avl_events_syn_train_100_eval_0_unavail_0 for trainer id {self.trainer_id}.")
+        elif self.client_notify["trace"] == "avl_events_syn_train_90_eval_10_unavail_0":
+            self.state_avl_event_ts = self.avl_events_syn_train_90_eval_10_unavail_0
+            logger.info(f"Set avl_events_syn_train_90_eval_10_unavail_0 for trainer id {self.trainer_id}.")
+        elif self.client_notify["trace"] == "avl_events_syn_train_100_eval_0_unavail_0":
+            self.state_avl_event_ts = self.avl_events_syn_train_50_eval_30_unavail_20
+            logger.info(f"Set avl_events_syn_train_50_eval_30_unavail_20 for trainer id {self.trainer_id}.")
         else:
             logger.info(
                 f"No avl_events set for trainer id {self.trainer_id} since state not specified."

@@ -45,7 +45,7 @@ else
   peft_method=bitfit
 fi
 
-PARTITION_METHOD="niid_label_clients=100_alpha=100" # this is set in aggregator.json, this will be overwritten
+PARTITION_METHOD="niid_label_clients=100_alpha=0.5" # this is set in aggregator.json, this will be overwritten
 if [ $DATA_NAME = "agnews" ];then
   max_seq_length=64  # this is set in aggregator.json, this will be overwritten
   frequency_of_the_test=1

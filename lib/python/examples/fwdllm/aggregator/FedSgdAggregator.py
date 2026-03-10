@@ -68,7 +68,7 @@ class FedSGDAggregator(TopAggregator):
         self.cached_v = []
         if self.args.model_type == "distilbert":
             # self.var_threshold = 0.25 ## commented out by them, not used
-            self.var_threshold = 0.1
+            self.var_threshold = 0.3
         elif self.args.model_type == "bert":
             # self.var_threshold = 0.6
             self.var_threshold = 0.2
