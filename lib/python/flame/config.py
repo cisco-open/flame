@@ -67,9 +67,6 @@ class OptimizerType(str, Enum):
     SCAFFOLD = "scaffold"
     FEDGFT = "fedgft"
     REFL = "refl"  # REFL: Resource-Efficient Federated Learning with staleness-aware aggregation
-    REFLFEDAVG = (
-        "reflfedavg"  # Backward compatibility alias for REFL
-    )
 
     DEFAULT = FEDAVG
 

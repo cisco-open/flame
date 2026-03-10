@@ -1022,7 +1022,3 @@ class REFL(AbstractOptimizer):
             "moving_avg_deadline": self.mov_avg_deadline,
             "deadline_history": self.round_deadline_history[-10:],  # Last 10 rounds
         }
-
-
-# Backward compatibility alias
-REFLFedAvg = REFL
