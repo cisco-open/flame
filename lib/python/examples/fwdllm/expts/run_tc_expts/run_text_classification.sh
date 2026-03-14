@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 # Ensure that you have set the FWDLLM_USER environment variable before running this script
 # Run to set as part of conda environment:
 # conda env config vars set FWDLLM_USER=<your-folder-name>
@@ -144,9 +145,10 @@ else
   TRAINER_LOG_FILE=$(readlink -f "$LOG_DIR/test_trainer_${LOG_SUFFIX}.log")
   PARENT_PID=$$
 
-  # -----------------------------------------
+  ACC_MONITOR_FILE=$(readlink -f "$LOG_DIR/accuracy_monitor_${LOG_SUFFIX}.log")  # overwritten each tick
   SCRIPT_START_TIME=$(date +%s)
   _acc_consec_count=0
+  _acc_last_seen_line=""  # dedup: only count each new eval result once
   _acc_last_grep_offset=0   # byte offset: attempt to resume grep from last occurrence
 
   # Function to check logs for errors and kill all processes if found
@@ -194,13 +196,41 @@ else
       ACC_LINE=$(grep -oE "'acc': [0-9]+\.?[0-9]*" "$AGG_LOG_FILE" 2>/dev/null | tail -n 1)
     fi
 
-    [ -z "$ACC_LINE" ] && return   # No accuracy entry yet
+    if [ -z "$ACC_LINE" ]; then
+      # No eval result yet — write a waiting status so the file always exists
+      printf "Waiting for first eval result... | Runtime: %s\n" \
+        "$(printf '%dh %dm %ds' $(( ($(date +%s) - SCRIPT_START_TIME)/3600 )) $(( (($(date +%s) - SCRIPT_START_TIME)%3600)/60 )) $(( ($(date +%s) - SCRIPT_START_TIME)%60 )))" \
+        >> "$ACC_MONITOR_FILE"
+      return
+    fi
+
+    # Dedup guard: if this is the same log line we saw last tick, the training
+    # round hasn't produced a new eval result yet — skip counter update but
+    # still refresh the runtime in the monitor file.
+    if [ "$ACC_LINE" = "$_acc_last_seen_line" ]; then
+      NOW=$(date +%s)
+      ELAPSED=$(( NOW - SCRIPT_START_TIME ))
+      ELAPSED_FMT=$(printf '%dh %dm %ds' $(( ELAPSED/3600 )) $(( (ELAPSED%3600)/60 )) $(( ELAPSED%60 )))
+      {
+        echo "Acc     : ${ACC_PCT_LAST}% |  Threshold: ${ACC_THRESHOLD}%  |  Consecutive above: ${_acc_consec_count} / ${ACC_CONSEC_LIMIT} |  Runtime: ${ELAPSED_FMT} | No new eval"
+      } >> "$ACC_MONITOR_FILE"
+      return
+    fi
+    _acc_last_seen_line="$ACC_LINE"
 
     # Extract the raw fraction (e.g. 0.7505263...) and convert to percentage
     ACC_RAW=$(echo "$ACC_LINE" | grep -oE "[0-9]+\.?[0-9]*$")
     ACC_PCT=$(awk "BEGIN { printf \"%.2f\", $ACC_RAW * 100 }")
 
-    echo "[accuracy-monitor] latest acc: ${ACC_PCT}%  (consecutive above ${ACC_THRESHOLD}%: ${_acc_consec_count})"
+    # Write status to the dedicated monitor file (overwrite, not append).
+    # This keeps stdout clean — no repeated lines after a 12-hour run.
+    NOW=$(date +%s)
+    ELAPSED=$(( NOW - SCRIPT_START_TIME ))
+    ELAPSED_FMT=$(printf '%dh %dm %ds' $(( ELAPSED/3600 )) $(( (ELAPSED%3600)/60 )) $(( ELAPSED%60 )))
+    ACC_PCT_LAST="$ACC_PCT"   # remember for dedup ticks
+    {
+      echo "Acc     : ${ACC_PCT}%  |  Threshold: ${ACC_THRESHOLD}%  |  Consecutive above: ${_acc_consec_count} / ${ACC_CONSEC_LIMIT} |  Runtime: ${ELAPSED_FMT}"
+    } >> "$ACC_MONITOR_FILE"
 
     # Compare using awk (bash can't do float comparisons)
     IS_ABOVE=$(awk "BEGIN { print ($ACC_PCT >= $ACC_THRESHOLD) ? 1 : 0 }")
@@ -247,6 +277,11 @@ else
     if [ -d "$EXPANDED_TMP_DIR" ]; then
       echo "Removing temporary directory: $EXPANDED_TMP_DIR"
       rm -rf "$EXPANDED_TMP_DIR"
+    fi
+    # 4. Remove accuracy monitor status file
+    if [ -f "$ACC_MONITOR_FILE" ]; then
+      echo "Removing accuracy monitor file: $ACC_MONITOR_FILE"
+      rm -f "$ACC_MONITOR_FILE"
     fi
   }
   # Trap common termination signals
@@ -296,11 +331,14 @@ else
       fi
   done
 
-  echo "Log files created: \n Aggregator: $AGG_LOG_FILE \n Trainer: $TRAINER_LOG_FILE"
+  echo "Log files created: \n [Aggregator]: $AGG_LOG_FILE \n [Trainer]: $TRAINER_LOG_FILE"
 
   # Start background periodic check (every 30 seconds)
   # The watchdog will automatically exit if the parent process ($PARENT_PID) dies
   if [ "$ENABLE_WATCHDOG" = "true" ]; then
+    echo "accuracy-monitor (appends on each tick): watch -n 10 cat ${ACC_MONITOR_FILE}"
+    # Initialize the file immediately so it's always findable from the start
+    echo "accuracy-monitor starting up... ($(date '+%Y-%m-%d %H:%M:%S'))" > "$ACC_MONITOR_FILE"
     (
       while kill -0 $PARENT_PID 2>/dev/null; do   # Checks if the parent script is still alive
         check_errors
