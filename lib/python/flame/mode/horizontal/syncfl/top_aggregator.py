@@ -236,7 +236,9 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # For REFL/Oort with overcommitment: wait for aggGoal responses, not all selected
         agg_goal = self.config.hyperparameters.aggregation_goal
         first_k = agg_goal if agg_goal and agg_goal > 0 else 0
-        logger.info(f"Waiting for first_k={first_k} responses from {len(channel.ends())} selected trainers")
+        logger.info(
+            f"Waiting for first_k={first_k} responses from {len(channel.ends())} selected trainers"
+        )
 
         # receive local model parameters from trainers
         for msg, metadata in channel.recv_fifo(channel.ends(), first_k=first_k):
@@ -277,17 +279,19 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 tres = TrainResult(weights, count)
                 # save training result from trainer in a disk cache
                 self.cache[end] = tres
-                
+
                 # CRITICAL FIX: Track received ends so selector can clean up in-flight set
                 # This prevents re-selecting trainers that haven't returned their updates yet
-                if hasattr(channel, '_selector') and hasattr(channel._selector, 'ordered_updates_recv_ends'):
+                if hasattr(channel, "_selector") and hasattr(
+                    channel._selector, "ordered_updates_recv_ends"
+                ):
                     channel._selector.ordered_updates_recv_ends.append(end)
                     logger.info(
                         f"[REFL_FIX] Added {end[-8:]} to ordered_updates_recv_ends. "
                         f"Total received this round: {len(channel._selector.ordered_updates_recv_ends)}"
                     )
                     # DEBUG: Track trainer 389 specifically
-                    test_trainer_id = '505f9fc483cf4df68a2409257b5fad7d3c580389'
+                    test_trainer_id = "505f9fc483cf4df68a2409257b5fad7d3c580389"
                     if end == test_trainer_id:
                         logger.info(
                             f"[DEBUG_389_RECV] Trainer 389 update received! Round={self._round}, "
@@ -329,10 +333,12 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         # update model with global weights
         self._update_model()
-        
+
         # CRITICAL FIX: Clean up received ends from selector's in-flight tracking
         # This must happen AFTER aggregation completes to free up trainers for next round
-        if hasattr(channel, '_selector') and hasattr(channel._selector, '_cleanup_recvd_ends'):
+        if hasattr(channel, "_selector") and hasattr(
+            channel._selector, "_cleanup_recvd_ends"
+        ):
             logger.info(
                 f"[REFL_FIX] Calling _cleanup_recvd_ends after aggregation. "
                 f"Received {len(self.cache)} updates this round."
@@ -378,11 +384,15 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
             )
             # DEBUG: Track trainer 389 specifically
-            test_trainer_id = '505f9fc483cf4df68a2409257b5fad7d3c580389'
+            test_trainer_id = "505f9fc483cf4df68a2409257b5fad7d3c580389"
             if end == test_trainer_id:
                 # Check if 389 is in selected_ends (in-flight set)
-                if hasattr(channel, '_selector') and hasattr(channel._selector, 'selected_ends'):
-                    trainer_389_in_selected = test_trainer_id in channel._selector.selected_ends
+                if hasattr(channel, "_selector") and hasattr(
+                    channel._selector, "selected_ends"
+                ):
+                    trainer_389_in_selected = (
+                        test_trainer_id in channel._selector.selected_ends
+                    )
                     logger.warning(
                         f"[DEBUG_389_SEND] Sending round {self._round} weights to trainer 389. "
                         f"389_in_selected_ends={trainer_389_in_selected}, "
@@ -410,7 +420,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             channel.set_end_property(
                 end, PROP_ROUND_START_TIME, (round, datetime.now())
             )
-            
+
             # Add small delay between sends to distribute MQTT broker load
             # This prevents overwhelming the broker with many concurrent large messages
             # and allows the event loop to process keepalive packets

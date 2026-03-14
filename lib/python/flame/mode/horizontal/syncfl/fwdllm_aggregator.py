@@ -74,12 +74,14 @@ SEND_TIMEOUT_WAIT_S = 90  # 90 seconds timeout
 
 import hashlib
 
+
 def _calculate_hash(tensor):
     if tensor is None:
         return ""
 
     """Calculate a hash for a tensor for logging."""
     return hashlib.sha256(tensor.detach().cpu().numpy().tobytes()).hexdigest()
+
 
 def log_error_distribution(probs, labels):
     """
@@ -88,17 +90,17 @@ def log_error_distribution(probs, labels):
     labels: ndarray [N] - Integer ground truth
     """
     # 1. Prediction and Error Masking
-    if hasattr(probs, 'detach'):
+    if hasattr(probs, "detach"):
         probs = probs.detach().cpu().numpy()
-    if hasattr(labels, 'detach'):
+    if hasattr(labels, "detach"):
         labels = labels.detach().cpu().numpy()
 
     # 2. Handle the float labels safely
     actual_labels = np.round(labels).astype(int)
     preds = np.argmax(probs, axis=1)
-    
-    wrong_mask = (preds != actual_labels)
-    
+
+    wrong_mask = preds != actual_labels
+
     if not np.any(wrong_mask):
         logging.info("Accuracy is 100%.")
         return
@@ -106,80 +108,92 @@ def log_error_distribution(probs, labels):
     # 3. Filter for wrong predictions (Now safely NumPy)
     wrong_probs = probs[wrong_mask]
     logging.info(f"wrong probs len = {len(wrong_probs)}")
-    
+
     # Now this will work perfectly
     confidences = np.max(wrong_probs, axis=1)
-    
+
     # Margin calculation
     sorted_wrong = np.sort(wrong_probs, axis=1)
     margins = sorted_wrong[:, -1] - sorted_wrong[:, -2]
-    
+
     # 3. Binning Logic (0.0 to 1.0)
     bins = np.linspace(0, 1.0, 11)
     margin_bins = np.digitize(margins, bins) - 1
-    
-    logging.info("=== Error Distribution Analysis (Incorrect Predictions Only) ===")
-    logging.info(f"{'Margin Bin':<12} | {'Count':<8} | {'Avg Confidence':<15} | {'Max Confidence'}")
-    logging.info("-" * 65)
-    
+
+    logging.debug("=== Error Distribution Analysis (Incorrect Predictions Only) ===")
+    logging.debug(
+        f"{'Margin Bin':<12} | {'Count':<8} | {'Avg Confidence':<15} | {'Max Confidence'}"
+    )
+    logging.debug("-" * 65)
+
     for i in range(len(bins) - 1):
-        mask = (margin_bins == i)
+        mask = margin_bins == i
         count = np.sum(mask)
         bin_label = f"{bins[i]:.1f}-{bins[i+1]:.1f}"
-        
+
         if count > 0:
             avg_conf = np.mean(confidences[mask])
             max_conf = np.max(confidences[mask])
-            logging.info(f"{bin_label:<12} | {count:<8} | {avg_conf:<15.4f} | {max_conf:.4f}")
+            logging.debug(
+                f"{bin_label:<12} | {count:<8} | {avg_conf:<15.4f} | {max_conf:.4f}"
+            )
         else:
-            logging.info(f"{bin_label:<12} | 0        | -               | -")
-            
+            logging.debug(f"{bin_label:<12} | 0        | -               | -")
+
     # 4. Summary Statistics for "Confidently Wrong" samples
     high_margin_count = np.sum(margins > 0.5)
-    logging.info(f"Summary: {high_margin_count} errors have a margin > 0.5 (Confidently Wrong).")
+    logging.debug(
+        f"Summary: {high_margin_count} errors have a margin > 0.5 (Confidently Wrong)."
+    )
 
 
 def log_margin_distribution(probs):
     # 2. Get the Top 2 values for every sample
-        #    values shape: [N, 2], indices shape: [N, 2]
-        top2_values, top2_indices = torch.topk(probs, k=2, dim=1)
+    #    values shape: [N, 2], indices shape: [N, 2]
+    top2_values, top2_indices = torch.topk(probs, k=2, dim=1)
 
-        # 3. Calculate the Margin (Gap)
-        #    Column 0 is the Winner, Column 1 is the Runner-up
-        margins = top2_values[:, 0] - top2_values[:, 1]
-        margins = margins.numpy()
+    # 3. Calculate the Margin (Gap)
+    #    Column 0 is the Winner, Column 1 is the Runner-up
+    margins = top2_values[:, 0] - top2_values[:, 1]
+    margins = margins.numpy()
 
-        # 4. Define your "Indecision Zone"
-        #    Samples where the gap between winner and loser is tiny (< 0.1)
-        indecisive_count = np.sum(margins < 0.1)
-        
-        logging.info(f"\n--- INDECISION REPORT ---")
-        logging.info(f"  Total Samples: {len(margins)}")
-        logging.info(f"  Samples with Margin < 0.1: {indecisive_count} ({(indecisive_count/len(margins))*100:.1f}%)")
-        logging.info(f"  Avg Margin: {np.mean(margins):.4f}")
-        
-        # 5. (Optional) Histogram the margins to see the spread
-        hist, bin_edges = np.histogram(margins, bins=10, range=(0.0, 1.0))
-        logging.info(f"  Margin Distribution: {hist}")
-        logging.info("------------------------------------------\n")
+    # 4. Define your "Indecision Zone"
+    #    Samples where the gap between winner and loser is tiny (< 0.1)
+    indecisive_count = np.sum(margins < 0.1)
+
+    logging.debug(f"\n--- INDECISION REPORT ---")
+    logging.debug(f"  Total Samples: {len(margins)}")
+    logging.debug(
+        f"  Samples with Margin < 0.1: {indecisive_count} ({(indecisive_count/len(margins))*100:.1f}%)"
+    )
+    logging.debug(f"  Avg Margin: {np.mean(margins):.4f}")
+
+    # 5. (Optional) Histogram the margins to see the spread
+    hist, bin_edges = np.histogram(margins, bins=10, range=(0.0, 1.0))
+    logging.debug(f"  Margin Distribution: {hist}")
+    logging.debug("------------------------------------------\n")
+
 
 def compute_metrics_with_logging(probs, preds, out_label_ids, examples):
 
-        logging.info(f"'Hash' |  'Prob'  | 'Pred' | 'Actual'")
+    logging.debug(f"'Hash' |  'Prob'  | 'Pred' | 'Actual'")
 
-        for i, batch in enumerate(examples):
-            batch = tuple(t.to("cpu") for t in batch)
-            for j, example in enumerate(batch[1]):
-                
-                pred = preds[i*8 + j]
-                actual = out_label_ids[i*8 + j]
-                prob = probs[i*8 + j]
-            
-                # 2. Print the row
-                # We slice the hash to [:10] for better readability in the console
-                logging.debug(f"{_calculate_hash(example)}... | {prob} | {pred} | {actual} ")
+    for i, batch in enumerate(examples):
+        batch = tuple(t.to("cpu") for t in batch)
+        for j, example in enumerate(batch[1]):
 
-        return
+            pred = preds[i * 8 + j]
+            actual = out_label_ids[i * 8 + j]
+            prob = probs[i * 8 + j]
+
+            # 2. Print the row
+            # We slice the hash to [:10] for better readability in the console
+            logging.debug(
+                f"{_calculate_hash(example)}... | {prob} | {pred} | {actual} "
+            )
+
+    return
+
 
 @timer_decorator
 def recv_fifo_wrapper(channel, ends):
@@ -188,6 +202,7 @@ def recv_fifo_wrapper(channel, ends):
         logger.debug(f"Yielding msg from {metadata}")
         yield msg, metadata
     logger.debug("Exiting recv_fifo_wrapper")
+
 
 class TopAggregator(AsyncTopAgg):
     """Top level Aggregator implements an ML aggregation
@@ -491,7 +506,7 @@ class TopAggregator(AsyncTopAgg):
             staleness_val = self._model_version - version_for_rate
 
             if self.optimizer.agg_rate_conf["type"] == "old":
-                rate = 1 / math.sqrt(1 + staleness_val)                 # As per the Fedbuff paper
+                rate = 1 / math.sqrt(1 + staleness_val)  # As per the Fedbuff paper
 
             elif self.optimizer.agg_rate_conf["type"] == "new":
                 try:
@@ -599,14 +614,14 @@ class TopAggregator(AsyncTopAgg):
         if self._agg_goal_cnt == self._agg_goal:
             self._process_aggregation_goal_met(tag, channel, is_async=True)
 
-
-
     @timer_decorator
     def _process_single_trainer_message(self, channel, msg, end, timestamp):
         if MessageType.MODEL_VERSION in msg:
             version = msg[MessageType.MODEL_VERSION]
             if version != self._model_version:
-                logger.info(f"Received grad with staleness={self._model_version-version}.")
+                logger.info(
+                    f"Received grad with staleness={self._model_version-version}."
+                )
             if self.reject_stale_updates == True:
                 if version != self._model_version:
                     logger.info(
@@ -633,12 +648,9 @@ class TopAggregator(AsyncTopAgg):
                 end, PROP_LAST_EVAL_ROUND, msg[MessageType.MODEL_VERSION]
             )
             logger.debug(
-                f"Getting channel property {PROP_ROUND_START_TIME} for "
-                f"end {end}"
+                f"Getting channel property {PROP_ROUND_START_TIME} for " f"end {end}"
             )
-            round_start_time_tup = channel.get_end_property(
-                end, PROP_ROUND_START_TIME
-            )
+            round_start_time_tup = channel.get_end_property(end, PROP_ROUND_START_TIME)
             logger.debug(
                 f"Returned round_start_time_tup: {round_start_time_tup} for "
                 f"end {end} and timestamp {timestamp}"
@@ -669,7 +681,9 @@ class TopAggregator(AsyncTopAgg):
                 if MessageType.GRADIENTS_FOR_VAR_CHECK in msg
                 else None
             )
-            logger.debug(f"Calling aggregate_grads_for_trainers with grad_for_var_check: {_calculate_hash(grad_for_var_check)}")
+            logger.debug(
+                f"Calling aggregate_grads_for_trainers with grad_for_var_check: {_calculate_hash(grad_for_var_check)}"
+            )
             self.aggregate_grads_from_trainers(
                 trainer_gradients,
                 version_for_rate=version_for_rate,
@@ -678,8 +692,8 @@ class TopAggregator(AsyncTopAgg):
             )
 
             # del trainer_gradients # Free memory
-        
-        # This will add to the var check list twice, it is already added once 
+
+        # This will add to the var check list twice, it is already added once
         # within self.aggregate_grads_from_trainers
         # if MessageType.GRADIENTS_FOR_VAR_CHECK in msg:
         #     self.grad_for_var_check_list.append(
@@ -689,9 +703,7 @@ class TopAggregator(AsyncTopAgg):
         count = 0
         if MessageType.DATASET_SIZE in msg:
             count = msg[MessageType.DATASET_SIZE]
-            channel.set_end_property(
-                end, PROP_DATASET_SIZE, count
-            )
+            channel.set_end_property(end, PROP_DATASET_SIZE, count)
 
         if MessageType.STAT_UTILITY in msg:
             logger.info(
@@ -707,9 +719,8 @@ class TopAggregator(AsyncTopAgg):
         logger.info(
             f"Received grads from {end}. It was trained on model version {version}, with {count} samples"
         )
-        channel.remove_from_selected_ends( end )
+        channel.remove_from_selected_ends(end)
         return True
-
 
     @timer_decorator
     def _process_aggregation_goal_met(self, tag, channel, is_async=False):
@@ -719,11 +730,11 @@ class TopAggregator(AsyncTopAgg):
 
         self.grad_pool.append(self.grad)
         format_hash = lambda d: [_calculate_hash(v) for v in d]
-        logger.debug(f"self.grad when agg goal met - length : {len(self.grad)} - hash :  {format_hash(self.grad)}")
-
-        self.add_local_trained_result(
-            0, self.grad, self._agg_goal_cnt
+        logger.debug(
+            f"self.grad when agg goal met - length : {len(self.grad)} - hash :  {format_hash(self.grad)}"
         )
+
+        self.add_local_trained_result(0, self.grad, self._agg_goal_cnt)
 
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model
@@ -744,7 +755,7 @@ class TopAggregator(AsyncTopAgg):
             self.data_id += 1
             self.iteration_per_data_id = 0
             self._is_model_updated = True
-            
+
             if self.config.hyperparameters.inc_model_version_per_data_id:
                 self._model_version += 1
             else:
@@ -756,9 +767,7 @@ class TopAggregator(AsyncTopAgg):
                 )
                 self._round += 1
                 self.data_id = 0
-                channel.set_property(
-                    "round", self._round
-                )
+                channel.set_property("round", self._round)
 
         else:
             logger.info(
@@ -769,7 +778,7 @@ class TopAggregator(AsyncTopAgg):
 
         self._updates_in_queue -= self._agg_goal
         self._agg_goal_cnt = 0
-        
+
         self.fwd_llm_stage = FwdLLMStage(
             self._round, self.data_id, self.iteration_per_data_id
         )
@@ -779,15 +788,17 @@ class TopAggregator(AsyncTopAgg):
                 "Agg goal reached, so resetting trainer end states in the channel"
             )
         channel.cleanup_recvd_ends()
-        
+
         # Centralized cleanup
         # self._force_cuda_memory_cleanup()
 
     @timer_decorator
     def sync_collect_and_accumulate_grads(self, tag, channel):
         """Aggregate trainer gradients synchronously, with timing and stage metadata."""
-        self.fwd_llm_stage = FwdLLMStage(self._round, self.data_id, self.iteration_per_data_id, trainer_id=None)
-        
+        self.fwd_llm_stage = FwdLLMStage(
+            self._round, self.data_id, self.iteration_per_data_id, trainer_id=None
+        )
+
         recv_ends = channel.ends()
 
         num_min_req = self._agg_goal  # change hardcoding, set it to aggGoal
@@ -802,7 +813,7 @@ class TopAggregator(AsyncTopAgg):
             if not msg:
                 logger.info(f"No data from {end}; skipping it")
                 continue
-            
+
             self._process_single_trainer_message(channel, msg, end, timestamp)
 
             if self._agg_goal_cnt >= self._agg_goal:
@@ -813,14 +824,12 @@ class TopAggregator(AsyncTopAgg):
 
         # Second loop
 
-
     @timer_decorator
     def _aggregate_grads_sync(self, tag: str) -> None:
         """Aggregate trainer gradients synchronously."""
         logger.info("starting aggregate_grads_sync")
         self.log_memory("start _aggregate_grads_sync", self.device)
         self.print_trainable_params_stats(location="[start,_aggregate_grads_sync()]")
-        
 
         channel = self.cm.get_by_tag(tag)
         if not channel:
@@ -865,7 +874,7 @@ class TopAggregator(AsyncTopAgg):
         eval_loss_total = torch.tensor(0.0, device=device)
         num_eval_steps = 0
         test_sample_len = len(self.test_global.dataset)
-        
+
         # Move model to device before performing the eval
         self.model.to(device)
         self.model.eval()
@@ -876,27 +885,33 @@ class TopAggregator(AsyncTopAgg):
         # One-time GPU data transfer for caching test data
         if not hasattr(self, "_cached_test_data") or self._cached_test_data is None:
             logger.info("One-time GPU data transfer for evaluation dataset")
-            self._cached_test_data = [t.to(device) for t in self.test_global.dataset.tensors]
+            self._cached_test_data = [
+                t.to(device) for t in self.test_global.dataset.tensors
+            ]
 
         input_ids_all = self._cached_test_data[1]
         labels_all = self._cached_test_data[4]
 
         # Accumulate predictions on GPU
         preds_gpu = torch.empty((test_sample_len, self.num_labels), device=device)
-        out_label_ids_gpu = torch.empty(test_sample_len, dtype=labels_all.dtype, device=device)
+        out_label_ids_gpu = torch.empty(
+            test_sample_len, dtype=labels_all.dtype, device=device
+        )
 
         batch_size = self.args.eval_batch_size
         loss_fct = CrossEntropyLoss()
 
         from torch.cuda.amp import autocast
         import contextlib
+
         autocast_cm = autocast() if self.args.fp16 else contextlib.nullcontext()
-        if not self.args.fp16: logging.warning(f"Autocast is disabled: {self.args.fp16}")
+        if not self.args.fp16:
+            logging.warning(f"Autocast is disabled: {self.args.fp16}")
 
         with torch.no_grad(), autocast_cm:
             for batch_start_idx in range(0, test_sample_len, batch_size):
                 batch_end_idx = min(batch_start_idx + batch_size, test_sample_len)
-                
+
                 x = input_ids_all[batch_start_idx:batch_end_idx]
                 labels = labels_all[batch_start_idx:batch_end_idx]
 
@@ -929,13 +944,13 @@ class TopAggregator(AsyncTopAgg):
         result, wrong = self.compute_metrics(
             preds_argmax, out_label_ids, self.test_global.examples
         )
-        
+
         # Uncomment the below to log the prediction stats
-        probs = F.softmax(torch.tensor(preds), dim=1) # Shape: [N, 4]
+        probs = F.softmax(torch.tensor(preds), dim=1)  # Shape: [N, 4]
         log_margin_distribution(probs)
         compute_metrics_with_logging(probs, preds, out_label_ids, self.test_global)
         log_error_distribution(probs, out_label_ids)
-        
+
         result["eval_loss"] = eval_loss
         results.update(result)
 
@@ -946,7 +961,7 @@ class TopAggregator(AsyncTopAgg):
 
         # TODO: Check if model needs to be moved back to cpu? Do we need to keep
         # moving the model between CPU and GPU repeatedly?
-        
+
         # Can delete x, labels, output, logits, loss in case we run into any memory issues
         self._force_cuda_memory_cleanup()
 
@@ -1042,7 +1057,6 @@ class TopAggregator(AsyncTopAgg):
 
         return picked_trainer_is_available
 
-
     @timer_decorator
     def _prepare_distribution_payload(self, task_to_perform: str):
         if self.var:
@@ -1067,14 +1081,14 @@ class TopAggregator(AsyncTopAgg):
         logger.info(
             "Will send new weights to ends since variance is less than threshold"
         )
-        logger.info(
-            "Variance is GOOD. Preparing new model weights and grad_pool."
-        )
+        logger.info("Variance is GOOD. Preparing new model weights and grad_pool.")
 
         self.print_trainable_params_stats(location="[_prepare_distribution_payload]")
         trainable_params = self.get_trainable_param_state_dict()
-        
-        shared_weights = weights_to_device(trainable_params, DeviceType.CPU)        # Need to move to CPU for sending over MQTT
+
+        shared_weights = weights_to_device(
+            trainable_params, DeviceType.CPU
+        )  # Need to move to CPU for sending over MQTT
 
         shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
         shared_grad_pool_trainable = []
@@ -1128,9 +1142,11 @@ class TopAggregator(AsyncTopAgg):
         channel.await_join()
         global_model_params = self.get_global_model_params()
         format_hash = lambda d: {k: _calculate_hash(v)[:8] for k, v in d.items()}
-        logging.info(f"Model distributed to clients (Hashed): {format_hash(global_model_params)}")
+        logging.info(
+            f"Model distributed to clients (Hashed): {format_hash(global_model_params)}"
+        )
         self.weights = global_model_params
-        
+
         logger.debug(f"Starting busy wait at time {time.time()}")
         time.sleep(0.1)
         logger.debug(f"Ended busy wait at time {time.time()}")
@@ -1153,14 +1169,14 @@ class TopAggregator(AsyncTopAgg):
             self.ends_not_selected_yet = True
         else:
             self.ends_not_selected_yet = False
-            
+
         if not ends:
             logger.debug(
                 f"No trainers found for tag {tag}, will "
                 f"move to get() for fetch weights from trainers"
             )
             return
-            
+
         payload = self._prepare_distribution_payload(task_to_perform)
         self._update_state_after_payload_prepared()
 
@@ -1201,7 +1217,7 @@ class TopAggregator(AsyncTopAgg):
                 logger.info(
                     f"[DEBUG] Payload size for {end}: {len(msg_bytes) / (1024 * 1024):.2f} MB"
                 )
-            
+
             channel.send(end, payload)
             logger.info(f"Sent weights to {end}")
             # self.invoke_gc()
@@ -1260,7 +1276,7 @@ class TopAggregator(AsyncTopAgg):
             self.ends_not_selected_yet = True
         else:
             self.ends_not_selected_yet = False
-            
+
         if not ends:
             logger.debug(
                 f"No trainers found for tag {tag}, will "
@@ -1281,8 +1297,8 @@ class TopAggregator(AsyncTopAgg):
         else:
             logger.info(
                 "Sending variance = bad to trainers since variance is greater than threshold"
-            )    
-        
+            )
+
         payload = self._prepare_distribution_payload(task_to_perform)
         self._update_state_after_payload_prepared()
 
@@ -1309,7 +1325,6 @@ class TopAggregator(AsyncTopAgg):
         else:
             logger.info("Inside distribute of sync")
             self._distribute_weights_sync(tag, task_to_perform)
-            
 
     def _aggregate_weights(self, tag: str) -> None:
         if self.is_async:

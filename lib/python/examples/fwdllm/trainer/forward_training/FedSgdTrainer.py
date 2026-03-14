@@ -167,11 +167,13 @@ class FedSGDTrainer(Trainer):
         # Check if client will emulate delays in training time
         self.training_delay_enabled = self.config.hyperparameters.training_delay_enabled
         self.training_delay_s = float(self.config.hyperparameters.training_delay_s)
-        self.training_delay_factor = float(self.config.hyperparameters.training_delay_factor)
+        self.training_delay_factor = float(
+            self.config.hyperparameters.training_delay_factor
+        )
         self.speedup_factor = 1.0
 
         self.trainer_start_ts = time.time()
-        #TODO (ARM): Fix this to read traces better!
+        # TODO (ARM): Fix this to read traces better!
         # Storing synthetic avail traces
         self.avl_events_syn_0 = ast.literal_eval(
             self.config.hyperparameters.avl_events_syn_0
@@ -199,6 +201,7 @@ class FedSGDTrainer(Trainer):
 
         self.client_notify = self.config.hyperparameters.client_notify
 
+        self.state_avl_event_ts = []
         if self.client_notify["trace"] == "syn_0":
             self.state_avl_event_ts = self.avl_events_syn_0
             logger.info(f"Set avl_events_syn_0 for trainer id {self.trainer_id}.")
@@ -210,13 +213,21 @@ class FedSGDTrainer(Trainer):
             logger.info(f"Set avl_events_syn_50 for trainer id {self.trainer_id}.")
         elif self.client_notify["trace"] == "avl_events_syn_train_100_eval_0_unavail_0":
             self.state_avl_event_ts = self.avl_events_syn_train_100_eval_0_unavail_0
-            logger.info(f"Set avl_events_syn_train_100_eval_0_unavail_0 for trainer id {self.trainer_id}.")
+            logger.info(
+                f"Set avl_events_syn_train_100_eval_0_unavail_0 for trainer id {self.trainer_id}."
+            )
         elif self.client_notify["trace"] == "avl_events_syn_train_90_eval_10_unavail_0":
             self.state_avl_event_ts = self.avl_events_syn_train_90_eval_10_unavail_0
-            logger.info(f"Set avl_events_syn_train_90_eval_10_unavail_0 for trainer id {self.trainer_id}.")
-        elif self.client_notify["trace"] == "avl_events_syn_train_100_eval_0_unavail_0":
+            logger.info(
+                f"Set avl_events_syn_train_90_eval_10_unavail_0 for trainer id {self.trainer_id}."
+            )
+        elif (
+            self.client_notify["trace"] == "avl_events_syn_train_50_eval_30_unavail_20"
+        ):
             self.state_avl_event_ts = self.avl_events_syn_train_50_eval_30_unavail_20
-            logger.info(f"Set avl_events_syn_train_50_eval_30_unavail_20 for trainer id {self.trainer_id}.")
+            logger.info(
+                f"Set avl_events_syn_train_50_eval_30_unavail_20 for trainer id {self.trainer_id}."
+            )
         else:
             logger.info(
                 f"No avl_events set for trainer id {self.trainer_id} since state not specified."
@@ -407,11 +418,19 @@ class FedSGDTrainer(Trainer):
         # In sync model version = round hence, Index = model version
         # In async: Index = model version % round
         # list_index = self._model_version % self._round if self._model_version  > self._round else self._model_version
-        list_index = self.data_id # Which data bin to use for training
-        logging.info(f"self._model_version: {self._model_version } - list-index/data-id = {list_index}")
+        list_index = self.data_id  # Which data bin to use for training
+        logging.info(
+            f"self._model_version: {self._model_version } - list-index/data-id = {list_index}"
+        )
         self.trainer.train(
-            [self.train_local_list[0][list_index]], self.device, self.args,
-            {"round_id": self._round, "data_id": self.data_id, "iteration": self.iteration_per_data_id}
+            [self.train_local_list[0][list_index]],
+            self.device,
+            self.args,
+            {
+                "round_id": self._round,
+                "data_id": self.data_id,
+                "iteration": self.iteration_per_data_id,
+            },
         )
         self.grad_for_var_check = self.trainer.model_trainer.grad_for_var_check
 
@@ -442,7 +461,7 @@ class FedSGDTrainer(Trainer):
 
         if not self._check_availability():
             return
-        
+
         self._perform_training()
 
         # emulate delays in training (due to compute resource and/or

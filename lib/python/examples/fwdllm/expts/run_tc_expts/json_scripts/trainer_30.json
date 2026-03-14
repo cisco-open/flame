@@ -52,7 +52,7 @@
         "dataset": "agnews",
         "data_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5",
         "partition_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5",
-        "partition_method": "niid_label_clients=100_alpha=0.5",
+        "partition_method": "niid_label_clients=100_alpha=1",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
         "model_name": "distilbert-base-uncased",
@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (18889, 'AVL_TRAIN'), (26154, 'UN_AVL'), (44257, 'AVL_TRAIN'), (45032, 'UN_AVL'), (55301, 'AVL_TRAIN'), (55584, 'UN_AVL'), (56398, 'AVL_TRAIN'), (56487, 'UN_AVL'), (57209, 'AVL_TRAIN'), (59873, 'UN_AVL'), (64468, 'AVL_TRAIN'), (64606, 'UN_AVL'), (70240, 'AVL_TRAIN'), (70609, 'UN_AVL'), (73999, 'AVL_TRAIN'), (74585, 'UN_AVL'), (75860, 'AVL_TRAIN'), (76083, 'UN_AVL'), (77370, 'AVL_TRAIN'), (79306, 'UN_AVL'), (79713, 'AVL_TRAIN'), (79814, 'UN_AVL'), (83091, 'AVL_TRAIN'), (84860, 'UN_AVL'), (86669, 'AVL_TRAIN'), (87251, 'UN_AVL'), (98297, 'AVL_TRAIN'), (103304, 'UN_AVL'), (143068, 'AVL_TRAIN'), (143739, 'UN_AVL'), (143900, 'AVL_TRAIN'), (143908, 'UN_AVL'), (145912, 'AVL_TRAIN'), (148037, 'UN_AVL'), (148669, 'AVL_TRAIN'), (149498, 'UN_AVL'), (159992, 'AVL_TRAIN'), (161907, 'UN_AVL'), (170639, 'AVL_TRAIN'), (170761, 'UN_AVL'), (174058, 'AVL_TRAIN'), (175241, 'UN_AVL'), (175325, 'AVL_TRAIN'), (176149, 'UN_AVL'), (176149, 'AVL_TRAIN'), (176159, 'UN_AVL'), (176372, 'AVL_TRAIN'), (176659, 'UN_AVL'), (176765, 'AVL_TRAIN'), (177312, 'UN_AVL'), (177464, 'AVL_TRAIN'), (177980, 'UN_AVL'), (178704, 'AVL_TRAIN'), (179015, 'UN_AVL'), (183153, 'AVL_TRAIN'), (184046, 'UN_AVL'), (198048, 'AVL_TRAIN'), (204352, 'UN_AVL'), (267078, 'AVL_TRAIN'), (272977, 'UN_AVL'), (311402, 'AVL_TRAIN'), (312545, 'UN_AVL'), (314353, 'AVL_TRAIN'), (315995, 'UN_AVL'), (330152, 'AVL_TRAIN'), (337606, 'UN_AVL'), (374176, 'AVL_TRAIN'), (375460, 'UN_AVL'), (383427, 'AVL_TRAIN'), (388817, 'UN_AVL'), (404989, 'AVL_TRAIN'), (405471, 'UN_AVL'), (417883, 'AVL_TRAIN'), (417892, 'UN_AVL'), (417935, 'AVL_TRAIN'), (417997, 'UN_AVL'), (418172, 'AVL_TRAIN'), (420211, 'UN_AVL'), (424286, 'AVL_TRAIN'), (425948, 'UN_AVL')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
+            "trace": "syn_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",

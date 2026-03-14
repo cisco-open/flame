@@ -9,6 +9,9 @@ FL_ALG=$3
 total_client_num=$4
 LOG_LEVEL=$5
 ENABLE_WATCHDOG=${6:-false}  # Set to "true" to enable error checking, defaults to "false"
+# --- Accuracy monitoring configuration ---
+ACC_THRESHOLD=80          # Accuracy percentage (0-100) to monitor for
+ACC_CONSEC_LIMIT=20       # Number of consecutive rounds above threshold before stopping the run
 
 pkill -f "$FWDLLM_USER.*fl_main.py"
 if [ $? -eq 0 ]; then
@@ -45,7 +48,7 @@ else
   peft_method=bitfit
 fi
 
-PARTITION_METHOD="niid_label_clients=100_alpha=0.5" # this is set in aggregator.json, this will be overwritten
+PARTITION_METHOD="niid_label_clients=100_alpha=1" # this is set in aggregator.json, this will be overwritten
 if [ $DATA_NAME = "agnews" ];then
   max_seq_length=64  # this is set in aggregator.json, this will be overwritten
   frequency_of_the_test=1
@@ -141,6 +144,11 @@ else
   TRAINER_LOG_FILE=$(readlink -f "$LOG_DIR/test_trainer_${LOG_SUFFIX}.log")
   PARENT_PID=$$
 
+  # -----------------------------------------
+  SCRIPT_START_TIME=$(date +%s)
+  _acc_consec_count=0
+  _acc_last_grep_offset=0   # byte offset: attempt to resume grep from last occurrence
+
   # Function to check logs for errors and kill all processes if found
   check_errors() {
     # Find the first file that contains a real error (ignoring known false positives)
@@ -166,6 +174,60 @@ else
       # We kill the parent process with TERM; the trap will handle the rest.
       kill -TERM $PARENT_PID
       exit 1
+    fi
+  }
+
+  # Function to monitor model accuracy from the aggregator log.
+  # Tracks consecutive rounds above ACC_THRESHOLD and triggers shutdown
+  # when ACC_CONSEC_LIMIT is reached.
+  check_accuracy() {
+    [ -f "$AGG_LOG_FILE" ] || return
+
+    # --- Smart tail-first grep ---
+    # The log is append-only and can be very large (up to ~8 GB).
+    # We first try scanning only the last 200 KB for the accuracy line, which
+    # covers many rounds without reading the full file.  If nothing is found
+    # there (e.g. the file is brand-new) we fall back to a full scan.
+    ACC_LINE=$(tail -c 204800 "$AGG_LOG_FILE" 2>/dev/null | \
+               grep -oE "'acc': [0-9]+\.?[0-9]*" | tail -n 1)
+    if [ -z "$ACC_LINE" ]; then
+      ACC_LINE=$(grep -oE "'acc': [0-9]+\.?[0-9]*" "$AGG_LOG_FILE" 2>/dev/null | tail -n 1)
+    fi
+
+    [ -z "$ACC_LINE" ] && return   # No accuracy entry yet
+
+    # Extract the raw fraction (e.g. 0.7505263...) and convert to percentage
+    ACC_RAW=$(echo "$ACC_LINE" | grep -oE "[0-9]+\.?[0-9]*$")
+    ACC_PCT=$(awk "BEGIN { printf \"%.2f\", $ACC_RAW * 100 }")
+
+    echo "[accuracy-monitor] latest acc: ${ACC_PCT}%  (consecutive above ${ACC_THRESHOLD}%: ${_acc_consec_count})"
+
+    # Compare using awk (bash can't do float comparisons)
+    IS_ABOVE=$(awk "BEGIN { print ($ACC_PCT >= $ACC_THRESHOLD) ? 1 : 0 }")
+
+    if [ "$IS_ABOVE" -eq 1 ]; then
+      _acc_consec_count=$(( _acc_consec_count + 1 ))
+    else
+      _acc_consec_count=0
+    fi
+
+    if [ "$_acc_consec_count" -ge "$ACC_CONSEC_LIMIT" ]; then
+      NOW=$(date +%s)
+      ELAPSED=$(( NOW - SCRIPT_START_TIME ))
+      ELAPSED_FMT=$(printf '%dh %dm %ds' $(( ELAPSED/3600 )) $(( (ELAPSED%3600)/60 )) $(( ELAPSED%60 )))
+
+      ACCURACY_MSG="[accuracy-monitor] ACC_CONSEC_LIMIT (${ACC_CONSEC_LIMIT}) reached."
+      ACCURACY_MSG+="\n  Overall experiment time : ${ELAPSED_FMT}"
+      ACCURACY_MSG+="\n  Consecutive rounds above ${ACC_THRESHOLD}% : ${_acc_consec_count}"
+      ACCURACY_MSG+="\n  Last recorded accuracy   : ${ACC_PCT}%"
+      ACCURACY_MSG+="\n  Triggering graceful shutdown..."
+
+      echo -e "$ACCURACY_MSG"
+      echo -e "$ACCURACY_MSG" >> "$AGG_LOG_FILE"
+      echo -e "$ACCURACY_MSG" >> "$TRAINER_LOG_FILE"
+
+      kill -TERM $PARENT_PID
+      exit 0
     fi
   }
 
@@ -197,7 +259,7 @@ else
   echo "Wrote expanded aggregator config: $AGG_EXPANDED"
 
   # Run aggregator/main.py once with logging
-  CUDA_VISIBLE_DEVICES="7" python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
+  python $REPO_PATH/lib/python/examples/fwdllm/aggregator/fl_main.py \
     --config "$AGG_EXPANDED" \
     --log_level "$LOG_LEVEL" \
     > "$AGG_LOG_FILE" 2>&1 &
@@ -213,8 +275,7 @@ else
 
   for X in $(seq 0 $(( total_client_num-1 )) )    # End value is inclusive
   do
-    # ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
-    ASSIGN_TO_GPU=7
+    ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
     TRAIN_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/trainer_${X}.json"
     TRAIN_EXPANDED="$EXPANDED_TMP_DIR/trainer_${X}_expanded.json"
 
@@ -235,7 +296,7 @@ else
       fi
   done
 
-  echo "Log files created: \n - $AGG_LOG_FILE \n - $TRAINER_LOG_FILE"
+  echo "Log files created: \n Aggregator: $AGG_LOG_FILE \n Trainer: $TRAINER_LOG_FILE"
 
   # Start background periodic check (every 30 seconds)
   # The watchdog will automatically exit if the parent process ($PARENT_PID) dies
@@ -243,6 +304,7 @@ else
     (
       while kill -0 $PARENT_PID 2>/dev/null; do   # Checks if the parent script is still alive
         check_errors
+        check_accuracy
         sleep 30
       done
     ) &

@@ -1489,7 +1489,7 @@ class AsyncOortSelector(AbstractSelector):
                     logger.debug(f"Not skipping trainer: {end_id}")
                     eligible_filtered_ends[end_id] = end
                 else:
-                    logger.info(
+                    logger.debug(
                         f"Skipping trainer: {end_id} already has same "
                         f"(model_version={curr_model_version}, "
                         f"iteration_id={curr_iteration_id}, data_id={curr_data_id})"

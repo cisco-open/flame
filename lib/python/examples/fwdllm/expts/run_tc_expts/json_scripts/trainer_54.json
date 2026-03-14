@@ -52,7 +52,7 @@
         "dataset": "agnews",
         "data_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5",
         "partition_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5",
-        "partition_method": "niid_label_clients=100_alpha=0.5",
+        "partition_method": "niid_label_clients=100_alpha=1",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
         "model_name": "distilbert-base-uncased",
@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (171080, 'AVL_TRAIN'), (171088, 'UN_AVL'), (171088, 'AVL_TRAIN'), (171098, 'UN_AVL'), (171123, 'AVL_TRAIN'), (173152, 'UN_AVL'), (183205, 'AVL_TRAIN'), (183264, 'UN_AVL'), (184085, 'AVL_TRAIN'), (185117, 'UN_AVL'), (187218, 'AVL_TRAIN'), (187219, 'UN_AVL'), (187220, 'AVL_TRAIN'), (187221, 'UN_AVL'), (187224, 'AVL_TRAIN'), (187812, 'UN_AVL'), (187812, 'AVL_TRAIN'), (189770, 'UN_AVL'), (189776, 'AVL_TRAIN'), (190415, 'UN_AVL'), (190554, 'AVL_TRAIN'), (190794, 'UN_AVL'), (191867, 'AVL_TRAIN'), (191962, 'UN_AVL'), (192840, 'AVL_TRAIN'), (217951, 'UN_AVL'), (223912, 'AVL_TRAIN'), (224426, 'UN_AVL'), (224447, 'AVL_TRAIN'), (224514, 'UN_AVL'), (351032, 'AVL_TRAIN'), (351484, 'UN_AVL'), (351903, 'AVL_TRAIN'), (352123, 'UN_AVL'), (352374, 'AVL_TRAIN'), (353704, 'UN_AVL'), (401067, 'AVL_TRAIN'), (402327, 'UN_AVL'), (434330, 'AVL_TRAIN'), (434610, 'UN_AVL')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
+            "trace": "syn_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",
