@@ -435,11 +435,11 @@ class TopAggregator(AsyncTopAgg):
         logger.info(f"Came to read_trainer_unavailability, trace: {trace}")
         trainer_events_dict = {}
 
-        # TODO(Aishwwarya): Set path to read JSON files without 'aish_test' after Twisha's PR merge
-        files_path = "/home/dgarg39/aish_test/flame/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts"
-
-        dirname = os.path.dirname(__file__)
-        search_pattern = os.path.join(dirname, files_path, "trainer_*.json")
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        files_path = os.path.join(
+            current_dir, "../../../../examples/fwdllm/expts/run_tc_expts/json_scripts"
+        )
+        search_pattern = os.path.join(files_path, "trainer_*.json")
         json_files = glob.glob(search_pattern)
 
         if not json_files:
