@@ -655,6 +655,13 @@ class TopAggregator(AsyncTopAgg):
                 f"Returned round_start_time_tup: {round_start_time_tup} for "
                 f"end {end} and timestamp {timestamp}"
             )
+            if round_start_time_tup is not None:
+                sent_ts = round_start_time_tup[1]
+                round_duration = timestamp - sent_ts
+                channel.set_end_property(end, PROP_ROUND_DURATION, round_duration)
+                logger.info(
+                    f"Set PROP_ROUND_DURATION for {end}: {round_duration.total_seconds():.3f}s"
+                )
         else:
             logger.error(
                 f"Invalid message received from {end} in aggregate_weights: {msg}"

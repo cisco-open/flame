@@ -97,3 +97,4 @@ scripts/plotters/old_plots/*
 
 # Local json files (fwdllm) - populated with $USER - do not commit
 /tmp_expanded_configs_*
+specs/*

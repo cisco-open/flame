@@ -332,8 +332,10 @@ class AsyncOortSelector(AbstractSelector):
                 # Insert to queues tracking stat_util, speed, round
                 # data
                 for window in [50, 100, 200]:
-                    # if end_stat_util is not None:
-                    #     self._selector_stats[task_to_perform]['data'][f'util_last_{window}'].append(end_stat_util)
+                    if end_stat_util is not None:
+                        self._selector_stats[task_to_perform]["data"][
+                            f"util_last_{window}"
+                        ].append(end_stat_util)
                     if end_speed is not None:
                         self._selector_stats[task_to_perform]["data"][
                             f"speed_last_{window}"
