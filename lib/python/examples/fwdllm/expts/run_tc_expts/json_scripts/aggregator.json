@@ -82,8 +82,8 @@
         "client_num_in_total": 0,
         "warmup_ratio": 0,
         "trackTrainerAvail": {
-            "enabled": "False",
-            "type": "NONE",
+            "enabled": "True",
+            "type": "ORACULAR",
             "trace": "avl_events_syn_train_90_eval_10_unavail_0"
         },
         "aggGoal": 10,
@@ -111,8 +111,8 @@
             "aggGoal": 10,
             "evalGoalFactor": 0,
             "selectType": "default",
-            "roundNudgeType": "last_eval",
-            "minInitialTrainers": 10,
+            "roundNudgeType": "last_train",
+            "minInitialTrainers": 50,
             "k": 10,
             "is_async": true
         }

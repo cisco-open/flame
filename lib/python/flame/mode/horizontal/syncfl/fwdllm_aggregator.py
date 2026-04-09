@@ -217,10 +217,14 @@ class TopAggregator(AsyncTopAgg):
         self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
 
         self._updates_in_queue = 0
-        self._updates_recevied = {}
-        self._trainer_participation_in_round_count = {}
-        self._trainer_participation_in_round = {}
-        self._per_round_update_list = []
+        self._updates_received = {}
+        self._per_agg_trainer_list = []
+        self._model_version_unique_trainers = set()
+        self._model_version_trainer_stats = {
+            "train_duration": [],
+            "partial_stat_utility": [],
+        }
+
         self._per_round_staleness_list = []
         self._aggregator_staleness_track_rounds = []
         self._aggregator_round_avg_staleness = []
@@ -607,7 +611,7 @@ class TopAggregator(AsyncTopAgg):
         if self._agg_goal_cnt < self._agg_goal:
             logger.info(f"Agg goal not met. Have {self._agg_goal_cnt}/{self._agg_goal}")
             channel.set_end_property(
-                end, PROP_UPDATE_COUNT, self._updates_recevied.get(end, 0) + 1
+                end, PROP_UPDATE_COUNT, self._updates_received.get(end, 0) + 1
             )
             return
 
@@ -673,12 +677,12 @@ class TopAggregator(AsyncTopAgg):
 
         channel._selector.ordered_updates_recv_ends.append(end)
         self._updates_in_queue += 1
-        self._per_round_update_list.append(end)
+        self._per_agg_trainer_list.append(end)
 
-        if end not in self._updates_recevied.keys():
-            self._updates_recevied[end] = 1
+        if end not in self._updates_received.keys():
+            self._updates_received[end] = 1
         else:
-            self._updates_recevied[end] += 1
+            self._updates_received[end] += 1
 
         if MessageType.GRADIENTS in msg:
             trainer_gradients = msg[MessageType.GRADIENTS]
@@ -729,11 +733,80 @@ class TopAggregator(AsyncTopAgg):
         channel.remove_from_selected_ends(end)
         return True
 
+    def _log_and_reset_model_version_stats(self):
+        """Log a CSV summary of trainer participation for the completed model
+        version window, then reset accumulators for the next window.
+
+        Window = all aggregation cycles that ran between two consecutive
+        variance-threshold breaches.
+        """
+
+        def compute_percentiles(values, reverse=False):
+            if not values:
+                return -1, -1, -1, -1, -1, -1, -1, -1
+            arr = np.array(values)
+
+            # This of this as the equivalent of sorting the array in reverse order where
+            p1, p5, p20, p30, p50, p75, p90, p99 = (
+                (99, 95, 80, 70, 50, 25, 10, 1) if reverse else (1, 5, 20, 30, 50, 75, 90, 99)
+            )
+            return (
+                float(np.percentile(arr, p1, method='lower')),
+                float(np.percentile(arr, p5, method='lower')),
+                float(np.percentile(arr, p20, method='lower')),
+                float(np.percentile(arr, p30, method='lower')),
+                float(np.percentile(arr, p50, method='lower')),
+                float(np.percentile(arr, p75, method='lower')),
+                float(np.percentile(arr, p90, method='lower')),
+                float(np.percentile(arr, p99, method='lower')),
+            )
+
+        n_unique = len(self._model_version_unique_trainers)
+        rd_p1, rd_p5, rd_p20, rd_p30, rd_p50, rd_p75, rd_p90, rd_p99 = (
+            compute_percentiles(self._model_version_trainer_stats["train_duration"])
+        )
+        su_p1, su_p5, su_p20, su_p30, su_p50, su_p75, su_p90, su_p99 = (
+            compute_percentiles(
+                self._model_version_trainer_stats["partial_stat_utility"], reverse=True
+            )
+        )
+
+        logger.info(
+            f"==== Model version incremented to {self._curr_agg_version} with updates from {n_unique} unique trainers. Stats of participating trainers: \n"
+            f"p1, p5, p20, p30, p50, p75, p90, p99 of train duration \n{rd_p1:.3f}, {rd_p5:.3f}, {rd_p20:.3f}, {rd_p30:.3f}, {rd_p50:.3f}, {rd_p75:.3f}, {rd_p90:.3f}, {rd_p99:.3f} \n"
+            f"p1, p5, p20, p30, p50, p75, p90, p99 of partial stat utilities \n{su_p1:.4f}, {su_p5:.4f}, {su_p20:.4f}, {su_p30:.4f}, {su_p50:.4f}, {su_p75:.4f}, {su_p90:.4f}, {su_p99:.4f}"
+        )
+
+        # Reset accumulators for the next model version window
+        self._model_version_unique_trainers = set()
+        self._model_version_trainer_stats = {
+            "train_duration": [],
+            "partial_stat_utility": [],
+        }
+
     @timer_decorator
     def _process_aggregation_goal_met(self, tag, channel, is_async=False):
         logger.info(
             f"Aggregation goal {self._agg_goal} reached. Performing FwdLLM aggregation."
         )
+
+        # Accumulate model-version-window stats; reset only when variance threshold is breached.
+        for trainer_update in self._per_agg_trainer_list:
+            self._model_version_unique_trainers.add(trainer_update)
+            train_duration = channel.get_end_property(
+                trainer_update, PROP_ROUND_DURATION
+            )
+            if train_duration is not None:
+                self._model_version_trainer_stats["train_duration"].append(
+                    train_duration.total_seconds()
+                )
+            partial_stat_utility = channel.get_end_property(
+                trainer_update, PROP_STAT_UTILITY
+            )
+            if partial_stat_utility is not None:
+                self._model_version_trainer_stats["partial_stat_utility"].append(
+                    partial_stat_utility
+                )
 
         self.grad_pool.append(self.grad)
         format_hash = lambda d: [_calculate_hash(v) for v in d]
@@ -768,6 +841,8 @@ class TopAggregator(AsyncTopAgg):
             else:
                 self._model_version = self._round
 
+            self._log_and_reset_model_version_stats()
+
             if self.data_id == self.total_data_bins:
                 logger.info(
                     f"All data bins complete. Incrementing round to {self._round + 1}"
@@ -784,6 +859,14 @@ class TopAggregator(AsyncTopAgg):
             self._is_model_updated = False
 
         self._updates_in_queue -= self._agg_goal
+        self._per_agg_trainer_list = []
+
+        logger.info(
+            f"====== aggregation finished for round {self._round}, "
+            f"self._agg_goal_cnt: {self._agg_goal_cnt}, self._updates_received: "
+            f"{self._updates_received}"
+        )
+
         self._agg_goal_cnt = 0
 
         self.fwd_llm_stage = FwdLLMStage(

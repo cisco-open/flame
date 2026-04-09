@@ -306,6 +306,8 @@ else
     check_errors
   fi
 
+  echo -e "Log files to monitor: \n [Aggregator]: $AGG_LOG_FILE \n [Trainer]: $TRAINER_LOG_FILE \n [Accuracy]: $ACC_MONITOR_FILE\n"
+
   NUM_AVAIL_GPUS=8
 
   for X in $(seq 0 $(( total_client_num-1 )) )    # End value is inclusive
@@ -331,7 +333,7 @@ else
       fi
   done
 
-  echo "Log files created: \n [Aggregator]: $AGG_LOG_FILE \n [Trainer]: $TRAINER_LOG_FILE"
+  echo -e "Log files created: \n [Aggregator]: $AGG_LOG_FILE \n [Trainer]: $TRAINER_LOG_FILE"
 
   # Start background periodic check (every 30 seconds)
   # The watchdog will automatically exit if the parent process ($PARENT_PID) dies

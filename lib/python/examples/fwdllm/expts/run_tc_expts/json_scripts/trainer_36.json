@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (220622, 'AVL_TRAIN'), (220655, 'UN_AVL'), (220656, 'AVL_TRAIN'), (227231, 'UN_AVL'), (227241, 'AVL_TRAIN'), (247979, 'UN_AVL'), (249947, 'AVL_TRAIN'), (253244, 'UN_AVL'), (266932, 'AVL_TRAIN'), (278193, 'UN_AVL'), (362595, 'AVL_TRAIN'), (390071, 'UN_AVL'), (435756, 'AVL_TRAIN'), (437100, 'UN_AVL'), (437110, 'AVL_TRAIN'), (440847, 'UN_AVL')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "syn_0"
+            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",

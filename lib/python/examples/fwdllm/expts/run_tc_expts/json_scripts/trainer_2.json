@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (391492, 'AVL_TRAIN'), (392455, 'UN_AVL'), (392456, 'AVL_TRAIN'), (397781, 'UN_AVL'), (397813, 'AVL_TRAIN'), (403293, 'UN_AVL'), (406742, 'AVL_TRAIN'), (407792, 'UN_AVL'), (408447, 'AVL_TRAIN'), (408449, 'UN_AVL'), (408449, 'AVL_TRAIN'), (408451, 'UN_AVL'), (408459, 'AVL_TRAIN'), (409921, 'UN_AVL'), (409923, 'AVL_TRAIN'), (409935, 'UN_AVL'), (413045, 'AVL_TRAIN'), (413146, 'UN_AVL'), (413147, 'AVL_TRAIN'), (413162, 'UN_AVL'), (413239, 'AVL_TRAIN'), (413248, 'UN_AVL'), (413287, 'AVL_TRAIN'), (413316, 'UN_AVL'), (413332, 'AVL_TRAIN'), (413376, 'UN_AVL'), (413385, 'AVL_TRAIN'), (413419, 'UN_AVL'), (413434, 'AVL_TRAIN'), (413488, 'UN_AVL'), (413512, 'AVL_TRAIN'), (414931, 'UN_AVL'), (414942, 'AVL_TRAIN'), (415602, 'UN_AVL'), (415614, 'AVL_TRAIN'), (415705, 'UN_AVL'), (415728, 'AVL_TRAIN'), (416902, 'UN_AVL'), (416915, 'AVL_TRAIN'), (419524, 'UN_AVL'), (419526, 'AVL_TRAIN'), (419575, 'UN_AVL'), (419575, 'AVL_TRAIN'), (420540, 'UN_AVL'), (420848, 'AVL_TRAIN'), (420987, 'UN_AVL'), (420989, 'AVL_TRAIN'), (421302, 'UN_AVL'), (421387, 'AVL_TRAIN'), (422656, 'UN_AVL'), (422658, 'AVL_TRAIN'), (422659, 'UN_AVL'), (422660, 'AVL_TRAIN'), (422727, 'UN_AVL'), (435710, 'AVL_TRAIN'), (438969, 'UN_AVL'), (462425, 'AVL_TRAIN'), (462830, 'UN_AVL'), (462830, 'AVL_TRAIN'), (467985, 'UN_AVL'), (468378, 'AVL_TRAIN'), (468426, 'UN_AVL'), (470475, 'AVL_TRAIN'), (471678, 'UN_AVL'), (471715, 'AVL_TRAIN'), (477047, 'UN_AVL'), (477048, 'AVL_TRAIN')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "syn_0"
+            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",

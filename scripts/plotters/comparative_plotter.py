@@ -9,34 +9,79 @@ import warnings
 # E.g., if there are 100 max unique data points, NUM_INTERPOLATION_POINTS = 100 * INTERP_RATIO (200)
 INTERP_RATIO = 0.5
 DEFAULT_X_TICK_COUNT = 10
-DEFAULT_Y_TICK_COUNT = 5
+DEFAULT_Y_TICK_COUNT = 3
 BATCHES_PER_EPOCH = 150
-LINE_WIDTH = 1.5
+LINE_WIDTH = 2
 
 MIN_MAX_DISABLED = True
 STOP_LINE_AT_MISSING_DATA = (
     True  # If True, lines stop at missing data instead of forward-filling
 )
-X_AXIS_END_AT_SHORTEST = True  # If True, x-axis ends at shortest system's max x-value; if False, extends to longest system's max x-value
+X_AXIS_END_AT_SHORTEST = False  # If True, x-axis ends at shortest system's max x-value; if False, extends to longest system's max x-value
+X_AXIS_MAX = 15  # Configurable maximum for X-axis scaling (e.g., 15 for 15 hours). Set to None for auto.
+Y_AXIS_MIN = 0.20  # Configurable minimum for Y-axis scaling (e.g., 0.20 for 20%). Set to None for auto.
+Y_AXIS_MAX = 0.85  # Configurable maximum for Y-axis scaling (e.g., 0.85 for 85%). Set to None for auto.
+
+plt.rcParams.update(
+    {
+        "font.size": 18,
+        "axes.labelsize": 20,
+        "axes.titlesize": 20,
+        "xtick.labelsize": 18,
+        "ytick.labelsize": 18,
+        "legend.fontsize": 16,
+        "figure.figsize": [6, 3],  # Adjusted to match the standard paper aspect ratio
+        "pdf.fonttype": 42,
+        "ps.fonttype": 42,
+        "grid.color": "gainsboro",
+        "axes.grid": True,
+        "axes.axisbelow": True,
+        # "axes.labelweight": "bold",  # Bold axis labels like your reference
+    }
+)
+plt.margins(0.5, 0.5)
+plt.tight_layout(pad=0)
+
+SYSTEM_COLORS = ["royalblue", "red", "green", "purple", "goldenrod", "maroon"]
+base_folder = "/Users/gaurav/Library/CloudStorage/GoogleDrive-curiouscreature97@gmail.com/My Drive/fwdllm_experiments"
+
 
 # --- System-Agnostic Configuration ---
 
 # Define all systems and their corresponding run files in this dictionary.
 # Add as many systems as you need.
 SYSTEMS_DATA = {
-    "Async with smart (stale+stat_util) aggregation": [
-        "output/async_k10_c50_n150-weight_stale_and_stat_utility.csv"
+    # 100-avail
+    # "Sync": [
+    #     f"{base_folder}/output/nsdi/nsdi_sync_n_100_c_13_k_10_alpha_1_a_100_e_0_u_0-evaluation_metrics.csv"
+    # ],
+    # "Random": [
+    #     f"{base_folder}/output/nsdi/nsdi_async_n_100_c_30_k_10_alpha_1_a_100_e_0_u_0-evaluation_metrics.csv"
+    # ],
+    # "OORT": [
+    #     f"{base_folder}/output/nsdi/nsdi_felix_n_100_c_30_k_10_alpha_1_a_100_e_0_u_0-evaluation_metrics.csv"
+    # ],
+    # 90-avail-10-eval-0-unavail
+    "Sync": [
+        f"{base_folder}/output/nsdi_sync_n_100_c_13_k_10_alpha_1_a_90_e_10_u_0-evaluation_metrics.csv"
     ],
-    "Async with stale rejections": ["output/async_k10_c50_n150-reject_stale.csv"],
-    "Async with weighted stale aggregation (norm=k)": [
-        "output/async_k10_c50_n150-weight_stale_norm_k.csv"
+    "Random": [
+        f"{base_folder}/output/async_n100_c30_k10_alpha1_avail90_agg-evaluation_metrics.csv"
     ],
+    "OORT": [
+        f"{base_folder}/output/async_n100_c30_k10_opts_alpha1_oort_durations_fixed_agg-evaluation_metrics.csv"
+    ],
+    "OORT++": [
+        f"{base_folder}/output/async_n100_c30_k10_opts_alpha1_oort++_agg-evaluation_metrics.csv"
+    ],
+    # "OORT Greedy": [
+    #     f"{base_folder}/output/nsdi_felix_deter_n_100_c_30_k_10_alpha_1_a_90_e_10_u_0-evaluation_metrics.csv"
+    # ],
 }
 
 # Define colors for the system lines.
 # Colors will be assigned in the order systems are defined in SYSTEMS_DATA.
 # If there are more systems than colors, the list will wrap around.
-SYSTEM_COLORS = ["C0", "red", "green", "purple", "orange", "brown"]
 
 # -----------------------------------------------------
 
@@ -149,8 +194,8 @@ def load_and_preprocess_data(file_list):
                 # 1. Process Accuracy (already a float, needs scaling)
                 df["Accuracy"] = df["accuracy"] / 100.0
 
-                # 2. Use Time_Since_Start directly (already in seconds)
-                df["Time_Since_Start"] = df["time_since_start"]
+                # 2. Use Time_Since_Start directly (Convert seconds to hours)
+                df["Time_Since_Start"] = df["time_since_start"] / 3600.0
 
                 # 3. Create Unique_Mini_Batch_ID from round_id and data_id
                 df["Unique_Mini_Batch_ID"] = (
@@ -174,10 +219,10 @@ def load_and_preprocess_data(file_list):
                     df["accuracy_str"].astype(str).str.rstrip("%").astype(float) / 100
                 )
 
-                # 2. Convert Time string to Total Seconds using its new name
+                # 2. Convert Time string to total hours using its new name
                 df["Time_Since_Start"] = (
                     df["time_str"].astype(str).apply(parse_time_string)
-                )
+                ) / 3600.0
 
                 # 3. Create Unique_Mini_Batch_ID from named columns
                 df["Unique_Mini_Batch_ID"] = df["epoch_id"].astype(
@@ -197,6 +242,10 @@ def plot_comparison_chart(
     x_tick_count=None,
     y_tick_count=None,
     explicit_interpolation_points=None,
+    smoothing_window=15,
+    legend_loc="lower right",
+    legend_bbox_to_anchor=None,
+    legend_ncol=1,
 ):
     """
     Generates a comparative plot for N systems, handling interpolation
@@ -225,15 +274,15 @@ def plot_comparison_chart(
     # 2. Determine Axis Keys, Labels, and Interpolation Settings
     if plot_type == "time":
         x_data_key, y_data_key = "Time_Since_Start", "Accuracy"
-        x_label, y_label = "Time Since Start (Minutes)", "Test Accuracy"
+        x_label, y_label = "Train Time (Hours)", "Test Accuracy (%)"
         interpolate = True
     elif plot_type == "batch":
         x_data_key, y_data_key = "Unique_Mini_Batch_ID", "Accuracy"
-        x_label, y_label = "Model Version (Mini-Batch ID)", "Test Accuracy"
+        x_label, y_label = "Model Version (Mini-Batch ID)", "Test Accuracy (%)"
         interpolate = False
     elif plot_type == "time_vs_batch":
         x_data_key, y_data_key = "Time_Since_Start", "Unique_Mini_Batch_ID"
-        x_label, y_label = "Time Since Start (Minutes)", "Model Version (Mini-Batch ID)"
+        x_label, y_label = "Train Time (Hours)", "Model Version (Mini-Batch ID)"
         interpolate = True
     else:
         raise ValueError("plot_type must be 'time', 'batch', or 'time_vs_batch'.")
@@ -259,6 +308,9 @@ def plot_comparison_chart(
             max_x = min_x * 1.05  # Add 5% extra to show that the run ended early
         else:
             max_x = max_x
+
+    if X_AXIS_MAX is not None:
+        max_x = X_AXIS_MAX
 
     # Also keep all_x_data for other calculations (e.g., interpolation points)
     all_x_data = [t for df in all_runs_list for t in df[x_data_key].tolist()]
@@ -351,45 +403,7 @@ def plot_comparison_chart(
 
         processed_data[system_name] = {"mean": mean, "lower": lower, "upper": upper}
 
-    # 5. Plotting (Using default style for better custom axis control)
-    plt.style.use("default")
-    fig, axes = plt.subplots(figsize=(10, 6))
-
-    # Assign colors
-    system_names = list(all_systems_runs.keys())
-    colors = {}
-    for i, name in enumerate(system_names):
-        colors[name] = SYSTEM_COLORS[i % len(SYSTEM_COLORS)]
-
-    # Loop through and plot each system
-    for system_name, data in processed_data.items():
-        if data["mean"].size == 0:
-            continue  # Skip systems with no data
-
-        color = colors[system_name]
-
-        # Plot Line (Mean)
-        axes.plot(
-            common_x_grid,
-            data["mean"],
-            label=system_name,
-            color=color,
-            linewidth=LINE_WIDTH,
-        )
-
-        # Plot Fill (Min/Max)
-        if not MIN_MAX_DISABLED:
-            axes.fill_between(
-                common_x_grid,
-                data["lower"],
-                data["upper"],
-                color=color,
-                alpha=0.25,
-                label=f"Min/Max of {system_name}",
-            )
-
-    # 6. Dynamic and Human-Readable Ticks
-
+    # 5. Determine Ranges and Ticks Before Plotting
     # Determine tick counts (use provided or default)
     x_tick_count = x_tick_count if x_tick_count is not None else DEFAULT_X_TICK_COUNT
     y_tick_count = y_tick_count if y_tick_count is not None else DEFAULT_Y_TICK_COUNT
@@ -423,54 +437,153 @@ def plot_comparison_chart(
 
     y_range = global_max_y - global_min_y
     buffer = y_range * 0.05 if y_range > 0 else 1
-    min_y = max(0, global_min_y - buffer)
-    max_y = global_max_y + buffer
+    min_y = max(0, global_min_y - buffer) if Y_AXIS_MIN is None else Y_AXIS_MIN
+    max_y = global_max_y + buffer if Y_AXIS_MAX is None else Y_AXIS_MAX
 
     # Calculate round number ticks using the fixed nice tick logic
     x_ticks = round_nice_ticks(0, max_x, x_tick_count)
     y_ticks = round_nice_ticks(min_y, max_y, y_tick_count)
 
+    if X_AXIS_MAX is not None:
+        x_ticks = x_ticks[x_ticks <= max_x]
+
+    # Filter ticks to strictly adhere to the defined limits
+    y_ticks = y_ticks[(y_ticks >= min_y) & (y_ticks <= max_y)]
+
+    # 6. Plotting
+    fig, axes = plt.subplots()
+
+    # Enforce a 4-sided black box around the plot area
+    for spine in axes.spines.values():
+        spine.set_visible(True)
+        spine.set_color("black")
+        spine.set_linewidth(1.5)
+
+    axes.margins(x=0.02, y=0.02)
+    axes.tick_params(
+        which="both", direction="out", length=4, width=1.2, color="black", labelsize=18
+    )
+
+    # Assign colors
+    system_names = list(all_systems_runs.keys())
+    colors = {}
+    for i, name in enumerate(system_names):
+        colors[name] = SYSTEM_COLORS[i % len(SYSTEM_COLORS)]
+
+    # Loop through and plot each system
+    for system_name, data in processed_data.items():
+        if data["mean"].size == 0:
+            continue  # Skip systems with no data
+
+        color = colors[system_name]
+
+        # Apply smoothing
+        if smoothing_window > 1 and len(data["mean"]) > smoothing_window:
+            smoothed_mean = (
+                pd.Series(data["mean"])
+                .rolling(window=smoothing_window, min_periods=1, center=True)
+                .mean()
+                .values
+            )
+            smoothed_lower = (
+                pd.Series(data["lower"])
+                .rolling(window=smoothing_window, min_periods=1, center=True)
+                .mean()
+                .values
+            )
+            smoothed_upper = (
+                pd.Series(data["upper"])
+                .rolling(window=smoothing_window, min_periods=1, center=True)
+                .mean()
+                .values
+            )
+        else:
+            smoothed_mean = data["mean"]
+            smoothed_lower = data["lower"]
+            smoothed_upper = data["upper"]
+
+        # Plot Line (Mean)
+        axes.plot(
+            common_x_grid,
+            smoothed_mean,
+            label=system_name,
+            color=color,
+            linewidth=LINE_WIDTH,
+        )
+
+        # Draw opaque dashed line from last point to x-axis
+        valid_indices = np.where(~np.isnan(smoothed_mean))[0]
+        if len(valid_indices) > 0:
+            last_idx = valid_indices[-1]
+            last_x = common_x_grid[last_idx]
+            last_y = smoothed_mean[last_idx]
+            axes.plot(
+                [last_x, last_x],
+                [min_y, last_y],
+                color=color,
+                linestyle="--",
+                alpha=0.7,
+            )
+
+        # Plot Fill (Min/Max)
+        if not MIN_MAX_DISABLED:
+            axes.fill_between(
+                common_x_grid,
+                smoothed_lower,
+                smoothed_upper,
+                color=color,
+                alpha=0.25,
+                label=f"Min/Max of {system_name}",
+            )
+
     # Set axis limits and ticks
-    axes.set_xlim(x_ticks[0], x_ticks[-1])
+    xlim_max = max_x if X_AXIS_MAX is not None else x_ticks[-1]
+    axes.set_xlim(x_ticks[0], xlim_max)
     axes.set_ylim(min_y, max_y)
     axes.set_xticks(x_ticks)
     axes.set_yticks(y_ticks)
 
     # Format tick labels
     if x_data_key == "Time_Since_Start":
-        # Time axis label format (seconds -> minutes)
-        x_ticks_min = [f"{int(t/60)}m" for t in x_ticks]
-        axes.set_xticklabels(x_ticks_min)
+        # Time axis label format (hours)
+        x_ticks_hour = [f"{t:g}h" for t in x_ticks]
+        axes.set_xticklabels(x_ticks_hour)
     else:
         # Mini-batch ID axis label (integer format)
         axes.set_xticklabels([f"{int(t)}" for t in x_ticks])
 
     if y_data_key == "Accuracy":
         # Accuracy axis label format (float -> %)
-        y_ticks_formatted = [f"${y*100:.0f}\\%$" for y in y_ticks]
+        y_ticks_formatted = [f"${y*100:.0f}$" for y in y_ticks]
     else:
         # Other y-axis labels (integer format)
         y_ticks_formatted = [f"{int(t)}" for t in y_ticks]
     axes.set_yticklabels(y_ticks_formatted)
 
-    # 7. Apply Solid Black Axis Lines and styling
-    for spine in ["bottom", "left"]:
-        axes.spines[spine].set_color("black")
-        axes.spines[spine].set_linewidth(1.5)
-    for spine in ["top", "right"]:
-        axes.spines[spine].set_visible(False)
-
     # Configure major ticks (no negative X ticks because xlim starts at 0)
-    axes.tick_params(axis="both", which="major", length=6, width=1.5, color="black")
-    axes.grid(True, linestyle="--", alpha=0.6, color="lightgray")
+    axes.tick_params(
+        axis="both", which="major", length=6, width=1.5, color="black", labelsize=16
+    )
+    axes.grid(True, linestyle="--", alpha=0.6, color="lightgray", zorder=1)
 
-    axes.set_title(f'Performance Comparison ({plot_type.replace("_", " ").title()})')
-    axes.set_xlabel(x_label)
-    axes.set_ylabel(y_label)
-    axes.legend(loc="lower right")
-    plt.tight_layout()
+    axes.set_xlabel(x_label, fontsize=16)
+    axes.set_ylabel(y_label, fontsize=16)
+    axes.legend(
+        frameon=True,
+        framealpha=1.0,
+        edgecolor="black",
+        facecolor="white",
+        loc=legend_loc,
+        bbox_to_anchor=legend_bbox_to_anchor,
+        ncol=legend_ncol,
+        fontsize=14,
+    )
+    plt.tight_layout(pad=0.2)
 
-    output_dir = Path("plots/")
+    output_dir = Path(
+        f"{base_folder}/plots/90-avail-10-eval-0-unavail",
+        # f"{base_folder}/plots/100_0_0"
+    )
     output_dir.mkdir(parents=True, exist_ok=True)
     file_name = output_dir / f"{plot_type}_comparison.png"
     plt.savefig(file_name)
@@ -482,8 +595,14 @@ def plot_comparison_chart(
 if __name__ == "__main__":
 
     # Example usage for the original 'time' plot:
+    # We shift the legend slightly up (e.g., bbox_to_anchor=(1, 0.1)) to prevent overlap.
+    # Alternatively, for a horizontal legend, use: legend_ncol=3, legend_loc="upper right" (and check spacing).
     plot_comparison_chart(
-        systems_data=SYSTEMS_DATA, plot_type="time", x_tick_count=10, y_tick_count=10
+        systems_data=SYSTEMS_DATA,
+        plot_type="time",
+        x_tick_count=10,
+        y_tick_count=10,
+        legend_bbox_to_anchor=(1, 0.3),  # Shifts the legend up slightly for this graph
     )
 
     # Example usage for the new 'batch' plot (no interpolation):
@@ -496,5 +615,5 @@ if __name__ == "__main__":
         systems_data=SYSTEMS_DATA,
         plot_type="time_vs_batch",
         x_tick_count=10,
-        y_tick_count=10,
+        y_tick_count=4,
     )

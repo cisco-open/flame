@@ -63,214 +63,229 @@ LOG_CONFIG = {
             },
         },
         {
-            "name": "var",
+            "name": "model_version_stats",
             "regex": re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}).*"
-                r"self\.var\s*=\s*(?P<self_var>[\d.]+), self.var_threshold"
+                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*incremented to \(\d+,\s*\d+,\s*(?P<iterations>\d+)\) with updates from (?P<unique_trainers>\d+) unique trainers"
             ),
             "type": "EXTRACT",
             "group_to_columns": {
-                "self_var": ("var", float),
                 "timestamp": (
                     "timestamp",
-                    lambda ts_str: datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S"),
+                    lambda ts_str: datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S,%f"),
                 ),
+                "iterations": ("model_iterations", int),
+                "unique_trainers": ("unique_trainers", int),
             },
         },
-        {
-            'name': 'distribute',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"Runtime of distribute is (?P<runtime>[\d\.]+)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('distribute_latency', float)
-            }
-        },
-        {
-            'name': 'aggregate',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"Runtime of aggregate is (?P<runtime>[\d\.]+)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('aggregate_latency', float)
-            }
-        },
-        {
-            'name': 'eval_model_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of eval_model:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('eval_model_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'sync_collect_and_accumulate_grads_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of sync_collect_and_accumulate_grads:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('sync_collect_and_accumulate_grads_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'aggregate_runtime',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of aggregate:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('aggregate_runtime', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'aggregate_grads_sync_latency',     # As compared to aggregate_grads, it contains iterationId
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _aggregate_grads_sync:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('aggregate_grads_sync_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'process_single_trainer_message_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _process_single_trainer_message:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('process_single_trainer_message_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'process_aggregation_goal_met_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _process_aggregation_goal_met:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('process_aggregation_goal_met_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'agg_force_cuda_memory_cleanup_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _force_cuda_memory_cleanup:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('agg_force_cuda_memory_cleanup_latency', float),
-                'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
-                'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
-                'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'prepare_distribution_payload_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _prepare_distribution_payload:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('prepare_distribution_payload_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'distribute_weights_sync_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _distribute_weights_sync:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('distribute_weights_sync_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
-        {
-            'name': 'distribute_weights_async_latency',
-            'regex': re.compile(
-                r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
-                r"\[decorator\]\sRuntime of _distribute_weights_async:\s(?P<runtime>[\d\.]+)s\s"
-                r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
-            ),
-            'type': 'EXTRACT',
-            'group_to_columns': {
-                'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
-                'runtime': ('distribute_weights_async_latency', float),
-                'round_id': ('round_id', int),
-                'data_id': ('data_id', int),
-                'iter_id': ('iteration_id', int),
-                'trainer_id': ('trainer_id', None)
-            }
-        },
+        # {
+        #     "name": "var",
+        #     "regex": re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2}).*"
+        #         r"self\.var\s*=\s*(?P<self_var>[\d.]+), self.var_threshold"
+        #     ),
+        #     "type": "EXTRACT",
+        #     "group_to_columns": {
+        #         "self_var": ("var", float),
+        #         "timestamp": (
+        #             "timestamp",
+        #             lambda ts_str: datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S"),
+        #         ),
+        #     },
+        # },
+        # {
+        #     'name': 'distribute',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"Runtime of distribute is (?P<runtime>[\d\.]+)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('distribute_latency', float)
+        #     }
+        # },
+        # {
+        #     'name': 'aggregate',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"Runtime of aggregate is (?P<runtime>[\d\.]+)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('aggregate_latency', float)
+        #     }
+        # },
+        # {
+        #     'name': 'eval_model_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of eval_model:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('eval_model_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'sync_collect_and_accumulate_grads_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of sync_collect_and_accumulate_grads:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('sync_collect_and_accumulate_grads_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'aggregate_runtime',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of aggregate:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('aggregate_runtime', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'aggregate_grads_sync_latency',     # As compared to aggregate_grads, it contains iterationId
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _aggregate_grads_sync:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('aggregate_grads_sync_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'process_single_trainer_message_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _process_single_trainer_message:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('process_single_trainer_message_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'process_aggregation_goal_met_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _process_aggregation_goal_met:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('process_aggregation_goal_met_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'agg_force_cuda_memory_cleanup_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _force_cuda_memory_cleanup:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>None|\d+),\sDataId=(?P<data_id>None|\d+),\sIter=(?P<iter_id>None|\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('agg_force_cuda_memory_cleanup_latency', float),
+        #         'round_id': ('round_id', lambda x: None if x == 'None' else int(x)),
+        #         'data_id': ('data_id', lambda x: None if x == 'None' else int(x)),
+        #         'iter_id': ('iteration_id', lambda x: None if x == 'None' else int(x)),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'prepare_distribution_payload_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _prepare_distribution_payload:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('prepare_distribution_payload_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'distribute_weights_sync_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _distribute_weights_sync:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('distribute_weights_sync_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
+        # {
+        #     'name': 'distribute_weights_async_latency',
+        #     'regex': re.compile(
+        #         r"^(?P<timestamp>\d{4}-\d{2}-\d{2}\s\d{2}:\d{2}:\d{2},\d{3}).*?"
+        #         r"\[decorator\]\sRuntime of _distribute_weights_async:\s(?P<runtime>[\d\.]+)s\s"
+        #         r"\(Round=(?P<round_id>\d+),\sDataId=(?P<data_id>\d+),\sIter=(?P<iter_id>\d+),\sTrainerId=(?P<trainer_id>\w+|None)\)"
+        #     ),
+        #     'type': 'EXTRACT',
+        #     'group_to_columns': {
+        #         'timestamp': ('timestamp', lambda ts_str: datetime.strptime(ts_str, '%Y-%m-%d %H:%M:%S,%f')),
+        #         'runtime': ('distribute_weights_async_latency', float),
+        #         'round_id': ('round_id', int),
+        #         'data_id': ('data_id', int),
+        #         'iter_id': ('iteration_id', int),
+        #         'trainer_id': ('trainer_id', None)
+        #     }
+        # },
     ],
     "flame_fwdllm_trainer": [
         {
@@ -754,71 +769,71 @@ EXPORT_CONFIG = {
             'log_names': ['eval_model'],
             'columns': ['timestamp', 'time_since_start', 'round_id', 'data_id', 'accuracy', 'data_id_iterations']
         },
-        # 'trainer_performance': {
-        #     'default_output_filename': 'trainer_performance.csv',
-        #     'log_names': ['extract_stat_utility'],
-        #     'columns': ['timestamp', 'trainer_id', 'trainer_num', 'loss', 'stat_utility']
+        'model_version_stats': {
+            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-model_version_stats.csv',
+            'log_names': ['model_version_stats'],
+            'columns': ['model_iterations', 'unique_trainers']
+        },
+        # 'distribute_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS['file_prefix']}-distribute_latency.csv',
+        #     'log_names': ['distribute'],
+        #     'columns': ['timestamp', 'distribute_latency']
         # },
-        'distribute_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS['file_prefix']}-distribute_latency.csv',
-            'log_names': ['distribute'],
-            'columns': ['timestamp', 'distribute_latency']
-        },
-        'aggregate_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS['file_prefix']}-aggregate_latency.csv',
-            'log_names': ['aggregate'],
-            'columns': ['timestamp', 'aggregate_latency']
-        },
-        'eval_model_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-eval_model_latency.csv',
-            'log_names': ['eval_model_latency'],
-            'columns': ['timestamp', 'eval_model_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'sync_collect_and_accumulate_grads_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-sync_collect_and_accumulate_grads_latency.csv',
-            'log_names': ['sync_collect_and_accumulate_grads_latency'],
-            'columns': ['timestamp', 'sync_collect_and_accumulate_grads_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'aggregate_runtime_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_runtime_latency.csv',
-            'log_names': ['aggregate_runtime'],
-            'columns': ['timestamp', 'aggregate_runtime', 'round_id', 'data_id', 'iteration_id']
-        },
-        'aggregate_grads_sync_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_grads_sync_latency.csv',
-            'log_names': ['aggregate_grads_sync_latency'],
-            'columns': ['timestamp', 'aggregate_grads_sync_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'process_single_trainer_message_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_single_trainer_message_latency.csv',
-            'log_names': ['process_single_trainer_message_latency'],
-            'columns': ['timestamp', 'process_single_trainer_message_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'process_aggregation_goal_met_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_aggregation_goal_met_latency.csv',
-            'log_names': ['process_aggregation_goal_met_latency'],
-            'columns': ['timestamp', 'process_aggregation_goal_met_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'agg_force_cuda_memory_cleanup_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-agg_force_cuda_memory_cleanup_latency.csv',
-            'log_names': ['agg_force_cuda_memory_cleanup_latency'],
-            'columns': ['timestamp', 'agg_force_cuda_memory_cleanup_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'prepare_distribution_payload_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-prepare_distribution_payload_latency.csv',
-            'log_names': ['prepare_distribution_payload_latency'],
-            'columns': ['timestamp', 'prepare_distribution_payload_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'distribute_weights_sync_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_sync_latency.csv',
-            'log_names': ['distribute_weights_sync_latency'],
-            'columns': ['timestamp', 'distribute_weights_sync_latency', 'round_id', 'data_id', 'iteration_id']
-        },
-        'distribute_weights_async_latency': {
-            'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_async_latency.csv',
-            'log_names': ['distribute_weights_async_latency'],
-            'columns': ['timestamp', 'distribute_weights_async_latency', 'round_id', 'data_id', 'iteration_id']
-        },
+        # 'aggregate_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS['file_prefix']}-aggregate_latency.csv',
+        #     'log_names': ['aggregate'],
+        #     'columns': ['timestamp', 'aggregate_latency']
+        # },
+        # 'eval_model_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-eval_model_latency.csv',
+        #     'log_names': ['eval_model_latency'],
+        #     'columns': ['timestamp', 'eval_model_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'sync_collect_and_accumulate_grads_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-sync_collect_and_accumulate_grads_latency.csv',
+        #     'log_names': ['sync_collect_and_accumulate_grads_latency'],
+        #     'columns': ['timestamp', 'sync_collect_and_accumulate_grads_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'aggregate_runtime_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_runtime_latency.csv',
+        #     'log_names': ['aggregate_runtime'],
+        #     'columns': ['timestamp', 'aggregate_runtime', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'aggregate_grads_sync_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-aggregate_grads_sync_latency.csv',
+        #     'log_names': ['aggregate_grads_sync_latency'],
+        #     'columns': ['timestamp', 'aggregate_grads_sync_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'process_single_trainer_message_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_single_trainer_message_latency.csv',
+        #     'log_names': ['process_single_trainer_message_latency'],
+        #     'columns': ['timestamp', 'process_single_trainer_message_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'process_aggregation_goal_met_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-process_aggregation_goal_met_latency.csv',
+        #     'log_names': ['process_aggregation_goal_met_latency'],
+        #     'columns': ['timestamp', 'process_aggregation_goal_met_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'agg_force_cuda_memory_cleanup_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-agg_force_cuda_memory_cleanup_latency.csv',
+        #     'log_names': ['agg_force_cuda_memory_cleanup_latency'],
+        #     'columns': ['timestamp', 'agg_force_cuda_memory_cleanup_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'prepare_distribution_payload_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-prepare_distribution_payload_latency.csv',
+        #     'log_names': ['prepare_distribution_payload_latency'],
+        #     'columns': ['timestamp', 'prepare_distribution_payload_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'distribute_weights_sync_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_sync_latency.csv',
+        #     'log_names': ['distribute_weights_sync_latency'],
+        #     'columns': ['timestamp', 'distribute_weights_sync_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
+        # 'distribute_weights_async_latency': {
+        #     'default_output_filename': lambda: f'{CONSTANTS["file_prefix"]}-distribute_weights_async_latency.csv',
+        #     'log_names': ['distribute_weights_async_latency'],
+        #     'columns': ['timestamp', 'distribute_weights_async_latency', 'round_id', 'data_id', 'iteration_id']
+        # },
     },
     'flame_fwdllm_trainer': {
         # 'train_times': {
