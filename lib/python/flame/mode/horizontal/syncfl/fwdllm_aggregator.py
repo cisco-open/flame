@@ -212,6 +212,8 @@ class TopAggregator(AsyncTopAgg):
         """Initialize internal state for role."""
         super().internal_init()
 
+        self._trainer_last_model_version = {}
+
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
         self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
@@ -242,6 +244,7 @@ class TopAggregator(AsyncTopAgg):
         self._is_model_updated = False
         self._model_version = 0
         self.grad_pool = []
+        self.cached_shared_grad_pool_trainable = None
         self.var = None
         self.ends_not_selected_yet = False
         self.iteration_per_data_id = 0
@@ -727,6 +730,7 @@ class TopAggregator(AsyncTopAgg):
             logger.info(f"grad_pool already has: {len(self.grad_pool)}")
 
         version = msg.get(MessageType.MODEL_VERSION, "unknown")
+        self._trainer_last_model_version[end] = version
         logger.info(
             f"Received grads from {end}. It was trained on model version {version}, with {count} samples"
         )
@@ -1148,13 +1152,13 @@ class TopAggregator(AsyncTopAgg):
         return picked_trainer_is_available
 
     @timer_decorator
-    def _prepare_distribution_payload(self, task_to_perform: str):
+    def _prepare_distribution_payload(self, task_to_perform: str, force_weights: bool = False):
         if self.var:
             logger.info(
                 f"self.var = {self.var}, self.var_threshold = {self.var_threshold}"
             )
 
-        if not self.var_good_enough:
+        if not self.var_good_enough and not force_weights:
             logger.info(
                 "Sending variance = bad to trainers since variance is greater than threshold"
             )
@@ -1180,20 +1184,22 @@ class TopAggregator(AsyncTopAgg):
             trainable_params, DeviceType.CPU
         )  # Need to move to CPU for sending over MQTT
 
-        shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
-        shared_grad_pool_trainable = []
-        if shared_grad_pool is None:
-            shared_grad_pool_trainable = None
-        else:
-            idx = 0
-            for param in self.model.parameters():
-                if param.requires_grad:
-                    shared_grad_pool_trainable.append(shared_grad_pool[idx].clone())
-                idx += 1
+        if self._is_model_updated:
+            shared_grad_pool = self.aggregate_grad_pool(self.grad_pool)
+            shared_grad_pool_trainable = []
+            if shared_grad_pool is None:
+                shared_grad_pool_trainable = None
+            else:
+                idx = 0
+                for param in self.model.parameters():
+                    if param.requires_grad:
+                        shared_grad_pool_trainable.append(shared_grad_pool[idx].clone())
+                    idx += 1
+            self.cached_shared_grad_pool_trainable = shared_grad_pool_trainable
 
         payload = {
             MessageType.WEIGHTS: shared_weights,
-            MessageType.GRAD_POOL: shared_grad_pool_trainable,
+            MessageType.GRAD_POOL: self.cached_shared_grad_pool_trainable,
             MessageType.ROUND: self._round,
             MessageType.MODEL_VERSION: self._model_version,
             MessageType.TASK_TO_PERFORM: task_to_perform,
@@ -1267,10 +1273,27 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        payload = self._prepare_distribution_payload(task_to_perform)
+        payload_without_weights = None
+        payload_with_weights = self._prepare_distribution_payload(task_to_perform, force_weights=True)
+        if not self.var_good_enough:
+            payload_without_weights = self._prepare_distribution_payload(task_to_perform, force_weights=False)
+        
+
         self._update_state_after_payload_prepared()
 
         for end in ends:
+            trainer_version = self._trainer_last_model_version.get(end, -1)
+            is_stale = (trainer_version != self._model_version)
+
+            if self.var_good_enough:
+                payload = payload_with_weights
+            else:
+                if is_stale:
+                    payload = payload_with_weights
+                    logger.info(f"Trainer {end} hasn't received weights for model_version {self._model_version} (has {trainer_version}). Sending WEIGHTS payload instead of VAR=bad.")
+                else:
+                    payload = payload_without_weights
+
             logger.debug(
                 f"Setting channel property {PROP_ROUND_START_TIME} for "
                 f"end {end}. For round {self._round} at time: {datetime.now()}"
@@ -1389,7 +1412,11 @@ class TopAggregator(AsyncTopAgg):
                 "Sending variance = bad to trainers since variance is greater than threshold"
             )
 
-        payload = self._prepare_distribution_payload(task_to_perform)
+        payload_var_bad = None
+        payload_weights = self._prepare_distribution_payload(task_to_perform, force_weights=True)
+        if not self.var_good_enough:
+            payload_var_bad = self._prepare_distribution_payload(task_to_perform, force_weights=False)
+        
         self._update_state_after_payload_prepared()
 
         if self.var_good_enough:
@@ -1398,6 +1425,19 @@ class TopAggregator(AsyncTopAgg):
             )
 
         for end in ends:
+            trainer_version = self._trainer_last_model_version.get(end, -1)
+            is_stale = (trainer_version != self._model_version)
+
+            if self.var_good_enough:
+                payload = payload_weights
+            else:
+                if is_stale:
+                    payload = payload_weights
+                    logger.debug("Trainer %s hasn't received weights for model_version %s (has %s). Sending WEIGHTS payload instead of VAR=bad.", end, self._model_version, trainer_version)
+                else:
+                    payload = payload_var_bad
+                    logger.debug("Trainer %s will be sent a VAR=bad payload.", end)
+
             logger.debug(
                 f"Setting channel property {PROP_ROUND_START_TIME} for "
                 f"end {end}. For round {self._round} at time: {datetime.now()}"

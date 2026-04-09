@@ -210,16 +210,10 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.ROUND in msg:
             self._round = msg[MessageType.ROUND]
 
-        if MessageType.MODEL_VERSION in msg:
-            self._model_version = msg[MessageType.MODEL_VERSION]
-
         logger.info(
             f"Checking DataID: {self.data_id}| MessageType.DATA_ID in msg: {msg[MessageType.DATA_ID]}| IterationPerDataID: {self.iteration_per_data_id}| MessageType.ITERATION_PER_DATA_ID in msg: {msg[MessageType.ITERATION_PER_DATA_ID]}"
         )
         logger.info(f"isMessageType.Weights?: {MessageType.WEIGHTS in msg}")
-
-        if MessageType.MODEL_VERSION in msg:
-            self._model_version = msg[MessageType.MODEL_VERSION]
 
         if MessageType.DATA_ID in msg and MessageType.ITERATION_PER_DATA_ID in msg:
             if (
@@ -270,7 +264,7 @@ class Trainer(Role, metaclass=ABCMeta):
             # dropped.
             logger.info("message type weights received")
             logger.info(
-                f"Trainer id: {self.trainer_id}|round: {self._round} |model version: {self._model_version} | weights: {list(msg[MessageType.WEIGHTS].keys())} |data id: {msg.get(MessageType.DATA_ID, 'N/A')} | iteration per data id: {msg.get(MessageType.ITERATION_PER_DATA_ID, 'N/A')}"
+                f"Trainer id: {self.trainer_id}|round: {self._round} |model version: {msg.get(MessageType.MODEL_VERSION, 'Model version is missing!!!')} | weights: {list(msg[MessageType.WEIGHTS].keys())} |data id: {msg.get(MessageType.DATA_ID, 'Data id is missing!!!')} | iteration per data id: {msg.get(MessageType.ITERATION_PER_DATA_ID, 'Iteration per data id is missing!!!')}"
             )
 
             # if self._round <= self._updates_returned_upto_round: logger.info(
@@ -303,6 +297,10 @@ class Trainer(Role, metaclass=ABCMeta):
             full_state_dict.update(trainable_weights)
             self.weights = full_state_dict
             self._update_model()
+
+            if MessageType.MODEL_VERSION in msg:
+                self._model_version = msg[MessageType.MODEL_VERSION]
+                logger.info(f"Trainer {self.trainer_id} actually updated local _model_version to {self._model_version} after receiving weights.")
 
             # Helper lambda for a cleaner log
             format_hash = lambda d: {k: _calculate_hash(v)[:8] for k, v in d.items()}
