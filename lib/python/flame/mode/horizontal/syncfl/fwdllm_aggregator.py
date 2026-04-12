@@ -280,6 +280,39 @@ class TopAggregator(AsyncTopAgg):
             self._trainer_max_miss_heartbeats = 99999
 
         logger.info(f"Experiment set to run in is_async: {self.is_async}")
+
+        # ---- Dynamic K/C controller ----
+        self._n_aggs_completed = 0
+        self._var_pass_count = 0
+        self._var_total_count = 0
+        self._dynamic_kc_controller = None
+        _dynamic_kc_conf = self.config.selector.kwargs.get("dynamic_kc", {})
+        if _dynamic_kc_conf.get("enabled", False):
+            from flame.selector.dynamic_kc_controller import DynamicKCController
+            from flame.selector.dynamic_kc_policy import build_policy
+
+            _policy = build_policy(
+                _dynamic_kc_conf.get("policy", "variance_based"),
+                _dynamic_kc_conf.get("policy_kwargs", {}),
+            )
+            self._dynamic_kc_controller = DynamicKCController(
+                policy=_policy,
+                k_init=self._agg_goal,
+                c_init=self.config.selector.kwargs.get("c", 1),
+                k_min=_dynamic_kc_conf.get("k_min", 1),
+                k_max=_dynamic_kc_conf.get("k_max", 100),
+                c_min=_dynamic_kc_conf.get("c_min", 1),
+                c_max=_dynamic_kc_conf.get("c_max", 100),
+                update_every_n_aggs=_dynamic_kc_conf.get("update_every_n_aggs", 1),
+                history_window=_dynamic_kc_conf.get("history_window", 20),
+            )
+            logger.info(
+                f"[DynamicKC] Controller initialized: policy={_policy.name()}, "
+                f"k_init={self._agg_goal}, "
+                f"c_init={self.config.selector.kwargs.get('c', 1)}"
+            )
+        # ---- End Dynamic K/C controller ----
+
         # maintain a set of all trainers that have sent heartbeats previously
         self.all_trainers = set()
         try:
@@ -618,7 +651,7 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        if self._agg_goal_cnt == self._agg_goal:
+        if self._agg_goal_cnt >= self._agg_goal:
             self._process_aggregation_goal_met(tag, channel, is_async=True)
 
     @timer_decorator
@@ -788,6 +821,59 @@ class TopAggregator(AsyncTopAgg):
             "partial_stat_utility": [],
         }
 
+    def _build_dynamic_kc_metrics(self, channel) -> dict:
+        """Collect per-aggregation metrics for the DynamicKCController."""
+        var_pass_rate = (
+            self._var_pass_count / self._var_total_count
+            if self._var_total_count > 0 else 0.0
+        )
+        staleness_list = self._per_round_staleness_list
+        avg_staleness = (
+            sum(staleness_list) / len(staleness_list) if staleness_list else 0.0
+        )
+        p75_staleness = (
+            float(sorted(staleness_list)[int(0.75 * len(staleness_list))])
+            if staleness_list else 0.0
+        )
+
+        # Count ends eligible for each task using task_eligible_states config.
+        # PROP_AVL_STATE is set by the selector on each end; we read it from the
+        # channel to avoid importing selector internals into the aggregator.
+        _PROP_AVL_STATE = "avl_state"
+        task_eligible_states = self.config.selector.kwargs.get(
+            "task_eligible_states", {}
+        )
+        from flame.config import TrainerAvailState
+        train_eligible = set(
+            task_eligible_states.get("train", [TrainerAvailState.AVL_TRAIN.value])
+        )
+        eval_eligible = set(
+            task_eligible_states.get(
+                "eval",
+                [TrainerAvailState.AVL_EVAL.value, TrainerAvailState.AVL_TRAIN.value],
+            )
+        )
+        n_eligible_train = 0
+        n_eligible_eval = 0
+        for end_id in channel.ends():
+            avl_state = channel.get_end_property(end_id, _PROP_AVL_STATE)
+            if avl_state in train_eligible:
+                n_eligible_train += 1
+            if avl_state in eval_eligible:
+                n_eligible_eval += 1
+
+        return {
+            "var_pass_rate": var_pass_rate,
+            "var_last": self.var if self.var is not None else 0.0,
+            "avg_staleness": avg_staleness,
+            "p75_staleness": p75_staleness,
+            "model_version": self._model_version,
+            "n_aggs_completed": self._n_aggs_completed,
+            "var_threshold": getattr(self, "var_threshold", None),
+            "n_eligible_train": n_eligible_train,
+            "n_eligible_eval": n_eligible_eval,
+        }
+
     @timer_decorator
     def _process_aggregation_goal_met(self, tag, channel, is_async=False):
         logger.info(
@@ -872,6 +958,33 @@ class TopAggregator(AsyncTopAgg):
         )
 
         self._agg_goal_cnt = 0
+
+        # ---- Dynamic K/C update ----
+        self._n_aggs_completed += 1
+        self._var_total_count += 1
+        if self.var_good_enough:
+            self._var_pass_count += 1
+
+        if self._dynamic_kc_controller is not None:
+            metrics = self._build_dynamic_kc_metrics(channel)
+            new_k, new_c = self._dynamic_kc_controller.step(metrics)
+            # Reset per-interval variance counters
+            self._var_pass_count = 0
+            self._var_total_count = 0
+            # Apply updated K
+            if new_k != self._agg_goal:
+                logger.info(
+                    f"[DynamicKC] _agg_goal updated: {self._agg_goal} → {new_k}"
+                )
+                self._agg_goal = new_k
+            # Propagate updated C to selector via channel property
+            channel.set_property("dynamic_c", new_c)
+            logger.debug(
+                f"[DynamicKC] step={self._n_aggs_completed}: "
+                f"k={new_k}, c={new_c}, "
+                f"summary={self._dynamic_kc_controller.summary()}"
+            )
+        # ---- End Dynamic K/C update ----
 
         self.fwd_llm_stage = FwdLLMStage(
             self._round, self.data_id, self.iteration_per_data_id
