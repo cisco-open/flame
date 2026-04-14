@@ -82,14 +82,15 @@
         "client_num_in_total": 0,
         "warmup_ratio": 0,
         "trackTrainerAvail": {
-            "enabled": "True",
-            "type": "ORACULAR",
-            "trace": "avl_events_syn_train_100_eval_0_unavail_0"
+            "enabled": "False",
+            "type": "NONE"
         },
-        "aggGoal": 10,
+        "aggGoal": 5,
         "rounds": 300,
         "rejectStaleUpdates": false,
-        "inc_model_version_per_data_id": true
+        "inc_model_version_per_data_id": true,
+        "//max_iterations_per_data_id": "Soft-cap fallback. With adaptive_k_var_tracking, aggregations should converge near target without needing the cap, but it remains as a safety net.",
+        "max_iterations_per_data_id": 15
     },
     "baseModel": {
         "name": "",
@@ -104,36 +105,30 @@
         "uri": ""
     },
     "selector": {
-        "sort": "async_oort",
+        "sort": "async_random",
         "kwargs": {
-            "//": "c: concurrency level",
-            "c": 30,
-            "aggGoal": 10,
+            "//": "c: concurrency level (fixed in this config)",
+            "c": 15,
+            "aggGoal": 5,
             "evalGoalFactor": 0,
             "selectType": "default",
             "roundNudgeType": "last_train",
-            "minInitialTrainers": 50,
-            "k": 10,
+            "minInitialTrainers": 15,
+            "k": 5,
             "is_async": true,
-            "//task_eligible_states": "Maps task names to eligible avl_state values. Classic FL: only AVL_TRAIN. FwdLLM: both AVL_TRAIN and AVL_EVAL can train.",
-            "task_eligible_states": {
-                "train": ["avl_train", "avl_eval"],
-                "eval": ["avl_eval", "avl_train"]
-            },
-            "//dynamic_kc": "Dynamic K and C controller config. Set enabled=true to activate.",
+            "//dynamic_kc": "K adapts to track variance against target_iter_per_data_id. C is held fixed (c_min==c_max==c).",
             "dynamic_kc": {
-                "enabled": false,
-                "policy": "variance_based",
+                "enabled": true,
+                "policy": "adaptive_k_var_tracking",
                 "policy_kwargs": {
-                    "high_threshold": 0.8,
-                    "low_threshold": 0.3,
+                    "target_iter_per_data_id": 15,
                     "k_step": 2,
-                    "window": 10
+                    "window": 6
                 },
-                "k_min": 5,
-                "k_max": 50,
-                "c_min": 5,
-                "c_max": 100,
+                "k_min": 3,
+                "k_max": 15,
+                "c_min": 15,
+                "c_max": 15,
                 "update_every_n_aggs": 1,
                 "history_window": 20
             }

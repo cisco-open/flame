@@ -243,6 +243,16 @@ class TopAggregator(AsyncTopAgg):
         self.total_data_bins = 150
         self._is_model_updated = False
         self._model_version = 0
+
+        # Optional hard cap: when variance check has failed this many times for
+        # the current data_id, force-advance as if it had passed. None = disabled.
+        self._max_iter_per_data_id = getattr(
+            self.config.hyperparameters, "max_iterations_per_data_id", None
+        )
+        if self._max_iter_per_data_id is not None:
+            logger.info(
+                f"[MaxIterBypass] max_iterations_per_data_id={self._max_iter_per_data_id}"
+            )
         self.grad_pool = []
         self.cached_shared_grad_pool_trainable = None
         self.var = None
@@ -862,6 +872,14 @@ class TopAggregator(AsyncTopAgg):
             if avl_state in eval_eligible:
                 n_eligible_eval += 1
 
+        # Adaptive-K policy inputs
+        _policy_kwargs = self.config.selector.kwargs.get("dynamic_kc", {}).get(
+            "policy_kwargs", {}
+        )
+        target_iter = _policy_kwargs.get(
+            "target_iter_per_data_id", self._max_iter_per_data_id
+        )
+
         return {
             "var_pass_rate": var_pass_rate,
             "var_last": self.var if self.var is not None else 0.0,
@@ -872,6 +890,10 @@ class TopAggregator(AsyncTopAgg):
             "var_threshold": getattr(self, "var_threshold", None),
             "n_eligible_train": n_eligible_train,
             "n_eligible_eval": n_eligible_eval,
+            "iteration_per_data_id": self.iteration_per_data_id,
+            "data_id": self.data_id,
+            "max_iter_per_data_id": self._max_iter_per_data_id,
+            "target_iter_per_data_id": target_iter,
         }
 
     @timer_decorator
@@ -912,6 +934,37 @@ class TopAggregator(AsyncTopAgg):
         self.grad = [torch.zeros_like(p) for p in self.params]
 
         self.aggregate(self._round)
+
+        # Per-aggregation progress log (used by plotting + dynamic-K decisions)
+        _var_thr = getattr(self, "var_threshold", None)
+        _ratio = (
+            float(self.var) / _var_thr
+            if (self.var is not None and _var_thr not in (None, 0))
+            else None
+        )
+        logger.info(
+            f"[IterProgress] data_id={self.data_id} "
+            f"iter={self.iteration_per_data_id} "
+            f"max_iter={self._max_iter_per_data_id} "
+            f"var={self.var} var_thr={_var_thr} ratio={_ratio} "
+            f"var_good_enough={self.var_good_enough}"
+        )
+
+        # Max-iteration bypass: if configured, advance even when variance fails
+        # once iter+1 reaches the cap. Implemented by flipping var_good_enough
+        # to True so the downstream "passed" branch runs.
+        if (
+            not self.var_good_enough
+            and self._max_iter_per_data_id is not None
+            and (self.iteration_per_data_id + 1) >= self._max_iter_per_data_id
+        ):
+            logger.info(
+                f"[MaxIterBypass] data_id={self.data_id} "
+                f"iter={self.iteration_per_data_id} "
+                f"cap={self._max_iter_per_data_id}: variance check failed but cap "
+                f"reached — force-advancing to next data_id."
+            )
+            self.var_good_enough = True
 
         if self.var_good_enough:
             logger.info(

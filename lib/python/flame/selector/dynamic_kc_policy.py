@@ -289,6 +289,122 @@ class StepSchedulePolicy(DynamicKCPolicy):
         return "step_schedule"
 
 
+class AdaptiveKVarTrackingPolicy(DynamicKCPolicy):
+    """Adapts K so variance passes around ``target_iter_per_data_id``.
+
+    Intuition: K is the knob that trades per-iteration latency for gradient
+    averaging quality. If variance is still failing but we're near the target
+    iteration budget for a data_id, push more gradient averaging (increase K).
+    If variance passes comfortably early, relax K to speed up iteration.
+
+    Decision inputs (read from ``metrics``):
+
+        var_last                 float  Most recent variance value
+        var_threshold            float  Variance threshold (from FedSGDAggregator)
+        iteration_per_data_id    int    Iter count within current data_id
+        data_id                  int    Current data_id (used to reset window)
+        target_iter_per_data_id  int    Target iteration budget (soft cap)
+
+    Algorithm (each call):
+
+        ratio    = var_last / var_threshold          # >1 means still failing
+        progress = (iter + 1) / target               # fraction of runway used
+        trend    = mean(recent half) - mean(earlier half)   # <0 improving
+
+        progress < 0.33          → no change (early phase, let it settle)
+        0.33 <= progress < 0.75  →
+            ratio > 1.5 and trend >= 0  → K += k_step
+            ratio < 0.5                 → K -= k_step
+            else                        → no change
+        progress >= 0.75         →
+            ratio > 1.0                 → K += 2 * k_step
+            ratio < 0.4                 → K -= k_step
+            else                        → no change
+
+    The rolling window resets whenever ``data_id`` changes, so trend is always
+    measured within the current data bin.
+
+    This policy never touches C.
+    """
+
+    def __init__(
+        self,
+        target_iter_per_data_id: int = 15,
+        k_step: int = 2,
+        window: int = 6,
+    ):
+        self.target_iter_per_data_id = target_iter_per_data_id
+        self.k_step = k_step
+        self._window_size = window
+        self._ratio_history: deque = deque(maxlen=window)
+        self._last_data_id: Optional[int] = None
+
+    def _maybe_reset_for_new_data_id(self, data_id: Optional[int]) -> None:
+        if data_id is None:
+            return
+        if self._last_data_id is None or data_id != self._last_data_id:
+            self._ratio_history.clear()
+            self._last_data_id = data_id
+
+    def _compute_trend(self) -> float:
+        """Return (mean of recent half) − (mean of earlier half). <0 = improving."""
+        n = len(self._ratio_history)
+        if n < 4:
+            return 0.0
+        half = n // 2
+        values = list(self._ratio_history)
+        earlier = values[:half]
+        recent = values[half:]
+        return (sum(recent) / len(recent)) - (sum(earlier) / len(earlier))
+
+    def compute_new_k(self, current_k: int, metrics: dict) -> Optional[int]:
+        var_last = metrics.get("var_last")
+        var_threshold = metrics.get("var_threshold")
+        iter_in_data_id = metrics.get("iteration_per_data_id")
+        target = metrics.get("target_iter_per_data_id") or self.target_iter_per_data_id
+        data_id = metrics.get("data_id")
+
+        if var_last is None or var_threshold in (None, 0) or iter_in_data_id is None:
+            return None
+        if not target or target <= 0:
+            return None
+
+        self._maybe_reset_for_new_data_id(data_id)
+
+        ratio = float(var_last) / float(var_threshold)
+        self._ratio_history.append(ratio)
+        progress = (int(iter_in_data_id) + 1) / float(target)
+        trend = self._compute_trend()
+
+        decision = None
+        if progress < 0.33:
+            decision = None
+        elif progress < 0.75:
+            if ratio > 1.5 and trend >= 0:
+                decision = current_k + self.k_step
+            elif ratio < 0.5:
+                decision = current_k - self.k_step
+        else:
+            if ratio > 1.0:
+                decision = current_k + 2 * self.k_step
+            elif ratio < 0.4:
+                decision = current_k - self.k_step
+
+        if decision is not None and decision != current_k:
+            logger.info(
+                f"[AdaptiveK] data_id={data_id} iter={iter_in_data_id} "
+                f"progress={progress:.2f} ratio={ratio:.3f} trend={trend:+.3f}: "
+                f"K {current_k} → {decision}"
+            )
+        return decision
+
+    def compute_new_c(self, current_c: int, metrics: dict) -> Optional[int]:
+        return None
+
+    def name(self) -> str:
+        return "adaptive_k_var_tracking"
+
+
 class CompositePolicy(DynamicKCPolicy):
     """Chains multiple policies.
 
@@ -336,6 +452,7 @@ _POLICY_REGISTRY: dict = {
     "staleness_based": StalenessBasedPolicy,
     "eligible_ends_based": EligibleEndsBasedPolicy,
     "step_schedule": StepSchedulePolicy,
+    "adaptive_k_var_tracking": AdaptiveKVarTrackingPolicy,
     "composite": CompositePolicy,
 }
 

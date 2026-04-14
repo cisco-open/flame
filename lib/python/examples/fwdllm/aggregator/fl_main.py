@@ -160,7 +160,7 @@ if __name__ == "__main__":
         model_args,
         preprocessor,
         process_id,
-        config.hyperparameters.client_num_per_round,
+        config.hyperparameters.data_loader_num_workers,
     )
     (
         train_data_num,

@@ -7,8 +7,6 @@ import setproctitle
 import torch
 import threading
 
-# TODO: Check the json and deprecate fields like client_num_per_round that may not be getting used
-
 # this is a temporal import, we will refactor FedML as a package installation
 # import wandb
 
@@ -124,7 +122,6 @@ if __name__ == "__main__":
     model_args.model_type = config.hyperparameters.model_type
     model_args.load(model_args.model_name)
     model_args.num_labels = num_labels
-    model_args.client_num_per_round = config.hyperparameters.client_num_per_round
     model_args.client_idx = config.hyperparameters.client_idx
     model_args.update_from_dict(
         {
@@ -223,7 +220,7 @@ if __name__ == "__main__":
         model_args,
         preprocessor,
         process_id,
-        config.hyperparameters.client_num_per_round,
+        config.hyperparameters.data_loader_num_workers,
     )
     (
         train_data_num,
@@ -290,7 +287,6 @@ if __name__ == "__main__":
     #     client_trainer.test_dl = test_data_global
     # args.client_num_in_total = num_clients
     # args.warmup_ratio = model_args.warmup_ratio
-    # # args.client_num_per_round = 500
     # # args.learning_rate = 0.01
 
     # fl_algorithm = get_fl_algorithm_initializer(args.fl_algorithm)
