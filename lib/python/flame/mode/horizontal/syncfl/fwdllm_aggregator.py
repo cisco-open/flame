@@ -937,7 +937,25 @@ class TopAggregator(AsyncTopAgg):
         )
         self.grad = [torch.zeros_like(p) for p in self.params]
 
-        self.aggregate(self._round)
+        # Decide BEFORE aggregating whether to force-commit if variance fails.
+        # aggregate() restores the pre-update weights whenever var > threshold,
+        # so the flag must be set before we call it — flipping var_good_enough
+        # afterward is too late (the rollback already happened and eval would
+        # see stale weights, freezing acc/loss across bypassed data_ids).
+        self._force_commit_this_cycle = (
+            self._max_iter_per_data_id is not None
+            and (self.iteration_per_data_id + 1) >= self._max_iter_per_data_id
+        )
+        _force_commit_planned = self._force_commit_this_cycle  # snapshot for logging
+        if _force_commit_planned:
+            logger.info(
+                f"[MaxIterBypass] cap reached "
+                f"(iter+1={self.iteration_per_data_id + 1} >= "
+                f"cap={self._max_iter_per_data_id}); will force-commit weights "
+                f"if variance check fails in aggregate()."
+            )
+
+        self.aggregate(self._round)  # note: aggregate() clears _force_commit_this_cycle
 
         # Per-aggregation progress log (used by plotting + dynamic-K decisions)
         _var_thr = getattr(self, "var_threshold", None)
@@ -951,28 +969,18 @@ class TopAggregator(AsyncTopAgg):
             f"iter={self.iteration_per_data_id} "
             f"max_iter={self._max_iter_per_data_id} "
             f"var={self.var} var_thr={_var_thr} ratio={_ratio} "
-            f"var_good_enough={self.var_good_enough}"
+            f"var_good_enough={self.var_good_enough} "
+            f"force_commit_planned={_force_commit_planned}"
         )
 
-        # Max-iteration bypass: if configured, advance even when variance fails
-        # once iter+1 reaches the cap. Implemented by flipping var_good_enough
-        # to True so the downstream "passed" branch runs.
-        if (
-            not self.var_good_enough
-            and self._max_iter_per_data_id is not None
-            and (self.iteration_per_data_id + 1) >= self._max_iter_per_data_id
-        ):
-            logger.info(
-                f"[MaxIterBypass] data_id={self.data_id} "
-                f"iter={self.iteration_per_data_id} "
-                f"cap={self._max_iter_per_data_id}: variance check failed but cap "
-                f"reached — force-advancing to next data_id."
-            )
-            self.var_good_enough = True
-
         if self.var_good_enough:
+            _pass_kind = (
+                "FORCE-COMMITTED (max_iter bypass)"
+                if _force_commit_planned and self.var > _var_thr
+                else "PASSED"
+            )
             logger.info(
-                f"Variance check PASSED. Evaluating model and advancing data_id."
+                f"Variance check {_pass_kind}. Evaluating model and advancing data_id."
             )
             self.iteration_per_data_id += 1
             result, _, _ = self.eval_model()
@@ -1323,16 +1331,20 @@ class TopAggregator(AsyncTopAgg):
 
     @timer_decorator
     def _prepare_distribution_payload(self, task_to_perform: str, force_weights: bool = False):
-        if self.var:
-            logger.info(
-                f"self.var = {self.var}, self.var_threshold = {self.var_threshold}"
-            )
+        """Build either a WEIGHTS payload or a VAR=bad payload.
 
+        A VAR=bad payload is only built when the caller explicitly wants the
+        "keep training, variance still fails" response (``force_weights=False``
+        AND ``var_good_enough=False``). In every other case we build a full
+        WEIGHTS payload. The per-trainer decision of which of these two
+        payloads to actually send lives in ``_distribute_weights_async``.
+        """
         if not self.var_good_enough and not force_weights:
             logger.info(
-                "Sending variance = bad to trainers since variance is greater than threshold"
+                f"[PreparePayload/VAR=bad] var={self.var} > "
+                f"thr={self.var_threshold}; payload asks trainer to keep "
+                f"training on current model_version={self._model_version}."
             )
-            logger.info("Variance is BAD. Sending request for more samples.")
             return {
                 MessageType.VAR: "bad",
                 MessageType.ROUND: self._round,
@@ -1342,10 +1354,16 @@ class TopAggregator(AsyncTopAgg):
                 MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
             }
 
-        logger.info(
-            "Will send new weights to ends since variance is less than threshold"
+        _var_thr = getattr(self, "var_threshold", None)
+        _reason = (
+            f"var_good_enough=True (var={self.var} <= thr={_var_thr})"
+            if self.var_good_enough
+            else f"force_weights=True (var={self.var}, thr={_var_thr})"
         )
-        logger.info("Variance is GOOD. Preparing new model weights and grad_pool.")
+        logger.info(
+            f"[PreparePayload/WEIGHTS] {_reason}; building WEIGHTS payload "
+            f"for model_version={self._model_version}, data_id={self.data_id}."
+        )
 
         self.print_trainable_params_stats(location="[_prepare_distribution_payload]")
         trainable_params = self.get_trainable_param_state_dict()
@@ -1567,46 +1585,53 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        logger.info(f"Distributing tasks to {len(ends)} selected trainers...")
-
-        if self.var:
-            logger.info(
-                f"self.var = {self.var}, self.var_threshold = {self.var_threshold}"
-            )
-        if self.var_good_enough == True:
-            logger.info(
-                "Will send new weights to ends since variance is less than threshold"
-            )
-        else:
-            logger.info(
-                "Sending variance = bad to trainers since variance is greater than threshold"
-            )
+        # --- Summary of what this distribute round will do ---
+        # Per-trainer routing (lower in this function):
+        #   * Stale trainer (hasn't received current model_version yet)
+        #                       → WEIGHTS payload (regardless of variance)
+        #   * Current trainer + var_good_enough=True
+        #                       → WEIGHTS payload (new model version)
+        #   * Current trainer + var_good_enough=False
+        #                       → VAR=bad payload (keep training, we need more grads)
+        _var_thr = getattr(self, "var_threshold", None)
+        logger.info(
+            f"[Distribute] Starting distribute for model_version={self._model_version}, "
+            f"data_id={self.data_id}, iter={self.iteration_per_data_id}, "
+            f"task={task_to_perform}, |ends|={len(ends)}, "
+            f"var={self.var}, var_thr={_var_thr}, var_good_enough={self.var_good_enough}. "
+            f"Stale trainers will get WEIGHTS; current trainers will get "
+            f"{'WEIGHTS' if self.var_good_enough else 'VAR=bad'}."
+        )
 
         payload_var_bad = None
         payload_weights = self._prepare_distribution_payload(task_to_perform, force_weights=True)
         if not self.var_good_enough:
             payload_var_bad = self._prepare_distribution_payload(task_to_perform, force_weights=False)
-        
+
         self._update_state_after_payload_prepared()
 
-        if self.var_good_enough:
-            logger.info(
-                f"Async: sending weights to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
-            )
-
+        _n_weights_sent = 0
+        _n_var_bad_sent = 0
         for end in ends:
             trainer_version = self._trainer_last_model_version.get(end, -1)
             is_stale = (trainer_version != self._model_version)
 
-            if self.var_good_enough:
+            if self.var_good_enough or is_stale:
                 payload = payload_weights
+                _n_weights_sent += 1
+                if not self.var_good_enough and is_stale:
+                    logger.debug(
+                        f"[Distribute] Trainer {end} stale "
+                        f"(has v{trainer_version}, need v{self._model_version}); "
+                        f"sending WEIGHTS even though var_good_enough=False."
+                    )
             else:
-                if is_stale:
-                    payload = payload_weights
-                    logger.debug("Trainer %s hasn't received weights for model_version %s (has %s). Sending WEIGHTS payload instead of VAR=bad.", end, self._model_version, trainer_version)
-                else:
-                    payload = payload_var_bad
-                    logger.debug("Trainer %s will be sent a VAR=bad payload.", end)
+                payload = payload_var_bad
+                _n_var_bad_sent += 1
+                logger.debug(
+                    f"[Distribute] Trainer {end} has current v{trainer_version}; "
+                    f"sending VAR=bad (keep training)."
+                )
 
             logger.debug(
                 f"Setting channel property {PROP_ROUND_START_TIME} for "
@@ -1616,7 +1641,11 @@ class TopAggregator(AsyncTopAgg):
                 end, PROP_ROUND_START_TIME, (self._round, datetime.now())
             )
             channel.send(end, payload)
-        logger.info(f"Sent weights to all ends")
+        logger.info(
+            f"[Distribute] Done. Sent {_n_weights_sent} WEIGHTS + "
+            f"{_n_var_bad_sent} VAR=bad payloads to {len(ends)} trainers "
+            f"(model_version={self._model_version}, data_id={self.data_id})."
+        )
 
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
         if self.is_async:

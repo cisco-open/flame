@@ -215,6 +215,7 @@ class FedSGDAggregator(TopAggregator):
                 learning_rate * weighted_gradient_sum[id] / training_num
             )
         if self.args.var_control:
+            _force_commit = getattr(self, "_force_commit_this_cycle", False)
             if self.var <= self.var_threshold:
                 format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
                 logger.debug(
@@ -223,13 +224,34 @@ class FedSGDAggregator(TopAggregator):
                 self.last_round_update = [
                     p.clone().detach() for p in weighted_gradient_sum
                 ]
-                logger.info("current model is good, variance under threshold")
+                logger.info(
+                    f"[Variance=GOOD] var={self.var} <= thr={self.var_threshold}; "
+                    f"keeping weight update, clearing cached_v."
+                )
                 self.var_good_enough = True
                 # 方差满足要求
                 self.cached_v = []
+            elif _force_commit:
+                # Variance check failed, but max_iter_per_data_id cap was hit;
+                # keep the weight update so the model actually advances.
+                # We DO NOT call set_global_model_params(origin_param) — that
+                # would roll back the update we just applied in-place above.
+                self.last_round_update = [
+                    p.clone().detach() for p in weighted_gradient_sum
+                ]
+                logger.info(
+                    f"[MaxIterBypass] Variance FAILED (var={self.var} > "
+                    f"thr={self.var_threshold}) but force-commit is set; "
+                    f"committing weights anyway, clearing cached_v."
+                )
+                self.var_good_enough = True
+                self.cached_v = []
             else:
                 self.var_good_enough = False
-                logger.info("current model is not good enough, calculate more v")
+                logger.info(
+                    f"[Variance=BAD] var={self.var} > thr={self.var_threshold}; "
+                    f"rolling back weights, caching grads for next iteration."
+                )
                 # 当前模型不行，v不够，暂存起来，后面再计算更多的v
                 for idx in range(self.worker_num):
                     self.cached_v.append(
@@ -237,6 +259,10 @@ class FedSGDAggregator(TopAggregator):
                     )
                 # 模型改回去
                 self.set_global_model_params(origin_param)
+
+        # Always clear the force-commit flag so it doesn't leak into the
+        # next aggregation cycle.
+        self._force_commit_this_cycle = False
 
         old_param = self.get_global_model_params()
 
