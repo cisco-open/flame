@@ -852,7 +852,12 @@ class AsyncOortSelector(AbstractSelector):
             f"{selected_ends} before processing"
         )
 
-        num_ends_to_remove = min(len(self.ordered_updates_recv_ends), self.agg_goal)
+        # Drain the entire `ordered_updates_recv_ends` queue rather than
+        # `min(N, self.agg_goal)`. With dynamic K (adaptive_k_var_tracking),
+        # `self.agg_goal` is the static config value while the actual K used
+        # this cycle may be larger; the old code leaked the difference into
+        # `all_selected` until no ends remained eligible (deadlock).
+        num_ends_to_remove = len(self.ordered_updates_recv_ends)
         if num_ends_to_remove != 0:
             ends_to_remove = self.ordered_updates_recv_ends[:num_ends_to_remove]
             logger.debug(

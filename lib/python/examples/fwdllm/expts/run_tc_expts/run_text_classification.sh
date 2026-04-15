@@ -87,8 +87,14 @@ fi
 LOG_FILE="fedavg_transformer_tc.log"
 CI=0
 
-REPO_PATH=/home/dgarg39/$FWDLLM_USER/flame
-DATA_DIR=/home/dgarg39/$FWDLLM_USER/fednlp_data
+# --- Repo path auto-detection ---
+# Derive REPO_PATH from this script's location. The runner lives at
+#   <REPO>/lib/python/examples/fwdllm/expts/run_tc_expts/run_text_classification.sh
+# so the repo root is six levels above SCRIPT_DIR. Set REPO_PATH in the
+# environment to override (e.g. if this script is symlinked from elsewhere).
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_PATH="${REPO_PATH:-$(cd "$SCRIPT_DIR/../../../../../.." && pwd)}"
+echo "Using REPO_PATH=$REPO_PATH"
 
 PROCESS_NUM=`expr $WORKER_NUM + 1`
 echo $PROCESS_NUM
@@ -277,28 +283,42 @@ print(K, C, N, mx, policy, part_slug, lr, dl_workers)
   # EXPANDED_TMP_DIR and AGG_EXPANDED were set up earlier so we could parse the
   # aggregator config for log naming.
 
-  # Clean up expanded configs and background processes on exit
+  # Clean up expanded configs and background processes on exit.
+  # Uses a reentrancy guard so repeated Ctrl+C can't re-enter this handler
+  # while it's still running. Escalates to SIGKILL immediately because
+  # PyTorch/MQTT children often ignore SIGTERM for many seconds.
+  _CLEANING_UP=0
   cleanup() {
-    echo "Cleaning up processes and temporary files..."
-    # 1. Kill the watchdog first to prevent recursive calls
-    if [ ! -z "$WATCHDOG_PID" ]; then
-      kill $WATCHDOG_PID 2>/dev/null
+    if [ "$_CLEANING_UP" = "1" ]; then
+      return
     fi
-    # 2. Kill all python trainer/aggregator processes
-    pkill -f "$FWDLLM_USER.*fl_main.py"
-    # 3. Remove temp directory
-    if [ -d "$EXPANDED_TMP_DIR" ]; then
-      echo "Removing temporary directory: $EXPANDED_TMP_DIR"
+    _CLEANING_UP=1
+    # Disable further trap firings during teardown.
+    trap '' INT TERM
+    echo "Cleaning up processes and temporary files..."
+
+    # 1. Kill the watchdog first so it stops restarting us.
+    if [ -n "$WATCHDOG_PID" ]; then
+      kill -KILL "$WATCHDOG_PID" 2>/dev/null || true
+    fi
+
+    # 2. Hard-kill all trainer/aggregator processes. No grace period — these
+    # are PyTorch+MQTT processes that ignore SIGTERM for 10–30s while
+    # cleaning up GPU memory and broker sockets.
+    pkill -9 -f "$FWDLLM_USER.*fl_main.py" 2>/dev/null || true
+
+    # 3. Remove temp directory.
+    if [ -n "$EXPANDED_TMP_DIR" ] && [ -d "$EXPANDED_TMP_DIR" ]; then
       rm -rf "$EXPANDED_TMP_DIR"
     fi
-    # 4. Remove accuracy monitor status file
-    if [ -f "$ACC_MONITOR_FILE" ]; then
-      echo "Removing accuracy monitor file: $ACC_MONITOR_FILE"
+
+    # 4. Remove accuracy monitor status file.
+    if [ -n "$ACC_MONITOR_FILE" ] && [ -f "$ACC_MONITOR_FILE" ]; then
       rm -f "$ACC_MONITOR_FILE"
     fi
   }
-  # Trap common termination signals
-  trap cleanup EXIT INT TERM    # cleanup function is called no matter how the script ends (normal exit, error, or manual termination)
+  trap cleanup EXIT
+  trap 'cleanup; exit 130' INT TERM
 
   # AGG_EXPANDED is already populated from earlier (used for log naming).
 

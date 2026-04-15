@@ -865,7 +865,11 @@ class TopAggregator(AsyncTopAgg):
         )
         n_eligible_train = 0
         n_eligible_eval = 0
-        for end_id in channel.ends():
+        # channel.ends() may transiently return None (e.g. right after the
+        # aggregator has just consumed all in-flight ends and before the next
+        # batch registers). Guard with `or []` so we report zero eligible
+        # ends instead of throwing.
+        for end_id in (channel.ends() or []):
             avl_state = channel.get_end_property(end_id, _PROP_AVL_STATE)
             if avl_state in train_eligible:
                 n_eligible_train += 1
