@@ -52,7 +52,7 @@
         "dataset": "agnews",
         "data_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5",
         "partition_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5",
-        "partition_method": "uniform",
+        "partition_method": "niid_label_clients=100_alpha=1",
         "fl_algorithm": "FedFwd",
         "model_type": "distilbert",
         "model_name": "distilbert-base-uncased",

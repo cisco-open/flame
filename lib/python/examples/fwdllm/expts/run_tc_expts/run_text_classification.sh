@@ -146,7 +146,11 @@ mx = hp.get('max_iterations_per_data_id', 'none')
 dynkc = sel.get('dynamic_kc', {}) or {}
 policy = dynkc.get('policy', 'static') if dynkc.get('enabled', False) else 'static'
 part = hp.get('partition_method', 'NA')
-part_slug = re.sub(r'[^A-Za-z0-9]', '', str(part))[:16] or 'NA'
+# Slug must preserve the alpha qualifier so heterogeneous partitions at
+# different alpha values are distinguishable in log filenames.
+# 'uniform'                        -> 'uniform'
+# 'niid_label_clients=100_alpha=1' -> 'niidlabelclients100alpha1'
+part_slug = re.sub(r'[^A-Za-z0-9]', '', str(part))[:32] or 'NA'
 lr = hp.get('learning_rate', hp.get('lr', 'NA'))
 dl_workers = hp.get('data_loader_num_workers', 'NA')
 print(K, C, N, mx, policy, part_slug, lr, dl_workers)
