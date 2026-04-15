@@ -90,7 +90,9 @@
         "rejectStaleUpdates": false,
         "inc_model_version_per_data_id": true,
         "//max_iterations_per_data_id": "Hard cap: force-advance past a data_id after this many failed variance checks.",
-        "max_iterations_per_data_id": 15
+        "max_iterations_per_data_id": 15,
+        "//var_threshold": "FedSGD variance check threshold. Raise it (e.g. 0.3) for heterogeneous NIID partitions where gradient variance is naturally higher. Omit to use the model_type default (distilbert=0.1).",
+        "var_threshold": 0.3
     },
     "baseModel": {
         "name": "",

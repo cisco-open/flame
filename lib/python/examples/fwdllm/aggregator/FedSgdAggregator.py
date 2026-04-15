@@ -68,18 +68,34 @@ class FedSGDAggregator(TopAggregator):
 
         # 之前的v不够，暂存在cached_v
         self.cached_v = []
-        if self.args.model_type == "distilbert":
-            # self.var_threshold = 0.25 ## commented out by them, not used
-            self.var_threshold = 0.1
-        elif self.args.model_type == "bert":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.2
-        elif self.args.model_type == "roberta-large":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.2
-        elif self.args.model_type == "albert":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.1
+
+        # Model-specific default variance thresholds. Used only when the JSON
+        # config does not override via `hyperparameters.var_threshold`.
+        _DEFAULT_VAR_THRESHOLD_BY_MODEL = {
+            "distilbert": 0.1,      # 0.25 originally proposed, 0.1 in practice
+            "bert": 0.2,            # 0.6 originally proposed
+            "roberta-large": 0.2,   # 0.6 originally proposed
+            "albert": 0.1,          # 0.6 originally proposed
+        }
+        _default_thr = _DEFAULT_VAR_THRESHOLD_BY_MODEL.get(self.args.model_type, 0.1)
+
+        # Allow the JSON config to override the default — e.g. heterogeneous
+        # partitions (niid_label_* with small alpha) produce larger gradient
+        # variance so a higher threshold is needed to avoid every aggregation
+        # failing the check.
+        _json_thr = getattr(self.args, "var_threshold", None)
+        if _json_thr is not None:
+            self.var_threshold = float(_json_thr)
+            logger.info(
+                f"[VarThreshold] Using JSON override var_threshold={self.var_threshold} "
+                f"(model_type={self.args.model_type}; default would be {_default_thr})"
+            )
+        else:
+            self.var_threshold = _default_thr
+            logger.info(
+                f"[VarThreshold] Using default var_threshold={self.var_threshold} "
+                f"for model_type={self.args.model_type}"
+            )
 
         self.track_trainer_avail = (
             self.config.hyperparameters.track_trainer_avail or None

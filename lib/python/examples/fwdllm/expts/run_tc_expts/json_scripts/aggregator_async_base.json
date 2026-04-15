@@ -88,7 +88,9 @@
         "aggGoal": 5,
         "rounds": 300,
         "rejectStaleUpdates": false,
-        "inc_model_version_per_data_id": true
+        "inc_model_version_per_data_id": true,
+        "//var_threshold": "FedSGD variance check threshold. Raise it (e.g. 0.3) for heterogeneous NIID partitions where gradient variance is naturally higher. Omit to use the model_type default (distilbert=0.1).",
+        "var_threshold": 0.3
     },
     "baseModel": {
         "name": "",
