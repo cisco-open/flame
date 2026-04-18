@@ -343,29 +343,34 @@ print(K, C, N, mx, policy, part_slug, lr, dl_workers)
 
   # --- GPU assignment ---
   # If CUDA_VISIBLE_DEVICES is set in the environment (e.g. "6,7"), use only
-  # those physical GPUs — each child process gets CUDA_VISIBLE_DEVICES set to
-  # a single logical index (0..N-1) which maps to one of the parent's visible
-  # GPUs. Otherwise fall back to NUM_AVAIL_GPUS=8 (all GPUs).
+  # those physical GPUs. Inline `CUDA_VISIBLE_DEVICES=N python ...` overrides
+  # the parent's CVD for the child, and N is interpreted as an absolute physical
+  # device ID — NOT as an index into the parent's visible set. So we must map
+  # the logical index (0..N-1) back to the physical GPU ID from _CVD_ARR before
+  # spawning the child. Otherwise a parent CVD=6,7 would spawn children pinned
+  # to physical GPUs 0,1, which is typically exactly what the user was avoiding.
   if [ -n "${CUDA_VISIBLE_DEVICES:-}" ]; then
     IFS=',' read -ra _CVD_ARR <<< "$CUDA_VISIBLE_DEVICES"
     NUM_AVAIL_GPUS=${#_CVD_ARR[@]}
     echo "Using CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES} (${NUM_AVAIL_GPUS} GPU(s))"
   else
     NUM_AVAIL_GPUS=8
+    _CVD_ARR=(0 1 2 3 4 5 6 7)
     echo "CUDA_VISIBLE_DEVICES not set; defaulting to NUM_AVAIL_GPUS=${NUM_AVAIL_GPUS}"
   fi
 
   for X in $(seq 0 $(( total_client_num-1 )) )    # End value is inclusive
   do
     ASSIGN_TO_GPU=$(( X % NUM_AVAIL_GPUS ))
+    PHYS_GPU="${_CVD_ARR[$ASSIGN_TO_GPU]}"
     TRAIN_SRC="$REPO_PATH/lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/trainer_${X}.json"
     TRAIN_EXPANDED="$EXPANDED_TMP_DIR/trainer_${X}_expanded.json"
 
     if [ -f "$TRAIN_SRC" ]; then
       envsubst < "$TRAIN_SRC" > "$TRAIN_EXPANDED"
       echo "  -> expanded trainer config: $TRAIN_EXPANDED"
-      echo "Running client $X on logical GPU $ASSIGN_TO_GPU"
-      CUDA_VISIBLE_DEVICES="${ASSIGN_TO_GPU}" python $REPO_PATH/lib/python/examples/fwdllm/trainer/fl_main.py \
+      echo "Running client $X on physical GPU $PHYS_GPU (logical slot $ASSIGN_TO_GPU)"
+      CUDA_VISIBLE_DEVICES="${PHYS_GPU}" python $REPO_PATH/lib/python/examples/fwdllm/trainer/fl_main.py \
         --config "$TRAIN_EXPANDED" \
         --log_level "$LOG_LEVEL" \
         >> "$TRAINER_LOG_FILE" 2>&1 &
