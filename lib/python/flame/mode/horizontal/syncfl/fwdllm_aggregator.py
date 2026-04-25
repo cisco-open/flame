@@ -243,6 +243,15 @@ class TopAggregator(AsyncTopAgg):
         self.total_data_bins = 150
         self._is_model_updated = False
         self._model_version = 0
+
+        # Force-advance data_id after this many failed variance checks; None = disabled.
+        self._max_iter_per_data_id = getattr(
+            self.config.hyperparameters, "max_iterations_per_data_id", None
+        )
+        if self._max_iter_per_data_id is not None:
+            logger.info(
+                f"[MaxIterBypass] max_iterations_per_data_id={self._max_iter_per_data_id}"
+            )
         self.grad_pool = []
         self.cached_shared_grad_pool_trainable = None
         self.var = None
@@ -280,6 +289,36 @@ class TopAggregator(AsyncTopAgg):
             self._trainer_max_miss_heartbeats = 99999
 
         logger.info(f"Experiment set to run in is_async: {self.is_async}")
+
+        self._n_aggs_completed = 0
+        self._var_pass_count = 0
+        self._var_total_count = 0
+        self._dynamic_kc_controller = None
+        _dynamic_kc_conf = self.config.selector.kwargs.get("dynamic_kc", {})
+        if _dynamic_kc_conf.get("enabled", False):
+            from flame.selector.dynamic_kc_controller import DynamicKCController
+            from flame.selector.dynamic_kc_policy import build_policy
+
+            _policy = build_policy(
+                _dynamic_kc_conf.get("policy", "variance_based"),
+                _dynamic_kc_conf.get("policy_kwargs", {}),
+            )
+            self._dynamic_kc_controller = DynamicKCController(
+                policy=_policy,
+                k_init=self._agg_goal,
+                c_init=self.config.selector.kwargs.get("c", 1),
+                k_min=_dynamic_kc_conf.get("k_min", 1),
+                k_max=_dynamic_kc_conf.get("k_max", 100),
+                c_min=_dynamic_kc_conf.get("c_min", 1),
+                c_max=_dynamic_kc_conf.get("c_max", 100),
+                update_every_n_aggs=_dynamic_kc_conf.get("update_every_n_aggs", 1),
+            )
+            logger.info(
+                f"[DynamicKC] Controller initialized: policy={_policy.name()}, "
+                f"k_init={self._agg_goal}, "
+                f"c_init={self.config.selector.kwargs.get('c', 1)}"
+            )
+
         # maintain a set of all trainers that have sent heartbeats previously
         self.all_trainers = set()
         try:
@@ -618,7 +657,7 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        if self._agg_goal_cnt == self._agg_goal:
+        if self._agg_goal_cnt >= self._agg_goal:
             self._process_aggregation_goal_met(tag, channel, is_async=True)
 
     @timer_decorator
@@ -788,6 +827,66 @@ class TopAggregator(AsyncTopAgg):
             "partial_stat_utility": [],
         }
 
+    def _build_dynamic_kc_metrics(self, channel) -> dict:
+        var_pass_rate = (
+            self._var_pass_count / self._var_total_count
+            if self._var_total_count > 0 else 0.0
+        )
+        staleness_list = self._per_round_staleness_list
+        avg_staleness = (
+            sum(staleness_list) / len(staleness_list) if staleness_list else 0.0
+        )
+        p75_staleness = (
+            float(sorted(staleness_list)[int(0.75 * len(staleness_list))])
+            if staleness_list else 0.0
+        )
+
+        _PROP_AVL_STATE = "avl_state"
+        task_eligible_states = self.config.selector.kwargs.get(
+            "task_eligible_states", {}
+        )
+        from flame.config import TrainerAvailState
+        train_eligible = set(
+            task_eligible_states.get("train", [TrainerAvailState.AVL_TRAIN.value])
+        )
+        eval_eligible = set(
+            task_eligible_states.get(
+                "eval",
+                [TrainerAvailState.AVL_EVAL.value, TrainerAvailState.AVL_TRAIN.value],
+            )
+        )
+        n_eligible_train = 0
+        n_eligible_eval = 0
+        for end_id in (channel.ends() or []):  # channel.ends() can transiently return None
+            avl_state = channel.get_end_property(end_id, _PROP_AVL_STATE)
+            if avl_state in train_eligible:
+                n_eligible_train += 1
+            if avl_state in eval_eligible:
+                n_eligible_eval += 1
+
+        _policy_kwargs = self.config.selector.kwargs.get("dynamic_kc", {}).get(
+            "policy_kwargs", {}
+        )
+        target_iter = _policy_kwargs.get(
+            "target_iter_per_data_id", self._max_iter_per_data_id
+        )
+
+        return {
+            "var_pass_rate": var_pass_rate,
+            "var_last": self.var if self.var is not None else 0.0,
+            "avg_staleness": avg_staleness,
+            "p75_staleness": p75_staleness,
+            "model_version": self._model_version,
+            "n_aggs_completed": self._n_aggs_completed,
+            "var_threshold": getattr(self, "var_threshold", None),
+            "n_eligible_train": n_eligible_train,
+            "n_eligible_eval": n_eligible_eval,
+            "iteration_per_data_id": self.iteration_per_data_id,
+            "data_id": self.data_id,
+            "max_iter_per_data_id": self._max_iter_per_data_id,
+            "target_iter_per_data_id": target_iter,
+        }
+
     @timer_decorator
     def _process_aggregation_goal_met(self, tag, channel, is_async=False):
         logger.info(
@@ -825,11 +924,45 @@ class TopAggregator(AsyncTopAgg):
         )
         self.grad = [torch.zeros_like(p) for p in self.params]
 
+        # Set before aggregate() — that function rolls back weights on var failure and clears the flag.
+        self._force_commit_this_cycle = (
+            self._max_iter_per_data_id is not None
+            and (self.iteration_per_data_id + 1) >= self._max_iter_per_data_id
+        )
+        _force_commit_planned = self._force_commit_this_cycle  # snapshot for logging
+        if _force_commit_planned:
+            logger.info(
+                f"[MaxIterBypass] cap reached "
+                f"(iter+1={self.iteration_per_data_id + 1} >= "
+                f"cap={self._max_iter_per_data_id}); will force-commit weights "
+                f"if variance check fails in aggregate()."
+            )
+
         self.aggregate(self._round)
 
+        _var_thr = getattr(self, "var_threshold", None)
+        _ratio = (
+            float(self.var) / _var_thr
+            if (self.var is not None and _var_thr not in (None, 0))
+            else None
+        )
+        logger.info(
+            f"[IterProgress] data_id={self.data_id} "
+            f"iter={self.iteration_per_data_id} "
+            f"max_iter={self._max_iter_per_data_id} "
+            f"var={self.var} var_thr={_var_thr} ratio={_ratio} "
+            f"var_good_enough={self.var_good_enough} "
+            f"force_commit_planned={_force_commit_planned}"
+        )
+
         if self.var_good_enough:
+            _pass_kind = (
+                "FORCE-COMMITTED (max_iter bypass)"
+                if _force_commit_planned and self.var > _var_thr
+                else "PASSED"
+            )
             logger.info(
-                f"Variance check PASSED. Evaluating model and advancing data_id."
+                f"Variance check {_pass_kind}. Evaluating model and advancing data_id."
             )
             self.iteration_per_data_id += 1
             result, _, _ = self.eval_model()
@@ -872,6 +1005,25 @@ class TopAggregator(AsyncTopAgg):
         )
 
         self._agg_goal_cnt = 0
+
+        self._n_aggs_completed += 1
+        self._var_total_count += 1
+        if self.var_good_enough:
+            self._var_pass_count += 1
+
+        if self._dynamic_kc_controller is not None:
+            metrics = self._build_dynamic_kc_metrics(channel)
+            new_k, new_c = self._dynamic_kc_controller.step(metrics)
+            self._var_pass_count = 0
+            self._var_total_count = 0
+            if new_k != self._agg_goal:
+                logger.info(f"[DynamicKC] _agg_goal updated: {self._agg_goal} → {new_k}")
+                self._agg_goal = new_k
+            channel.set_property("dynamic_c", new_c)
+            logger.debug(
+                f"[DynamicKC] step={self._n_aggs_completed}: "
+                f"k={new_k}, c={new_c}, summary={self._dynamic_kc_controller.summary()}"
+            )
 
         self.fwd_llm_stage = FwdLLMStage(
             self._round, self.data_id, self.iteration_per_data_id
@@ -1153,16 +1305,13 @@ class TopAggregator(AsyncTopAgg):
 
     @timer_decorator
     def _prepare_distribution_payload(self, task_to_perform: str, force_weights: bool = False):
-        if self.var:
-            logger.info(
-                f"self.var = {self.var}, self.var_threshold = {self.var_threshold}"
-            )
-
+        """Build a WEIGHTS payload (always) or a VAR=bad payload (when var fails and force_weights=False)."""
         if not self.var_good_enough and not force_weights:
             logger.info(
-                "Sending variance = bad to trainers since variance is greater than threshold"
+                f"[PreparePayload/VAR=bad] var={self.var} > "
+                f"thr={self.var_threshold}; payload asks trainer to keep "
+                f"training on current model_version={self._model_version}."
             )
-            logger.info("Variance is BAD. Sending request for more samples.")
             return {
                 MessageType.VAR: "bad",
                 MessageType.ROUND: self._round,
@@ -1172,10 +1321,16 @@ class TopAggregator(AsyncTopAgg):
                 MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
             }
 
-        logger.info(
-            "Will send new weights to ends since variance is less than threshold"
+        _var_thr = getattr(self, "var_threshold", None)
+        _reason = (
+            f"var_good_enough=True (var={self.var} <= thr={_var_thr})"
+            if self.var_good_enough
+            else f"force_weights=True (var={self.var}, thr={_var_thr})"
         )
-        logger.info("Variance is GOOD. Preparing new model weights and grad_pool.")
+        logger.info(
+            f"[PreparePayload/WEIGHTS] {_reason}; building WEIGHTS payload "
+            f"for model_version={self._model_version}, data_id={self.data_id}."
+        )
 
         self.print_trainable_params_stats(location="[_prepare_distribution_payload]")
         trainable_params = self.get_trainable_param_state_dict()
@@ -1397,46 +1552,45 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        logger.info(f"Distributing tasks to {len(ends)} selected trainers...")
-
-        if self.var:
-            logger.info(
-                f"self.var = {self.var}, self.var_threshold = {self.var_threshold}"
-            )
-        if self.var_good_enough == True:
-            logger.info(
-                "Will send new weights to ends since variance is less than threshold"
-            )
-        else:
-            logger.info(
-                "Sending variance = bad to trainers since variance is greater than threshold"
-            )
+        _var_thr = getattr(self, "var_threshold", None)
+        logger.info(
+            f"[Distribute] Starting distribute for model_version={self._model_version}, "
+            f"data_id={self.data_id}, iter={self.iteration_per_data_id}, "
+            f"task={task_to_perform}, |ends|={len(ends)}, "
+            f"var={self.var}, var_thr={_var_thr}, var_good_enough={self.var_good_enough}. "
+            f"Stale trainers will get WEIGHTS; current trainers will get "
+            f"{'WEIGHTS' if self.var_good_enough else 'VAR=bad'}."
+        )
 
         payload_var_bad = None
         payload_weights = self._prepare_distribution_payload(task_to_perform, force_weights=True)
         if not self.var_good_enough:
             payload_var_bad = self._prepare_distribution_payload(task_to_perform, force_weights=False)
-        
+
         self._update_state_after_payload_prepared()
 
-        if self.var_good_enough:
-            logger.info(
-                f"Async: sending weights to {ends} with model_version: {self._model_version}, round: {self._round}, data_id: {self.data_id} for task: {task_to_perform}"
-            )
-
+        _n_weights_sent = 0
+        _n_var_bad_sent = 0
         for end in ends:
             trainer_version = self._trainer_last_model_version.get(end, -1)
             is_stale = (trainer_version != self._model_version)
 
-            if self.var_good_enough:
+            if self.var_good_enough or is_stale:
                 payload = payload_weights
+                _n_weights_sent += 1
+                if not self.var_good_enough and is_stale:
+                    logger.debug(
+                        f"[Distribute] Trainer {end} stale "
+                        f"(has v{trainer_version}, need v{self._model_version}); "
+                        f"sending WEIGHTS even though var_good_enough=False."
+                    )
             else:
-                if is_stale:
-                    payload = payload_weights
-                    logger.debug("Trainer %s hasn't received weights for model_version %s (has %s). Sending WEIGHTS payload instead of VAR=bad.", end, self._model_version, trainer_version)
-                else:
-                    payload = payload_var_bad
-                    logger.debug("Trainer %s will be sent a VAR=bad payload.", end)
+                payload = payload_var_bad
+                _n_var_bad_sent += 1
+                logger.debug(
+                    f"[Distribute] Trainer {end} has current v{trainer_version}; "
+                    f"sending VAR=bad (keep training)."
+                )
 
             logger.debug(
                 f"Setting channel property {PROP_ROUND_START_TIME} for "
@@ -1446,7 +1600,11 @@ class TopAggregator(AsyncTopAgg):
                 end, PROP_ROUND_START_TIME, (self._round, datetime.now())
             )
             channel.send(end, payload)
-        logger.info(f"Sent weights to all ends")
+        logger.info(
+            f"[Distribute] Done. Sent {_n_weights_sent} WEIGHTS + "
+            f"{_n_var_bad_sent} VAR=bad payloads to {len(ends)} trainers "
+            f"(model_version={self._model_version}, data_id={self.data_id})."
+        )
 
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
         if self.is_async:

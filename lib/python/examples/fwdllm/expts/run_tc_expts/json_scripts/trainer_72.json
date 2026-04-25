@@ -46,7 +46,7 @@
         "client_idx": 72,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 10,
+        "data_loader_num_workers": 10,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (8561, 'AVL_TRAIN'), (19861, 'UN_AVL'), (80833, 'AVL_TRAIN'), (81031, 'UN_AVL'), (81742, 'AVL_TRAIN'), (82207, 'UN_AVL'), (82250, 'AVL_TRAIN'), (82275, 'UN_AVL'), (82373, 'AVL_TRAIN'), (82425, 'UN_AVL'), (83496, 'AVL_TRAIN'), (89906, 'UN_AVL'), (107486, 'AVL_TRAIN'), (110334, 'UN_AVL'), (110376, 'AVL_TRAIN'), (117548, 'UN_AVL'), (127100, 'AVL_TRAIN'), (127895, 'UN_AVL'), (133304, 'AVL_TRAIN'), (134016, 'UN_AVL'), (192155, 'AVL_TRAIN'), (192454, 'UN_AVL'), (192509, 'AVL_TRAIN'), (199060, 'UN_AVL'), (199073, 'AVL_TRAIN'), (199291, 'UN_AVL'), (199791, 'AVL_TRAIN'), (208187, 'UN_AVL'), (217367, 'AVL_TRAIN'), (217824, 'UN_AVL')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
+            "trace": "avl_events_syn_train_100_eval_0_unavail_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",

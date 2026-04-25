@@ -46,7 +46,7 @@
         "client_idx": -1,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 10,
+        "data_loader_num_workers": 10,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
@@ -84,7 +84,7 @@
         "trackTrainerAvail": {
             "enabled": "True",
             "type": "ORACULAR",
-            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
+            "trace": "avl_events_syn_train_100_eval_0_unavail_0"
         },
         "aggGoal": 10,
         "rounds": 300,

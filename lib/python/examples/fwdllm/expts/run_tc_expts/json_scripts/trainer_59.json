@@ -46,7 +46,7 @@
         "client_idx": 59,
         "gpu_mapping_file": "gpu_mapping.yaml",
         "gpu_mapping_key": "mapping_myMap",
-        "client_num_per_round": 10,
+        "data_loader_num_workers": 10,
         "comm_round": 3000,
         "ci": 0,
         "dataset": "agnews",
@@ -89,7 +89,7 @@
         "avl_events_mobiperf_2st": "[(0, 'AVL_TRAIN'), (300, 'UN_AVL'), (69562, 'AVL_TRAIN'), (90340, 'UN_AVL'), (91380, 'AVL_TRAIN'), (91391, 'UN_AVL'), (91399, 'AVL_TRAIN'), (91459, 'UN_AVL'), (91470, 'AVL_TRAIN'), (92782, 'UN_AVL'), (187114, 'AVL_TRAIN'), (219297, 'UN_AVL')]",
         "client_notify": {
             "enabled": "False",
-            "trace": "avl_events_syn_train_90_eval_10_unavail_0"
+            "trace": "avl_events_syn_train_100_eval_0_unavail_0"
         },
         "wait_until_next_avl": "True",
         "avl_events_syn_0": "[(0, 'AVL_TRAIN')]",

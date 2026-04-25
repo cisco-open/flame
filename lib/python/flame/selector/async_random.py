@@ -76,7 +76,29 @@ class AsyncRandomSelector(AbstractSelector):
         # Tracks trainers that were selected but left training in
         # between
         self.track_selected_trainers_which_left = dict()
-        self.check_three_state_avl = True
+        self.check_three_state_avl = True  # kept for backward compat; superseded by _task_eligible_states
+
+        # Configurable task → eligible-state map; override via selector.kwargs["task_eligible_states"].
+        _default_eligible_states = {
+            "train": [TrainerAvailState.AVL_TRAIN.value],
+            "eval": [
+                TrainerAvailState.AVL_EVAL.value,
+                TrainerAvailState.AVL_TRAIN.value,
+            ],
+        }
+        raw_eligible = kwargs.get("task_eligible_states", _default_eligible_states)
+        _valid_states = {v.value for v in TrainerAvailState}
+        for task_name, states in raw_eligible.items():
+            for s in states:
+                if s not in _valid_states:
+                    raise ValueError(
+                        f"task_eligible_states['{task_name}'] contains unknown state "
+                        f"'{s}'. Valid states: {sorted(_valid_states)}"
+                    )
+        self._task_eligible_states: dict = raw_eligible
+        logger.info(
+            f"[TaskEligibility] task_eligible_states = {self._task_eligible_states}"
+        )
 
         # Track sliding window statistics for the selector
         self._selector_stats = {}
@@ -118,6 +140,9 @@ class AsyncRandomSelector(AbstractSelector):
             f"Aggregator version state (model_version, data_id, iteration_id): {agg_version_state}"
         )
         logger.debug(f"Trainer version states: {trainer_version_states}")
+
+        if self.enforce_min_start(len(ends)):
+            return {}
 
         if task_to_perform == "train":
             concurrency = min(len(ends), self.c)
@@ -254,7 +279,8 @@ class AsyncRandomSelector(AbstractSelector):
             f"{selected_ends} before processing"
         )
 
-        num_ends_to_remove = min(len(self.ordered_updates_recv_ends), self.agg_goal)
+        # Drain all received ends; min(N, agg_goal) deadlocks when K changes dynamically.
+        num_ends_to_remove = len(self.ordered_updates_recv_ends)
         if num_ends_to_remove != 0:
             ends_to_remove = self.ordered_updates_recv_ends[:num_ends_to_remove]
             logger.debug(
@@ -570,23 +596,30 @@ class AsyncRandomSelector(AbstractSelector):
                 # None}
 
                 curr_end_id_avl_state = ends[end_id].get_property(PROP_AVL_STATE)
-                # Even if client notify is not enabled, this logic
-                # would work since curr_end_id_avl_state = None
-                if task_to_perform == "train" and (
-                    curr_end_id_avl_state in (TrainerAvailState.AVL_TRAIN.value, None)
-                ):
-                    filtered_ends[end_id] = ends[end_id]
-                    logger.debug(
-                        f"Adding end {end_id} to filtered ends. Three_state_avl_check is True, task_to_perform: {task_to_perform} in state: {ends[end_id].get_property(PROP_AVL_STATE)}"
-                    )
-                    count_avl_train += 1
+                eligible_states_for_task = self._task_eligible_states.get(
+                    task_to_perform, []
+                )
+                # None avl_state means no heartbeat state set — always eligible.
+                state_eligible = (
+                    curr_end_id_avl_state is None
+                    or curr_end_id_avl_state in eligible_states_for_task
+                )
 
-                else:
+                if state_eligible:
+                    filtered_ends[end_id] = ends[end_id]
+                    count_avl_train += 1
                     logger.debug(
-                        f"Not adding end {end_id} to filtered ends since required for task{task_to_perform}, "
-                        f"but was in state {curr_end_id_avl_state}. Not eligible."
+                        f"Adding end {end_id} to filtered_ends: "
+                        f"task={task_to_perform}, avl_state={curr_end_id_avl_state}, "
+                        f"eligible_states={eligible_states_for_task}"
                     )
+                else:
                     count_ineligible += 1
+                    logger.debug(
+                        f"Skipping end {end_id}: task={task_to_perform}, "
+                        f"avl_state={curr_end_id_avl_state} not eligible "
+                        f"(eligible_states={eligible_states_for_task})"
+                    )
 
         logger.info(
             f"Filtered ends created. count_avl_train: {count_avl_train},  count_ineligible: {count_ineligible}"

@@ -68,18 +68,29 @@ class FedSGDAggregator(TopAggregator):
 
         # 之前的v不够，暂存在cached_v
         self.cached_v = []
-        if self.args.model_type == "distilbert":
-            # self.var_threshold = 0.25 ## commented out by them, not used
-            self.var_threshold = 0.1
-        elif self.args.model_type == "bert":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.2
-        elif self.args.model_type == "roberta-large":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.2
-        elif self.args.model_type == "albert":
-            # self.var_threshold = 0.6
-            self.var_threshold = 0.1
+
+        # Per-model defaults; overridden by hyperparameters.var_threshold in config.
+        _DEFAULT_VAR_THRESHOLD_BY_MODEL = {
+            "distilbert": 0.1,
+            "bert": 0.2,
+            "roberta-large": 0.2,
+            "albert": 0.1,
+        }
+        _default_thr = _DEFAULT_VAR_THRESHOLD_BY_MODEL.get(self.args.model_type, 0.1)
+
+        _json_thr = getattr(self.args, "var_threshold", None)
+        if _json_thr is not None:
+            self.var_threshold = float(_json_thr)
+            logger.info(
+                f"[VarThreshold] Using JSON override var_threshold={self.var_threshold} "
+                f"(model_type={self.args.model_type}; default would be {_default_thr})"
+            )
+        else:
+            self.var_threshold = _default_thr
+            logger.info(
+                f"[VarThreshold] Using default var_threshold={self.var_threshold} "
+                f"for model_type={self.args.model_type}"
+            )
 
         self.track_trainer_avail = (
             self.config.hyperparameters.track_trainer_avail or None
@@ -215,6 +226,7 @@ class FedSGDAggregator(TopAggregator):
                 learning_rate * weighted_gradient_sum[id] / training_num
             )
         if self.args.var_control:
+            _force_commit = getattr(self, "_force_commit_this_cycle", False)
             if self.var <= self.var_threshold:
                 format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
                 logger.debug(
@@ -223,13 +235,31 @@ class FedSGDAggregator(TopAggregator):
                 self.last_round_update = [
                     p.clone().detach() for p in weighted_gradient_sum
                 ]
-                logger.info("current model is good, variance under threshold")
+                logger.info(
+                    f"[Variance=GOOD] var={self.var} <= thr={self.var_threshold}; "
+                    f"keeping weight update, clearing cached_v."
+                )
                 self.var_good_enough = True
                 # 方差满足要求
                 self.cached_v = []
+            elif _force_commit:
+                # max_iter_per_data_id cap hit; skip rollback to advance model despite failed variance.
+                self.last_round_update = [
+                    p.clone().detach() for p in weighted_gradient_sum
+                ]
+                logger.info(
+                    f"[MaxIterBypass] Variance FAILED (var={self.var} > "
+                    f"thr={self.var_threshold}) but force-commit is set; "
+                    f"committing weights anyway, clearing cached_v."
+                )
+                self.var_good_enough = True
+                self.cached_v = []
             else:
                 self.var_good_enough = False
-                logger.info("current model is not good enough, calculate more v")
+                logger.info(
+                    f"[Variance=BAD] var={self.var} > thr={self.var_threshold}; "
+                    f"rolling back weights, caching grads for next iteration."
+                )
                 # 当前模型不行，v不够，暂存起来，后面再计算更多的v
                 for idx in range(self.worker_num):
                     self.cached_v.append(
@@ -237,6 +267,8 @@ class FedSGDAggregator(TopAggregator):
                     )
                 # 模型改回去
                 self.set_global_model_params(origin_param)
+
+        self._force_commit_this_cycle = False
 
         old_param = self.get_global_model_params()
 

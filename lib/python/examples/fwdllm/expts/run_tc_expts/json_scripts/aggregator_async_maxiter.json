@@ -1,0 +1,139 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate",
+                    "heartbeat_recv"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload",
+                    "heartbeat_send"
+                ]
+            }
+        }
+    ],
+    "hyperparameters": {
+        "client_idx": -1,
+        "gpu_mapping_file": "gpu_mapping.yaml",
+        "gpu_mapping_key": "mapping_myMap",
+        "data_loader_num_workers": 10,
+        "comm_round": 3000,
+        "ci": 0,
+        "dataset": "agnews",
+        "data_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5",
+        "partition_file_path": "/coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5",
+        "partition_method": "niid_label_clients=100_alpha=1",
+        "fl_algorithm": "FedFwd",
+        "model_type": "distilbert",
+        "model_name": "distilbert-base-uncased",
+        "frequency_of_the_test": 1,
+        "do_lower_case": true,
+        "train_batch_size": 8,
+        "eval_batch_size": 256,
+        "max_seq_length": 128,
+        "lr": "0.01",
+        "server_lr": "0.1",
+        "worker_num": "1",
+        "epochs": 1,
+        "peft_method": "adapter",
+        "forward_mode": true,
+        "learning_rate": 0.01,
+        "var_control": true,
+        "perturbation_sampling": true,
+        "evaluate_during_training_steps": 100,
+        "fp16": true,
+        "output_dir": "/tmp/",
+        "is_debug_mode": 0,
+        "fedprox_mu": 1,
+        "use_adapter": false,
+        "gradient_accumulation_steps": 1,
+        "freeze_layers": "",
+        "manual_seed": 42,
+        "client_num_in_total": 0,
+        "warmup_ratio": 0,
+        "trackTrainerAvail": {
+            "enabled": "False",
+            "type": "NONE"
+        },
+        "aggGoal": 5,
+        "rounds": 300,
+        "rejectStaleUpdates": false,
+        "inc_model_version_per_data_id": true,
+        "//max_iterations_per_data_id": "Hard cap: force-advance past a data_id after this many failed variance checks.",
+        "max_iterations_per_data_id": 15,
+        "//var_threshold": "FedSGD variance check threshold. Raise it (e.g. 0.3) for heterogeneous NIID partitions where gradient variance is naturally higher. Omit to use the model_type default (distilbert=0.1).",
+        "var_threshold": 0.3
+    },
+    "baseModel": {
+        "name": "",
+        "version": 2
+    },
+    "job": {
+        "id": "622a358619ab59012eabeefb",
+        "name": "cifar-10"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "async_random",
+        "kwargs": {
+            "//": "c: concurrency level",
+            "c": 15,
+            "aggGoal": 5,
+            "evalGoalFactor": 0,
+            "selectType": "default",
+            "roundNudgeType": "last_train",
+            "minInitialTrainers": 15,
+            "k": 5,
+            "is_async": true
+        }
+    },
+    "optimizer": {
+        "sort": "fedbuff",
+        "kwargs": {
+            "use_oort_lr": "True",
+            "dataset_name": "google-speech",
+            "agg_rate_conf": {
+                "type": "old",
+                "scale": 1.0,
+                "a_exp": 0.2,
+                "b_exp": 0.25
+            }
+        }
+    },
+    "maxRunTime": 600,
+    "realm": "default",
+    "role": "aggregator"
+}
