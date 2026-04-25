@@ -20,14 +20,13 @@
    - 6.4 [Policy Factory](#64-policy-factory)
    - 6.5 [Configurable Task Eligibility States](#65-configurable-task-eligibility-states)
    - 6.6 [Eligible Ends Count as a Policy Metric](#66-eligible-ends-count-as-a-policy-metric)
-7. [Phase 1: Sync FwdLLM — Dynamic K](#7-phase-1-sync-fwdllm--dynamic-k)
+7. [Aggregator Implementation Notes](#7-aggregator-implementation-notes)
 8. [Phase 2: Async FwdLLM — Dynamic K and C](#8-phase-2-async-fwdllm--dynamic-k-and-c)
-9. [Policy Implementations (Full Detail)](#9-policy-implementations-full-detail)
-10. [Config Schema](#10-config-schema)
-11. [Logging and Observability](#11-logging-and-observability)
-12. [Testing Plan](#12-testing-plan)
-13. [Known Risks and Mitigations](#13-known-risks-and-mitigations)
-14. [File Change Summary](#14-file-change-summary)
+9. [Config Schema](#9-config-schema)
+10. [Logging and Observability](#10-logging-and-observability)
+11. [Testing Plan](#11-testing-plan)
+12. [Known Risks and Mitigations](#12-known-risks-and-mitigations)
+13. [File Change Summary](#13-file-change-summary)
 
 ---
 
@@ -377,7 +376,7 @@ def _fmt(metrics: dict) -> str:
 | `StepSchedulePolicy` | ✓ | ✗ | `n_aggs_completed` | Curriculum K decay |
 | `CompositePolicy` | ✓/✗ | ✓/✗ | (delegates) | Combine orthogonal policies |
 
-See [Section 9](#9-policy-implementations-full-detail) for full implementations.
+See `lib/python/flame/selector/dynamic_kc_policy.py` for full implementations.
 
 ### 6.4 Policy Factory
 
@@ -510,7 +509,7 @@ The same change applies to `async_random.py`'s analogous block at lines ~562–5
 }
 ```
 
-With this, ends in `AVL_EVAL` state are eligible to receive `train` tasks. The `EligibleEndsBasedPolicy` (§9.4) will then correctly see a larger `n_eligible_train` pool and can scale C up accordingly — a natural interaction between the two new features.
+With this, ends in `AVL_EVAL` state are eligible to receive `train` tasks. `EligibleEndsBasedPolicy` will then correctly see a larger `n_eligible_train` pool and can scale C up accordingly — a natural interaction between the two new features.
 
 ### 6.6 Eligible Ends Count as a Policy Metric
 
@@ -555,153 +554,15 @@ if channel:
 
 ---
 
-## 7. Phase 1: Sync FwdLLM — Dynamic K
+## 7. Aggregator Implementation Notes
 
-### 7.1 Scope
+### 7.1 Controller initialisation (`fwdllm_aggregator.py::internal_init`)
 
-Phase 1 targets **sync FwdLLM only** (`is_async: false`). Only K is dynamic in this phase. C adjustment in sync FL is left as a later extension since `OortSelector.aggr_num` (the sync equivalent) lives in a different code path.
+The `dynamic_kc` block is read from `selector.kwargs`. When `enabled: true`, a `DynamicKCController` is instantiated with the configured policy and bounds. Three counters are added: `_n_aggs_completed`, `_var_pass_count`, `_var_total_count`.
 
-### 7.2 Changes to `fwdllm_aggregator.py`
+### 7.2 Hook in `_process_aggregation_goal_met`
 
-#### 7.2.1 New Attributes in `internal_init()`
-
-After line 282, add:
-
-```python
-# --- Dynamic K/C Controller ---
-self._dynamic_kc_controller = None     # type: Optional[DynamicKCController]
-self._n_aggs_completed = 0
-self._var_pass_count = 0
-self._var_total_count = 0
-
-dynamic_kc_conf = self.config.selector.kwargs.get("dynamic_kc", {})
-if dynamic_kc_conf.get("enabled", False):
-    from flame.selector.dynamic_kc_controller import DynamicKCController
-    from flame.selector.dynamic_kc_policy import build_policy
-
-    policy = build_policy(
-        dynamic_kc_conf.get("policy", "variance_based"),
-        dynamic_kc_conf.get("policy_kwargs", {}),
-    )
-    self._dynamic_kc_controller = DynamicKCController(
-        policy=policy,
-        k_init=self._agg_goal,
-        c_init=self.config.selector.kwargs.get("c", 1),
-        k_min=dynamic_kc_conf.get("k_min", 1),
-        k_max=dynamic_kc_conf.get("k_max", 100),
-        c_min=dynamic_kc_conf.get("c_min", 1),
-        c_max=dynamic_kc_conf.get("c_max", 200),
-        update_every_n_aggs=dynamic_kc_conf.get("update_every_n_aggs", 1),
-    )
-    logger.info(
-        f"[DynamicKC] Controller initialized. K_init={self._agg_goal}, "
-        f"C_init={self._dynamic_kc_controller.c}, "
-        f"policy={policy.name()}, "
-        f"k_bounds=[{dynamic_kc_conf.get('k_min',1)},{dynamic_kc_conf.get('k_max',100)}], "
-        f"c_bounds=[{dynamic_kc_conf.get('c_min',1)},{dynamic_kc_conf.get('c_max',200)}]"
-    )
-```
-
-#### 7.2.2 New Helper: `_build_dynamic_kc_metrics()`
-
-```python
-def _build_dynamic_kc_metrics(self) -> dict:
-    """Collect training metrics for DynamicKCController.step()."""
-    from flame.config import TrainerAvailState
-    from flame.selector.oort import PROP_STAT_UTILITY
-
-    metrics = {
-        "model_version":    self._model_version,
-        "n_aggs_completed": self._n_aggs_completed,
-        "var_threshold":    getattr(self, "var_threshold", None),
-    }
-
-    if self.var is not None:
-        metrics["var_last"] = float(self.var)
-
-    if self._var_total_count > 0:
-        metrics["var_pass_rate"] = self._var_pass_count / self._var_total_count
-
-    if self._per_round_staleness_list:
-        arr = np.array(self._per_round_staleness_list, dtype=float)
-        metrics["avg_staleness"]  = float(np.mean(arr))
-        metrics["p75_staleness"]  = float(np.percentile(arr, 75))
-
-    # Eligible ends count — uses same config as selector for consistency
-    _default_eligible = {
-        "train": [TrainerAvailState.AVL_TRAIN.value],
-        "eval":  [TrainerAvailState.AVL_EVAL.value, TrainerAvailState.AVL_TRAIN.value],
-    }
-    task_eligible_states = self.config.selector.kwargs.get(
-        "task_eligible_states", _default_eligible
-    )
-    channel = self.cm.get_by_tag(TAG_DISTRIBUTE)
-    if channel:
-        all_ends = channel.ends()
-        for task_name, allowed_states in task_eligible_states.items():
-            count = sum(
-                1 for end in all_ends.values()
-                if end.get_property(PROP_AVL_STATE) is None
-                or end.get_property(PROP_AVL_STATE) in allowed_states
-            )
-            metrics[f"n_eligible_{task_name}"] = count
-
-    return metrics
-```
-
-#### 7.2.3 Hook in `_process_aggregation_goal_met()`
-
-After `self._agg_goal_cnt = 0` (line 874) and before the `if is_async:` branch (line 880), add:
-
-```python
-# === Dynamic K/C update ===
-self._n_aggs_completed += 1
-if hasattr(self, "var_good_enough"):
-    self._var_total_count += 1
-    if self.var_good_enough:
-        self._var_pass_count += 1
-
-if self._dynamic_kc_controller is not None:
-    metrics = self._build_dynamic_kc_metrics()
-    new_k, new_c = self._dynamic_kc_controller.step(metrics)
-
-    if new_k != self._agg_goal:
-        logger.info(
-            f"[DynamicKC] _agg_goal: {self._agg_goal} → {new_k} "
-            f"at model_version={self._model_version}"
-        )
-        self._agg_goal = new_k
-
-    # Propagate new C to selector via channel (async only)
-    if self.is_async and new_c != self._dynamic_kc_controller.get_c():
-        ch = self.cm.get_by_tag(tag)
-        if ch:
-            ch.set_property("dynamic_c", new_c)
-            logger.info(f"[DynamicKC] Propagated dynamic_c={new_c} to channel.")
-
-    # Summary log every 10 aggregations
-    if self._n_aggs_completed % 10 == 0:
-        logger.info(
-            f"[DynamicKC] Summary: {self._dynamic_kc_controller.summary()}"
-        )
-# === End Dynamic K/C update ===
-```
-
-#### 7.2.4 Reset Counters in `_reset_agg_goal_variables()`
-
-Existing method at line 367 resets `_agg_goal_cnt`. Add:
-
-```python
-def _reset_agg_goal_variables(self):
-    logger.debug("##### reset agg goal variables")
-    self._agg_goal_cnt = 0
-    self._agg_goal_weights = None
-    # Reset per-aggregation variance tracking for next window
-    self._var_pass_count = 0
-    self._var_total_count = 0
-```
-
-Note: Do **not** reset `_n_aggs_completed` here — it tracks total aggregations since run start.
+After each aggregation goal is met, `_build_dynamic_kc_metrics(channel)` collects `var_pass_rate`, `avg_staleness`, and `n_eligible_train` metrics, then `controller.step(metrics)` returns `(new_k, new_c)`. `self._agg_goal` is updated in-place; C is propagated to the selector via `channel.set_property("dynamic_c", new_c)`. See `fwdllm_aggregator.py` for the full implementation.
 
 ---
 
@@ -711,53 +572,7 @@ Phase 2 builds on Phase 1. The aggregator-side changes are the same (the hook in
 
 ### 8.1 Changes to `async_oort.py`
 
-#### 8.1.1 Read `dynamic_c` in `select()`
-
-Replace the static `self.c` reads in `select()`:
-
-```python
-# CURRENT (train, line 259):
-concurrency = min(len(ends), self.c)
-
-# NEW:
-effective_c = int(channel_props.get("dynamic_c", self.c))
-if effective_c != self.c:
-    logger.info(f"[DynamicKC] Using dynamic_c={effective_c} (static self.c={self.c})")
-concurrency = min(len(ends), effective_c)
-```
-
-```python
-# CURRENT (eval, line 268):
-concurrency = min(len(ends), self.c + self.curr_round_eval_slots_left)
-
-# NEW:
-concurrency = min(len(ends), effective_c + self.curr_round_eval_slots_left)
-```
-
-Pass `effective_c` to `enforce_min_start()`:
-
-```python
-# Change signature:
-def enforce_min_start(self, n_ends: int, effective_c: int = None) -> bool:
-    c_to_check = effective_c if effective_c is not None else self.c
-    # ... existing logic, replace self.c references with c_to_check
-```
-
-#### 8.1.2 `>= self._agg_goal` Safety Change in `fwdllm_aggregator.py`
-
-When K decreases mid-run, `_agg_goal_cnt` might equal a value larger than the new K but the old `==` check would never fire. Change:
-
-```python
-# CURRENT (line 621):
-if self._agg_goal_cnt == self._agg_goal:
-    self._process_aggregation_goal_met(...)
-
-# NEW:
-if self._agg_goal_cnt >= self._agg_goal:
-    self._process_aggregation_goal_met(...)
-```
-
-This is safe because `_agg_goal_cnt` is reset to 0 immediately inside `_process_aggregation_goal_met()` (line 874), so the counter can never overshoot by more than 1 update in practice.
+`select()` reads `dynamic_c` from `channel_props` (falling back to `self.c` when absent) and uses it as `effective_c` for both train and eval concurrency. The async receive gate uses `>=` instead of `==` to prevent missed triggers when K decreases mid-run (`_agg_goal_cnt` is reset to 0 immediately inside `_process_aggregation_goal_met`).
 
 ### 8.2 Interaction Between K, C, and Eligible Ends Count (Async)
 
@@ -778,222 +593,11 @@ To avoid instability, `VarianceBasedPolicy` controls K only and `StalenessBasedP
 asyncfl_loop = Loop(loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal)
 ```
 
-The lambda captures `self` by reference, so `self._agg_goal` is evaluated fresh on each loop check — the loop automatically uses the updated value. The `>=` fix from §8.1.2 also guards the async receive gate.
+The lambda captures `self` by reference, so `self._agg_goal` is evaluated fresh on each loop check — the loop automatically uses the updated value. The `>=` fix (§8.1) also guards the async receive gate.
 
 ---
 
-## 9. Policy Implementations (Full Detail)
-
-### 9.1 `NoOpPolicy`
-
-```python
-class NoOpPolicy(DynamicKCPolicy):
-    """Returns None always — equivalent to static K and C. Use for baseline."""
-    def compute_new_k(self, current_k, metrics): return None
-    def compute_new_c(self, current_c, metrics): return None
-    def name(self): return "noop"
-```
-
-### 9.2 `VarianceBasedPolicy` — Controls K
-
-**Intuition:**
-
-```
-var_pass_rate:  0.0 ── [low_threshold] ─── stable ─── [high_threshold] ── 1.0
-                 ↑                                                      ↑
-            increase K                                            decrease K
-         (need more grads)                                  (aggregating too much)
-```
-
-```python
-class VarianceBasedPolicy(DynamicKCPolicy):
-    def __init__(
-        self,
-        high_threshold: float = 0.8,  # consistently passing → can reduce K
-        low_threshold: float = 0.3,   # frequently failing → need more grads, increase K
-        k_step: int = 2,
-        window: int = 10,             # aggregations to observe before changing
-    ):
-        self.high_threshold = high_threshold
-        self.low_threshold = low_threshold
-        self.k_step = k_step
-        self._history = deque(maxlen=window)
-
-    def compute_new_k(self, current_k, metrics):
-        rate = metrics.get("var_pass_rate")
-        if rate is None:
-            return None
-        self._history.append(rate)
-        if len(self._history) < self._history.maxlen:
-            return None                              # wait for full window
-        avg = sum(self._history) / len(self._history)
-        if avg > self.high_threshold:
-            return current_k - self.k_step          # variance consistently passes
-        if avg < self.low_threshold:
-            return current_k + self.k_step          # variance frequently fails
-        return None
-
-    def compute_new_c(self, current_c, metrics): return None
-    def name(self): return "variance_based"
-```
-
-### 9.3 `StalenessBasedPolicy` — Controls C
-
-**Intuition:** High staleness means trainers are returning gradients computed on old model versions. This is caused by sending to too many trainers at once (high C). Reducing C means each batch of selected trainers turns around faster → fresher gradients.
-
-```python
-class StalenessBasedPolicy(DynamicKCPolicy):
-    def __init__(
-        self,
-        stale_threshold: float = 3.0,  # avg staleness above this → decrease C
-        fresh_threshold: float = 1.0,  # avg staleness below this → increase C
-        c_step: int = 5,
-        window: int = 10,
-    ):
-        self.stale_threshold = stale_threshold
-        self.fresh_threshold = fresh_threshold
-        self.c_step = c_step
-        self._history = deque(maxlen=window)
-
-    def compute_new_k(self, current_k, metrics): return None
-
-    def compute_new_c(self, current_c, metrics):
-        staleness = metrics.get("avg_staleness")
-        if staleness is None:
-            return None
-        self._history.append(staleness)
-        if len(self._history) < self._history.maxlen:
-            return None
-        avg = sum(self._history) / len(self._history)
-        if avg > self.stale_threshold:
-            return current_c - self.c_step
-        if avg < self.fresh_threshold:
-            return current_c + self.c_step
-        return None
-
-    def name(self): return "staleness_based"
-```
-
-### 9.4 `EligibleEndsBasedPolicy` — Controls C
-
-**This is new to this revision.** It right-sizes C to the actual eligible training pool.
-
-**Intuition:**
-
-```
-n_eligible_train:  0 ─── [C * undercommit] ─── C ─── [C * headroom] ─── ∞
-                    ↑                                                  ↑
-               decrease C                                        increase C
-           (pool smaller than C;                        (pool bigger than C;
-            selector wastes slots)                       can exploit more trainers)
-```
-
-```python
-class EligibleEndsBasedPolicy(DynamicKCPolicy):
-    """
-    Adjusts C to track the size of the eligible training pool.
-
-    - If n_eligible_train > C * headroom_factor: increase C by c_step
-      (more eligible trainers than we're currently using)
-    - If n_eligible_train < C * undercommit_factor: decrease C to n_eligible_train
-      (pool cannot fill concurrency target; shrink C to avoid wasted slots)
-    """
-    def __init__(
-        self,
-        headroom_factor: float = 1.5,    # increase C if eligible pool > C * 1.5
-        undercommit_factor: float = 0.8, # decrease C if eligible pool < C * 0.8
-        c_step: int = 5,
-        window: int = 5,                 # shorter window: pool size changes quickly
-    ):
-        self.headroom_factor = headroom_factor
-        self.undercommit_factor = undercommit_factor
-        self.c_step = c_step
-        self._history = deque(maxlen=window)
-
-    def compute_new_k(self, current_k, metrics): return None
-
-    def compute_new_c(self, current_c, metrics):
-        n_eligible = metrics.get("n_eligible_train")
-        if n_eligible is None:
-            return None
-        self._history.append(n_eligible)
-        if len(self._history) < self._history.maxlen:
-            return None
-        avg_eligible = sum(self._history) / len(self._history)
-
-        if avg_eligible > current_c * self.headroom_factor:
-            # Pool is significantly larger than current C — increase C
-            return current_c + self.c_step
-        if avg_eligible < current_c * self.undercommit_factor:
-            # Pool is smaller than C — snap C down to actual pool size
-            return int(avg_eligible)
-        return None
-
-    def name(self): return "eligible_ends_based"
-```
-
-**Interaction with `task_eligible_states`:** When FwdLLM configures `train: [AVL_TRAIN, AVL_EVAL]`, the `n_eligible_train` metric is larger than with the classic-FL default. `EligibleEndsBasedPolicy` will correctly detect this and increase C to exploit the expanded pool — no separate configuration needed. The two features compose naturally.
-
-### 9.5 `StepSchedulePolicy` — Controls K (Deterministic)
-
-```python
-class StepSchedulePolicy(DynamicKCPolicy):
-    """Curriculum K decay: decrease K every N aggregations, down to k_floor."""
-    def __init__(
-        self,
-        k_step: int = 2,
-        n_aggs_per_step: int = 50,
-        k_floor: int = 5,
-    ):
-        self.k_step = k_step
-        self.n_aggs_per_step = n_aggs_per_step
-        self.k_floor = k_floor
-
-    def compute_new_k(self, current_k, metrics):
-        n = metrics.get("n_aggs_completed", 0)
-        if n > 0 and n % self.n_aggs_per_step == 0:
-            new_k = max(self.k_floor, current_k - self.k_step)
-            return new_k if new_k != current_k else None
-        return None
-
-    def compute_new_c(self, current_c, metrics): return None
-    def name(self): return "step_schedule"
-```
-
-### 9.6 `CompositePolicy`
-
-```python
-class CompositePolicy(DynamicKCPolicy):
-    """
-    Chains multiple policies. For each of K and C independently,
-    the first sub-policy that returns a non-None value wins.
-    """
-    def __init__(self, sub_policies: list[dict]):
-        # sub_policies is a list of {"name": ..., "kwargs": {...}}
-        self.policies = [build_policy(p["name"], p.get("kwargs", {}))
-                         for p in sub_policies]
-
-    def compute_new_k(self, current_k, metrics):
-        for p in self.policies:
-            result = p.compute_new_k(current_k, metrics)
-            if result is not None:
-                return result
-        return None
-
-    def compute_new_c(self, current_c, metrics):
-        for p in self.policies:
-            result = p.compute_new_c(current_c, metrics)
-            if result is not None:
-                return result
-        return None
-
-    def name(self):
-        return f"composite[{','.join(p.name() for p in self.policies)}]"
-```
-
----
-
-## 10. Config Schema
+## 9. Config Schema
 
 ### 10.1 Async FwdLLM (recommended production config)
 
@@ -1097,7 +701,7 @@ Existing experiments are **completely unaffected**.
 
 ---
 
-## 11. Logging and Observability
+## 10. Logging and Observability
 
 ### Log lines emitted (all at `INFO` level)
 
@@ -1140,9 +744,9 @@ Filtered ends created. count_avl_train: 32, count_avl_eval: 6, count_ineligible:
 
 ---
 
-## 12. Testing Plan
+## 11. Testing Plan
 
-### 12.1 Unit Tests: Policies
+### 11.1 Unit Tests: Policies
 
 **File:** `lib/python/tests/selector/test_dynamic_kc_policy.py`
 
@@ -1164,7 +768,7 @@ Filtered ends created. count_avl_train: 32, count_avl_eval: 6, count_ineligible:
 | `test_composite_eligible_wins_for_c` | Composite → eligible_ends controls C |
 | `test_composite_first_wins` | Two policies both returning non-None for K → first one wins |
 
-### 12.2 Unit Tests: Controller
+### 11.2 Unit Tests: Controller
 
 **File:** `lib/python/tests/selector/test_dynamic_kc_controller.py`
 
@@ -1177,7 +781,7 @@ Filtered ends created. count_avl_train: 32, count_avl_eval: 6, count_ineligible:
 | `test_summary_keys` | summary() returns expected dict keys |
 | `test_history_logged` | k_history and c_history grow on each change |
 
-### 12.3 Unit Tests: Task Eligibility
+### 11.3 Unit Tests: Task Eligibility
 
 **File:** `lib/python/tests/selector/test_task_eligible_states.py`
 
@@ -1193,7 +797,7 @@ Filtered ends created. count_avl_train: 32, count_avl_eval: 6, count_ineligible:
 
 The last test is the critical integration invariant: the metric the aggregator computes must agree with what the selector will actually do. Run this as a parameterized test over several `task_eligible_states` configs.
 
-### 12.4 Integration Test: Aggregator Dry-Run
+### 11.4 Integration Test: Aggregator Dry-Run
 
 1. Instantiate `FedSGDAggregator` with a mock config including `dynamic_kc` + `task_eligible_states`.
 2. Populate mock ends with various `avl_state` values.
@@ -1201,7 +805,7 @@ The last test is the critical integration invariant: the metric the aggregator c
 4. Assert `self._agg_goal` changes according to the policy.
 5. Assert `channel.get_property("dynamic_c")` reflects the controller's C.
 
-### 12.5 End-to-End Validation
+### 11.5 End-to-End Validation
 
 Run `run_text_classification.sh` with three configs:
 
@@ -1215,7 +819,7 @@ Compare: aggregations to 80% accuracy, final accuracy at round 300, K/C trace (f
 
 ---
 
-## 13. Known Risks and Mitigations
+## 12. Known Risks and Mitigations
 
 | Risk | Likelihood | Mitigation |
 |------|-----------|------------|
@@ -1223,14 +827,14 @@ Compare: aggregations to 80% accuracy, final accuracy at round 300, K/C trace (f
 | K oscillates up/down each step | Low-Medium | Rolling window in policies; optionally add a cooldown counter to controller |
 | C exceeds actual eligible pool | Low | `EligibleEndsBasedPolicy` detects `n_eligible_train < C` and snaps C down |
 | `dynamic_c` stale if channel reinitializes | Low | `dynamic_c` absent → selector falls back to `self.c`; first distribution after init uses static `self.c` until first controller step |
-| `asyncfl_loop` condition misfires if K decreases mid-run | Low | `>=` guard in async gate (§8.1.2) prevents missed trigger |
+| `asyncfl_loop` condition misfires if K decreases mid-run | Low | `>=` guard in async gate (§8.1) prevents missed trigger |
 | `task_eligible_states` misconfigured silently | Medium | Validate state strings at `__init__()` against `TrainerAvailState` enum; `ValueError` at startup before any training begins |
 | FwdLLM `AVL_EVAL` ends assigned training tasks but don't support them at trainer level | Medium | This is a trainer-side concern — the trainer must handle both tasks; verify `FedSGDTrainer` responds correctly to `task_to_perform="train"` regardless of its own `avl_state`. (It does, since `avl_state` is a scheduler signal, not a capability flag.) |
-| `n_eligible_train` metric inconsistent with `len(filtered_ends)` | Low | Both use the same `task_eligible_states` config with the same defaults. Validated by unit test §12.3 row 7. |
+| `n_eligible_train` metric inconsistent with `len(filtered_ends)` | Low | Both use the same `task_eligible_states` config with the same defaults. Validated by unit test §11.3 row 7. |
 
 ---
 
-## 14. File Change Summary
+## 13. File Change Summary
 
 ### New Files
 
@@ -1263,22 +867,7 @@ Compare: aggregations to 80% accuracy, final accuracy at round 300, K/C trace (f
 
 ---
 
-## Appendix A: Implementation Order
-
-Execute in this sequence to allow incremental validation at each step:
-
-1. `dynamic_kc_policy.py`: `NoOpPolicy` only → unit tests green.
-2. `dynamic_kc_controller.py` → unit tests green.
-3. Add `VarianceBasedPolicy`, `StalenessBasedPolicy` → unit tests green.
-4. Add `EligibleEndsBasedPolicy` → unit tests green.
-5. Add `StepSchedulePolicy`, `CompositePolicy`, factory → unit tests green.
-6. **Eligibility config**: `async_oort.py` — add `task_eligible_states` init + replace filtering block; `test_task_eligible_states.py` unit tests green. Run an experiment with `task_eligible_states` but NO `dynamic_kc` to verify eligibility config alone works.
-7. **Phase 1 (sync)**: `fwdllm_aggregator.py` — add controller init, hook, metrics. Test with `NoOpPolicy` (no behavioral change). Test with `StepSchedulePolicy`.
-8. **Phase 2 (async)**: `async_oort.py` — add `dynamic_c` reading. Test with `NoOpPolicy`. Test with `EligibleEndsBasedPolicy` (combine with eligibility config from step 6).
-9. Full integration test: all three configs from §12.5.
-10. Log parsing + K/C/eligible trace plots.
-
-## Appendix B: Async Data Flow with Dynamic K, C, and Eligible States
+## Appendix A: Async Data Flow with Dynamic K, C, and Eligible States
 
 ```
 Round N ─────────────────────────────────────────────────────────────────────────────────
@@ -1318,39 +907,3 @@ Round N+1 ───────────────────────�
  asyncfl_loop uses self._agg_goal = K_n+1
 ```
 
----
-
-## Appendix C: Implementation Status
-
-**Last updated:** 2026-04-11  **Branch:** `dg/dyn_k_c_asyncOORT`
-
-### New Files
-
-| File | Status |
-|------|--------|
-| `lib/python/flame/selector/dynamic_kc_policy.py` | ✅ Complete — all 6 policy classes + `build_policy()` factory |
-| `lib/python/flame/selector/dynamic_kc_controller.py` | ✅ Complete — controller with clamping, audit trail, `summary()` |
-| `lib/python/tests/selector/test_dynamic_kc_policy.py` | ✅ Complete — 30+ tests covering all policy classes and factory |
-| `lib/python/tests/selector/test_dynamic_kc_controller.py` | ✅ Complete — init, step, clamping, update_every_n, history tests |
-| `lib/python/tests/selector/test_task_eligible_states.py` | ✅ Complete — default/custom/validation tests for eligibility config |
-
-### Modified Files
-
-| File | Status | Notes |
-|------|--------|-------|
-| `lib/python/flame/selector/async_oort.py` | ✅ Complete | `task_eligible_states` init + validation; `_handle_send_state()` configurable filtering; `dynamic_c` in `select()` |
-| `lib/python/flame/selector/async_random.py` | ✅ Complete | Same `task_eligible_states` changes as `async_oort.py` |
-| `lib/python/flame/mode/horizontal/syncfl/fwdllm_aggregator.py` | ✅ Complete | Controller init in `internal_init()`; `_build_dynamic_kc_metrics()` new method; dynamic K/C hook in `_process_aggregation_goal_met()`; async gate `== → >=` fix |
-| `lib/python/examples/fwdllm/expts/run_tc_expts/json_scripts/aggregator.json` | ✅ Complete | Added `task_eligible_states` (FwdLLM: both states train-eligible) and `dynamic_kc` block (`enabled: false` by default) |
-
-### Design Deviations from Original Plan
-
-- `_build_dynamic_kc_metrics(channel)` takes `channel` as an argument (available in `_process_aggregation_goal_met`) rather than calling `self.cm.get_by_tag(TAG_DISTRIBUTE)`. This is simpler and avoids a redundant tag lookup.
-- `_reset_agg_goal_variables()` was **not** modified to reset `_var_pass_count`/`_var_total_count` because these counters persist until the controller fires (which may be every N aggregations, not every K-window). The counters are reset inside `_process_aggregation_goal_met()` immediately after `controller.step()`.
-- The `from flame.config import TrainerAvailState` import in `_build_dynamic_kc_metrics()` is a local import to avoid adding a top-level import to the aggregator for a rarely-used symbol.
-
-### Pending Work (Post-Merge)
-
-- [ ] §12.4 Integration test: aggregator dry-run with mock config and ends
-- [ ] §12.5 End-to-end validation: three configs, accuracy/throughput comparison
-- [ ] Log parsing and K/C trace plots (§11 log lines are in place)

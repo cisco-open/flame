@@ -244,8 +244,7 @@ class TopAggregator(AsyncTopAgg):
         self._is_model_updated = False
         self._model_version = 0
 
-        # Optional hard cap: when variance check has failed this many times for
-        # the current data_id, force-advance as if it had passed. None = disabled.
+        # Force-advance data_id after this many failed variance checks; None = disabled.
         self._max_iter_per_data_id = getattr(
             self.config.hyperparameters, "max_iterations_per_data_id", None
         )
@@ -291,7 +290,6 @@ class TopAggregator(AsyncTopAgg):
 
         logger.info(f"Experiment set to run in is_async: {self.is_async}")
 
-        # ---- Dynamic K/C controller ----
         self._n_aggs_completed = 0
         self._var_pass_count = 0
         self._var_total_count = 0
@@ -314,14 +312,12 @@ class TopAggregator(AsyncTopAgg):
                 c_min=_dynamic_kc_conf.get("c_min", 1),
                 c_max=_dynamic_kc_conf.get("c_max", 100),
                 update_every_n_aggs=_dynamic_kc_conf.get("update_every_n_aggs", 1),
-                history_window=_dynamic_kc_conf.get("history_window", 20),
             )
             logger.info(
                 f"[DynamicKC] Controller initialized: policy={_policy.name()}, "
                 f"k_init={self._agg_goal}, "
                 f"c_init={self.config.selector.kwargs.get('c', 1)}"
             )
-        # ---- End Dynamic K/C controller ----
 
         # maintain a set of all trainers that have sent heartbeats previously
         self.all_trainers = set()
@@ -832,7 +828,6 @@ class TopAggregator(AsyncTopAgg):
         }
 
     def _build_dynamic_kc_metrics(self, channel) -> dict:
-        """Collect per-aggregation metrics for the DynamicKCController."""
         var_pass_rate = (
             self._var_pass_count / self._var_total_count
             if self._var_total_count > 0 else 0.0
@@ -846,9 +841,6 @@ class TopAggregator(AsyncTopAgg):
             if staleness_list else 0.0
         )
 
-        # Count ends eligible for each task using task_eligible_states config.
-        # PROP_AVL_STATE is set by the selector on each end; we read it from the
-        # channel to avoid importing selector internals into the aggregator.
         _PROP_AVL_STATE = "avl_state"
         task_eligible_states = self.config.selector.kwargs.get(
             "task_eligible_states", {}
@@ -865,18 +857,13 @@ class TopAggregator(AsyncTopAgg):
         )
         n_eligible_train = 0
         n_eligible_eval = 0
-        # channel.ends() may transiently return None (e.g. right after the
-        # aggregator has just consumed all in-flight ends and before the next
-        # batch registers). Guard with `or []` so we report zero eligible
-        # ends instead of throwing.
-        for end_id in (channel.ends() or []):
+        for end_id in (channel.ends() or []):  # channel.ends() can transiently return None
             avl_state = channel.get_end_property(end_id, _PROP_AVL_STATE)
             if avl_state in train_eligible:
                 n_eligible_train += 1
             if avl_state in eval_eligible:
                 n_eligible_eval += 1
 
-        # Adaptive-K policy inputs
         _policy_kwargs = self.config.selector.kwargs.get("dynamic_kc", {}).get(
             "policy_kwargs", {}
         )
@@ -937,11 +924,7 @@ class TopAggregator(AsyncTopAgg):
         )
         self.grad = [torch.zeros_like(p) for p in self.params]
 
-        # Decide BEFORE aggregating whether to force-commit if variance fails.
-        # aggregate() restores the pre-update weights whenever var > threshold,
-        # so the flag must be set before we call it — flipping var_good_enough
-        # afterward is too late (the rollback already happened and eval would
-        # see stale weights, freezing acc/loss across bypassed data_ids).
+        # Set before aggregate() — that function rolls back weights on var failure and clears the flag.
         self._force_commit_this_cycle = (
             self._max_iter_per_data_id is not None
             and (self.iteration_per_data_id + 1) >= self._max_iter_per_data_id
@@ -955,9 +938,8 @@ class TopAggregator(AsyncTopAgg):
                 f"if variance check fails in aggregate()."
             )
 
-        self.aggregate(self._round)  # note: aggregate() clears _force_commit_this_cycle
+        self.aggregate(self._round)
 
-        # Per-aggregation progress log (used by plotting + dynamic-K decisions)
         _var_thr = getattr(self, "var_threshold", None)
         _ratio = (
             float(self.var) / _var_thr
@@ -1024,7 +1006,6 @@ class TopAggregator(AsyncTopAgg):
 
         self._agg_goal_cnt = 0
 
-        # ---- Dynamic K/C update ----
         self._n_aggs_completed += 1
         self._var_total_count += 1
         if self.var_good_enough:
@@ -1033,23 +1014,16 @@ class TopAggregator(AsyncTopAgg):
         if self._dynamic_kc_controller is not None:
             metrics = self._build_dynamic_kc_metrics(channel)
             new_k, new_c = self._dynamic_kc_controller.step(metrics)
-            # Reset per-interval variance counters
             self._var_pass_count = 0
             self._var_total_count = 0
-            # Apply updated K
             if new_k != self._agg_goal:
-                logger.info(
-                    f"[DynamicKC] _agg_goal updated: {self._agg_goal} → {new_k}"
-                )
+                logger.info(f"[DynamicKC] _agg_goal updated: {self._agg_goal} → {new_k}")
                 self._agg_goal = new_k
-            # Propagate updated C to selector via channel property
             channel.set_property("dynamic_c", new_c)
             logger.debug(
                 f"[DynamicKC] step={self._n_aggs_completed}: "
-                f"k={new_k}, c={new_c}, "
-                f"summary={self._dynamic_kc_controller.summary()}"
+                f"k={new_k}, c={new_c}, summary={self._dynamic_kc_controller.summary()}"
             )
-        # ---- End Dynamic K/C update ----
 
         self.fwd_llm_stage = FwdLLMStage(
             self._round, self.data_id, self.iteration_per_data_id
@@ -1331,14 +1305,7 @@ class TopAggregator(AsyncTopAgg):
 
     @timer_decorator
     def _prepare_distribution_payload(self, task_to_perform: str, force_weights: bool = False):
-        """Build either a WEIGHTS payload or a VAR=bad payload.
-
-        A VAR=bad payload is only built when the caller explicitly wants the
-        "keep training, variance still fails" response (``force_weights=False``
-        AND ``var_good_enough=False``). In every other case we build a full
-        WEIGHTS payload. The per-trainer decision of which of these two
-        payloads to actually send lives in ``_distribute_weights_async``.
-        """
+        """Build a WEIGHTS payload (always) or a VAR=bad payload (when var fails and force_weights=False)."""
         if not self.var_good_enough and not force_weights:
             logger.info(
                 f"[PreparePayload/VAR=bad] var={self.var} > "
@@ -1585,14 +1552,6 @@ class TopAggregator(AsyncTopAgg):
             )
             return
 
-        # --- Summary of what this distribute round will do ---
-        # Per-trainer routing (lower in this function):
-        #   * Stale trainer (hasn't received current model_version yet)
-        #                       → WEIGHTS payload (regardless of variance)
-        #   * Current trainer + var_good_enough=True
-        #                       → WEIGHTS payload (new model version)
-        #   * Current trainer + var_good_enough=False
-        #                       → VAR=bad payload (keep training, we need more grads)
         _var_thr = getattr(self, "var_threshold", None)
         logger.info(
             f"[Distribute] Starting distribute for model_version={self._model_version}, "

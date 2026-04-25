@@ -26,22 +26,12 @@ logger = logging.getLogger(__name__)
 class DynamicKCPolicy(ABC):
     """Abstract base for dynamic K (aggregation goal) and C (concurrency) policies.
 
-    Policies are called by DynamicKCController after each aggregation.
-    Each method returns a new integer value, or None to leave the current
-    value unchanged.
+    Each method returns a new integer value, or None to leave the current value unchanged.
+    All ``metrics`` keys are optional; implementations should use .get() with a None check.
 
-    The ``metrics`` dict may contain any of the following keys (all optional;
-    policies should use .get() and handle None gracefully):
-
-        var_pass_rate     float [0,1]  Fraction of recent aggs where variance check passed
-        var_last          float        Variance value from the most recent aggregation
-        avg_staleness     float        Mean staleness of updates in the last K-window
-        p75_staleness     float        75th-pct staleness
-        model_version     int          Current model version
-        n_aggs_completed  int          Total aggregations since run start
-        var_threshold     float        FedSGDAggregator's current variance threshold
-        n_eligible_train  int          Ends currently eligible for train task
-        n_eligible_eval   int          Ends currently eligible for eval task
+    Common metrics keys:
+        var_pass_rate, var_last, avg_staleness, p75_staleness, model_version,
+        n_aggs_completed, var_threshold, n_eligible_train, n_eligible_eval
     """
 
     @abstractmethod
@@ -57,17 +47,8 @@ class DynamicKCPolicy(ABC):
         """Human-readable name used in log messages."""
 
 
-# ---------------------------------------------------------------------------
-# Concrete policies
-# ---------------------------------------------------------------------------
-
-
 class NoOpPolicy(DynamicKCPolicy):
-    """Returns None for both K and C — equivalent to static K and C.
-
-    Use this as a baseline or during testing to verify that the controller
-    plumbing is wired correctly without changing any behavior.
-    """
+    """Returns None for both K and C — equivalent to static K/C (baseline/testing)."""
 
     def compute_new_k(self, current_k: int, metrics: dict) -> Optional[int]:
         return None
@@ -82,15 +63,8 @@ class NoOpPolicy(DynamicKCPolicy):
 class VarianceBasedPolicy(DynamicKCPolicy):
     """Adjusts K based on a rolling variance pass-rate window.
 
-    - If the rolling pass-rate rises above ``high_threshold``: variance checks
-      are passing consistently, meaning the model is receiving enough gradient
-      diversity at the current K.  Decrease K by ``k_step`` to speed up iteration.
-    - If the rolling pass-rate falls below ``low_threshold``: gradients are too
-      noisy.  Increase K by ``k_step`` to collect more gradient diversity before
-      each model update.
-    - Within [low_threshold, high_threshold]: no change.
-
-    This policy never touches C.
+    pass_rate > high_threshold → decrease K (enough diversity, speed up).
+    pass_rate < low_threshold  → increase K (too noisy, collect more grads).
     """
 
     def __init__(
@@ -137,16 +111,8 @@ class VarianceBasedPolicy(DynamicKCPolicy):
 class StalenessBasedPolicy(DynamicKCPolicy):
     """Adjusts C based on rolling average staleness of received updates.
 
-    High staleness means trainers are returning gradients computed on old model
-    versions — a symptom of having too many concurrent trainers (high C).
-    Decreasing C means each batch of selected trainers turns around faster,
-    producing fresher gradients.
-
-    - ``avg_staleness > stale_threshold``: too stale → decrease C by ``c_step``.
-    - ``avg_staleness < fresh_threshold``: very fresh → can increase C.
-    - Within [fresh_threshold, stale_threshold]: no change.
-
-    This policy never touches K.
+    avg_staleness > stale_threshold → decrease C (too many concurrent trainers).
+    avg_staleness < fresh_threshold → increase C (room for more parallelism).
     """
 
     def __init__(
@@ -193,22 +159,8 @@ class StalenessBasedPolicy(DynamicKCPolicy):
 class EligibleEndsBasedPolicy(DynamicKCPolicy):
     """Right-sizes C to track the actual eligible training pool.
 
-    C is meaningful only relative to the number of trainers that can actually
-    receive the training task.  If n_eligible_train << C, the selector cannot
-    fill the concurrency target — those slots are wasted.  If n_eligible_train
-    >> C, there is untapped parallelism.
-
-    - ``n_eligible_train > current_c * headroom_factor``:
-        pool is significantly larger than C → increase C by ``c_step``.
-    - ``n_eligible_train < current_c * undercommit_factor``:
-        pool is smaller than C → snap C down to the actual pool size.
-    - Otherwise: no change.
-
-    This interacts naturally with task_eligible_states: when FwdLLM expands
-    the train-eligible states to include AVL_EVAL, n_eligible_train grows and
-    this policy automatically increases C to exploit the larger pool.
-
-    This policy never touches K.
+    n_eligible > C * headroom_factor    → increase C (untapped parallelism).
+    n_eligible < C * undercommit_factor → snap C down to pool size.
     """
 
     def __init__(
@@ -255,15 +207,7 @@ class EligibleEndsBasedPolicy(DynamicKCPolicy):
 
 
 class StepSchedulePolicy(DynamicKCPolicy):
-    """Deterministic curriculum K decay.
-
-    Decreases K by ``k_step`` every ``n_aggs_per_step`` aggregations, down to
-    ``k_floor``.  Useful for curriculum learning where a large K in early
-    rounds provides stable gradient averaging, then a smaller K in later rounds
-    allows faster convergence.
-
-    This policy never touches C.
-    """
+    """Deterministic K decay: decreases K by k_step every n_aggs_per_step aggregations."""
 
     def __init__(
         self,
@@ -290,41 +234,19 @@ class StepSchedulePolicy(DynamicKCPolicy):
 
 
 class AdaptiveKVarTrackingPolicy(DynamicKCPolicy):
-    """Adapts K so variance passes around ``target_iter_per_data_id``.
+    """Adapts K based on variance/threshold ratio and progress within a data_id.
 
-    Intuition: K is the knob that trades per-iteration latency for gradient
-    averaging quality. If variance is still failing but we're near the target
-    iteration budget for a data_id, push more gradient averaging (increase K).
-    If variance passes comfortably early, relax K to speed up iteration.
+    ratio    = var_last / var_threshold   (>1 = still failing)
+    progress = (iter + 1) / target        (fraction of iteration budget used)
+    trend    = mean(recent half) - mean(earlier half)   (<0 = improving)
 
-    Decision inputs (read from ``metrics``):
+    progress < 0.33          → no change
+    0.33 <= progress < 0.75  → ratio > 1.5 and trend >= 0 → K += k_step
+                               ratio < 0.5                 → K -= k_step
+    progress >= 0.75         → ratio > 1.0                 → K += 2 * k_step
+                               ratio < 0.4                 → K -= k_step
 
-        var_last                 float  Most recent variance value
-        var_threshold            float  Variance threshold (from FedSGDAggregator)
-        iteration_per_data_id    int    Iter count within current data_id
-        data_id                  int    Current data_id (used to reset window)
-        target_iter_per_data_id  int    Target iteration budget (soft cap)
-
-    Algorithm (each call):
-
-        ratio    = var_last / var_threshold          # >1 means still failing
-        progress = (iter + 1) / target               # fraction of runway used
-        trend    = mean(recent half) - mean(earlier half)   # <0 improving
-
-        progress < 0.33          → no change (early phase, let it settle)
-        0.33 <= progress < 0.75  →
-            ratio > 1.5 and trend >= 0  → K += k_step
-            ratio < 0.5                 → K -= k_step
-            else                        → no change
-        progress >= 0.75         →
-            ratio > 1.0                 → K += 2 * k_step
-            ratio < 0.4                 → K -= k_step
-            else                        → no change
-
-    The rolling window resets whenever ``data_id`` changes, so trend is always
-    measured within the current data bin.
-
-    This policy never touches C.
+    The ratio window resets on each new data_id.
     """
 
     def __init__(
@@ -335,7 +257,6 @@ class AdaptiveKVarTrackingPolicy(DynamicKCPolicy):
     ):
         self.target_iter_per_data_id = target_iter_per_data_id
         self.k_step = k_step
-        self._window_size = window
         self._ratio_history: deque = deque(maxlen=window)
         self._last_data_id: Optional[int] = None
 
@@ -377,14 +298,12 @@ class AdaptiveKVarTrackingPolicy(DynamicKCPolicy):
         trend = self._compute_trend()
 
         decision = None
-        if progress < 0.33:
-            decision = None
-        elif progress < 0.75:
+        if 0.33 <= progress < 0.75:
             if ratio > 1.5 and trend >= 0:
                 decision = current_k + self.k_step
             elif ratio < 0.5:
                 decision = current_k - self.k_step
-        else:
+        elif progress >= 0.75:
             if ratio > 1.0:
                 decision = current_k + 2 * self.k_step
             elif ratio < 0.4:
@@ -406,20 +325,10 @@ class AdaptiveKVarTrackingPolicy(DynamicKCPolicy):
 
 
 class CompositePolicy(DynamicKCPolicy):
-    """Chains multiple policies.
-
-    For K and C independently, the first sub-policy that returns a non-None
-    value wins.  This allows combining orthogonal policies — e.g. a
-    VarianceBasedPolicy for K and an EligibleEndsBasedPolicy for C.
-    """
+    """Chains multiple policies; first non-None result wins for K and C independently."""
 
     def __init__(self, sub_policies: list):
-        """
-        Args:
-            sub_policies: list of dicts, each with keys:
-                "name"   (str): policy name recognised by build_policy()
-                "kwargs" (dict, optional): keyword args for the policy constructor
-        """
+        """sub_policies: list of dicts with "name" and optional "kwargs" keys."""
         self.policies = [
             build_policy(p["name"], p.get("kwargs", {})) for p in sub_policies
         ]
@@ -442,10 +351,6 @@ class CompositePolicy(DynamicKCPolicy):
         return f"composite[{','.join(p.name() for p in self.policies)}]"
 
 
-# ---------------------------------------------------------------------------
-# Factory
-# ---------------------------------------------------------------------------
-
 _POLICY_REGISTRY: dict = {
     "noop": NoOpPolicy,
     "variance_based": VarianceBasedPolicy,
@@ -458,15 +363,7 @@ _POLICY_REGISTRY: dict = {
 
 
 def build_policy(policy_name: str, policy_kwargs: dict) -> DynamicKCPolicy:
-    """Instantiate a DynamicKCPolicy by name.
-
-    Args:
-        policy_name: One of the keys in _POLICY_REGISTRY.
-        policy_kwargs: Keyword arguments forwarded to the policy constructor.
-
-    Raises:
-        ValueError: If policy_name is not recognised.
-    """
+    """Instantiate a DynamicKCPolicy by name; raises ValueError if unknown."""
     cls = _POLICY_REGISTRY.get(policy_name)
     if cls is None:
         raise ValueError(

@@ -78,9 +78,7 @@ class AsyncRandomSelector(AbstractSelector):
         self.track_selected_trainers_which_left = dict()
         self.check_three_state_avl = True  # kept for backward compat; superseded by _task_eligible_states
 
-        # Configurable task → eligible avl_state mapping.
-        # Default matches current hardcoded behavior.
-        # Override via selector.kwargs["task_eligible_states"] in aggregator.json.
+        # Configurable task → eligible-state map; override via selector.kwargs["task_eligible_states"].
         _default_eligible_states = {
             "train": [TrainerAvailState.AVL_TRAIN.value],
             "eval": [
@@ -143,15 +141,7 @@ class AsyncRandomSelector(AbstractSelector):
         )
         logger.debug(f"Trainer version states: {trainer_version_states}")
 
-        # Wait for the minimum-trainer threshold before selecting any ends.
-        # Without this, training begins as soon as the first trainer registers,
-        # which makes the first few aggregations use a tiny pool. async_oort
-        # and the sync selectors apply the same gate.
         if self.enforce_min_start(len(ends)):
-            logger.info(
-                f"enforce_min_start: waiting — len(ends)={len(ends)} < "
-                f"minInitialTrainers={getattr(self, 'minInitialTrainers', None)}"
-            )
             return {}
 
         if task_to_perform == "train":
@@ -289,14 +279,7 @@ class AsyncRandomSelector(AbstractSelector):
             f"{selected_ends} before processing"
         )
 
-        # Clean up every end whose grad we just consumed. The aggregator has
-        # already finished a cycle (`_agg_goal_cnt >= self._agg_goal` was met),
-        # so `ordered_updates_recv_ends` contains exactly the ends that
-        # contributed this cycle. Using `min(N, self.agg_goal)` here LEAKS ends
-        # into `all_selected` when K changes dynamically (e.g. adaptive_k_var_
-        # tracking pushes K from 5 to 7, but self.agg_goal is still 5 → 2 ends
-        # per cycle never get freed → eventually all 30 ends are stuck and the
-        # selector returns 0 candidates → deadlock).
+        # Drain all received ends; min(N, agg_goal) deadlocks when K changes dynamically.
         num_ends_to_remove = len(self.ordered_updates_recv_ends)
         if num_ends_to_remove != 0:
             ends_to_remove = self.ordered_updates_recv_ends[:num_ends_to_remove]

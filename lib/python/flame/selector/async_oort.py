@@ -157,9 +157,7 @@ class AsyncOortSelector(AbstractSelector):
         self.track_selected_trainers_which_left = dict()
         self.check_three_state_avl = True  # kept for backward compat; superseded by _task_eligible_states
 
-        # Configurable task → eligible avl_state mapping.
-        # Default matches current hardcoded behavior.
-        # Override via selector.kwargs["task_eligible_states"] in aggregator.json.
+        # Configurable task → eligible-state map; override via selector.kwargs["task_eligible_states"].
         _default_eligible_states = {
             "train": [TrainerAvailState.AVL_TRAIN.value],
             "eval": [
@@ -168,7 +166,6 @@ class AsyncOortSelector(AbstractSelector):
             ],
         }
         raw_eligible = kwargs.get("task_eligible_states", _default_eligible_states)
-        # Validate every state string against the enum
         _valid_states = {v.value for v in TrainerAvailState}
         for task_name, states in raw_eligible.items():
             for s in states:
@@ -278,9 +275,7 @@ class AsyncOortSelector(AbstractSelector):
         if self.enforce_min_start(len(ends)):
             return {}
 
-        # Respect dynamic_c if the DynamicKCController has pushed a new value
-        # via channel.set_property("dynamic_c", ...).  Fall back to the static
-        # self.c when the property is absent (non-dynamic configs).
+        # Use dynamic_c pushed by DynamicKCController if present; fall back to static self.c.
         effective_c = int(channel_props.get("dynamic_c", self.c))
         if effective_c != self.c:
             logger.info(
@@ -852,11 +847,7 @@ class AsyncOortSelector(AbstractSelector):
             f"{selected_ends} before processing"
         )
 
-        # Drain the entire `ordered_updates_recv_ends` queue rather than
-        # `min(N, self.agg_goal)`. With dynamic K (adaptive_k_var_tracking),
-        # `self.agg_goal` is the static config value while the actual K used
-        # this cycle may be larger; the old code leaked the difference into
-        # `all_selected` until no ends remained eligible (deadlock).
+        # Drain all received ends; min(N, agg_goal) deadlocks when K changes dynamically.
         num_ends_to_remove = len(self.ordered_updates_recv_ends)
         if num_ends_to_remove != 0:
             ends_to_remove = self.ordered_updates_recv_ends[:num_ends_to_remove]

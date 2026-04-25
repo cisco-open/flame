@@ -69,20 +69,15 @@ class FedSGDAggregator(TopAggregator):
         # 之前的v不够，暂存在cached_v
         self.cached_v = []
 
-        # Model-specific default variance thresholds. Used only when the JSON
-        # config does not override via `hyperparameters.var_threshold`.
+        # Per-model defaults; overridden by hyperparameters.var_threshold in config.
         _DEFAULT_VAR_THRESHOLD_BY_MODEL = {
-            "distilbert": 0.1,      # 0.25 originally proposed, 0.1 in practice
-            "bert": 0.2,            # 0.6 originally proposed
-            "roberta-large": 0.2,   # 0.6 originally proposed
-            "albert": 0.1,          # 0.6 originally proposed
+            "distilbert": 0.1,
+            "bert": 0.2,
+            "roberta-large": 0.2,
+            "albert": 0.1,
         }
         _default_thr = _DEFAULT_VAR_THRESHOLD_BY_MODEL.get(self.args.model_type, 0.1)
 
-        # Allow the JSON config to override the default — e.g. heterogeneous
-        # partitions (niid_label_* with small alpha) produce larger gradient
-        # variance so a higher threshold is needed to avoid every aggregation
-        # failing the check.
         _json_thr = getattr(self.args, "var_threshold", None)
         if _json_thr is not None:
             self.var_threshold = float(_json_thr)
@@ -248,10 +243,7 @@ class FedSGDAggregator(TopAggregator):
                 # 方差满足要求
                 self.cached_v = []
             elif _force_commit:
-                # Variance check failed, but max_iter_per_data_id cap was hit;
-                # keep the weight update so the model actually advances.
-                # We DO NOT call set_global_model_params(origin_param) — that
-                # would roll back the update we just applied in-place above.
+                # max_iter_per_data_id cap hit; skip rollback to advance model despite failed variance.
                 self.last_round_update = [
                     p.clone().detach() for p in weighted_gradient_sum
                 ]
@@ -276,8 +268,6 @@ class FedSGDAggregator(TopAggregator):
                 # 模型改回去
                 self.set_global_model_params(origin_param)
 
-        # Always clear the force-commit flag so it doesn't leak into the
-        # next aggregation cycle.
         self._force_commit_this_cycle = False
 
         old_param = self.get_global_model_params()

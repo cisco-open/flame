@@ -33,9 +33,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import List
 
-# ---------------------------------------------------------------------------
-# Paths
-# ---------------------------------------------------------------------------
 SCRIPT_DIR = Path(__file__).resolve().parent
 JSON_DIR   = SCRIPT_DIR / "json_scripts"
 REPO_PATH  = Path(os.environ.get("REPO_PATH", str(SCRIPT_DIR / "../../../../../..")))
@@ -43,10 +40,7 @@ REPO_PATH  = Path(os.environ.get("REPO_PATH", str(SCRIPT_DIR / "../../../../../.
 AGG_MAIN   = REPO_PATH / "lib/python/examples/fwdllm/aggregator/fl_main.py"
 TRAIN_MAIN = REPO_PATH / "lib/python/examples/fwdllm/trainer/fl_main.py"
 
-# ---------------------------------------------------------------------------
-# Module-level state — set early in main() so signal handlers can access it
-# ---------------------------------------------------------------------------
-_TAG = "launcher"                            # overwritten with --tag value in main()
+_TAG = "launcher"  # overwritten with --tag value in main() so signal handlers print the right prefix
 _spawned_procs: List[subprocess.Popen] = []
 _open_log_handles: list = []
 
@@ -54,30 +48,19 @@ _open_log_handles: list = []
 def _log(msg: str) -> None:
     print(f"[{_TAG}] {msg}", flush=True)
 
-# ---------------------------------------------------------------------------
-# Config patching
-# ---------------------------------------------------------------------------
-
-def _patch_config(config: dict, run_id: str) -> dict:
-    """Deep-copy config and suffix job.id + taskid with run_id."""
-    cfg = json.loads(json.dumps(config))
-    cfg["taskid"]      = f"{cfg['taskid']}_{run_id}"
-    cfg["job"]["id"]   = f"{cfg['job']['id']}_{run_id}"
-    return cfg
-
 
 def load_and_patch(json_path: Path, run_id: str) -> dict:
+    """Load a JSON config and suffix job.id + taskid with run_id."""
     with open(json_path) as f:
-        return _patch_config(json.load(f), run_id)
+        cfg = json.load(f)
+    cfg["taskid"]    = f"{cfg['taskid']}_{run_id}"
+    cfg["job"]["id"] = f"{cfg['job']['id']}_{run_id}"
+    return cfg
 
 
 def write_config(config: dict, dest: Path) -> None:
     with open(dest, "w") as f:
         json.dump(config, f, indent=4)
-
-# ---------------------------------------------------------------------------
-# Process & cleanup management
-# ---------------------------------------------------------------------------
 
 def _close_log_handles() -> None:
     for fh in _open_log_handles:
@@ -135,10 +118,6 @@ def spawn(cmd: List[str], env: dict, log_path: Path, append: bool = False) -> su
     _spawned_procs.append(proc)
     return proc
 
-# ---------------------------------------------------------------------------
-# PID registry
-# ---------------------------------------------------------------------------
-
 def write_pid_registry(log_dir: Path, run_id: str, tag: str,
                        agg_pid: int, trainer_pids: List[int]) -> None:
     registry = {
@@ -150,10 +129,6 @@ def write_pid_registry(log_dir: Path, run_id: str, tag: str,
     }
     with open(log_dir / "pids.json", "w") as f:
         json.dump(registry, f, indent=2)
-
-# ---------------------------------------------------------------------------
-# Main
-# ---------------------------------------------------------------------------
 
 def main() -> int:
     global _TAG
@@ -189,9 +164,7 @@ def main() -> int:
         _log("ERROR: --gpus must not be empty")
         return 1
 
-    # ------------------------------------------------------------------
     # 1. Build run ID and directories
-    # ------------------------------------------------------------------
     ts     = datetime.now().strftime("%Y%m%d_%H%M%S")
     run_id = f"{ts}_{args.tag}"
 
@@ -203,9 +176,7 @@ def main() -> int:
     log_dir = Path(args.log_dir) / run_id if args.log_dir else SCRIPT_DIR / "logs" / run_id
     log_dir.mkdir(parents=True, exist_ok=True)
 
-    # Register cleanup in reverse order (atexit is LIFO):
-    #   1st registered → runs last  → rmtree deletes temp JSON configs
-    #   2nd registered → runs first → _kill_all terminates processes first
+    # atexit is LIFO: register rmtree first so _kill_all runs before temp cleanup.
     atexit.register(shutil.rmtree, run_dir, True)
     atexit.register(_kill_all)
 
@@ -215,9 +186,7 @@ def main() -> int:
     _log(f"gpus     = {gpu_list}")
     _log(f"trainers = {args.num_trainers}")
 
-    # ------------------------------------------------------------------
     # 2. Pre-flight: verify all source JSON files exist before touching /tmp
-    # ------------------------------------------------------------------
     agg_src = JSON_DIR / args.agg_json
     if not agg_src.exists():
         _log(f"ERROR: aggregator config not found: {agg_src}")
@@ -229,15 +198,11 @@ def main() -> int:
              f"{missing[:5]}{'…' if len(missing) > 5 else ''}")
         return 1
 
-    # ------------------------------------------------------------------
     # 3. Patch aggregator config
-    # ------------------------------------------------------------------
     agg_dest = run_dir / "aggregator.json"
     write_config(load_and_patch(agg_src, run_id), agg_dest)
 
-    # ------------------------------------------------------------------
     # 4. Patch trainer configs
-    # ------------------------------------------------------------------
     trainer_dests: List[Path] = []
     for x in range(args.num_trainers):
         src  = JSON_DIR / f"trainer_{x}.json"
@@ -247,9 +212,7 @@ def main() -> int:
 
     _log(f"Patched {1 + args.num_trainers} configs → {run_dir}")
 
-    # ------------------------------------------------------------------
     # 5. Spawn aggregator
-    # ------------------------------------------------------------------
     agg_log = log_dir / "aggregator.log"
     agg_cmd = [
         sys.executable, str(AGG_MAIN),
@@ -268,9 +231,7 @@ def main() -> int:
              f"Check {agg_log}")
         return 1
 
-    # ------------------------------------------------------------------
     # 6. Spawn trainers (round-robin over GPU set)
-    # ------------------------------------------------------------------
     trainer_log  = log_dir / "trainers.log"
     trainer_pids: List[int] = []
 
@@ -292,15 +253,11 @@ def main() -> int:
 
     _log(f"All {args.num_trainers} trainers spawned.")
 
-    # ------------------------------------------------------------------
-    # 7. Write PID registry to log_dir (persists after cleanup)
-    # ------------------------------------------------------------------
+    # 7. Write PID registry
     write_pid_registry(log_dir, run_id, args.tag, agg_proc.pid, trainer_pids)
     _log(f"PID registry → {log_dir / 'pids.json'}")
 
-    # ------------------------------------------------------------------
-    # 8. Block until aggregator finishes, then clean up
-    # ------------------------------------------------------------------
+    # 8. Wait for aggregator, then clean up
     _log(f"Waiting for aggregator (pid={agg_proc.pid}) to finish…")
     agg_proc.wait()
     rc = agg_proc.returncode

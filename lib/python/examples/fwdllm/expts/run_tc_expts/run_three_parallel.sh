@@ -90,18 +90,11 @@ echo "[parallel]   logs dir      = $SCRIPT_DIR/logs/"
 echo "[parallel]   stagger delay = ${STAGGER_SECS}s between runs"
 echo ""
 
-# Helper: print a countdown so it's obvious the script hasn't stalled.
 stagger_sleep() {
-    local secs="$1"
-    local tag="$2"
+    local secs="$1" tag="$2"
     echo "[parallel] Waiting ${secs}s before launching ${tag}…"
-    local remaining="$secs"
-    while [ "$remaining" -gt 0 ]; do
-        printf "\r[parallel]   %3ds remaining…" "$remaining"
-        sleep 1
-        remaining=$(( remaining - 1 ))
-    done
-    printf "\r[parallel]   Done waiting. Launching %s now.\n" "$tag"
+    sleep "$secs"
+    echo "[parallel] Launching ${tag} now."
 }
 
 # Launch each run in the background with a staggered start.

@@ -16,14 +16,12 @@
 """DynamicKCController: manages dynamic updates to K and C during FL training."""
 
 import logging
-from collections import deque
 from typing import Tuple
 
 from flame.selector.dynamic_kc_policy import DynamicKCPolicy
 
 logger = logging.getLogger(__name__)
 
-# Keys that are logged in the compact metric summary
 _SUMMARY_METRIC_KEYS = [
     "var_pass_rate",
     "var_last",
@@ -47,23 +45,9 @@ def _fmt_metrics(metrics: dict) -> dict:
 class DynamicKCController:
     """Controls dynamic updates to K (aggregation goal) and C (concurrency).
 
-    Instantiated by the aggregator in ``internal_init()``.  After every
-    aggregation (or every ``update_every_n_aggs`` aggregations), the aggregator
-    calls ``step(metrics)`` which may update K and/or C via the configured policy.
-
-    K is updated in-place on the aggregator: ``self._agg_goal = controller.get_k()``.
-    C is propagated to the selector via a channel property ``dynamic_c``.
-
-    Args:
-        policy: A DynamicKCPolicy instance.
-        k_init: Initial K value (read from config).
-        c_init: Initial C value (read from config).
-        k_min: Lower bound for K.
-        k_max: Upper bound for K.
-        c_min: Lower bound for C.
-        c_max: Upper bound for C.
-        update_every_n_aggs: How often to call the policy (1 = every aggregation).
-        history_window: Number of recent metric observations to retain.
+    The aggregator calls ``step(metrics)`` after each aggregation; the controller
+    clamps policy output to [k_min, k_max] / [c_min, c_max] and returns (k, c).
+    C is propagated to the selector via ``channel.set_property("dynamic_c", c)``.
     """
 
     def __init__(
@@ -76,7 +60,6 @@ class DynamicKCController:
         c_min: int,
         c_max: int,
         update_every_n_aggs: int = 1,
-        history_window: int = 20,
     ):
         self.policy = policy
         self.k = k_init
@@ -87,36 +70,19 @@ class DynamicKCController:
         self.c_max = c_max
         self.update_every_n_aggs = update_every_n_aggs
 
-        self._agg_counter = 0        # steps since last policy call
-        self._total_updates = 0      # total aggregations seen
-        self._history: deque = deque(maxlen=history_window)
-
-        # Audit trail of (agg_number, value) pairs
+        self._agg_counter = 0
+        self._total_updates = 0
         self._k_history: list = [(0, k_init)]
         self._c_history: list = [(0, c_init)]
 
-    # ------------------------------------------------------------------
-    # Public interface
-    # ------------------------------------------------------------------
-
     def step(self, metrics: dict) -> Tuple[int, int]:
-        """Process one aggregation and potentially update K and C.
-
-        Args:
-            metrics: Dict of training metrics (see DynamicKCPolicy docstring).
-
-        Returns:
-            (current_k, current_c) — the values the aggregator should use for
-            the next aggregation window (may be unchanged).
-        """
+        """Process one aggregation and return (k, c) after applying policy."""
         self._agg_counter += 1
         self._total_updates += 1
-        self._history.append(metrics)
 
         if self._agg_counter < self.update_every_n_aggs:
             return self.k, self.c
 
-        # Reset inter-call counter
         self._agg_counter = 0
 
         new_k = self.policy.compute_new_k(self.k, metrics)
@@ -147,15 +113,12 @@ class DynamicKCController:
         return self.k, self.c
 
     def get_k(self) -> int:
-        """Return the current K value."""
         return self.k
 
     def get_c(self) -> int:
-        """Return the current C value."""
         return self.c
 
     def summary(self) -> dict:
-        """Return a summary dict for periodic logging."""
         return {
             "k": self.k,
             "c": self.c,
