@@ -215,6 +215,9 @@ if __name__ == "__main__":
         args=model_args, label_vocab=attributes["label_vocab"], tokenizer=tokenizer
     )
     process_id = 1
+    # TODO: data_loader_num_workers is used for client partition sampling in BaseDataManager,
+    # not for DataLoader parallelism (all DataLoader calls hardcode num_workers=0). Rename
+    # the config field and wire it through to the DataLoader constructors in base_data_manager.py.
     dm = TextClassificationDataManager(
         config.hyperparameters,
         model_args,
