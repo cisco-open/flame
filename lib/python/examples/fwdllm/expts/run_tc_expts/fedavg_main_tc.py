@@ -140,6 +140,7 @@ if __name__ == "__main__":
             "peft_method": args.peft_method,
             "var_control": args.var_control,
             "perturbation_sampling": args.perturbation_sampling,
+            "select_perturbation_using_jvp": args.select_perturbation_using_jvp,
         }
     )
     model_args.config["num_labels"] = num_labels

@@ -159,6 +159,7 @@ class FedSGDTrainer(Trainer):
         logger.info("[GJD] self.data_id is reset to None")
         self.total_data_bins = None
         self.grad_for_var_check = None
+        self.jvp_for_snr_check = None
         self.data_written_to_file = False  # Flag to prevent writing data multiple times
         setattr(
             self.trainer.model_trainer, "base_trainer", self
@@ -433,6 +434,7 @@ class FedSGDTrainer(Trainer):
             },
         )
         self.grad_for_var_check = self.trainer.model_trainer.grad_for_var_check
+        self.jvp_for_snr_check = self.trainer.model_trainer.jvp_for_snr_check
 
     @timer_decorator
     def _emulate_training_delay(self):

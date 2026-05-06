@@ -85,6 +85,23 @@ def calculate_jvp(func, params, v):
     return avg_loss, jvp
 
 
+def calculate_jvp_after_actual_update(func, params, v, jvp_scalar):
+    """
+    Calculations Jacobian-vector product using numerical differentiation
+    """
+    h = 0.01 # learning rate factor
+    with torch.no_grad(), autocast():
+        loss = func(tuple([params[i] - h * jvp_scalar * v[i] for i in range(len(params))]))
+    return loss
+
+def calculate_jvp_before_actual_update(func, params):
+    """
+    Calculations Jacobian-vector product using numerical differentiation
+    """
+    with torch.no_grad(), autocast():
+        loss = func(tuple([params[i] for i in range(len(params))]))
+    return loss
+
 # Might contain useful memory optimizations. Look at this only if you're running into a memory bottleneck & you need ideas
 # def calculate_jvp_experiment(func, params, v):
 #     """
@@ -127,6 +144,137 @@ def calculate_var(fwdgrad_list):
     var = torch.var(torch.stack([first_half_mean, second_half_mean]), dim=0).mean()
 
     return var
+
+# Does not work for n == 1
+def calculate_real_var(fwdgrad_list):
+    n = len(fwdgrad_list)
+
+    # 计算两个平均值之间的方差
+    var = torch.var(torch.stack(fwdgrad_list), dim=0).mean()
+
+    return var
+
+def log_dist(name, tensor):
+    """Helper to log distribution statistics of a tensor."""
+    if tensor.numel() == 0:
+        return
+    
+    # Flatten to ensure we are looking at the distribution of all scalar values
+    flat = tensor.detach().float().view(-1)
+    
+    # Define percentiles to track
+    q = torch.tensor([0.1, 0.25, 0.5, 0.75, 0.9, 0.95, 0.99]).to(flat.device)
+    percentiles = torch.quantile(flat, q)
+    
+    logger.info(
+        f"{name:15} | Mean: {flat.mean():.6f} | "
+        f"P10: {percentiles[0]:.6f} | P50: {percentiles[2]:.6f} | P90: {percentiles[4]:.6f} | P95: {percentiles[5]:.6f} | P99: {percentiles[6]:.6f}"
+    )
+
+def calculate_snr(fwdgrad_list):
+    """
+    Calculates SNR using the variance of all individual updates.
+    This factors in magnitude outliers and client-to-client disagreement.
+    """
+    n = len(fwdgrad_list)
+    
+    
+    # Requirement: Need at least 2 updates to calculate variance
+    if n < 2:
+        return 0.0
+
+    # 1. Stack all individual updates: shape (N, Parameters)
+    all_grads_stacked = torch.stack(fwdgrad_list)
+    
+    # 2. Calculate the Global Mean (The Signal)
+    global_mean = torch.mean(all_grads_stacked, dim=0)
+    
+    # 4. Actual Variance: Variance across all N updates
+    # We calculate variance for each parameter (dim=0), 
+    # then take the mean to get a single scalar representing total noise.
+    actual_var = torch.var(all_grads_stacked, dim=0)
+
+    logger.info(f"shape of actual_var: {actual_var.shape}")
+    logger.info("--- Gradient Distribution Stats ---")
+    logger.info(f"JVP of all updates so far {all_grads_stacked}")
+    log_dist("Signal (Mean)", all_grads_stacked)
+    log_dist("Signal^2", all_grads_stacked**2)
+    # log_dist("Variance", actual_var)
+
+    mean_of_mean = torch.mean(global_mean)
+    mean_of_mean_2 = torch.mean(global_mean ** 2)
+    mean_of_var = torch.mean(actual_var)
+
+    logger.info(f"number of updates: {n} - mean_of_mean : {mean_of_mean} mean_of_mean_squared : {mean_of_mean_2} and  mean_of_var : {mean_of_var}")
+
+    snr = torch.mean((global_mean ** 2) / (actual_var))
+
+    return snr.item()
+
+def calculate_snr_gradients(fwdgrad_list):
+    """
+    Calculates SNR using the variance of all individual updates.
+    This factors in magnitude outliers and client-to-client disagreement.
+    """
+    n = len(fwdgrad_list)
+    
+    
+    # Requirement: Need at least 2 updates to calculate variance
+    if n < 2:
+        return 0.0
+
+    # 1. Stack all individual updates: shape (N, Parameters)
+    all_grads_stacked = torch.stack(fwdgrad_list)
+    
+    # 2. Calculate the Global Mean (The Signal)
+    global_mean = torch.mean(all_grads_stacked, dim=0)
+    
+    # 4. Actual Variance: Variance across all N updates
+    # We calculate variance for each parameter (dim=0), 
+    # then take the mean to get a single scalar representing total noise.
+    actual_var = torch.var(all_grads_stacked, dim=0)
+
+    logger.info(f"shape of actual_var: {actual_var.shape}")
+    logger.info("--- Gradient Distribution Stats ---")
+    logger.info(f"JVP of all updates so far {all_grads_stacked}")
+    # log_dist("Signal (Mean)", all_grads_stacked)
+    # log_dist("Signal^2", all_grads_stacked**2)
+    # log_dist("Variance", actual_var)
+
+    mean_of_mean = torch.mean(global_mean)
+    mean_of_mean_2 = torch.mean(global_mean ** 2)
+    mean_of_var = torch.mean(actual_var)
+    snr = torch.mean((global_mean ** 2) / (actual_var))
+
+    logger.info(f"number of gradient updates: {n} - mean_of_mean : {mean_of_mean} mean_of_mean_squared : {mean_of_mean_2} and  mean_of_var : {mean_of_var} and snr : {snr}")
+
+    return snr.item()
+
+def calculate_cv(fwdgrad_list):
+    n = len(fwdgrad_list)
+    
+    # Does not work for n == 1 (need at least 2 to compute standard deviation)
+    if n < 2:
+        return 0.0
+
+    # 将所有tensor堆叠在一起
+    stacked_grads = torch.stack(fwdgrad_list)
+
+    # 计算所有tensor在各个维度上的标准差 (Standard Deviation: sigma)
+    std_dev = torch.std(stacked_grads, dim=0)
+
+    # 计算所有tensor在各个维度上的平均值 (Mean: mu)
+    mean_val = torch.mean(stacked_grads, dim=0)
+
+    # 计算变异系数 CV = Std / |Mean|
+    # Note: We use torch.abs() because means can be negative, and CV should be positive.
+    # Added 1e-8 to prevent division by zero when the mean is exactly 0.
+    cv_tensor = std_dev / (torch.abs(mean_val) + 1e-8)
+
+    # 求所有维度的平均值，返回一个标量 (scalar)
+    cv = cv_tensor.mean()
+
+    return cv.item()
 
 
 def calculate_cos_sim(A, target_grad, device):

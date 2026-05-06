@@ -136,6 +136,7 @@ if __name__ == "__main__":
             "peft_method": config.hyperparameters.peft_method,
             "var_control": config.hyperparameters.var_control,
             "perturbation_sampling": config.hyperparameters.perturbation_sampling,
+            "select_perturbation_using_jvp": config.hyperparameters.select_perturbation_using_jvp,
             "client_idx": config.hyperparameters.client_idx,
         }
     )

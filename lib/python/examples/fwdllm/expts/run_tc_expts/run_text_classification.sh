@@ -31,7 +31,7 @@ AGG_JSON_NAME=${4:-aggregator.json}
 RUN_TAG=${5:-}
 
 # --- Accuracy monitoring configuration ---
-ACC_THRESHOLD=60          # Accuracy percentage (0-100) to monitor for
+ACC_THRESHOLD=85          # Accuracy percentage (0-100) to monitor for
 ACC_CONSEC_LIMIT=10       # Number of consecutive rounds above threshold before stopping the run
 
 pkill -f "$FWDLLM_USER.*fl_main.py"

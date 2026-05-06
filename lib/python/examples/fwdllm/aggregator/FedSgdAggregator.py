@@ -6,7 +6,7 @@ import math
 import numpy as np
 import torch
 from flame.mode.horizontal.syncfl.fwdllm_aggregator import TopAggregator
-from examples.fwdllm.trainer.forward_training.fwdgrad_utils import calculate_var
+from examples.fwdllm.trainer.forward_training.fwdgrad_utils import calculate_var, calculate_snr, calculate_cv, calculate_real_var, calculate_snr_gradients
 from flame.monitor.runtime import timer_decorator, FwdLLMStage
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class FedSGDAggregator(TopAggregator):
 
         for idx in range(self.worker_num):
             self.flag_client_model_uploaded_dict[idx] = False
-        # ratio is one and the comm_round is 30 rn
+        # ratio is 0 and the comm_round is 3000 rn
         self.warmup_rounds = math.ceil(self.args.comm_round * self.args.warmup_ratio)
 
         # 之前的v不够，暂存在cached_v
@@ -110,11 +110,52 @@ class FedSGDAggregator(TopAggregator):
 
         self.loss_list = []
         self.grad_for_var_check_list = []
+        self.jvp_for_snr_check_list = []
         self.var_good_enough = True
+        self.var_prev_iter_list = []
+        self.snr = None
+        self.snr_prev_iter_list = []
         self.fmodel, self.params, self.buffers = fc.make_functional_with_buffers(
             self.model
         )
         self.grad = [torch.zeros_like(p) for p in self.params]
+
+    def var_within_epsilon(self):
+        if self.var < self.var_threshold:
+            logger.info("Var under threshold, aggregate now")
+            return True
+        if len(self.var_prev_iter_list) < 6:
+            logger.info("Not enough iterations for stable delta")
+            return False
+        last_5_var_mean = np.mean(self.var_prev_iter_list[-6:-1])
+        logger.info(f"Last 5 iterations var values : {self.var_prev_iter_list[-5:]} - mean {last_5_var_mean} - current: {self.var}")
+        if (abs(last_5_var_mean - self.var) / last_5_var_mean ) < 0.03:
+            logger.info("Delta Var is less, minimal ROI, aggregate now")
+            return True
+        logger.info("Var high, delta high")
+        return False
+
+    def snr_within_epsilon(self):
+        logger.info(f"len(self.snr_prev_iter_list): {len(self.snr_prev_iter_list)}")
+        if len(self.snr_prev_iter_list) < 6:
+            return False
+        last_5_var_mean = np.mean(self.snr_prev_iter_list[-6:-1])
+        logger.info(f"Last 5 iterations snr values : {self.snr_prev_iter_list[-5:]} - mean {last_5_var_mean} - current: {self.snr}")
+        if (abs(last_5_var_mean - self.snr) / last_5_var_mean ) < 0.005:
+            return True
+        return False
+
+    def snr_within_epsilon_and_var_under(self, jvp_var):
+        snr_within_epsilon = self.snr_within_epsilon()
+        if snr_within_epsilon and jvp_var < 20:
+            logger.info("SNR within range and variance also under control")
+            return True
+        elif snr_within_epsilon:
+            logger.info(f"SNR within range but variance is high- var: {jvp_var}")
+            return False
+        logger.info("SNR is not stable yet")
+        return False
+        
 
     def get_global_model_params(self):
         return self.trainer.get_model_params()
@@ -143,7 +184,15 @@ class FedSGDAggregator(TopAggregator):
     def aggregate(self, current_round):
         start_time = time.time()
         self.var = calculate_var(self.grad_for_var_check_list)
+        var_jvp = calculate_real_var(self.jvp_for_snr_check_list)
+        self.var_prev_iter_list.append(self.var.item())
+        self.snr = calculate_snr(self.jvp_for_snr_check_list)
+        grads_snr = calculate_snr_gradients(self.grad_for_var_check_list)
+        self.snr_prev_iter_list.append(self.snr)
+        c_of_variation = calculate_cv(self.grad_for_var_check_list)
         logger.info(f"self.var = {self.var}")
+        logger.info(f"snr of jvps = {self.snr}")
+        logger.info(f"coefficient of variation = {c_of_variation}")
         logger.debug(
             f"self.grad_for_var_check_list size: {len(self.grad_for_var_check_list)}"
         )
@@ -153,8 +202,7 @@ class FedSGDAggregator(TopAggregator):
 
         model_list = []
         training_num = 0
-
-        # self.warmup_rounds = 20
+        # self.warmup_rounds = 0
         if current_round < self.warmup_rounds:
             ratio = float(current_round + 1) / float(max(1, self.warmup_rounds))
         else:
@@ -182,6 +230,20 @@ class FedSGDAggregator(TopAggregator):
         if self.args.var_control:
             model_dict_cached = copy.deepcopy(self.model_dict)
             origin_param = copy.deepcopy(self.get_global_model_params())
+        # logger.info(f"len(model_list): {len(model_list)}")
+
+        # self.model_dict在聚合的过程中会被改变,很奇怪，这里先存一个deepcopy吧，
+        # 用于后面cache_v
+        if self.args.var_control:
+            model_dict_cached = copy.deepcopy(self.model_dict)
+            origin_param = copy.deepcopy(self.get_global_model_params())
+        # logger.info(f"len(model_list): {len(model_list)}")
+
+        # self.model_dict在聚合的过程中会被改变,很奇怪，这里先存一个deepcopy吧，
+        # 用于后面cache_v
+        if self.args.var_control:
+            model_dict_cached = copy.deepcopy(self.model_dict)
+            origin_param = copy.deepcopy(self.get_global_model_params())
 
             # cached_v:  (num, params)
             logger.info(f"len of cached v: {len(self.cached_v)}")
@@ -199,35 +261,39 @@ class FedSGDAggregator(TopAggregator):
         logger.info(
             f"length of model list : {len(model_list)} - (should be same as # of iterations in the mini-batch completed so far)"
         )
-
-        # old_param = self.get_global_model_params()
-        old_param = self.trainer.model.parameters()
-        if training_num == 0:
-            logger.warning("Not updating the model, division by 0 error")
-            return old_param
-
-        # If weighted_aggregation_enabled is False, then the weight of each gradient in this sum is 1. Else, the weight the is determined by calling self.optimizer.weight_factor()
-        (_, weighted_gradient_sum) = model_list[0]
-        format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
-        logger.debug(
-            f"model_list[0] - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}"
-        )
-
-        logger.info(f"Length of model_list : {len(model_list)}")
-        for id, k in enumerate(weighted_gradient_sum):
-            for i in range(0, len(model_list)):
-                local_sample_number, local_model_params = model_list[i]
-                # w = local_sample_number / training_num
-                if i == 0:
-                    weighted_gradient_sum[id] = local_model_params[id]
-                else:
-                    weighted_gradient_sum[id] += local_model_params[id]
-            next(old_param).detach().to("cpu").sub_(
-                learning_rate * weighted_gradient_sum[id] / training_num
-            )
+        
         if self.args.var_control:
             _force_commit = getattr(self, "_force_commit_this_cycle", False)
             if self.var <= self.var_threshold:
+            # Use different stopping conditions if necessary
+            # if self.var_within_epsilon(): 
+            # if self.snr_within_epsilon_and_var_under(var_jvp):
+                self.var_prev_iter_list = []
+                self.snr_prev_iter_list = []
+                
+                # old_param = self.get_global_model_params()
+                old_param = self.trainer.model.parameters()
+                if training_num == 0:
+                    logger.warning("Not updating the model, division by 0 error")
+                    return old_param
+                # If weighted_aggregation_enabled is False, then the weight of each gradient in this sum is 1. Else, the weight the is determined by calling self.optimizer.weight_factor()
+                (_, weighted_gradient_sum) = model_list[0]
+                format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+                logger.debug(
+                    f"model_list[0] - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}"
+                )
+                logger.info(f"Length of model_list : {len(model_list)}")
+                for id, k in enumerate(weighted_gradient_sum):
+                    for i in range(0, len(model_list)):
+                        local_sample_number, local_model_params = model_list[i]
+                        # w = local_sample_number / training_num
+                        if i == 0:
+                            weighted_gradient_sum[id] = local_model_params[id]
+                        else:
+                            weighted_gradient_sum[id] += local_model_params[id]
+                    next(old_param).detach().to("cpu").sub_(
+                        learning_rate * weighted_gradient_sum[id] / training_num
+                    )
                 format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
                 logger.debug(
                     f"weighted_gradient_sum - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}"
@@ -266,7 +332,7 @@ class FedSGDAggregator(TopAggregator):
                         (self.sample_num_dict[idx], model_dict_cached[idx])
                     )
                 # 模型改回去
-                self.set_global_model_params(origin_param)
+                # self.set_global_model_params(origin_param)
 
         self._force_commit_this_cycle = False
 

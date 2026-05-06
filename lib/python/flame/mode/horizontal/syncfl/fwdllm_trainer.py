@@ -501,9 +501,12 @@ class Trainer(Role, metaclass=ABCMeta):
             else:
                 logger.info("No gradients exist; sending an empty dictionary.")
 
+            logger.debug(f"self.jvp_for_snr_check on trainer before sending message: {self.jvp_for_snr_check}")
+
             msg = {
                 MessageType.GRADIENTS: grad_dict,
                 MessageType.GRADIENTS_FOR_VAR_CHECK: self.grad_for_var_check,
+                MessageType.JVP_FOR_SNR_CHECK: self.jvp_for_snr_check,
                 MessageType.DATASET_SIZE: self.dataset_size,
                 MessageType.MODEL_VERSION: self._model_version,
                 MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),

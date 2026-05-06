@@ -519,6 +519,7 @@ class TopAggregator(AsyncTopAgg):
         version_for_rate: int,
         stat_utility: float = 0.0,
         grad_for_var_check=None,
+        jvp_for_snr_check=None,
     ):
         """Aggregate a single trainer's gradients into self.grad.
 
@@ -596,6 +597,7 @@ class TopAggregator(AsyncTopAgg):
         if grad_for_var_check is not None:
             stacked = torch.stack(list(grad_for_var_check))
             self.grad_for_var_check_list.append(stacked * rate)
+            self.jvp_for_snr_check_list.append(jvp_for_snr_check)
 
         self.log_memory("end aggregate_grads_from_trainers", self.device)
         self.print_trainable_params_stats(
@@ -734,6 +736,12 @@ class TopAggregator(AsyncTopAgg):
                 if MessageType.GRADIENTS_FOR_VAR_CHECK in msg
                 else None
             )
+            jvp_for_snr_check = (
+                msg[MessageType.JVP_FOR_SNR_CHECK]
+                if MessageType.JVP_FOR_SNR_CHECK in msg
+                else None
+            )
+            logger.info(f"jvp_for_snr_check at aggregator: {jvp_for_snr_check}")
             logger.debug(
                 f"Calling aggregate_grads_for_trainers with grad_for_var_check: {_calculate_hash(grad_for_var_check)}"
             )
@@ -742,6 +750,7 @@ class TopAggregator(AsyncTopAgg):
                 version_for_rate=version_for_rate,
                 stat_utility=channel.get_end_property(end, PROP_STAT_UTILITY),
                 grad_for_var_check=grad_for_var_check,
+                jvp_for_snr_check=jvp_for_snr_check,
             )
 
             # del trainer_gradients # Free memory
@@ -1371,6 +1380,7 @@ class TopAggregator(AsyncTopAgg):
         if self._is_model_updated:
             self.grad_pool = []
             self.grad_for_var_check_list = []
+            self.jvp_for_snr_check_list = []
             self._is_model_updated = False
 
     @timer_decorator
@@ -1384,6 +1394,7 @@ class TopAggregator(AsyncTopAgg):
         This method is overridden from one in synchronous top aggregator
         """
 
+        self.ends_not_selected_yet = False
         logger.info(f"Device for agg: {next(self.model.parameters()).device}")
         channel = self.cm.get_by_tag(tag)
         if not channel:
@@ -1414,6 +1425,15 @@ class TopAggregator(AsyncTopAgg):
         else:
             channel.set_curr_unavailable_trainers(trainer_unavail_list=[])
 
+        self._curr_agg_version = (
+            self._model_version,
+            self.data_id,
+            self.iteration_per_data_id,
+        )
+        logger.debug(
+            f"Aggregator version state (model_version, data_id, iteration_id): {self._curr_agg_version}"
+        )
+        
         ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
         logger.info(f"ends: {ends}")
         if ends is None or len(ends) >= self._agg_goal:
@@ -1540,10 +1560,6 @@ class TopAggregator(AsyncTopAgg):
             trainer_version_states=self._trainer_state_dict,
         )
         logger.info(f"ends: {ends}")
-        if ends is None:
-            self.ends_not_selected_yet = True
-        else:
-            self.ends_not_selected_yet = False
 
         if not ends:
             logger.debug(
@@ -1605,6 +1621,18 @@ class TopAggregator(AsyncTopAgg):
             f"{_n_var_bad_sent} VAR=bad payloads to {len(ends)} trainers "
             f"(model_version={self._model_version}, data_id={self.data_id})."
         )
+
+        ends_in_recv_state = channel.ends(VAL_CH_STATE_RECV)
+        logger.info(f"ends_in_recv_state: {ends_in_recv_state}")
+        if ends_in_recv_state is None:
+            self.ends_not_selected_yet = True
+            logger.info(f"ends_in_recv is None")
+        elif len(ends_in_recv_state) < channel.get_c():  
+            self.ends_not_selected_yet = True
+            logger.info(f"Selected only {len(ends)} in this round, total in flight {len(ends_in_recv_state)}, need {channel.get_c() - len(ends_in_recv_state)} to meet agg-goal.")
+        else:
+            self.ends_not_selected_yet = False
+            logger.info("Distributed to c ends and can wait for k updates")
 
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
         if self.is_async:

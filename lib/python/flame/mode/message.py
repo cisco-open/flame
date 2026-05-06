@@ -71,3 +71,4 @@ class MessageType(Enum):
     )
     GRAD_POOL = 30  # stores all gradients until var isn't good enough
     ITERATION_PER_DATA_ID = 31  # stores round within a data id
+    JVP_FOR_SNR_CHECK = 32
