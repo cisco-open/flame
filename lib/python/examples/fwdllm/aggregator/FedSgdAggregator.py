@@ -310,6 +310,37 @@ class FedSGDAggregator(TopAggregator):
                 self.cached_v = []
             elif _force_commit:
                 # max_iter_per_data_id cap hit; skip rollback to advance model despite failed variance.
+                self.var_prev_iter_list = []
+                self.snr_prev_iter_list = []
+                
+                # old_param = self.get_global_model_params()
+                old_param = self.trainer.model.parameters()
+                if training_num == 0:
+                    logger.warning("Not updating the model, division by 0 error")
+                    return old_param
+                # If weighted_aggregation_enabled is False, then the weight of each gradient in this sum is 1. Else, the weight the is determined by calling self.optimizer.weight_factor()
+                (_, weighted_gradient_sum) = model_list[0]
+                format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+                logger.debug(
+                    f"model_list[0] - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}"
+                )
+                logger.info(f"Length of model_list : {len(model_list)}")
+                for id, k in enumerate(weighted_gradient_sum):
+                    for i in range(0, len(model_list)):
+                        local_sample_number, local_model_params = model_list[i]
+                        # w = local_sample_number / training_num
+                        if i == 0:
+                            weighted_gradient_sum[id] = local_model_params[id]
+                        else:
+                            weighted_gradient_sum[id] += local_model_params[id]
+                    next(old_param).detach().to("cpu").sub_(
+                        learning_rate * weighted_gradient_sum[id] / training_num
+                    )
+                format_hash = lambda d: [_calculate_hash(v)[:8] for v in d]
+                logger.debug(
+                    f"weighted_gradient_sum - length : {len(weighted_gradient_sum)} (should be same as grad pool):  {format_hash(weighted_gradient_sum)}"
+                )
+
                 self.last_round_update = [
                     p.clone().detach() for p in weighted_gradient_sum
                 ]

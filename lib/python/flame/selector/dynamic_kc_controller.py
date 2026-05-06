@@ -89,7 +89,9 @@ class DynamicKCController:
         new_c = self.policy.compute_new_c(self.c, metrics)
 
         if new_k is not None:
-            clamped = max(self.k_min, min(self.k_max, new_k))
+            # Enforce that K cannot exceed C, nor k_max
+            upper_bound = min(self.k_max, self.c)
+            clamped = max(self.k_min, min(upper_bound, new_k))
             if clamped != self.k:
                 logger.info(
                     f"[DynamicKC] K: {self.k} → {clamped} "

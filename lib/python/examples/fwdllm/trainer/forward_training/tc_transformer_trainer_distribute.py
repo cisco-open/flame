@@ -627,12 +627,13 @@ class ForwardTextClassificationTrainer:
             v_params = _prepare_perturbation_tensors(device, v_buffer, best_idx)
             self.databin_best_v_params = copy.deepcopy(v_params)
         logging.debug(f"v_params hashes: {[(_calculate_hash(v), v.shape) for v in v_params if v.requires_grad]}")
-        logging.debug(f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}")
+        logging.info(f"params hashes: {[(_calculate_hash(p), p.shape) for p in self.params]}")
 
         loss, jvp = _compute_forward_jvp(device, x, labels, v_params)
-        real_global_loss = _compute_loss_after_update(device, x, labels, v_params, jvp)
+        nonscaled_global_loss = _compute_loss_after_update(device, x, labels, v_params, jvp)
+        scaled_global_loss = _compute_loss_after_update(device, x, labels, v_params, jvp/15)
         loss_before_update = _compute_loss_before_update(device, x, labels, v_params, jvp)
-        logging.info(f"At trainer: {self.trainer_id} - jvp_magnitude: {jvp} - loss before update: { loss_before_update } - loss after update: {real_global_loss}")
+        logging.info(f"At trainer: {self.trainer_id} - iteration: {logging_state.get('iteration')} - jvp_magnitude: {jvp} - loss before update: { loss_before_update } - loss after update (not downscaled): {nonscaled_global_loss}  - loss after update (down scaled): {scaled_global_loss}")
         self.jvp_for_snr_check = abs(jvp)
         logging.info(f"JVP of the perturbation: {jvp}")
 

@@ -200,6 +200,16 @@ class FedSGDTrainer(Trainer):
             self.config.hyperparameters.avl_events_syn_train_50_eval_30_unavail_20
         )
 
+        self.avl_events_mobiperf_2st = ast.literal_eval(
+            self.config.hyperparameters.avl_events_mobiperf_2st
+        )
+        self.avl_events_mobiperf_3st_75 = ast.literal_eval(
+            self.config.hyperparameters.avl_events_mobiperf_3st_75
+        )
+        self.avl_events_mobiperf_3st_50 = ast.literal_eval(
+            self.config.hyperparameters.avl_events_mobiperf_3st_50
+        )
+
         self.client_notify = self.config.hyperparameters.client_notify
 
         self.state_avl_event_ts = []
@@ -229,6 +239,15 @@ class FedSGDTrainer(Trainer):
             logger.info(
                 f"Set avl_events_syn_train_50_eval_30_unavail_20 for trainer id {self.trainer_id}."
             )
+        elif self.client_notify["trace"] == "avl_events_mobiperf_2st":
+            self.state_avl_event_ts = self.avl_events_mobiperf_2st
+            logger.info(f"Set avl_events_mobiperf_2st for trainer id {self.trainer_id}.")
+        elif self.client_notify["trace"] == "avl_events_mobiperf_3st_75":
+            self.state_avl_event_ts = self.avl_events_mobiperf_3st_75
+            logger.info(f"Set avl_events_mobiperf_3st_75 for trainer id {self.trainer_id}.")
+        elif self.client_notify["trace"] == "avl_events_mobiperf_3st_50":
+            self.state_avl_event_ts = self.avl_events_mobiperf_3st_50
+            logger.info(f"Set avl_events_mobiperf_3st_50 for trainer id {self.trainer_id}.")
         else:
             logger.info(
                 f"No avl_events set for trainer id {self.trainer_id} since state not specified."
