@@ -1,0 +1,56 @@
+# Felix smoke test: 10 trainers, homogeneous (alpha=100), syn_20 unavailability.
+# Use this to validate the launcher + baseline merge before the n=300 run.
+#
+# Run:
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/async_cifar10/expt_scripts_2026/felix_n10_alpha100_syn20_smoke.yaml
+
+experiments:
+  - name: felix_n10_alpha100_syn20_smoke
+    description: "Felix smoke (10 trainers, alpha=100, syn_20). Validates baseline merge + launch pipeline."
+
+    baseline: felix
+
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_20
+      enable_training_delays: true
+      speedup_factor: 1.0
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_20
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n10_alpha100_syn20_smoke
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 200
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

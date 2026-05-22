@@ -25,15 +25,17 @@ from ..end import End
 
 SelectorReturnType = dict[str, Union[None, Tuple[str, Scalar]]]
 
+logger = logging.getLogger(__name__)
+
 
 class AbstractSelector(ABC):
     """Abstract base class for selector implementation."""
 
     def __init__(self, **kwargs) -> None:
-        """Initialize an instance with keyword-based arguments."""
         for key, value in kwargs.items():
             setattr(self, key, value)
-        self.selected_ends = set()
+        self.selected_ends: set = set()
+        self.ordered_updates_recv_ends: list = []
 
     def enforce_min_start(self, ends_count: int) -> bool:
         """Return True if selection should wait due to min-start threshold."""
@@ -43,10 +45,8 @@ class AbstractSelector(ABC):
             and self.minInitialTrainers is not None
             else -1
         )
-        if threshold is None:
-            return False
         if ends_count < threshold:
-            logging.getLogger(__name__).debug(
+            logger.debug(
                 f"Not enough ends to start selection, need at least {threshold}"
             )
             time.sleep(0.1)
@@ -69,3 +69,29 @@ class AbstractSelector(ABC):
         dictionary: key is end id and value is a property (as tuple)
                     used/created during selection process; value can be none
         """
+
+    def on_update_received(
+        self, end_id: str, msg: dict, round_num: int
+    ) -> None:
+        """Hook: aggregator calls this when a trainer update arrives.
+
+        Default records the end_id for later cleanup. Subclasses override to
+        extract per-update metrics (e.g. FedDance pulls LOCAL_ACCURACY).
+        """
+        if isinstance(self.selected_ends, set):
+            self.ordered_updates_recv_ends.append(end_id)
+
+    def on_round_completed(
+        self, ends: dict[str, End], round_num: int
+    ) -> None:
+        """Hook: aggregator calls this after aggregation finishes.
+
+        Default frees received-ends from the in-flight set. Subclasses with
+        custom legacy cleanup (_cleanup_recvd_ends) get that called too.
+        """
+        if isinstance(self.selected_ends, set):
+            for end_id in self.ordered_updates_recv_ends:
+                self.selected_ends.discard(end_id)
+            self.ordered_updates_recv_ends = []
+        elif hasattr(self, "_cleanup_recvd_ends"):
+            self._cleanup_recvd_ends(ends)

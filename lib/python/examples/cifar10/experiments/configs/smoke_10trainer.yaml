@@ -1,0 +1,36 @@
+# cifar10 (sync) smoke test: 10 trainers, always-on, default selector.
+# Run: python -m flame.launch.run_experiment lib/python/examples/cifar10/experiments/configs/smoke_10trainer.yaml
+
+experiments:
+  - name: cifar10_sync_smoke_10
+    description: "sync FL smoke test, 10 trainers, syn_0 trace, default selector"
+
+    metadata:
+      dir: examples/_metadata
+
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: false
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.01
+
+    aggregator:
+      config_template: aggregator/config.json
+      selector: default
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+
+    execution:
+      num_gpus: 1
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 10
+      monitoring:
+        enabled: false

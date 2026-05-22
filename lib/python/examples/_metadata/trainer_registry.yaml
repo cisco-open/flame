@@ -1,0 +1,1803 @@
+description: Global trainer registry with intrinsic properties
+num_trainers: 300
+trainers:
+  trainer_001:
+    trainer_id: 1
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580370
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_001
+  trainer_002:
+    trainer_id: 2
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580371
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_002
+  trainer_003:
+    trainer_id: 3
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580372
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_003
+  trainer_004:
+    trainer_id: 4
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580373
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_004
+  trainer_005:
+    trainer_id: 5
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580374
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_005
+  trainer_006:
+    trainer_id: 6
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580375
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_006
+  trainer_007:
+    trainer_id: 7
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580376
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_007
+  trainer_008:
+    trainer_id: 8
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580377
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_008
+  trainer_009:
+    trainer_id: 9
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580378
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_009
+  trainer_010:
+    trainer_id: 10
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580379
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_010
+  trainer_011:
+    trainer_id: 11
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580380
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_011
+  trainer_012:
+    trainer_id: 12
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580381
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_012
+  trainer_013:
+    trainer_id: 13
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580382
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_013
+  trainer_014:
+    trainer_id: 14
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580383
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_014
+  trainer_015:
+    trainer_id: 15
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580384
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_015
+  trainer_016:
+    trainer_id: 16
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580385
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_016
+  trainer_017:
+    trainer_id: 17
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580386
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_017
+  trainer_018:
+    trainer_id: 18
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580387
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_018
+  trainer_019:
+    trainer_id: 19
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580388
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_019
+  trainer_020:
+    trainer_id: 20
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580389
+    training_delay_s: '47.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_020
+  trainer_021:
+    trainer_id: 21
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580390
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_021
+  trainer_022:
+    trainer_id: 22
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580391
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_022
+  trainer_023:
+    trainer_id: 23
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580392
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_023
+  trainer_024:
+    trainer_id: 24
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580393
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_024
+  trainer_025:
+    trainer_id: 25
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580394
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_025
+  trainer_026:
+    trainer_id: 26
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580395
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_026
+  trainer_027:
+    trainer_id: 27
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580396
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_027
+  trainer_028:
+    trainer_id: 28
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580397
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_028
+  trainer_029:
+    trainer_id: 29
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580398
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_029
+  trainer_030:
+    trainer_id: 30
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580399
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_030
+  trainer_031:
+    trainer_id: 31
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580400
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_031
+  trainer_032:
+    trainer_id: 32
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580401
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_032
+  trainer_033:
+    trainer_id: 33
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580402
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_033
+  trainer_034:
+    trainer_id: 34
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580403
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_034
+  trainer_035:
+    trainer_id: 35
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580404
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_035
+  trainer_036:
+    trainer_id: 36
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580405
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_036
+  trainer_037:
+    trainer_id: 37
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580406
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_037
+  trainer_038:
+    trainer_id: 38
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580407
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_038
+  trainer_039:
+    trainer_id: 39
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580408
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_039
+  trainer_040:
+    trainer_id: 40
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580409
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_040
+  trainer_041:
+    trainer_id: 41
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580410
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_041
+  trainer_042:
+    trainer_id: 42
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580411
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_042
+  trainer_043:
+    trainer_id: 43
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580412
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_043
+  trainer_044:
+    trainer_id: 44
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580413
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_044
+  trainer_045:
+    trainer_id: 45
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580414
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_045
+  trainer_046:
+    trainer_id: 46
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580415
+    training_delay_s: '24.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_046
+  trainer_047:
+    trainer_id: 47
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580416
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_047
+  trainer_048:
+    trainer_id: 48
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580417
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_048
+  trainer_049:
+    trainer_id: 49
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580418
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_049
+  trainer_050:
+    trainer_id: 50
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580419
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_050
+  trainer_051:
+    trainer_id: 51
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580420
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_051
+  trainer_052:
+    trainer_id: 52
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580421
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_052
+  trainer_053:
+    trainer_id: 53
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580422
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_053
+  trainer_054:
+    trainer_id: 54
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580423
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_054
+  trainer_055:
+    trainer_id: 55
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580424
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_055
+  trainer_056:
+    trainer_id: 56
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580425
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_056
+  trainer_057:
+    trainer_id: 57
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580426
+    training_delay_s: '30.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_057
+  trainer_058:
+    trainer_id: 58
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580427
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_058
+  trainer_059:
+    trainer_id: 59
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580428
+    training_delay_s: '28.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_059
+  trainer_060:
+    trainer_id: 60
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580429
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_060
+  trainer_061:
+    trainer_id: 61
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580430
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_061
+  trainer_062:
+    trainer_id: 62
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580431
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_062
+  trainer_063:
+    trainer_id: 63
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580432
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_063
+  trainer_064:
+    trainer_id: 64
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580433
+    training_delay_s: '20.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_064
+  trainer_065:
+    trainer_id: 65
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580434
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_065
+  trainer_066:
+    trainer_id: 66
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580435
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_066
+  trainer_067:
+    trainer_id: 67
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580436
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_067
+  trainer_068:
+    trainer_id: 68
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580437
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_068
+  trainer_069:
+    trainer_id: 69
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580438
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_069
+  trainer_070:
+    trainer_id: 70
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580439
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_070
+  trainer_071:
+    trainer_id: 71
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580440
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_071
+  trainer_072:
+    trainer_id: 72
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580441
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_072
+  trainer_073:
+    trainer_id: 73
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580442
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_073
+  trainer_074:
+    trainer_id: 74
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580443
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_074
+  trainer_075:
+    trainer_id: 75
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580444
+    training_delay_s: '28.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_075
+  trainer_076:
+    trainer_id: 76
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580445
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_076
+  trainer_077:
+    trainer_id: 77
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580446
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_077
+  trainer_078:
+    trainer_id: 78
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580447
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_078
+  trainer_079:
+    trainer_id: 79
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580448
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_079
+  trainer_080:
+    trainer_id: 80
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580449
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_080
+  trainer_081:
+    trainer_id: 81
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580450
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_081
+  trainer_082:
+    trainer_id: 82
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580451
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_082
+  trainer_083:
+    trainer_id: 83
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580452
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_083
+  trainer_084:
+    trainer_id: 84
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580453
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_084
+  trainer_085:
+    trainer_id: 85
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580454
+    training_delay_s: '27.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_085
+  trainer_086:
+    trainer_id: 86
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580455
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_086
+  trainer_087:
+    trainer_id: 87
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580456
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_087
+  trainer_088:
+    trainer_id: 88
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580457
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_088
+  trainer_089:
+    trainer_id: 89
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580458
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_089
+  trainer_090:
+    trainer_id: 90
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580459
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_090
+  trainer_091:
+    trainer_id: 91
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580460
+    training_delay_s: '38.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_091
+  trainer_092:
+    trainer_id: 92
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580461
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_092
+  trainer_093:
+    trainer_id: 93
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580462
+    training_delay_s: '27.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_093
+  trainer_094:
+    trainer_id: 94
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580463
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_094
+  trainer_095:
+    trainer_id: 95
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580464
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_095
+  trainer_096:
+    trainer_id: 96
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580465
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_096
+  trainer_097:
+    trainer_id: 97
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580466
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_097
+  trainer_098:
+    trainer_id: 98
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580467
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_098
+  trainer_099:
+    trainer_id: 99
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580468
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_099
+  trainer_100:
+    trainer_id: 100
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580469
+    training_delay_s: '36.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_100
+  trainer_101:
+    trainer_id: 101
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580470
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_101
+  trainer_102:
+    trainer_id: 102
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580471
+    training_delay_s: '20.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_102
+  trainer_103:
+    trainer_id: 103
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580472
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_103
+  trainer_104:
+    trainer_id: 104
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580473
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_104
+  trainer_105:
+    trainer_id: 105
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580474
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_105
+  trainer_106:
+    trainer_id: 106
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580475
+    training_delay_s: '26.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_106
+  trainer_107:
+    trainer_id: 107
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580476
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_107
+  trainer_108:
+    trainer_id: 108
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580477
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_108
+  trainer_109:
+    trainer_id: 109
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580478
+    training_delay_s: '29.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_109
+  trainer_110:
+    trainer_id: 110
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580479
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_110
+  trainer_111:
+    trainer_id: 111
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580480
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_111
+  trainer_112:
+    trainer_id: 112
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580481
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_112
+  trainer_113:
+    trainer_id: 113
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580482
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_113
+  trainer_114:
+    trainer_id: 114
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580483
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_114
+  trainer_115:
+    trainer_id: 115
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580484
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_115
+  trainer_116:
+    trainer_id: 116
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580485
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_116
+  trainer_117:
+    trainer_id: 117
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580486
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_117
+  trainer_118:
+    trainer_id: 118
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580487
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_118
+  trainer_119:
+    trainer_id: 119
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580488
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_119
+  trainer_120:
+    trainer_id: 120
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580489
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_120
+  trainer_121:
+    trainer_id: 121
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580490
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_121
+  trainer_122:
+    trainer_id: 122
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580491
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_122
+  trainer_123:
+    trainer_id: 123
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580492
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_123
+  trainer_124:
+    trainer_id: 124
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580493
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_124
+  trainer_125:
+    trainer_id: 125
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580494
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_125
+  trainer_126:
+    trainer_id: 126
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580495
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_126
+  trainer_127:
+    trainer_id: 127
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580496
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_127
+  trainer_128:
+    trainer_id: 128
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580497
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_128
+  trainer_129:
+    trainer_id: 129
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580498
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_129
+  trainer_130:
+    trainer_id: 130
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580499
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_130
+  trainer_131:
+    trainer_id: 131
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580500
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_131
+  trainer_132:
+    trainer_id: 132
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580501
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_132
+  trainer_133:
+    trainer_id: 133
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580502
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_133
+  trainer_134:
+    trainer_id: 134
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580503
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_134
+  trainer_135:
+    trainer_id: 135
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580504
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_135
+  trainer_136:
+    trainer_id: 136
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580505
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_136
+  trainer_137:
+    trainer_id: 137
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580506
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_137
+  trainer_138:
+    trainer_id: 138
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580507
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_138
+  trainer_139:
+    trainer_id: 139
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580508
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_139
+  trainer_140:
+    trainer_id: 140
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580509
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_140
+  trainer_141:
+    trainer_id: 141
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580510
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_141
+  trainer_142:
+    trainer_id: 142
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580511
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_142
+  trainer_143:
+    trainer_id: 143
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580512
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_143
+  trainer_144:
+    trainer_id: 144
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580513
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_144
+  trainer_145:
+    trainer_id: 145
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580514
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_145
+  trainer_146:
+    trainer_id: 146
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580515
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_146
+  trainer_147:
+    trainer_id: 147
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580516
+    training_delay_s: '29.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_147
+  trainer_148:
+    trainer_id: 148
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580517
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_148
+  trainer_149:
+    trainer_id: 149
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580518
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_149
+  trainer_150:
+    trainer_id: 150
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580519
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_150
+  trainer_151:
+    trainer_id: 151
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580520
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_151
+  trainer_152:
+    trainer_id: 152
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580521
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_152
+  trainer_153:
+    trainer_id: 153
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580522
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_153
+  trainer_154:
+    trainer_id: 154
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580523
+    training_delay_s: '22.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_154
+  trainer_155:
+    trainer_id: 155
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580524
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_155
+  trainer_156:
+    trainer_id: 156
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580525
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_156
+  trainer_157:
+    trainer_id: 157
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580526
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_157
+  trainer_158:
+    trainer_id: 158
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580527
+    training_delay_s: '32.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_158
+  trainer_159:
+    trainer_id: 159
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580528
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_159
+  trainer_160:
+    trainer_id: 160
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580529
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_160
+  trainer_161:
+    trainer_id: 161
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580530
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_161
+  trainer_162:
+    trainer_id: 162
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580531
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_162
+  trainer_163:
+    trainer_id: 163
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580532
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_163
+  trainer_164:
+    trainer_id: 164
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580533
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_164
+  trainer_165:
+    trainer_id: 165
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580534
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_165
+  trainer_166:
+    trainer_id: 166
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580535
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_166
+  trainer_167:
+    trainer_id: 167
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580536
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_167
+  trainer_168:
+    trainer_id: 168
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580537
+    training_delay_s: '25.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_168
+  trainer_169:
+    trainer_id: 169
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580538
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_169
+  trainer_170:
+    trainer_id: 170
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580539
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_170
+  trainer_171:
+    trainer_id: 171
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580540
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_171
+  trainer_172:
+    trainer_id: 172
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580541
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_172
+  trainer_173:
+    trainer_id: 173
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580542
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_173
+  trainer_174:
+    trainer_id: 174
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580543
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_174
+  trainer_175:
+    trainer_id: 175
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580544
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_175
+  trainer_176:
+    trainer_id: 176
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580545
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_176
+  trainer_177:
+    trainer_id: 177
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580546
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_177
+  trainer_178:
+    trainer_id: 178
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580547
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_178
+  trainer_179:
+    trainer_id: 179
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580548
+    training_delay_s: '24.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_179
+  trainer_180:
+    trainer_id: 180
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580549
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_180
+  trainer_181:
+    trainer_id: 181
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580550
+    training_delay_s: '56.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_181
+  trainer_182:
+    trainer_id: 182
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580551
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_182
+  trainer_183:
+    trainer_id: 183
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580552
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_183
+  trainer_184:
+    trainer_id: 184
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580553
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_184
+  trainer_185:
+    trainer_id: 185
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580554
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_185
+  trainer_186:
+    trainer_id: 186
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580555
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_186
+  trainer_187:
+    trainer_id: 187
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580556
+    training_delay_s: '31.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_187
+  trainer_188:
+    trainer_id: 188
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580557
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_188
+  trainer_189:
+    trainer_id: 189
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580558
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_189
+  trainer_190:
+    trainer_id: 190
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580559
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_190
+  trainer_191:
+    trainer_id: 191
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580560
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_191
+  trainer_192:
+    trainer_id: 192
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580561
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_192
+  trainer_193:
+    trainer_id: 193
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580562
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_193
+  trainer_194:
+    trainer_id: 194
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580563
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_194
+  trainer_195:
+    trainer_id: 195
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580564
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_195
+  trainer_196:
+    trainer_id: 196
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580565
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_196
+  trainer_197:
+    trainer_id: 197
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580566
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_197
+  trainer_198:
+    trainer_id: 198
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580567
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_198
+  trainer_199:
+    trainer_id: 199
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580568
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_199
+  trainer_200:
+    trainer_id: 200
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580569
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_200
+  trainer_201:
+    trainer_id: 201
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580570
+    training_delay_s: '18.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_201
+  trainer_202:
+    trainer_id: 202
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580571
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_202
+  trainer_203:
+    trainer_id: 203
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580572
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_203
+  trainer_204:
+    trainer_id: 204
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580573
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_204
+  trainer_205:
+    trainer_id: 205
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580574
+    training_delay_s: '24.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_205
+  trainer_206:
+    trainer_id: 206
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580575
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_206
+  trainer_207:
+    trainer_id: 207
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580576
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_207
+  trainer_208:
+    trainer_id: 208
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580577
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_208
+  trainer_209:
+    trainer_id: 209
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580578
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_209
+  trainer_210:
+    trainer_id: 210
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580579
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_210
+  trainer_211:
+    trainer_id: 211
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580580
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_211
+  trainer_212:
+    trainer_id: 212
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580581
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_212
+  trainer_213:
+    trainer_id: 213
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580582
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_213
+  trainer_214:
+    trainer_id: 214
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580583
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_214
+  trainer_215:
+    trainer_id: 215
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580584
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_215
+  trainer_216:
+    trainer_id: 216
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580585
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_216
+  trainer_217:
+    trainer_id: 217
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580586
+    training_delay_s: '28.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_217
+  trainer_218:
+    trainer_id: 218
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580587
+    training_delay_s: '31.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_218
+  trainer_219:
+    trainer_id: 219
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580588
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_219
+  trainer_220:
+    trainer_id: 220
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580589
+    training_delay_s: '26.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_220
+  trainer_221:
+    trainer_id: 221
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580590
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_221
+  trainer_222:
+    trainer_id: 222
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580591
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_222
+  trainer_223:
+    trainer_id: 223
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580592
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_223
+  trainer_224:
+    trainer_id: 224
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580593
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_224
+  trainer_225:
+    trainer_id: 225
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580594
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_225
+  trainer_226:
+    trainer_id: 226
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580595
+    training_delay_s: '13.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_226
+  trainer_227:
+    trainer_id: 227
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580596
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_227
+  trainer_228:
+    trainer_id: 228
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580597
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_228
+  trainer_229:
+    trainer_id: 229
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580598
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_229
+  trainer_230:
+    trainer_id: 230
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580599
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_230
+  trainer_231:
+    trainer_id: 231
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580600
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_231
+  trainer_232:
+    trainer_id: 232
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580601
+    training_delay_s: '27.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_232
+  trainer_233:
+    trainer_id: 233
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580602
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_233
+  trainer_234:
+    trainer_id: 234
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580603
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_234
+  trainer_235:
+    trainer_id: 235
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580604
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_235
+  trainer_236:
+    trainer_id: 236
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580605
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_236
+  trainer_237:
+    trainer_id: 237
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580606
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_237
+  trainer_238:
+    trainer_id: 238
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580607
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_238
+  trainer_239:
+    trainer_id: 239
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580608
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_239
+  trainer_240:
+    trainer_id: 240
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580609
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_240
+  trainer_241:
+    trainer_id: 241
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580610
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_241
+  trainer_242:
+    trainer_id: 242
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580611
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_242
+  trainer_243:
+    trainer_id: 243
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580612
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_243
+  trainer_244:
+    trainer_id: 244
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580613
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_244
+  trainer_245:
+    trainer_id: 245
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580614
+    training_delay_s: '20.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_245
+  trainer_246:
+    trainer_id: 246
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580615
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_246
+  trainer_247:
+    trainer_id: 247
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580616
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_247
+  trainer_248:
+    trainer_id: 248
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580617
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_248
+  trainer_249:
+    trainer_id: 249
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580618
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_249
+  trainer_250:
+    trainer_id: 250
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580619
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_250
+  trainer_251:
+    trainer_id: 251
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580620
+    training_delay_s: '31.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_251
+  trainer_252:
+    trainer_id: 252
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580621
+    training_delay_s: '6.0'
+    speed_class: medium
+    mobiperf_device_id: device_252
+  trainer_253:
+    trainer_id: 253
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580622
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_253
+  trainer_254:
+    trainer_id: 254
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580623
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_254
+  trainer_255:
+    trainer_id: 255
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580624
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_255
+  trainer_256:
+    trainer_id: 256
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580625
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_256
+  trainer_257:
+    trainer_id: 257
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580626
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_257
+  trainer_258:
+    trainer_id: 258
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580627
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_258
+  trainer_259:
+    trainer_id: 259
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580628
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_259
+  trainer_260:
+    trainer_id: 260
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580629
+    training_delay_s: '5.0'
+    speed_class: medium
+    mobiperf_device_id: device_260
+  trainer_261:
+    trainer_id: 261
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580630
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_261
+  trainer_262:
+    trainer_id: 262
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580631
+    training_delay_s: '28.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_262
+  trainer_263:
+    trainer_id: 263
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580632
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_263
+  trainer_264:
+    trainer_id: 264
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580633
+    training_delay_s: '29.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_264
+  trainer_265:
+    trainer_id: 265
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580634
+    training_delay_s: '16.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_265
+  trainer_266:
+    trainer_id: 266
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580635
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_266
+  trainer_267:
+    trainer_id: 267
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580636
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_267
+  trainer_268:
+    trainer_id: 268
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580637
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_268
+  trainer_269:
+    trainer_id: 269
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580638
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_269
+  trainer_270:
+    trainer_id: 270
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580639
+    training_delay_s: '7.0'
+    speed_class: medium
+    mobiperf_device_id: device_270
+  trainer_271:
+    trainer_id: 271
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580640
+    training_delay_s: '3.0'
+    speed_class: fast
+    mobiperf_device_id: device_271
+  trainer_272:
+    trainer_id: 272
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580641
+    training_delay_s: '10.0'
+    speed_class: slow
+    mobiperf_device_id: device_272
+  trainer_273:
+    trainer_id: 273
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580642
+    training_delay_s: '40.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_273
+  trainer_274:
+    trainer_id: 274
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580643
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_274
+  trainer_275:
+    trainer_id: 275
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580644
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_275
+  trainer_276:
+    trainer_id: 276
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580645
+    training_delay_s: '17.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_276
+  trainer_277:
+    trainer_id: 277
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580646
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_277
+  trainer_278:
+    trainer_id: 278
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580647
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_278
+  trainer_279:
+    trainer_id: 279
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580648
+    training_delay_s: '2.0'
+    speed_class: fast
+    mobiperf_device_id: device_279
+  trainer_280:
+    trainer_id: 280
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580649
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_280
+  trainer_281:
+    trainer_id: 281
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580650
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_281
+  trainer_282:
+    trainer_id: 282
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580651
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_282
+  trainer_283:
+    trainer_id: 283
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580652
+    training_delay_s: '21.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_283
+  trainer_284:
+    trainer_id: 284
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580653
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_284
+  trainer_285:
+    trainer_id: 285
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580654
+    training_delay_s: '34.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_285
+  trainer_286:
+    trainer_id: 286
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580655
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_286
+  trainer_287:
+    trainer_id: 287
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580656
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_287
+  trainer_288:
+    trainer_id: 288
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580657
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_288
+  trainer_289:
+    trainer_id: 289
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580658
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_289
+  trainer_290:
+    trainer_id: 290
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580659
+    training_delay_s: '15.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_290
+  trainer_291:
+    trainer_id: 291
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580660
+    training_delay_s: '23.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_291
+  trainer_292:
+    trainer_id: 292
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580661
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_292
+  trainer_293:
+    trainer_id: 293
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580662
+    training_delay_s: '8.0'
+    speed_class: medium
+    mobiperf_device_id: device_293
+  trainer_294:
+    trainer_id: 294
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580663
+    training_delay_s: '4.0'
+    speed_class: fast
+    mobiperf_device_id: device_294
+  trainer_295:
+    trainer_id: 295
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580664
+    training_delay_s: '19.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_295
+  trainer_296:
+    trainer_id: 296
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580665
+    training_delay_s: '14.0'
+    speed_class: very_slow
+    mobiperf_device_id: device_296
+  trainer_297:
+    trainer_id: 297
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580666
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_297
+  trainer_298:
+    trainer_id: 298
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580667
+    training_delay_s: '12.0'
+    speed_class: slow
+    mobiperf_device_id: device_298
+  trainer_299:
+    trainer_id: 299
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580668
+    training_delay_s: '9.0'
+    speed_class: slow
+    mobiperf_device_id: device_299
+  trainer_300:
+    trainer_id: 300
+    task_id: 505f9fc483cf4df68a2409257b5fad7d3c580669
+    training_delay_s: '11.0'
+    speed_class: slow
+    mobiperf_device_id: device_300

@@ -1,0 +1,179 @@
+# Baseline catalog. Each entry defines the selector / optimizer / tracking +
+# trainer-side overrides that uniquely characterize a baseline. Per-experiment
+# values (c, aggGoal, batchSize, rounds, ...) belong in the experiment YAML
+# and get deep-merged on top of the baseline.
+#
+# Schema:
+#   baselines.<name>.description         (str)
+#   baselines.<name>.example             (dict)  launcher paths; aggregator_main fixes the stack
+#   baselines.<name>.aggregator          (dict)  fields merged into aggregator JSON
+#   baselines.<name>.trainer             (dict)  fields merged into per-trainer config
+#
+# Reserved keys at experiment level for overrides:
+#   experiment.aggregator.config_overrides  (dict)  deep-merged into aggregator JSON last
+#   experiment.trainer.config_overrides     (dict)  deep-merged into trainer config last
+
+baselines:
+
+  felix:
+    description: >-
+      Felix = async_oort selector (evalGoalFactor=1) + fedbuff optimizer
+      (use_oort_lr=True, agg_rate_conf.type=new). Uses client_notify (NOT
+      oracular tracking).
+    example:
+      aggregator_main: aggregator/pytorch/main_asyncfl_agg.py
+    aggregator:
+      selector:
+        sort: async_oort
+        kwargs:
+          evalGoalFactor: 1.0
+          selectType: default
+          roundNudgeType: last_train
+      optimizer:
+        sort: fedbuff
+        kwargs:
+          use_oort_lr: "True"
+          dataset_name: cifar-10
+          agg_rate_conf:
+            type: new
+            scale: 0.4
+            a_exp: 0.25
+            b_exp: 0.1
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NA"
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "True"
+        wait_until_next_avl: "True"
+
+  refl:
+    description: >-
+      REFL = refl_oort selector + refl optimizer with oracular availability
+      tracking (priority-based selection, staleness-aware aggregation).
+    example:
+      aggregator_main: aggregator/pytorch/main_oort_sync_agg.py
+    aggregator:
+      selector:
+        sort: refl_oort
+        kwargs:
+          avail_priority: 1
+          blacklist_rounds: 50
+          pacer_step: 20
+          pacer_delta: 5
+          exploration_factor: 0.9
+          exploration_decay: 0.98
+          exploration_min: 0.2
+      optimizer:
+        sort: refl
+        kwargs:
+          deadline: 100
+          stale_update: 5
+          stale_factor: -4
+          stale_beta: 0.35
+          scale_coff: 10.0
+          target_ratio: 0.8
+          initial_deadline: 100.0
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "True"
+          type: ORACULAR
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+
+  feddance:
+    description: >-
+      FedDance = feddance selector (V_m * I_m * A_m with MAB exploration) +
+      FedAvg optimizer.
+    example:
+      aggregator_main: aggregator/pytorch/main_fedavg_agg.py
+    aggregator:
+      selector:
+        sort: feddance
+        kwargs:
+          history_window: 50
+          prediction_window: 5
+          accuracy_window: 5
+          negative_accuracy_handling: relu
+          overcommitment: 1.0
+          lambda_cold_start: 0.5
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "True"
+          type: ORACULAR
+    trainer:
+      hyperparameters:
+        use_oort_loss_fn: "True"
+
+  oort:
+    description: Oort selector (sync) + FedAvg optimizer, oracular tracking.
+    example:
+      aggregator_main: aggregator/pytorch/main_oort_sync_agg.py
+    aggregator:
+      selector:
+        sort: oort
+        kwargs: {}
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "True"
+          type: ORACULAR
+    trainer:
+      hyperparameters:
+        use_oort_loss_fn: "True"
+
+  fedbuff:
+    description: FedBuff = fedbuff selector (uniform async) + fedbuff optimizer. Async stack.
+    example:
+      aggregator_main: aggregator/pytorch/main_asyncfl_agg.py
+    aggregator:
+      selector:
+        sort: fedbuff
+        kwargs: {}
+      optimizer:
+        sort: fedbuff
+        kwargs:
+          use_oort_lr: "False"
+          dataset_name: cifar-10
+          agg_rate_conf:
+            type: old
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NA"
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+
+  fedavg:
+    description: FedAvg = random selector (sync) + fedavg optimizer. Base syncfl stack.
+    example:
+      aggregator_main: aggregator/pytorch/main_fedavg_agg.py
+    aggregator:
+      selector:
+        sort: random
+        kwargs: {}
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NA"
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"
+          trace: syn_0

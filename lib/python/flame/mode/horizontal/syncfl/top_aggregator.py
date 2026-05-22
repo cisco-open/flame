@@ -43,16 +43,19 @@ from flame.optimizers import optimizer_provider
 from flame.plugin import PluginManager, PluginType
 from flame.registries import registry_provider
 from flame.monitor.runtime import timer_decorator, FwdLLMStage
+from flame.selector.properties import (
+    PROP_LOCAL_ACCURACY,
+    PROP_ROUND_DURATION,
+    PROP_ROUND_END_TIME,
+    PROP_ROUND_START_TIME,
+    PROP_STAT_UTILITY,
+)
 
 logger = logging.getLogger(__name__)
 
 TAG_DISTRIBUTE = "distribute"
 TAG_AGGREGATE = "aggregate"
 TAG_HEARTBEAT = "heartbeat_recv"
-PROP_ROUND_START_TIME = "round_start_time"
-PROP_ROUND_END_TIME = "round_end_time"
-PROP_STAT_UTILITY = "stat_utility"
-PROP_ROUND_DURATION = "round_duration"
 
 
 class TopAggregator(Role, metaclass=ABCMeta):
@@ -265,38 +268,27 @@ class TopAggregator(Role, metaclass=ABCMeta):
                     channel,
                 )
 
-            stat_utility = 0  # default
+            stat_utility = 0
             if MessageType.STAT_UTILITY in msg:
                 channel.set_end_property(
                     end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
                 )
                 stat_utility = msg[MessageType.STAT_UTILITY]
 
+            if MessageType.LOCAL_ACCURACY in msg:
+                channel.set_end_property(
+                    end, PROP_LOCAL_ACCURACY, msg[MessageType.LOCAL_ACCURACY]
+                )
+
             logger.debug(f"{end}'s parameters trained with {count} samples")
 
             if weights is not None and count > 0:
                 total += count
                 tres = TrainResult(weights, count)
-                # save training result from trainer in a disk cache
                 self.cache[end] = tres
 
-                # CRITICAL FIX: Track received ends so selector can clean up in-flight set
-                # This prevents re-selecting trainers that haven't returned their updates yet
-                if hasattr(channel, "_selector") and hasattr(
-                    channel._selector, "ordered_updates_recv_ends"
-                ):
-                    channel._selector.ordered_updates_recv_ends.append(end)
-                    logger.info(
-                        f"[REFL_FIX] Added {end[-8:]} to ordered_updates_recv_ends. "
-                        f"Total received this round: {len(channel._selector.ordered_updates_recv_ends)}"
-                    )
-                    # DEBUG: Track trainer 389 specifically
-                    test_trainer_id = "505f9fc483cf4df68a2409257b5fad7d3c580389"
-                    if end == test_trainer_id:
-                        logger.info(
-                            f"[DEBUG_389_RECV] Trainer 389 update received! Round={self._round}, "
-                            f"model_version={tres.version}, staleness={self._round - tres.version}"
-                        )
+                if channel._selector is not None:
+                    channel._selector.on_update_received(end, msg, self._round)
 
                 update_staleness_val = self._round - tres.version
 
@@ -328,23 +320,11 @@ class TopAggregator(Role, metaclass=ABCMeta):
             time.sleep(1)
             return
 
-        # set global weights
         self.weights = global_weights
-
-        # update model with global weights
         self._update_model()
 
-        # CRITICAL FIX: Clean up received ends from selector's in-flight tracking
-        # This must happen AFTER aggregation completes to free up trainers for next round
-        if hasattr(channel, "_selector") and hasattr(
-            channel._selector, "_cleanup_recvd_ends"
-        ):
-            logger.info(
-                f"[REFL_FIX] Calling _cleanup_recvd_ends after aggregation. "
-                f"Received {len(self.cache)} updates this round."
-            )
-            channel._selector._cleanup_recvd_ends(channel._ends)
-            logger.info("[REFL_FIX] _cleanup_recvd_ends completed")
+        if channel._selector is not None:
+            channel._selector.on_round_completed(channel._ends, self._round)
 
     def put(self, tag: str, task_to_perform: str = "train") -> None:
         """Set data to remote role(s)."""
@@ -378,31 +358,10 @@ class TopAggregator(Role, metaclass=ABCMeta):
         selected_ends = channel.ends()
         datasampler_metadata = self.datasampler.get_metadata(self._round, selected_ends)
 
-        # send out global model parameters to trainers
         for idx, end in enumerate(selected_ends):
             logger.info(
                 f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
             )
-            # DEBUG: Track trainer 389 specifically
-            test_trainer_id = "505f9fc483cf4df68a2409257b5fad7d3c580389"
-            if end == test_trainer_id:
-                # Check if 389 is in selected_ends (in-flight set)
-                if hasattr(channel, "_selector") and hasattr(
-                    channel._selector, "selected_ends"
-                ):
-                    trainer_389_in_selected = (
-                        test_trainer_id in channel._selector.selected_ends
-                    )
-                    logger.warning(
-                        f"[DEBUG_389_SEND] Sending round {self._round} weights to trainer 389. "
-                        f"389_in_selected_ends={trainer_389_in_selected}, "
-                        f"selected_ends_size={len(channel._selector.selected_ends)}"
-                    )
-                else:
-                    logger.warning(
-                        f"[DEBUG_389_SEND] Sending round {self._round} weights to trainer 389. "
-                        f"No selected_ends found on selector!"
-                    )
             channel.send(
                 end,
                 {

@@ -58,53 +58,35 @@ Note that if you also want to use the local `mqtt` broker for other examples you
 
 ### Environment Setup
 
-We recommend setting up your environment with `conda`. Within the cloned flame directory, run the following to activate and setup the flame environment:
+From the cloned repo root:
 
 ```bash
-# Run within the cloned flame directory
-cd lib/python/flame
-conda create -n flame python=3.9
+bash scripts/setup_env.sh flame
 conda activate flame
-
-pip install google
-pip install tensorflow
-pip install torch
-pip install torchvision
-
-cd ..
-make install
 ```
 
-To install flame in editable development mode, run the following instead of the `make install` command:
-```bash
-python -m pip install -e .
-```
+That creates a conda env named `flame` (Python 3.11) and installs the flame
+library plus the `[examples]` and `[dev]` extras (torch, torchvision,
+sortedcontainers, wandb, pytest, ...). It uses the dependency spec in
+`lib/python/setup.py`.
 
 ### Running an Example
 
-We will run the MNIST example with one aggregator and one trainer.
-
-Open two terminal windows.
-
-In the first terminal, once you are in `flame/lib/python/examples/mnist/trainer`, run:
+Experiments are driven by YAML descriptors consumed by `flame.launch`. For
+example, a 10-trainer Felix smoke test on async CIFAR-10:
 
 ```bash
-conda activate flame
-
-python keras/main.py config.json
+python -m flame.launch.run_experiment \
+    lib/python/examples/async_cifar10/expt_scripts_2026/felix_n10_alpha100_syn20_smoke.yaml
 ```
 
-Open another terminal in `flame/lib/python/examples/mnist/aggregator` and run:
+The launcher:
+1. Parses the experiment YAML.
+2. Merges the baseline (e.g. `baseline: felix`) + per-experiment overrides
+   into a complete aggregator config; prints field provenance.
+3. Spawns the aggregator + N trainers via `--config-json`.
+4. Writes logs + a snapshot of the merged configs into
+   `experiments/run_<timestamp>_<name>/`.
 
-```bash
-conda activate flame
-
-python keras/main.py config.json
-```
-
-In this example, we have one aggregator and one trainer that runs with the same job ID and different task IDs.
-After running, you will see the aggregator (second terminal) sending a global model to the trainer (first terminal), and the trainer sending the updated local model back to the aggregator.
-
-This completes one round of communication between the aggregator and trainer.
-
-The current example is set to 20 rounds (see the `hyperparameters` section of the `flame/lib/python/examples/mnist/aggregator/config.json` file), meaning the communication protocol described earlier will repeat 20 times.
+For the catalog of available examples and details of the metadata
+hierarchy, see [`lib/python/examples/README.md`](../lib/python/examples/README.md).

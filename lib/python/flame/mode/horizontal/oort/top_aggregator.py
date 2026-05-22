@@ -21,6 +21,7 @@ from copy import deepcopy
 from datetime import datetime
 from typing import Any, Tuple
 
+from flame.channel import VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
 from flame.mode.message import MessageType
@@ -469,7 +470,7 @@ class TopAggregator(BaseTopAggregator):
                     break
         
         # Now perform the actual selection
-        selected_ends = channel.ends()
+        selected_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
         
         if not selected_ends or len(selected_ends) == 0:
             logger.error(

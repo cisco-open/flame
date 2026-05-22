@@ -1,17 +1,4 @@
 # Copyright 2022 Cisco Systems, Inc. and its affiliates
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
 # SPDX-License-Identifier: Apache-2.0
 """Package setup script."""
 
@@ -28,28 +15,39 @@ setup(
     scripts=["scripts/flame-config"],
     url="https://github.com/cisco-open/flame/",
     license="LICENSE.txt",
-    description="This package is a python library"
-    " to run ML workloads in the flame system",
+    description="Python library to run ML workloads in the flame system",
     long_description=open("README.md").read(),
+    python_requires=">=3.10",
+    # Core flame package deps. Example/test/dev deps live in extras.
     install_requires=[
         "aiostream",
         "boto3",
         "cloudpickle",
         "diskcache",
-        "mlflow==2.12.1",
-        "paho-mqtt",
-        "protobuf==3.20.3",
-        "grpcio==1.53.2",
-        "pydantic<2.0",
-        "gpustat",
-        "psutil",
-        "numpy",
-        "pathlib",
         "fedscale",
-        "shared-memory-dict==0.7.2",
+        "gpustat",
+        "grpcio",
+        "mlflow",
+        "numpy",
+        "paho-mqtt",
+        "protobuf",
+        "psutil",
+        "pydantic",
+        "PyYAML",
+        "requests",
+        "shared-memory-dict",
+        "zstandard",
     ],
     extras_require={
+        # Runtime deps for examples/<x>/ workloads (torch + utilities).
+        "examples": [
+            "torch",
+            "torchvision",
+            "sortedcontainers",
+            "wandb",
+        ],
         "dev": [
+            "pytest",
             "pre-commit",
             "black",
             "flake8",

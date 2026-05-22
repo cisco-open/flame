@@ -167,15 +167,9 @@ class PyTorchCifar10Aggregator(TopAggregator):
 
 
 if __name__ == "__main__":
-    import argparse
+    from flame.launch.cli import load_config_from_argv
 
-    parser = argparse.ArgumentParser(description="")
-    parser.add_argument("config", nargs="?", default="./config.json")
-
-    args = parser.parse_args()
-
-    config = Config(args.config)
-
+    config = load_config_from_argv()
     a = PyTorchCifar10Aggregator(config)
     a.compose()
     a.run()

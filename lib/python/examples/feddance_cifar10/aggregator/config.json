@@ -1,0 +1,85 @@
+{
+    "taskid": "feddance0aggregator0000000000000000000000",
+    "backend": "mqtt",
+    "brokers": [
+        {
+            "host": "localhost",
+            "sort": "mqtt"
+        },
+        {
+            "host": "localhost:10104",
+            "sort": "p2p"
+        }
+    ],
+    "groupAssociation": {
+        "param-channel": "default"
+    },
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {
+                "type": "tag",
+                "value": [
+                    "default"
+                ]
+            },
+            "name": "param-channel",
+            "pair": [
+                "trainer",
+                "aggregator"
+            ],
+            "funcTags": {
+                "aggregator": [
+                    "distribute",
+                    "aggregate"
+                ],
+                "trainer": [
+                    "fetch",
+                    "upload"
+                ]
+            }
+        }
+    ],
+    "dataset": "https://storage.googleapis.com/tensorflow/tf-keras-datasets/mnist.npz",
+    "dependencies": [
+        "numpy >= 1.2.0"
+    ],
+    "hyperparameters": {
+        "batchSize": 10,
+        "learningRate": 0.01,
+        "rounds": 400,
+        "epochs": 1,
+        "aggGoal": 10
+    },
+    "baseModel": {
+        "name": "",
+        "version": 1
+    },
+    "job": {
+        "id": "feddance0cifar10",
+        "name": "feddance-cifar10"
+    },
+    "registry": {
+        "sort": "dummy",
+        "uri": ""
+    },
+    "selector": {
+        "sort": "feddance",
+        "kwargs": {
+            "aggr_num": 10,
+            "history_window": 50,
+            "prediction_window": 5,
+            "accuracy_window": 5,
+            "negative_accuracy_handling": "relu",
+            "overcommitment": 1.0,
+            "lambda_cold_start": 0.5
+        }
+    },
+    "optimizer": {
+        "sort": "fedavg",
+        "kwargs": {}
+    },
+    "maxRunTime": 1800,
+    "realm": "default",
+    "role": "aggregator"
+}

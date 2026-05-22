@@ -1,0 +1,58 @@
+# Felix on async_cifar10: 300 trainers, homogeneous (alpha=100), 20% synthetic unavailability.
+#
+# Uses baseline:felix to pick up async_oort + fedbuff(use_oort_lr, agg_rate_conf=new)
+# + client_notify. C and aggGoal are per-N overrides set here.
+#
+# Run:
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/async_cifar10/expt_scripts_2026/felix_n300_alpha100_syn20.yaml
+
+experiments:
+  - name: felix_n300_alpha100_syn20
+    description: "Felix baseline, n=300, alpha=100, syn_20 trace"
+
+    baseline: felix
+
+    trainer:
+      num_trainers: 300
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_20
+      enable_training_delays: true
+      speedup_factor: 1.0
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_20
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 10
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n300_alpha100_syn20
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 20000
+          aggGoal: 10
+        selector:
+          kwargs:
+            c: 30
+            aggGoal: 10
+
+    execution:
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 30
+      monitoring:
+        enabled: false

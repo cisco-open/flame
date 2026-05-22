@@ -19,6 +19,7 @@ from .config import SelectorType
 from .object_factory import ObjectFactory
 from .selector.async_oort import AsyncOortSelector
 from .selector.default import DefaultSelector
+from .selector.feddance import FedDanceSelector
 from .selector.fedbuff import FedBuffSelector
 from .selector.oort import OortSelector
 from .selector.random import RandomSelector
@@ -42,3 +43,4 @@ selector_provider.register(SelectorType.OORT, OortSelector)
 selector_provider.register(SelectorType.ASYNC_OORT, AsyncOortSelector)
 selector_provider.register(SelectorType.REFL_OORT, REFLOortSelector)
 selector_provider.register(SelectorType.ASYNC_RANDOM, AsyncRandomSelector)
+selector_provider.register(SelectorType.FEDDANCE, FedDanceSelector)

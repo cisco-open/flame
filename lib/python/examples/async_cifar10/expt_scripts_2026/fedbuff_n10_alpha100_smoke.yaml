@@ -1,0 +1,50 @@
+# FedBuff async smoke test: 10 trainers, homogeneous (alpha=100), no failures.
+#
+# Run:
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/async_cifar10/expt_scripts_2026/fedbuff_n10_alpha100_smoke.yaml
+
+experiments:
+  - name: fedbuff_n10_alpha100_smoke
+    description: "FedBuff async smoke (10 trainers, alpha=100, syn_0)."
+
+    baseline: fedbuff
+
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      speedup_factor: 1.0
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: fedbuff
+      tracking_mode: default
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: fedbuff_n10_alpha100_smoke
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 200
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

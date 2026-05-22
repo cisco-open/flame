@@ -35,9 +35,9 @@ from flame.channel import (
 )
 from flame.end import KEY_END_STATE, VAL_END_STATE_NONE, VAL_END_STATE_RECVD, End
 from flame.config import TrainerAvailState
+from flame.selector.properties import PROP_AVL_STATE
 
 logger = logging.getLogger(__name__)
-PROP_AVL_STATE = "avl_state"
 SEND_TIMEOUT_WAIT_S = 90
 
 

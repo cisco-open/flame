@@ -22,24 +22,24 @@ from datetime import timedelta
 from collections import deque
 import numpy as np
 
-import numpy as np
 from flame.common.typing import Scalar
 from flame.common.util import MLFramework, get_ml_framework_in_use
 from flame.end import End
 from flame.selector import AbstractSelector, SelectorReturnType
+from flame.selector.properties import (
+    PROP_DATASET_SIZE,
+    PROP_END_ID,
+    PROP_LAST_EVAL_ROUND,
+    PROP_LAST_SELECTED_ROUND,
+    PROP_ROUND_DURATION,
+    PROP_ROUND_START_TIME,
+    PROP_SELECTED_COUNT,
+    PROP_STAT_UTILITY,
+    PROP_UPDATE_COUNT,
+    PROP_UTILITY,
+)
 
 logger = logging.getLogger(__name__)
-
-PROP_UTILITY = "utility"
-PROP_END_ID = "end_id"
-PROP_SELECTED_COUNT = "selected_count"
-PROP_ROUND_START_TIME = "round_start_time"
-PROP_ROUND_DURATION = "round_duration"
-PROP_STAT_UTILITY = "stat_utility"
-PROP_DATASET_SIZE = "dataset_size"
-PROP_UPDATE_COUNT = "update_count"
-PROP_LAST_SELECTED_ROUND = "last_selected_round"
-PROP_LAST_EVAL_ROUND = "last_eval_round"
 
 
 class OortSelector(AbstractSelector):
@@ -84,17 +84,6 @@ class OortSelector(AbstractSelector):
         self.blocklist_threshold = -1
 
         self.alpha = 2
-
-        # Tracks updates received from trainers and makes them
-        # available to select again NOTE: Not used in sync but just
-        # present there
-        self.ordered_updates_recv_ends = list()
-
-        # CRITICAL: Initialize selected_ends as a set to track in-flight trainers
-        # For SyncFL with overcommitment, this prevents re-selecting trainers
-        # that haven't returned their updates yet
-        if not hasattr(self, 'selected_ends'):
-            self.selected_ends = set()
 
         # Track sliding window statistics for the selector
         self._selector_stats = {}
@@ -167,23 +156,7 @@ class OortSelector(AbstractSelector):
         task_to_perform: str,
         **kwargs,
     ) -> SelectorReturnType:
-        """Return k number of ends from the given ends.
-
-        Additional kwargs (used in async FL contexts, unused in sync Oort):
-        - agg_version_state: Aggregator's (model_version, data_id, iteration_id)
-        - trainer_version_states: Map of trainer_id to version triplets
-        """
-        logger.debug("calling oort select")
-        # Extract async FL params for forward compatibility (unused in sync Oort)
-        agg_version_state = kwargs.get("agg_version_state")
-        trainer_version_states = kwargs.get("trainer_version_states")
-        if agg_version_state is not None:
-            logger.debug(f"Received aggregator version state: {agg_version_state}")
-        if trainer_version_states is not None:
-            logger.debug(
-                f"Received trainer version states for {len(trainer_version_states)} trainers"
-            )
-
+        """Return k number of ends from the given ends."""
         num_of_ends = min(len(ends), self.num_of_ends)
         if num_of_ends == 0:
             logger.debug("ends is empty")
@@ -194,54 +167,30 @@ class OortSelector(AbstractSelector):
             f"let's select {num_of_ends} ends for new round {round}, task: {task_to_perform}"
         )
 
-        # NOTE: Cleanup of ordered_updates_recv_ends and selected_ends is now done
-        # in _cleanup_recvd_ends() immediately after aggregation completes.
-        # This fixes a race condition where trainers returning updates between
-        # agg_goal and next select() would be incorrectly kept in the in-flight set.
-
-        # Return existing selected end_ids if the round did not
-        # proceed
-        if round <= self.round and hasattr(self, 'selected_ends') and len(self.selected_ends) != 0:
+        if round <= self.round and len(self.selected_ends) != 0:
             return {key: None for key in self.selected_ends}
 
-        # Run pacer that controls round_threshold
         self.pacer()
 
-        # CRITICAL FOR SYNCFL WITH OVERCOMMITMENT:
-        # Filter out trainers that are currently "in flight" (selected but haven't returned)
-        in_flight_trainers = self.selected_ends if hasattr(self, 'selected_ends') and isinstance(self.selected_ends, set) else set()
-        
-        # Filter ends to exclude in-flight trainers
         eligible_ends = {
             end_id: end
             for end_id, end in ends.items()
-            if end_id not in in_flight_trainers
+            if end_id not in self.selected_ends
         }
-        
-        logger.info(
-            f"[OORT_SELECT] Round {round}: Eligible ends: {len(eligible_ends)} out of {len(ends)} "
-            f"(in_flight: {len(in_flight_trainers)}, desired: {num_of_ends})"
-        )
-        
-        # CRITICAL: Check if we have enough eligible trainers
+
         if len(eligible_ends) == 0:
             logger.error(
-                f"[OORT_SELECT] Round {round}: NO eligible trainers! "
-                f"total_ends={len(ends)}, in_flight={len(in_flight_trainers)}"
+                f"[OORT_SELECT] Round {round}: no eligible trainers "
+                f"(total={len(ends)}, in_flight={len(self.selected_ends)})"
             )
             return {}
-        
+
         if len(eligible_ends) < num_of_ends:
-            shortage = num_of_ends - len(eligible_ends)
             logger.warning(
-                f"[OORT_SELECT] Round {round}: TRAINER SHORTAGE! "
-                f"Can only select {len(eligible_ends)}/{num_of_ends} trainers (shortage: {shortage}). "
-                f"total_ends={len(ends)}, in_flight={len(in_flight_trainers)}"
+                f"[OORT_SELECT] Round {round}: only {len(eligible_ends)}/{num_of_ends} trainers eligible"
             )
-            # Adjust num_of_ends to available eligible ends
             num_of_ends = len(eligible_ends)
-        
-        # Use eligible_ends instead of ends for selection
+
         ends = eligible_ends
 
         # Make a filter of blocklist ends
@@ -282,60 +231,36 @@ class OortSelector(AbstractSelector):
             num_of_ends, unexplored_end_ids
         )
 
-        # Calculate the total utility value of trainers with applying
-        # temporal uncertainty and global system utility
-        utility_list = self.calculate_total_utility(utility_list, ends, round)
-
-        logger.debug(f"{utility_list=}")
-
-        # cutOfUtil from Oort algorithm
-        cutoff_utility = self.cutoff_util(utility_list, num_of_ends)
-
-        # perform random if cutoff_utility == 0
-        if len(utility_list) == 0 and len(self.selected_ends) == 0:
+        if len(utility_list) == 0:
             self.round = round
             return self.select_random(ends, num_of_ends)
 
-        # sample exploitation_len of clients by utility
+        utility_list = self.calculate_total_utility(utility_list, ends, round)
+        cutoff_utility = self.cutoff_util(utility_list, num_of_ends)
+
         exploit_end_ids = self.sample_by_util(
             cutoff_utility, utility_list, exploitation_len
         )
-        logger.debug(f"exploit-selected ends: {exploit_end_ids}")
 
-        # sample exploration_len of unexplored clients
         explore_end_ids = []
         if self.exploration_factor > 0.0 and len(unexplored_end_ids) > 0:
             explore_end_ids = self.sample_by_speed(unexplored_end_ids, exploration_len)
-        logger.debug(f"explore-selected ends: {explore_end_ids}")
 
-        # Store as set to track in-flight trainers for SyncFL with overcommitment
-        # Add newly selected trainers to existing in-flight ones instead of replacing
         newly_selected = set([*explore_end_ids, *exploit_end_ids])
-        old_selected = self.selected_ends if hasattr(self, 'selected_ends') else set()
-        self.selected_ends = old_selected | newly_selected
+        self.selected_ends = self.selected_ends | newly_selected
 
-
-        # save the history of exploited utility at this round for
-        # pacer
         self.save_exploited_utility_history(ends, exploit_end_ids)
-
-        # update the exploration_factor
         self.update_exploration_factor()
-
-        # increment the round selected count on selected ends
         self.increment_selected_count_on_selected_ends(ends)
 
         logger.info(f"selected ends: {self.selected_ends}")
         self.round = round
 
-        # Computations for selector statistics
         self._select_run_counter += 1
-
         for selected_end_id in self.selected_ends:
             end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
             end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
             end_last_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
-            # Insert to queues tracking stat_util, speed, round data
             for window in [50, 100, 200]:
                 if end_stat_util is not None:
                     self._selector_stats[task_to_perform]["data"][
@@ -440,9 +365,6 @@ class OortSelector(AbstractSelector):
             curr_pacer_step_util = sum(
                 self.exploitation_util_history[-self.pacer_step :]
             )
-
-            # increases round threshold when recently exploited
-            # statistical utility decreases
             if last_pacer_step_util > curr_pacer_step_util:
                 self.round_threshold = min(
                     100.0, self.round_threshold + self.pacer_delta
@@ -464,19 +386,12 @@ class OortSelector(AbstractSelector):
     def calculate_num_of_exploration_exploitation(
         self, num_of_ends: int, unexplored_end_ids: list[str]
     ) -> tuple[int, int]:
-        """
-        Calculate number of ends to select for exploration and
-        exploitation; Add 1 to exploration_len to avoid not exploring
-        0 ends while unexplored ends exist.
-        """
-
+        """Split num_of_ends into (exploration, exploitation) counts."""
         exploration_len = min(
             int(num_of_ends * self.exploration_factor) + 1,
             len(unexplored_end_ids),
         )
-        exploitation_len = num_of_ends - exploration_len
-
-        return exploration_len, exploitation_len
+        return exploration_len, num_of_ends - exploration_len
 
     def fetch_statistical_utility(
         self,
@@ -484,13 +399,7 @@ class OortSelector(AbstractSelector):
         blocklist_end_ids: list[str],
         trainer_unavail_list: list[str],
     ) -> tuple[list[tuple[str, float]], list[str]]:
-        """
-        Make a list of tuple (end_id, end_utility) as an utility_list
-        As unexplored ends that are not selected before do not have
-        utility value, collect them separately with unexplored_end_ids
-        list
-        """
-
+        """Return (utility_list, unexplored_end_ids)."""
         utility_list = []
         unexplored_end_ids = []
 
@@ -509,31 +418,15 @@ class OortSelector(AbstractSelector):
         return utility_list, unexplored_end_ids
 
     def calculate_round_preferred_duration(self, ends: dict[str, End]) -> float:
-        """
-        Calculate round preferred duration based on round_threshold
-        and end_round_duration of trainers. round_threshold is
-        controlled by pacer.
-        """
-        logger.debug(f"calculate_round_pref_duration ends.keys(): {ends.keys()}")
+        """Preferred round duration based on round_threshold + observed end durations."""
         if self.round_threshold < 100.0:
             sorted_round_duration = []
             for end_id in ends.keys():
                 end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
-                logger.debug(
-                    f"end_id: {end_id}, end_round_duration: {end_round_duration}"
-                )
                 if end_round_duration is not None:
                     sorted_round_duration.append(end_round_duration)
-                elif end_round_duration is None:
-                    # TODO: (DG) Check if this is needed. Was put in
-                    # as a hack for eval selector. Unsure if it will
-                    # be used in sync OORT. Can set it to 60 seconds
-                    # since that is the max round duration for
-                    # training.
+                else:
                     sorted_round_duration.append(timedelta(seconds=60))
-            logger.debug(
-                f"after for loop, sorted_round_duration: {sorted_round_duration}"
-            )
             round_preferred_duration = timedelta(
                 seconds=sorted_round_duration[
                     min(
@@ -571,15 +464,12 @@ class OortSelector(AbstractSelector):
 
         end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
 
-        # TODO:(DG) Verify if this is needed for syncfl oort. Was put
-        # in place to replicate async_oort.py.
         if end_round_duration is None:
             return 1
 
         if end_round_duration <= self.round_preferred_duration:
             return 1
         else:
-            # Get both into datetime seconds before division
             return math.pow(
                 self.round_preferred_duration.total_seconds()
                 / end_round_duration.total_seconds(),
@@ -589,208 +479,75 @@ class OortSelector(AbstractSelector):
     def save_exploited_utility_history(
         self, ends: dict[str, End], exploit_end_ids: list[str]
     ) -> None:
-        """
-        Save the history of exploited utility at this round for pacer.
-        """
-
-        if len(exploit_end_ids) > 0:
-            exploited_utility = 0
-            for exploit_end_id in exploit_end_ids:
-                exploited_utility += ends[exploit_end_id].get_property(
-                    PROP_STAT_UTILITY
-                )
-            exploited_utility /= len(exploit_end_ids)
-            self.exploitation_util_history.append(exploited_utility)
+        if not exploit_end_ids:
+            return
+        total = sum(
+            ends[eid].get_property(PROP_STAT_UTILITY) for eid in exploit_end_ids
+        )
+        self.exploitation_util_history.append(total / len(exploit_end_ids))
 
     def update_exploration_factor(self) -> None:
-        """Update the exploration_factor."""
-
         self.exploration_factor = max(
             self.exploration_factor * self.exploration_factor_decay,
             self.min_exploration_factor,
         )
 
     def increment_selected_count_on_selected_ends(self, ends: dict[str, End]) -> None:
-        """Increment the round selected count on selected ends."""
-
         for end_id in self.selected_ends:
-            if ends[end_id].get_property(PROP_SELECTED_COUNT) == None:
-                ends[end_id].set_property(PROP_SELECTED_COUNT, 1)
-            else:
-                ends[end_id].set_property(
-                    PROP_SELECTED_COUNT,
-                    ends[end_id].get_property(PROP_SELECTED_COUNT) + 1,
-                )
+            count = ends[end_id].get_property(PROP_SELECTED_COUNT) or 0
+            ends[end_id].set_property(PROP_SELECTED_COUNT, count + 1)
 
     def select_random(self, ends: dict[str, End], num_of_ends: int) -> dict[str, None]:
-        """Randomly select num_of_ends ends."""
-
-        self.selected_ends = set(random.sample(list(ends), num_of_ends))
-        logger.debug(f"selected ends: {self.selected_ends}")
-
-        return {key: None for key in self.selected_ends}
+        """Randomly select num_of_ends ends, merging with any in-flight set."""
+        newly_selected = set(random.sample(list(ends), num_of_ends))
+        self.selected_ends = self.selected_ends | newly_selected
+        return {key: None for key in newly_selected}
 
     def calculate_total_utility(
         self, utility_list: list[tuple[str, float]], ends: dict[str, End], round: int
     ) -> list[tuple[str, float]]:
-        """
-        Calculate the total utility value of trainers with applying
-        temporal uncertainty and global system utility, based on the
-        Oort algorithm.
-        """
-
-        # Calculate preferred round duration
+        """Apply temporal uncertainty and global system utility to each entry."""
         self.round_preferred_duration = self.calculate_round_preferred_duration(ends)
 
-        # Sort the utility list by the utility value placed at the
-        # index 1 of each tuple
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 
-        # Calculate the clip value that caps utility value of a client
-        # to no more than an upper bound (95% value in utility
-        # distributions)
+        # Clip at 95th percentile to bound outliers
         clip_value = utility_list[
             min(int(len(utility_list) * 0.95), len(utility_list) - 1)
         ][PROP_UTILITY]
 
-        # Calculate the final utility value of a trainer by adding the
-        # temporal uncertainty and multiplying the global system
-        # utility
         for utility_idx in range(len(utility_list)):
             curr_end_utility = utility_list[utility_idx][PROP_UTILITY]
             curr_end_id = utility_list[utility_idx][PROP_END_ID]
 
-            # Clip the utility value
+
             utility_list[utility_idx][PROP_UTILITY] = min(
                 utility_list[utility_idx][PROP_UTILITY], clip_value
             )
 
-            # Add temproal uncertainty term
-            temporal_uncertainty = self.calculate_temporal_uncertainty_of_trainer(
+            curr_end_utility += self.calculate_temporal_uncertainty_of_trainer(
                 ends, curr_end_id, round
             )
-            curr_end_utility += temporal_uncertainty
-
-            # Multiply global system utility
-            global_system_utility = self.calculate_global_system_utility_of_trainer(
+            curr_end_utility *= self.calculate_global_system_utility_of_trainer(
                 ends, curr_end_id
             )
-            curr_end_utility *= global_system_utility
-
             utility_list[utility_idx][PROP_UTILITY] = curr_end_utility
 
-        # Sort the utility list again, with the updated utility value
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 
         return utility_list
 
-    # TODO: (DG) Check why this is being invoked even if trainer
-    # doesn't explicitly invoke remove() method
     def _cleanup_removed_ends(self, end_id):
-        logger.debug(
-            f"Going to cleanup selector state for "
-            f"end_id {end_id} since it has left the channel"
-        )
+        logger.debug(f"end_id {end_id} left the channel")
 
     def _cleanup_recvd_ends(self, ends: dict[str, End]):
-        """Clean up ends whose updates were received, freeing them from selected_ends.
-
-        This method is called immediately after aggregation completes (when agg_goal is met).
-        It processes trainers who returned updates and removes them from the in-flight set,
-        making them eligible for selection in the next round.
-
-        CRITICAL: This fixes a race condition where trainers returning updates between
-        agg_goal completion and the next select() call would remain incorrectly marked
-        as in-flight, preventing their re-selection even though they're available.
-
-        For SyncFL with overcommitment (e.g., select 27, wait for 20):
-        - When 20 trainers return → agg_goal met → aggregation happens → cleanup called
-        - Any trainers in ordered_updates_recv_ends are freed from selected_ends
-        - If 7 stragglers return after this but before next select(), they're also freed
-          immediately when their updates arrive (cleanup is called again)
-        """
-        logger.info(
-            f"[CLEANUP_DEBUG] Starting cleanup: "
-            f"selected_ends has {len(self.selected_ends) if hasattr(self, 'selected_ends') else 0} trainers, "
-            f"ordered_updates_recv_ends has {len(self.ordered_updates_recv_ends)} pending"
+        """Free ends whose updates were received from the in-flight set."""
+        if not self.ordered_updates_recv_ends:
+            return
+        for end_id in self.ordered_updates_recv_ends:
+            self.selected_ends.discard(end_id)
+        logger.debug(
+            f"freed {len(self.ordered_updates_recv_ends)} ends; "
+            f"in-flight now {len(self.selected_ends)}"
         )
-
-        if not hasattr(self, 'selected_ends'):
-            self.selected_ends = set()
-
-        # Process all trainers in ordered_updates_recv_ends
-        # (These are trainers who returned updates since last cleanup)
-        num_ends_to_remove = len(self.ordered_updates_recv_ends)
-        
-        if num_ends_to_remove != 0:
-            ends_to_remove = self.ordered_updates_recv_ends.copy()
-            logger.info(
-                f"[CLEANUP_DEBUG] Will remove {num_ends_to_remove} ends from selected_ends"
-            )
-            logger.info(
-                f"[CLEANUP_DEBUG] IDs to remove: {ends_to_remove[:10]}"
-            )
-
-            # Clear the list since we're processing all of them
-            self.ordered_updates_recv_ends = []
-
-            # Remove from selected_ends (in-flight set)
-            removed_count = 0
-            not_found_count = 0
-            removed_ids = []
-            not_found_ids = []
-            
-            for end_id in ends_to_remove:
-                if end_id in self.selected_ends:
-                    self.selected_ends.remove(end_id)
-                    removed_count += 1
-                    removed_ids.append(end_id)
-                    logger.debug(f"Freed trainer ...{end_id[-8:]} from in-flight set")
-                else:
-                    not_found_count += 1
-                    not_found_ids.append(end_id)
-                    logger.debug(
-                        f"Trainer ...{end_id[-8:]} was not in selected_ends "
-                        f"(may have been cleaned up already)"
-                    )
-
-            logger.info(
-                f"[CLEANUP_DEBUG] Cleanup complete: "
-                f"Removed {removed_count} trainers, {not_found_count} were not in selected_ends. "
-                f"selected_ends now has {len(self.selected_ends)} trainers, "
-                f"ordered_updates_recv_ends has {len(self.ordered_updates_recv_ends)} trainers"
-            )
-            
-            # Log sample IDs for verification
-            if removed_count > 0:
-                logger.debug(f"[CLEANUP_DEBUG] Removed IDs (first 5): {[id[-8:] for id in removed_ids[:5]]}")
-            if not_found_count > 0:
-                logger.debug(f"[CLEANUP_DEBUG] Not-found IDs (first 5): {[id[-8:] for id in not_found_ids[:5]]}")
-        else:
-            logger.info("[CLEANUP_DEBUG] No ends to clean up (ordered_updates_recv_ends is empty)")
-
-    def remove_from_selected_ends(self, ends: dict[str, End], end_id: str) -> None:
-        """Remove an end from selected ends"""
-        selected_ends = self.selected_ends[self.requester]
-        if end_id in ends.keys():
-            if end_id in selected_ends:
-                logger.debug(
-                    f"Going to remove end_id {end_id} from selected_ends "
-                    f"{selected_ends}"
-                )
-                selected_ends.remove(end_id)
-                self.selected_ends[self.requester] = selected_ends
-                logger.debug(
-                    f"self.selected_ends: {self.selected_ends} after "
-                    f"removing end_id: {end_id}"
-                )
-            else:
-                logger.debug(
-                    f"Attempted to remove end {end_id} from "
-                    f"self.selected_ends {self.selected_ends}, but it wasnt present"
-                )
-        else:
-            logger.debug(
-                f"Attempted to remove end {end_id} from "
-                f"self.selected_ends {self.selected_ends}, but it wasnt in ends"
-            )
+        self.ordered_updates_recv_ends = []

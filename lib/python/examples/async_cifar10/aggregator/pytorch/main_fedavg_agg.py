@@ -35,32 +35,27 @@ from flame.dataset import Dataset
 from flame.mode.horizontal.top_aggregator import TopAggregator
 from torchvision.datasets import CIFAR10
 
-wandb.init(
-    # set the wandb project where this run will be logged
-    project="ft-distr-ml",
-    # track hyperparameters and run metadata
-    config={
-        # fedbuff "server_learning_rate": 40.9,
-        # "client_learning_rate": 0.000195,
-        # oort "client_learning_rate": 0.04,
-        # fedavg
-        "client_learning_rate": 0.25,
-        "architecture": "CNN",
-        "dataset": "CIFAR-10",
-        "fl-type": "sync, fedavg",
-        "agg_rounds": 750,
-        "trainer_epochs": 1,
-        "config": "hetero",
-        "alpha": 100,
-        "failures": "No failure",
-        "total clients N": 100,
-        # fedbuff "client-concurrency C": 20,
-        "client agg goal K": 10,
-        "server_batch_size": 32,
-        "client_batch_size": 32,
-        "comments": "Fedavg SyncFL no failure run",
-    },
-)
+def initialize_wandb():
+    wandb.init(
+        project="ft-distr-ml",
+        config={
+            "client_learning_rate": 0.25,
+            "architecture": "CNN",
+            "dataset": "CIFAR-10",
+            "fl-type": "sync, fedavg",
+            "agg_rounds": 750,
+            "trainer_epochs": 1,
+            "config": "hetero",
+            "alpha": 100,
+            "failures": "No failure",
+            "total clients N": 100,
+            "client agg goal K": 10,
+            "server_batch_size": 32,
+            "client_batch_size": 32,
+            "comments": "Fedavg SyncFL no failure run",
+        },
+    )
+
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +89,7 @@ class Net(nn.Module):
 class PyTorchCifar10Aggregator(TopAggregator):
     """PyTorch CIFAR-10 Aggregator."""
 
-    def __init__(self, config: Config) -> None:
+    def __init__(self, config: Config, log_to_wandb: bool = False) -> None:
         """Initialize a class instance."""
         self.config = config
         self.model = None
@@ -107,6 +102,10 @@ class PyTorchCifar10Aggregator(TopAggregator):
         self.batch_size = self.config.hyperparameters.batch_size or 16
 
         self.loss_list = []
+
+        self.log_to_wandb = log_to_wandb
+        if self.log_to_wandb:
+            initialize_wandb()
 
     def initialize(self):
         """Initialize role."""
@@ -179,8 +178,8 @@ class PyTorchCifar10Aggregator(TopAggregator):
         # be logged in a model registry.
         self.update_metrics({"test-loss": test_loss, "test-accuracy": test_accuracy})
 
-        # add metrics to wandb log
-        wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
+        if self.log_to_wandb:
+            wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
         self.loss_list.append(test_loss)
 
         # print to save to file
@@ -196,13 +195,15 @@ class PyTorchCifar10Aggregator(TopAggregator):
 if __name__ == "__main__":
     import argparse
 
+    from flame.launch.cli import load_config_from_argv
+
     parser = argparse.ArgumentParser(description="")
-    parser.add_argument("config", nargs="?", default="./config.json")
+    parser.add_argument("--log_to_wandb", action="store_true")
+    parser.add_argument("--wandb_run_name", type=str)
+    args, _ = parser.parse_known_args()
 
-    args = parser.parse_args()
+    config = load_config_from_argv()
 
-    config = Config(args.config)
-
-    a = PyTorchCifar10Aggregator(config)
+    a = PyTorchCifar10Aggregator(config, args.log_to_wandb)
     a.compose()
     a.run()

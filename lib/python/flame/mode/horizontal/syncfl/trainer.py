@@ -344,18 +344,21 @@ class Trainer(Role, metaclass=ABCMeta):
 
             self.regularizer.update()
 
-            # NOTE: Also sending stat_utility for OORT
+            self.finalize_local_accuracy()
+
             msg = {
                 MessageType.WEIGHTS: weights_to_device(delta_weights, DeviceType.CPU),
                 MessageType.DATASET_SIZE: self.dataset_size,
                 MessageType.MODEL_VERSION: self._round,
                 MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),
                 MessageType.STAT_UTILITY: self._stat_utility,
+                MessageType.LOCAL_ACCURACY: self._local_accuracy,
             }
         else:
             msg = {
                 MessageType.MODEL_VERSION: self._round,
                 MessageType.STAT_UTILITY: self._stat_utility,
+                MessageType.LOCAL_ACCURACY: self._local_accuracy,
             }
 
         channel.send(end, msg)
@@ -534,11 +537,36 @@ class Trainer(Role, metaclass=ABCMeta):
     def init_oort_variables(self) -> None:
         """Initialize Oort variables."""
         self._stat_utility = 0
+        self._local_accuracy = 0.0
+        self._local_accuracy_correct = 0
+        self._local_accuracy_total = 0
 
         if "reduction" not in inspect.signature(self.loss_fn).parameters:
             msg = "Parameter 'reduction' not found in loss function "
             msg += f"'{self.loss_fn.__name__}', which is required for Oort"
             raise TypeError(msg)
+
+    def update_local_accuracy(
+        self, output: "torch.Tensor", target: "torch.Tensor"
+    ) -> None:
+        """Accumulate top-1 classification accuracy. Override for non-classification tasks."""
+        with torch.no_grad():
+            pred = output.argmax(dim=-1)
+            self._local_accuracy_correct += int((pred == target).sum().item())
+            self._local_accuracy_total += int(target.numel())
+
+    def finalize_local_accuracy(self) -> None:
+        if self._local_accuracy_total > 0:
+            self._local_accuracy = (
+                self._local_accuracy_correct / self._local_accuracy_total
+            )
+        else:
+            self._local_accuracy = 0.0
+
+    def reset_local_accuracy(self) -> None:
+        self._local_accuracy = 0.0
+        self._local_accuracy_correct = 0
+        self._local_accuracy_total = 0
 
     # TODO: Enable this in trainer code using a flag based on selector
     # used. Needs to also pass to trainer/main.py

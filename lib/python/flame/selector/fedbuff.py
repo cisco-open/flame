@@ -33,13 +33,15 @@ from flame.common.typing import Scalar
 from flame.end import KEY_END_STATE, VAL_END_STATE_NONE, VAL_END_STATE_RECVD, End
 from flame.selector import AbstractSelector, SelectorReturnType
 
+from flame.selector.properties import (
+    PROP_LAST_EVAL_ROUND,
+    PROP_ROUND_DURATION,
+    PROP_STAT_UTILITY,
+)
+
 logger = logging.getLogger(__name__)
 
-SEND_TIMEOUT_WAIT_S = 90  # 90 seconds timeout
-
-PROP_STAT_UTILITY = "stat_utility"
-PROP_LAST_EVAL_ROUND = "last_eval_round"
-PROP_ROUND_DURATION = "round_duration"
+SEND_TIMEOUT_WAIT_S = 90
 
 
 class FedBuffSelector(AbstractSelector):

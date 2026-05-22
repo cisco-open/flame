@@ -2,6 +2,79 @@
 
 This directory contains examples demonstrating various federated learning scenarios, algorithms, and topologies using the Flame framework.
 
+## Running experiments via the YAML launcher
+
+Most examples can be driven by `flame.launch`, which reads a single experiment
+YAML and spawns one aggregator plus N trainers:
+
+```bash
+python -m flame.launch.run_experiment \
+    lib/python/examples/feddance_cifar10/experiments/configs/smoke_10trainer.yaml
+```
+
+The launcher resolves the example dir from the YAML path (or `--example-dir`),
+loads its `configs/trainer_base.yaml`, injects per-trainer data from the
+shared `_metadata/` bundle, and spawns processes with `--config-json` payloads.
+
+Experiment-YAML shape:
+
+```yaml
+experiments:
+  - name: my_experiment
+    metadata:
+      dir: examples/_metadata             # default: <example>/metadata
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset: {name: cifar10, dirichlet_alpha: 0.1}
+      availability: {mode: syn_0}
+    aggregator:
+      config_template: aggregator/config.json
+      selector: feddance
+      agg_goal: 5
+    execution:
+      num_gpus: 1
+      sleep_between_spawns: 0.5
+      monitoring: {enabled: false}
+```
+
+## Shared metadata (`_metadata/`)
+
+Per-trainer data lives in one shared hierarchy so multiple examples can reuse
+the same device population, traces, and dataset splits:
+
+```
+_metadata/
+├── trainer_registry.yaml                  # n=300 device population
+├── availability_traces/
+│   ├── mobiperf_traces.yaml               # per-device 2-state / 3-state
+│   └── synthetic_traces.yaml              # syn_0 (uniform) + syn_20 / syn_50 (per-trainer)
+└── dataset_splits/
+    └── <dataset>_alpha<a>_n<N>.yaml       # per-trainer index lists
+```
+
+The hierarchy axes:
+
+| Layer | File | Varies with |
+| :--- | :--- | :--- |
+| Device population | `trainer_registry.yaml` | N (future n=1000 → `trainer_registry_n1000.yaml`) |
+| Availability | `availability_traces/*.yaml` | population, per-device or per-trainer realizations |
+| Data partition | `dataset_splits/<ds>_alpha<a>_n<N>.yaml` | dataset × N × Dirichlet α |
+
+Adding a new example: create `aggregator/pytorch/main.py` and `trainer/pytorch/main.py`
+that call `from flame.launch.cli import load_config_from_argv`, then add
+`configs/trainer_base.yaml` and `experiments/configs/<name>.yaml`. The launcher
+handles the rest.
+
+Migrating an **existing** example off per-trainer JSON / shell scripts onto this
+launcher: follow [`MIGRATING_TO_LAUNCHER.md`](MIGRATING_TO_LAUNCHER.md) (trainer +
+aggregator changes, adding dataset data to `_metadata/`, baseline catalog, and
+legacy decommission). `async_cifar10/` is the reference implementation.
+
+For provenance on the n=300 metadata, see
+[`_metadata/migration_plan_async_cifar10.yaml`](_metadata/migration_plan_async_cifar10.yaml).
+To re-run / extend that migration, see [`lib/python/scripts/migrate_async_cifar10.py`](../scripts/migrate_async_cifar10.py).
+
 ## Basic Federated Learning
 
 ### [mnist/](mnist/)

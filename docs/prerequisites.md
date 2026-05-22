@@ -7,18 +7,27 @@ The target runtime environment is Linux. Development has been mainly conducted u
 The target runtime environment is Linux. Development has been mainly conducted under macOS environment.
 
 The following tools and packages are needed as minimum:
-- python 3.9+
+- python 3.10+ (3.11 recommended)
 
-You could choose between `conda` or `pyenv` to setup the Python environment.
+### One-shot conda setup
 
-### Conda
-
-* Install [anaconda](https://www.anaconda.com/download/) or [miniconda](https://docs.conda.io/en/latest/miniconda.html) in order to create the environment.
+Easiest path on Linux/macOS with conda installed:
 
 ```bash
-# Run within the cloned flame directory
-cd lib/python/flame
-conda create -n flame python=3.9
+bash scripts/setup_env.sh flame
+conda activate flame
+```
+
+This creates a Python 3.11 conda env named `flame` and installs the flame
+library plus the `[examples]` and `[dev]` extras (torch, torchvision,
+sortedcontainers, wandb, pytest, ...).
+
+### Manual conda
+
+```bash
+conda create -n flame python=3.11 -y
+conda activate flame
+pip install -e lib/python[examples,dev]
 ```
 
 ### pyenv
@@ -33,8 +42,8 @@ Install pyenv (Note : For configuring the pyenv please follow the output of the 
 ```bash
 brew install pyenv
 pyenv init
-pyenv install 3.9.6
-pyenv global 3.9.6
+pyenv install 3.11.9
+pyenv global 3.11.9
 pyenv version
 
 eval "$(pyenv init -)"
@@ -66,17 +75,17 @@ echo "eval \"\$(pyenv virtualenv-init -)\"" >> $HOME/.bashrc
 source $HOME/.bashrc
 ```
 
-Using `pyenv`, install python version 3.9.6.
+Using `pyenv`, install python version 3.11.9.
 ```bash
-pyenv install 3.9.6
-pyenv global 3.9.6
+pyenv install 3.11.9
+pyenv global 3.11.9
 ```
 To check the version, run `pyenv version` and `python --version`, an example output looks like the following:
 ```bash
 vagrant@flame:~$ pyenv version
-3.9.6 (set by /home/vagrant/.pyenv/version)
+3.11.9 (set by /home/vagrant/.pyenv/version)
 vagrant@flame:~$ python --version
-Python 3.9.6
+Python 3.11.9
 ```
 
 ## System (Control Plane)

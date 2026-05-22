@@ -35,22 +35,24 @@ from flame.common.util import MLFramework, get_ml_framework_in_use
 from flame.end import KEY_END_STATE, VAL_END_STATE_NONE, VAL_END_STATE_RECVD, End
 from flame.selector import AbstractSelector, SelectorReturnType
 
+from flame.selector.properties import (
+    PROP_AVL_STATE,
+    PROP_DATASET_SIZE,
+    PROP_END_ID,
+    PROP_LAST_EVAL_ROUND,
+    PROP_LAST_SELECTED_ROUND,
+    PROP_ROUND_DURATION,
+    PROP_ROUND_START_TIME,
+    PROP_SELECTED_COUNT,
+    PROP_STAT_UTILITY,
+    PROP_TOTAL_UNAVAIL_DURATION,
+    PROP_UPDATE_COUNT,
+    PROP_UTILITY,
+)
+
 logger = logging.getLogger(__name__)
 
-SEND_TIMEOUT_WAIT_S = 90  # 90 seconds timeout
-
-PROP_UTILITY = "utility"
-PROP_END_ID = "end_id"
-PROP_SELECTED_COUNT = "selected_count"
-PROP_ROUND_START_TIME = "round_start_time"
-PROP_ROUND_DURATION = "round_duration"
-PROP_STAT_UTILITY = "stat_utility"
-PROP_DATASET_SIZE = "dataset_size"
-PROP_UPDATE_COUNT = "update_count"
-PROP_TOTAL_UNAVAIL_DURATION = "total_unavail_duration"
-PROP_LAST_SELECTED_ROUND = "last_selected_round"
-PROP_LAST_EVAL_ROUND = "last_eval_round"
-PROP_AVL_STATE = "avl_state"
+SEND_TIMEOUT_WAIT_S = 90
 
 
 class AsyncOortSelector(AbstractSelector):

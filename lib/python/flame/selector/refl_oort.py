@@ -24,11 +24,11 @@ import numpy as np
 from flame.common.typing import Scalar
 from flame.common.util import MLFramework, get_ml_framework_in_use
 from flame.end import End
-from flame.selector.oort import (
-    OortSelector,
-    PROP_UTILITY,
+from flame.selector.oort import OortSelector
+from flame.selector.properties import (
     PROP_END_ID,
     PROP_SELECTED_COUNT,
+    PROP_UTILITY,
 )
 from flame.availability.refl_tracker import REFLAvailabilityTracker
 
@@ -84,21 +84,9 @@ class REFLOortSelector(OortSelector):
                 )
                 self.avail_priority = 0
 
-        # Track utility history for pacer
         self.exploitation_util_history = deque(maxlen=200)
         self.last_pacer_round = 0
-
-        # CRITICAL: Initialize selected_ends as a set to track in-flight trainers
-        # For SyncFL with overcommitment, this prevents re-selecting trainers
-        # that haven't returned their updates yet
-        if not hasattr(self, 'selected_ends'):
-            self.selected_ends = set()
-        
-        # Track which trainers were newly selected in the current round
-        # This is needed because select() gets called twice per round:
-        # once for distribute, once for aggregate
-        if not hasattr(self, 'newly_selected_this_round'):
-            self.newly_selected_this_round = set()
+        self.newly_selected_this_round: set = set()
 
         logger.info(
             f"REFLOortSelector initialized: "
@@ -144,137 +132,30 @@ class REFLOortSelector(OortSelector):
             f"task: {task_to_perform}, avail_priority={self.avail_priority}"
         )
 
-        # NOTE: Cleanup of ordered_updates_recv_ends and selected_ends is now done
-        # in _cleanup_recvd_ends() (inherited from OortSelector) immediately after
-        # aggregation completes. This fixes race condition where trainers returning
-        # updates between agg_goal and next select() would be incorrectly kept in
-        # the in-flight set.
-
-        # Return existing selected end_ids if round did not proceed
-        # CRITICAL FIX: Return only newly selected trainers from this round,
-        # not the cumulative in-flight set. select() is called twice per round:
-        # once for distribute (which we want to remember), once for aggregate (which should return same set)
-        if round_num <= self.round and hasattr(self, 'newly_selected_this_round') and len(self.newly_selected_this_round) != 0:
-            logger.info(f"[RETURN_CACHED] Round {round_num}: Returning {len(self.newly_selected_this_round)} cached newly selected trainers")
+        if round_num <= self.round and len(self.newly_selected_this_round) != 0:
             return {key: None for key in self.newly_selected_this_round}
 
-        # Run pacer to adjust round_threshold
         self.pacer()
 
-        # Filter out unavailable trainers AND trainers that are currently "in flight"
-        # (selected in previous rounds but haven't returned updates yet)
-        # This is CRITICAL for SyncFL with overcommitment (selecting 1.3K but waiting for K)
-        
-        # Get trainers that are still in flight from previous rounds  
-        in_flight_trainers = self.selected_ends if hasattr(self, 'selected_ends') and isinstance(self.selected_ends, set) else set()
-        
-        # Get unavailable trainer set for detailed logging
         unavail_set = set(trainer_unavail_list) if trainer_unavail_list else set()
-        
-        # DETAILED LOGGING: Track filtering at each step
-        logger.info(
-            f"[FILTER_DEBUG] Round {round_num}: "
-            f"Total ends available: {len(ends)}"
-        )
-        logger.info(
-            f"[FILTER_DEBUG] Unavailable ends: {len(unavail_set)} trainers"
-        )
-        if len(unavail_set) > 0 and len(unavail_set) <= 10:
-            logger.info(f"[FILTER_DEBUG] Unavailable IDs (sample): {list(unavail_set)[:10]}")
-        
-        # DEBUG: Check for specific test trainers
-        test_trainer_389 = '505f9fc483cf4df68a2409257b5fad7d3c580389'
-        test_trainer_411 = '505f9fc483cf4df68a2409257b5fad7d3c580411'
-        
-        trainer_389_in_ends = test_trainer_389 in ends
-        trainer_389_in_inflight = test_trainer_389 in in_flight_trainers
-        trainer_389_in_unavail = test_trainer_389 in unavail_set
-        
-        trainer_411_in_ends = test_trainer_411 in ends
-        trainer_411_in_inflight = test_trainer_411 in in_flight_trainers
-        trainer_411_in_unavail = test_trainer_411 in unavail_set
-        
-        logger.info(
-            f"[TRACK_SELECT] Round {round_num}: "
-            f"389: in_ends={trainer_389_in_ends}, in_flight={trainer_389_in_inflight}, unavail={trainer_389_in_unavail} | "
-            f"411: in_ends={trainer_411_in_ends}, in_flight={trainer_411_in_inflight}, unavail={trainer_411_in_unavail} | "
-            f"selected_ends_size={len(self.selected_ends) if hasattr(self, 'selected_ends') else 0}"
-        )
-        
-        logger.info(
-            f"[FILTER_DEBUG] In-flight trainers: {len(in_flight_trainers)} trainers"
-        )
-        if len(in_flight_trainers) > 0 and len(in_flight_trainers) <= 10:
-            logger.info(f"[FILTER_DEBUG] In-flight IDs (sample): {list(in_flight_trainers)[:10]}")
-        elif len(in_flight_trainers) > 10:
-            logger.info(f"[FILTER_DEBUG] In-flight IDs (first 10): {list(in_flight_trainers)[:10]}")
-        
-        # Log ordered_updates_recv_ends for debugging cleanup
-        if hasattr(self, 'ordered_updates_recv_ends'):
-            logger.info(
-                f"[FILTER_DEBUG] Received updates (pending cleanup): {len(self.ordered_updates_recv_ends)} trainers"
-            )
-            if len(self.ordered_updates_recv_ends) > 0:
-                logger.info(
-                    f"[FILTER_DEBUG] Received update IDs (pending): {list(self.ordered_updates_recv_ends)[:10]}"
-                )
-        
+
         eligible_ends = {
             end_id: end
             for end_id, end in ends.items()
-            if (not trainer_unavail_list or end_id not in trainer_unavail_list)
-            and end_id not in in_flight_trainers  # NEW: filter out in-flight trainers
+            if end_id not in unavail_set and end_id not in self.selected_ends
         }
-
-        # DEBUG: Check if test trainers made it through filtering
-        trainer_389_in_eligible = test_trainer_389 in eligible_ends
-        trainer_411_in_eligible = test_trainer_411 in eligible_ends
-        
-        logger.info(
-            f"[TRACK_SELECT] Round {round_num}: After filtering - "
-            f"389: eligible={trainer_389_in_eligible} | 411: eligible={trainer_411_in_eligible}"
-        )
-        
-        # Check for bugs
-        if trainer_389_in_inflight and trainer_389_in_eligible:
-            logger.error(
-                f"[BUG_FOUND] Round {round_num}: Trainer 389 is in BOTH in_flight and eligible_ends! "
-                f"This should never happen!"
-            )
-        if trainer_411_in_inflight and trainer_411_in_eligible:
-            logger.error(
-                f"[BUG_FOUND] Round {round_num}: Trainer 411 is in BOTH in_flight and eligible_ends! "
-                f"This should never happen!"
-            )
-
-        logger.info(
-            f"[FILTER_DEBUG] Eligible ends after filtering: {len(eligible_ends)} out of {len(ends)} "
-            f"(filtered out: unavail={len(unavail_set)}, in_flight={len(in_flight_trainers)})"
-        )
-        
-        # Log a few sample eligible end IDs for verification
-        if len(eligible_ends) > 0:
-            sample_eligible = list(eligible_ends.keys())[:5]
-            logger.info(f"[FILTER_DEBUG] Sample eligible end IDs: {sample_eligible}")
 
         if len(eligible_ends) == 0:
             logger.error(
-                f"[SELECTION_FAILED] Round {round_num}: NO eligible trainers! "
-                f"total_ends={len(ends)}, unavail={len(unavail_set)}, in_flight={len(in_flight_trainers)}"
+                f"[REFL_SELECT] Round {round_num}: no eligible trainers "
+                f"(total={len(ends)}, unavail={len(unavail_set)}, in_flight={len(self.selected_ends)})"
             )
             return {}
 
-        # Adjust selection count based on available eligible ends
         num_to_select = min(num_of_ends, len(eligible_ends))
-        
-        # CRITICAL: Warn if we cannot select enough trainers
         if num_to_select < num_of_ends:
-            shortage = num_of_ends - num_to_select
             logger.warning(
-                f"[SELECTION_SHORTAGE] Round {round_num}: Can only select {num_to_select}/{num_of_ends} trainers. "
-                f"Shortage of {shortage} trainers. "
-                f"Breakdown: total={len(ends)}, unavail={len(unavail_set)}, in_flight={len(in_flight_trainers)}, "
-                f"eligible={len(eligible_ends)}"
+                f"[REFL_SELECT] Round {round_num}: only {num_to_select}/{num_of_ends} trainers eligible"
             )
 
         # Build blacklist if enabled
@@ -324,85 +205,23 @@ class REFLOortSelector(OortSelector):
                 eligible_ends, all_candidates, num_to_select, round_num
             )
 
-        # Store selected ends as a set
-        old_in_flight = self.selected_ends if hasattr(self, 'selected_ends') else set()
         newly_selected = set(selected)
-        
-        # CRITICAL: Store the newly selected set for this round
-        # This is returned on subsequent select() calls in the same round (for aggregate)
         self.newly_selected_this_round = newly_selected
-        
-        # Add newly selected trainers to existing in-flight ones instead of replacing
-        self.selected_ends = old_in_flight | newly_selected
-        
-        # Log selection summary for tracking
-        logger.info(
-            f"[SELECTION_SUMMARY] Round {round_num}:"
-        )
-        logger.info(
-            f"  - Newly selected this round: {len(newly_selected)} trainers"
-        )
-        if len(newly_selected) <= 10:
-            logger.info(f"    IDs: {list(newly_selected)}")
-        else:
-            logger.info(f"    IDs (first 10): {list(newly_selected)[:10]}")
-        
-        if len(old_in_flight) > 0:
-            logger.info(
-                f"  - Still in-flight from previous rounds: {len(old_in_flight)} trainers"
-            )
-            if len(old_in_flight) <= 10:
-                logger.info(f"    IDs: {list(old_in_flight)}")
-            else:
-                logger.info(f"    IDs (first 10): {list(old_in_flight)[:10]}")
-        
-        logger.info(
-            f"  - Total tracked in-flight: {len(self.selected_ends)} trainers"
-        )
-        
-        # DEBUG: Check if test trainers were selected
-        test_trainer_389 = '505f9fc483cf4df68a2409257b5fad7d3c580389'
-        test_trainer_411 = '505f9fc483cf4df68a2409257b5fad7d3c580411'
-        
-        trainer_389_newly_selected = test_trainer_389 in newly_selected
-        trainer_411_newly_selected = test_trainer_411 in newly_selected
-        
-        if trainer_389_newly_selected or trainer_411_newly_selected:
-            logger.info(
-                f"[TRACK_SELECT] Round {round_num}: Selection result - "
-                f"389: selected={trainer_389_newly_selected} | 411: selected={trainer_411_newly_selected}"
-            )
-        
-        # Check for bugs
-        if test_trainer_389 in newly_selected and test_trainer_389 in old_in_flight:
-            logger.error(
-                f"[BUG_FOUND] Round {round_num}: Trainer 389 was SELECTED despite being in old_in_flight! "
-                f"This should have been filtered out!"
-            )
-        if test_trainer_411 in newly_selected and test_trainer_411 in old_in_flight:
-            logger.error(
-                f"[BUG_FOUND] Round {round_num}: Trainer 411 was SELECTED despite being in old_in_flight! "
-                f"This should have been filtered out!"
-            )
-        
-        # Update round tracking
-        self.round = round_num
+        self.selected_ends = self.selected_ends | newly_selected
 
-        # Update exploration factor
+        logger.info(
+            f"[REFL_SELECT] round {round_num}: selected {len(newly_selected)} new, "
+            f"in-flight total {len(self.selected_ends)}"
+        )
+
+        self.round = round_num
         self.update_exploration_factor()
 
-        # Increment selection count for selected ends
         for end_id in selected:
             if end_id in ends:
-                count = ends[end_id].get_property(PROP_SELECTED_COUNT)
-                if count is None:
-                    count = 0
+                count = ends[end_id].get_property(PROP_SELECTED_COUNT) or 0
                 ends[end_id].set_property(PROP_SELECTED_COUNT, count + 1)
 
-        # CRITICAL FIX: Return only NEWLY selected trainers, not all in-flight trainers
-        # self.selected_ends tracks all in-flight trainers (old + new) for filtering in next round
-        # But we must only return the newly selected ones to avoid re-sending weights to in-flight trainers
-        logger.info(f"[RETURN] Returning {len(newly_selected)} newly selected trainers to caller")
         return {key: None for key in newly_selected}
 
     def build_priority_lists(
