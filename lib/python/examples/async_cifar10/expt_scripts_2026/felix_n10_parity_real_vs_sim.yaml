@@ -1,0 +1,113 @@
+# Task 2 verification: real vs simulated time_mode parity (felix, async_oort).
+# Two experiments run SEQUENTIALLY (real first, then simulated). They are
+# identical except time_mode, so you can compare per-round selection / staleness
+# / learning and confirm: simulated reproduces real's behavior much faster.
+#
+# Scope notes:
+#  - availability = syn_0 (always available) on purpose: isolates the time-mode
+#    change and avoids the known sim-mode stall on all-UN_AVL windows (the
+#    virtual clock only advances on commits). Availability dynamics are a
+#    separate follow-up.
+#  - data streaming OFF: both train on full data so learning curves are directly
+#    comparable.
+#  - exact per-round parity is NOT expected (Oort selection uses unseeded RNG +
+#    real GPU jitter). Look for STATISTICAL parity + the speedup (see below).
+#
+# Run (sequential, ~20-30 min real + a few min simulated):
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/async_cifar10/expt_scripts_2026/felix_n10_parity_real_vs_sim.yaml
+
+experiments:
+  - name: felix_n10_parity_REAL
+    description: "Parity baseline: time_mode=real (sleeps modeled delays at true pace)."
+    baseline: felix
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: real
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+          data_streaming:
+            enabled: "False"
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n10_parity_real
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 100
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false
+
+  - name: felix_n10_parity_SIMULATED
+    description: "Parity test: time_mode=simulated (no sleeps; virtual-clock ordering)."
+    baseline: felix
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: simulated
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+          data_streaming:
+            enabled: "False"
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n10_parity_simulated
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 100
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

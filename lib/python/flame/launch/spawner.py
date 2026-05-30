@@ -188,11 +188,16 @@ class TrainerSpawner:
         num_gpus: int = 8,
         sleep_between_spawns: float = 1.0,
         log_file: Optional[Path] = None,
+        time_mode: str = "simulated",
+        battery_threshold: int = 50,
     ):
         self.config_gen = config_generator
         self.num_gpus = num_gpus
         self.sleep_between_spawns = sleep_between_spawns
         self.log_file = log_file
+        # CLI-only trainer knobs: read from argv, not config JSON.
+        self.time_mode = time_mode
+        self.battery_threshold = battery_threshold
         self.processes = []
         self._log_handle = None
 
@@ -242,6 +247,10 @@ class TrainerSpawner:
             str(trainer_main_path),
             "--config-json",
             config_json,
+            "--time_mode",
+            str(self.time_mode),
+            "--battery_threshold",
+            str(self.battery_threshold),
         ]
 
         # Determine stdout/stderr handling
@@ -303,10 +312,37 @@ class TrainerSpawner:
 
         print(f"\n✓ Spawned {len(self.processes)} trainers")
 
-    def wait_all(self):
-        """Wait for all trainer processes to complete."""
+    def wait_all(self, timeout_per_trainer: float = 30.0):
+        """Wait for all trainer processes to complete.
+
+        Each trainer gets ``timeout_per_trainer`` seconds after the aggregator
+        exits to process the EOT broadcast and self-terminate. Trainers that
+        are blocked in ``await_join`` (waiting for the next task from an
+        aggregator that has already left) will never self-exit, so we force-
+        terminate them after the window. Without this the runner hangs
+        indefinitely and the next sequential experiment never starts.
+        """
+        import signal as _signal
+
+        deadline_per = timeout_per_trainer
         for proc_info in self.processes:
-            proc_info["process"].wait()
+            proc = proc_info["process"]
+            try:
+                proc.wait(timeout=deadline_per)
+            except Exception:
+                # Timeout or other error — gracefully terminate then kill.
+                print(
+                    f"  (trainer PID {proc.pid} did not exit within "
+                    f"{deadline_per}s; terminating)"
+                )
+                try:
+                    proc.terminate()
+                    proc.wait(timeout=5)
+                except Exception:
+                    try:
+                        proc.kill()
+                    except Exception:
+                        pass
 
     def terminate_all(self):
         """Terminate all trainer processes."""

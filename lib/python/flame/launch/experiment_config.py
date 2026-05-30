@@ -36,7 +36,10 @@ class TrainerConfig:
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     availability: AvailabilityConfig = field(default_factory=AvailabilityConfig)
     battery_threshold: int = 50  # For 3-state modes
-    speedup_factor: float = 1.0
+    # Simulation time mode: "real" (trainer sleeps modeled delays at true pace)
+    # or "simulated" (no sleep; aggregator orders by a virtual clock). Replaces
+    # the removed speedup_factor.
+    time_mode: str = "simulated"
     enable_training_delays: bool = True  # Enable per-trainer training delays
     hyperparameters: Optional[dict] = None  # Trainer-specific hyperparameters (e.g., batchSize, learningRate)
     config_overrides: Optional[dict] = None  # Deep-merged into per-trainer config last (wins over baseline)
@@ -187,7 +190,7 @@ class ExperimentBatch:
                         else AvailabilityConfig()
                     ),
                     battery_threshold=trainer_data.get("battery_threshold", 50),
-                    speedup_factor=trainer_data.get("speedup_factor", 1.0),
+                    time_mode=trainer_data.get("time_mode", "simulated"),
                     enable_training_delays=trainer_data.get("enable_training_delays", True),
                     hyperparameters=trainer_data.get("hyperparameters"),
                     config_overrides=trainer_data.get("config_overrides"),

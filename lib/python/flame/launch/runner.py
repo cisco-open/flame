@@ -10,8 +10,10 @@ Paths are resolved as follows (lowest precedence → highest):
 """
 
 import json
+import os
 import re
 import signal
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -118,6 +120,9 @@ class ExperimentRunner:
             agg_cfg, agg_provenance = self._build_aggregator_config(
                 exp, agg_config_path, baseline_entry
             )
+            # Propagate the simulation time mode to the aggregator (it needs to
+            # know whether to order updates by a virtual clock or by arrival).
+            agg_cfg.setdefault("hyperparameters", {})["time_mode"] = exp.trainer.time_mode
             agg_job_id = agg_cfg.get("job", {}).get("id")
             agg_job_name = agg_cfg.get("job", {}).get("name")
             if not agg_job_id:
@@ -147,12 +152,22 @@ class ExperimentRunner:
             trainers_log = self.current_exp_dir / f"{log_prefix}_trainers.log"
             monitor_log = self.current_exp_dir / f"{log_prefix}_resources.log"
 
+            # Telemetry: every spawned process inherits this dir and writes its
+            # own JSONL stream. Set before spawning so children pick it up.
+            self.telemetry_dir = self.current_exp_dir / "telemetry"
+            os.environ["FLAME_TELEMETRY_DIR"] = str(self.telemetry_dir)
+            # UTF-8 child stdio so status glyphs don't crash on latin-1 locales.
+            os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+
             self.aggregator_spawner = AggregatorSpawner(log_file=agg_log)
             self.trainer_spawner = TrainerSpawner(
                 config_gen,
                 num_gpus=exp.execution.num_gpus,
                 sleep_between_spawns=exp.execution.sleep_between_spawns,
                 log_file=trainers_log,
+                # CLI-only knobs passed on the trainer command line.
+                time_mode=exp.trainer.time_mode,
+                battery_threshold=exp.trainer.battery_threshold,
             )
 
             if exp.execution.monitoring.enabled and create_monitor_from_config is not None:
@@ -239,8 +254,20 @@ class ExperimentRunner:
             )
 
             print(f"\nexperiment running. logs: {agg_log}, {trainers_log}")
-            self.trainer_spawner.wait_all()
+            # Wait for the aggregator to finish all rounds first, then give
+            # trainers a short grace window to process the EOT broadcast and
+            # exit cleanly. Without this, wait_all()'s per-trainer timeout fires
+            # immediately after spawn and kills trainers every 30s regardless of
+            # whether training is still in progress.
+            print("  waiting for aggregator to finish...")
+            self.aggregator_spawner.process.wait()
+            print("  aggregator done, waiting for trainers to exit...")
+            self.trainer_spawner.wait_all(timeout_per_trainer=30.0)
             print("\nexperiment completed.")
+
+            # Auto post-run analysis: parse the telemetry JSONL and emit plots.
+            # Best-effort; a plotting failure must not fail the experiment.
+            self._run_post_analysis()
 
         except Exception as e:
             import traceback
@@ -370,6 +397,33 @@ class ExperimentRunner:
         print("\ntermination signal received")
         self._cleanup()
         sys.exit(130)
+
+    def _run_post_analysis(self):
+        """Run telemetry analysis to generate plots into <exp_dir>/plots/.
+
+        Best-effort: never raise. Skips silently if no telemetry was produced.
+        """
+        telemetry_dir = getattr(self, "telemetry_dir", None)
+        if not telemetry_dir or not telemetry_dir.exists():
+            return
+        # repo root: lib/python/flame/launch/runner.py -> parents[4]
+        analyzer = (
+            Path(__file__).resolve().parents[4]
+            / "scripts"
+            / "analysis"
+            / "analyze_run.py"
+        )
+        if not analyzer.exists():
+            print(f"  (skipping analysis: {analyzer} not found)")
+            return
+        try:
+            print(f"\nrunning telemetry analysis on {telemetry_dir} ...")
+            subprocess.run(
+                [sys.executable, str(analyzer), str(telemetry_dir)],
+                check=False,
+            )
+        except Exception as e:
+            print(f"  (telemetry analysis failed: {e})")
 
     def _cleanup(self):
         if self.resource_monitor:

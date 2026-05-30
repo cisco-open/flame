@@ -146,6 +146,10 @@ class FedDanceSelector(AbstractSelector):
         )
 
         self.round = round_num
+        self.emit_selection(
+            round_num, task_to_perform, ends, eligible.keys(), selected,
+            extra={"num_unavail": len(unavail)},
+        )
         return {key: None for key in selected}
 
     def _compute_utilities(

@@ -196,6 +196,14 @@ class FedBuffSelector(AbstractSelector):
         results = {}
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
             results = self._handle_send_state(eligible_ends, concurrency)
+            self.emit_selection(
+                channel_props.get("round", 0),
+                "train",
+                ends,
+                eligible_ends.keys(),
+                list(results.keys()),
+                extra={"concurrency": concurrency, "requester": self.requester},
+            )
 
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             # TODO: (DG) See if eligible_ends should be passed here

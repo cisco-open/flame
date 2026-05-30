@@ -45,7 +45,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0  # 0% unavailability (always available)
-      speedup_factor: 1.0
       enable_training_delays: true
       hyperparameters:
         batchSize: 10  # Trainer batch size (matching REFL default for CIFAR-10)
@@ -86,7 +85,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0
-      speedup_factor: 1.0
       enable_training_delays: true
       hyperparameters:
         batchSize: 10
@@ -127,7 +125,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0
-      speedup_factor: 1.0
       enable_training_delays: true
       hyperparameters:
         batchSize: 10

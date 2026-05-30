@@ -27,7 +27,6 @@ experiments:
       availability:
         mode: syn_0  # Always available (no straggler failures)
       battery_threshold: 50
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_10trainer_demo.json
@@ -53,7 +52,6 @@ experiments:
       availability:
         mode: syn_20  # 20% unavailability (simulates stragglers)
       battery_threshold: 50
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_10trainer_demo_syn20.json

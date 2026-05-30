@@ -167,6 +167,9 @@ class OortSelector(AbstractSelector):
             f"let's select {num_of_ends} ends for new round {round}, task: {task_to_perform}"
         )
 
+        # full candidate pool, captured before any filtering for telemetry
+        all_ends = dict(ends)
+
         if round <= self.round and len(self.selected_ends) != 0:
             return {key: None for key in self.selected_ends}
 
@@ -219,7 +222,12 @@ class OortSelector(AbstractSelector):
         # been measured; Then, perform random selection
         if len(utility_list) == 0 and len(self.selected_ends) == 0:
             self.round = round
-            return self.select_random(ends, num_of_ends)
+            result = self.select_random(ends, num_of_ends)
+            self.emit_selection(
+                round, task_to_perform, all_ends, ends.keys(),
+                self.selected_ends, extra={"mode": "random_first_round"},
+            )
+            return result
 
         # Not the first round, performing Oort-based selection
         # Calculate number of ends to select for exploration and
@@ -233,7 +241,12 @@ class OortSelector(AbstractSelector):
 
         if len(utility_list) == 0:
             self.round = round
-            return self.select_random(ends, num_of_ends)
+            result = self.select_random(ends, num_of_ends)
+            self.emit_selection(
+                round, task_to_perform, all_ends, ends.keys(),
+                self.selected_ends, extra={"mode": "random_no_utility"},
+            )
+            return result
 
         utility_list = self.calculate_total_utility(utility_list, ends, round)
         cutoff_utility = self.cutoff_util(utility_list, num_of_ends)
@@ -285,6 +298,15 @@ class OortSelector(AbstractSelector):
             )
             self._select_run_counter = 0
 
+        self.emit_selection(
+            round, task_to_perform, all_ends, eligible_ends.keys(),
+            self.selected_ends,
+            extra={
+                "exploration_factor": self.exploration_factor,
+                "explore_ids": list(explore_end_ids),
+                "exploit_ids": list(exploit_end_ids),
+            },
+        )
         return {key: None for key in self.selected_ends}
 
     def cutoff_util(

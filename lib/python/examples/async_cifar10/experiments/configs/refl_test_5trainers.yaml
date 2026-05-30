@@ -13,7 +13,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0  # Always available for quick testing
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_config_test.json

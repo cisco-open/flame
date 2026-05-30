@@ -1,0 +1,47 @@
+experiments:
+  - name: felix_n10_parity_SIMULATED
+    description: "Parity test: time_mode=simulated (no sleeps; virtual-clock ordering)."
+    baseline: felix
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 100.0
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: simulated
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+          data_streaming:
+            enabled: "False"
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n10_parity_simulated
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 100
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

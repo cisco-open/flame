@@ -15,7 +15,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0  # 0% unavailability (always available)
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_n300_syn0.json
@@ -55,7 +54,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_n300_syn0.json
@@ -90,7 +88,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_0
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_10trainer_demo.json

@@ -209,7 +209,10 @@ class PyTorchCifar10Aggregator(TopAggregator):
         pass
 
     def evaluate(self) -> None:
-        """Evaluate (test) a model."""
+        """Evaluate (test) a model every evalEveryNRounds rounds (default 10)."""
+        eval_every = self.config.hyperparameters.eval_every_n_rounds or 10
+        if self._round % eval_every != 0:
+            return
         self.model.eval()
         test_loss = 0
         correct = 0
@@ -268,5 +271,12 @@ if __name__ == "__main__":
     config = load_config_from_argv()
 
     a = PyTorchCifar10Aggregator(config, args.log_to_wandb, args.wandb_run_name)
+
+    # Structured telemetry (no-op unless $FLAME_TELEMETRY_DIR is set by the
+    # launcher). One JSONL file for the aggregator process.
+    from flame import telemetry
+
+    telemetry.configure(role="aggregator", end_id=config.job.job_id)
+
     a.compose()
     a.run()

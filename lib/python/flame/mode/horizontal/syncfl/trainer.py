@@ -223,6 +223,12 @@ class Trainer(Role, metaclass=ABCMeta):
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
+        # simulated-time mode: capture the virtual send time stamped by the
+        # aggregator on this task (used to compute sim_completion_ts). No-op
+        # for trainers/aggregators that don't use it.
+        if MessageType.SIM_SEND_TS in msg:
+            self._sim_send_ts = msg[MessageType.SIM_SEND_TS]
+
         if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
 
@@ -360,6 +366,16 @@ class Trainer(Role, metaclass=ABCMeta):
                 MessageType.STAT_UTILITY: self._stat_utility,
                 MessageType.LOCAL_ACCURACY: self._local_accuracy,
             }
+
+        # simulated-time mode only: report the modeled completion time/duration
+        # so the aggregator orders this update by a virtual clock. No-op in real
+        # mode and for trainers that don't set these (other examples).
+        _sim_completion = getattr(self, "_sim_completion_ts", None)
+        if getattr(self, "simulated", False) and _sim_completion is not None:
+            msg[MessageType.SIM_COMPLETION_TS] = _sim_completion
+            msg[MessageType.SIM_ROUND_DURATION] = getattr(
+                self, "_sim_round_duration", 0.0
+            )
 
         channel.send(end, msg)
 

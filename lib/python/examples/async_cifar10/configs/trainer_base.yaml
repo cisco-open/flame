@@ -54,6 +54,12 @@ hyperparameters:
     enabled: "False"
     trace: syn_0
   wait_until_next_avl: "True"
+  # Stream data in over time instead of exposing the full partition at
+  # init. Disabled by default; override per experiment under
+  # trainer.config_overrides.hyperparameters.data_streaming.
+  data_streaming:
+    enabled: "False"
+    full_data_available_after_s: 0  # sim seconds until 100% data is visible
 
 baseModel:
   name: ""

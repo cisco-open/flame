@@ -14,7 +14,6 @@ experiments:
       availability:
         mode: syn_0  # Always available for quick testing
       battery_threshold: 50
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn0.json

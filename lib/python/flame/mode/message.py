@@ -74,3 +74,11 @@ class MessageType(Enum):
     JVP_FOR_SNR_CHECK = 32
 
     LOCAL_ACCURACY = 33  # trainer's local training accuracy (used by FedDance A_m)
+
+    # Simulated-time fields (time_mode="simulated"): aggregator stamps the
+    # virtual send time on the distributed task; trainer echoes its modeled
+    # completion time and duration on the update. Used to order updates by a
+    # virtual clock instead of physical arrival.
+    SIM_SEND_TS = 34       # virtual clock T_v at weight distribution
+    SIM_COMPLETION_TS = 35  # sim_send_ts + real_gpu_time + modeled delay D
+    SIM_ROUND_DURATION = 36  # real_gpu_time + modeled delay D (matches real-mode recv_ts - sent_ts)

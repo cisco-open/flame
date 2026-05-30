@@ -148,6 +148,7 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     rounds: int
     epochs: int
     aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
+    eval_every_n_rounds: t.Optional[int] = Field(alias="evalEveryNRounds", default=10)
     eval_goal_factor: t.Optional[float] = Field(alias="evalGoalFactor", default=None)
     round_nudge_type: t.Optional[str] = Field(
         alias="roundNudgeType", default="last_train"

@@ -50,6 +50,10 @@ from flame.selector.properties import (
     PROP_ROUND_START_TIME,
     PROP_STAT_UTILITY,
 )
+from flame import telemetry
+from flame.telemetry.events import build_agg_eval, build_agg_round
+from flame.sim import VirtualClock
+from flame.selector.properties import PROP_SIM_SEND_TS, PROP_SIM_COMPLETION_TS
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +122,15 @@ class TopAggregator(Role, metaclass=ABCMeta):
         self._rounds = 1
         self._rounds = self.config.hyperparameters.rounds
         self._work_done = False
+
+        # Simulation time mode (replaces speedup_factor). "simulated": order
+        # updates by a virtual clock fed by trainer-reported completion times;
+        # "real": order by physical arrival (legacy/authentic baseline).
+        self.time_mode = getattr(
+            self.config.hyperparameters, "time_mode", "simulated"
+        )
+        self.simulated = self.time_mode == "simulated"
+        self._vclock = VirtualClock()
 
         self.framework = get_ml_framework_in_use()
         if self.framework == MLFramework.UNKNOWN:
@@ -303,6 +316,19 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
+        if telemetry.is_enabled():
+            ev, fields = build_agg_round(
+                round_num=self._round,
+                in_flight=len(channel.ends()),
+                staleness=list(self._round_update_values.get("staleness", [])),
+                stat_utility=list(self._round_update_values.get("stat_utility", [])),
+                trainer_speed_s=list(
+                    self._round_update_values.get("trainer_speed", [])
+                ),
+                contributing_trainers=list(self.cache.keys()),
+            )
+            telemetry.emit(ev, **fields)
+
         self._compute_aggregator_stats()
         if self._round % 5 == 0:
             logger.info(f"_agg_training_stats: {self._agg_training_stats}")
@@ -362,18 +388,20 @@ class TopAggregator(Role, metaclass=ABCMeta):
             logger.info(
                 f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
             )
-            channel.send(
-                end,
-                {
-                    MessageType.WEIGHTS: weights_to_device(
-                        self.weights, DeviceType.CPU
-                    ),
-                    MessageType.ROUND: self._round,
-                    MessageType.DATASAMPLER_METADATA: datasampler_metadata,
-                    MessageType.MODEL_VERSION: self._round,
-                    MessageType.TASK_TO_PERFORM: task_to_perform,
-                },
-            )
+            msg = {
+                MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
+                MessageType.ROUND: self._round,
+                MessageType.DATASAMPLER_METADATA: datasampler_metadata,
+                MessageType.MODEL_VERSION: self._round,
+                MessageType.TASK_TO_PERFORM: task_to_perform,
+            }
+            # simulated mode: stamp the virtual send time so the trainer can
+            # report sim_completion_ts = sim_send_ts + D back to us.
+            if self.simulated:
+                sim_send_ts = self._vclock.now
+                msg[MessageType.SIM_SEND_TS] = sim_send_ts
+                channel.set_end_property(end, PROP_SIM_SEND_TS, sim_send_ts)
+            channel.send(end, msg)
             # register round start time on each end for round duration
             # measurement.
             channel.set_end_property(
@@ -456,6 +484,10 @@ class TopAggregator(Role, metaclass=ABCMeta):
     def update_metrics(self, metrics: dict[str, float]):
         """Update metrics."""
         self.metrics = self.metrics | metrics
+        # Telemetry: aggregator eval metrics (generic hook for all examples).
+        if telemetry.is_enabled():
+            ev, fields = build_agg_eval(round_num=self._round, metrics=metrics)
+            telemetry.emit(ev, **fields)
 
     def _update_model(self):
         if self.framework == MLFramework.PYTORCH:

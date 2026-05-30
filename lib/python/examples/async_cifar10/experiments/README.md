@@ -1,205 +1,194 @@
-# Experiment Launcher - Quick Start Guide
+# Experiment Quick-Start
 
-This directory contains the programmatic experiment generation system for async_cifar10. Experiments are defined in compact YAML configs that reference metadata, rather than embedding full trainer configurations.
+Experiments are defined as compact YAML files that reference shared metadata
+(trainer registry, dataset splits, availability traces) rather than embedding
+full trainer configs. The launcher assembles per-trainer configs at runtime.
 
-## Quick Start
+---
 
-### Running Experiments
+## Running experiments
 
-```bash
-# From async_cifar10 directory
-cd /path/to/flame/lib/python/examples/async_cifar10
-
-# Run a small test (5 trainers)
-python3 launch/run_experiment.py experiments/configs/test_phase3_mini.yaml
-
-# Run full-scale experiments (300 trainers, 4 experiments)
-python3 launch/run_experiment.py experiments/configs/oort_n300_all4unavail.yaml
-```
-
-### Reproducing Experiments
-
-Each experiment run creates an `execution_config.yaml` in its output directory with all parameters and metadata references needed for exact reproduction:
+Run from the repository root:
 
 ```bash
-# Reproduce from execution config
-python3 launch/reproduce.py experiments/run_20260203_223834_oort_n300_alpha0.1_syn0/execution_config.yaml
+# Smoke test — 10 trainers, fast
+python -m flame.launch.run_experiment \
+    lib/python/examples/async_cifar10/expt_scripts_2026/felix_n10_alpha100_syn0_smoke.yaml
+
+# With telemetry + data streaming enabled
+python -m flame.launch.run_experiment \
+    lib/python/examples/async_cifar10/expt_scripts_2026/felix_n10_alpha100_syn20_telemetry_smoke.yaml
 ```
 
-## Config File Structure
+Batch files (multiple experiments in one YAML) run sequentially, each producing
+its own timestamped output directory under `experiments/`.
 
-Experiment configs use **metadata references** (not embedded data) to keep files readable (~1-2KB):
+---
+
+## Experiment YAML shape
 
 ```yaml
 experiments:
-  - name: oort_n300_alpha0.1_syn0
-    description: "Oort with 300 trainers, alpha=0.1, synthetic unavailability"
-    
+  - name: felix_n10_alpha100_syn0_smoke
+    description: "Optional human-readable description."
+
+    baseline: felix          # key into _metadata/baselines.yaml; owns the stack
+
     trainer:
-      num_trainers: 300              # Number of trainers to spawn
+      num_trainers: 10
+      start_id: 1            # optional; first trainer ID (default: 1)
       dataset:
-        dirichlet_alpha: 0.1         # Data heterogeneity (0.1 = high, 100.0 = low)
+        name: cifar10
+        dirichlet_alpha: 100.0   # 0.1 (high het) → 100.0 (near-IID)
       availability:
-        mode: syn_0                  # Availability trace key from metadata
-    
+        mode: syn_0              # syn_0 | syn_20 | syn_50 | mobiperf_2st | mobiperf_3st_50 | mobiperf_3st_75
+      enable_training_delays: true
+      time_mode: simulated       # real (wall-clock sleeps) | simulated (virtual-clock, no sleeps)
+      hyperparameters:           # merged into every trainer's config
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:          # deep-merged last; wins over baseline defaults
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+
     aggregator:
-      config_template: expt_scripts_2026/configs/oort_n300_oracular_9may25_syn0.json
-      selector: oort                 # Selector algorithm
-      tracking_mode: oracular        # Oracular or oblivious
-      agg_goal: 10                   # Target trainers per aggregation round
-    
+      config_template: ../_metadata/aggregator_base.json   # base template; baseline merges on top
+      selector: async_oort       # must match the stack implied by the baseline
+      tracking_mode: client_notify   # oracular | client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:          # deep-merged into aggregator JSON last
+        job:
+          id: felix_n10_alpha100_syn0_smoke
+        hyperparameters:
+          rounds: 100
+          aggGoal: 5
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+
     execution:
-      num_gpus: 8                    # GPUs for trainer distribution
-      sleep_between_spawns: 5.0      # Seconds between trainer spawns
-      aggregator_warmup_time: 600    # Seconds before first aggregation
+      num_gpus: 2
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 15   # seconds; increase proportionally for large runs
+      monitoring:
+        enabled: false
 ```
 
-### Key Configuration Parameters
+### Key parameters
 
-**Trainer Section:**
-- `num_trainers`: Total trainers to spawn (typically 5 for tests, 300 for production)
-- `start_id`: Optional, starting trainer ID (default: 1)
-- `dataset.dirichlet_alpha`: Data heterogeneity
-  - `0.1` = highly heterogeneous (realistic)
-  - `1.0` = moderate heterogeneity
-  - `10.0` = low heterogeneity
-  - `100.0` = nearly IID
-- `availability.mode`: References key in `metadata/availability_traces/*.yaml`
-  - `syn_0` = always available (0% dropout)
-  - `syn_20` = 20% synthetic dropout
-  - `syn_50` = 50% synthetic dropout
-  - `mobiperf_2st` = real-world MobiPerf traces
+**`baseline`** — resolves `aggregator_main` (determines asyncfl vs syncfl stack),
+selector, optimizer, and trainer-side defaults from `_metadata/baselines.yaml`.
+Available baselines: `felix`, `fedbuff`, `fedavg`, `oort`, `refl`, `feddance`.
 
-**Execution Timing (Critical for Success):**
-- `sleep_between_spawns`: Delay between spawning each trainer (seconds)
-- `aggregator_warmup_time`: How long aggregator waits before first round (seconds)
+**`time_mode`**
+- `simulated` — trainers skip `training_delay_s` sleeps; the aggregator orders
+  updates by a virtual clock. Availability and streaming use sim-seconds.
+  Fast iteration.
+- `real` — trainers sleep true wall-clock delays. Use for wall-clock benchmarks.
 
-**Timing Formula:** To ensure all trainers join before first aggregation:
+**`availability.mode`** — selects which pre-injected trace the trainer activates:
+| Mode | Description |
+|------|-------------|
+| `syn_0` | Always available |
+| `syn_20` | 20% synthetic unavailability |
+| `syn_50` | 50% synthetic unavailability |
+| `mobiperf_2st` | Real MobiPerf 2-state traces |
+| `mobiperf_3st_50` | 3-state, 50% battery threshold |
+| `mobiperf_3st_75` | 3-state, 75% battery threshold |
+
+**`aggregator_warmup_time`** — seconds the runner waits after spawning the
+aggregator before spawning trainers. Rule of thumb:
 ```
-aggregator_warmup_time = 0.4 × sleep_between_spawns × num_trainers
+warmup ≥ sleep_between_spawns × num_trainers × 0.4
 ```
+Defaults of 15s (smoke) to 60s (300-trainer) are set in the smoke YAMLs.
 
-Examples:
-- 5 trainers: spawn=0.5s → warmup=1s
-- 300 trainers: spawn=5.0s → warmup=600s
+### Optional trainer features (via `config_overrides.hyperparameters`)
 
-## Metadata System
+```yaml
+# Gradual data reveal (disabled by default)
+data_streaming:
+  enabled: "True"
+  full_data_available_after_s: 600   # sim-seconds until 100% of partition visible
 
-Configs reference metadata files instead of embedding full data:
-
-```
-metadata/
-├── trainer_registry.yaml                    # 300 trainers (intrinsic properties)
-├── dataset_splits/
-│   ├── cifar10_alpha0.1_n300.yaml          # Dirichlet alpha=0.1
-│   ├── cifar10_alpha1.0_n300.yaml          # Dirichlet alpha=1.0
-│   ├── cifar10_alpha10.0_n300.yaml         # Dirichlet alpha=10.0
-│   └── cifar10_alpha100.0_n300.yaml        # Dirichlet alpha=100.0
-└── availability_traces/
-    ├── synthetic_traces.yaml                # syn_0, syn_20, syn_50
-    └── mobiperf_traces.yaml                 # Real-world per-trainer traces
+# Streamed-vs-full utility disparity telemetry (disabled by default)
+util_counterfactual:
+  enabled: "True"
+  every_n_rounds: 1
+  sample_size: 256
 ```
 
-The launcher automatically loads metadata and generates full trainer configs at runtime.
+---
 
-## Output Structure
-
-Each experiment run creates a timestamped directory:
+## Output structure
 
 ```
-experiments/run_20260203_223834_oort_n300_alpha0.1_syn0/
-├── execution_config.yaml                    # Full reproducibility record
-├── snapshot.yaml                            # Runtime state snapshot
-├── aggregator_config.json                   # Generated aggregator config
-├── 03_02_26_22_38_..._aggregator.log       # Aggregator logs
-└── 03_02_26_22_38_..._trainers.log         # All trainer logs
+experiments/run_YYYYMMDD_HHMMSS_<name>/
+  aggregator_config.json        # merged aggregator config used for this run
+  execution_config.yaml         # compact metadata refs + exact spawn commands
+  snapshot.yaml                 # git commit, branch, metadata SHA256 checksums
+  YYYYMMDD_*_aggregator.log     # aggregator stdout/stderr
+  YYYYMMDD_*_trainers.log       # all trainers combined (line-buffered)
+  YYYYMMDD_*_resources.log      # RAM/GPU monitoring (if enabled)
+  telemetry/
+    aggregator.jsonl
+    trainer_1.jsonl … trainer_N.jsonl
+  plots/                        # auto-generated by post-run analysis (if run)
 ```
 
-**execution_config.yaml** contains:
-- Git commit hash and branch
-- Metadata file references and keys
-- All experiment parameters
-- Exact spawn commands used
+`execution_config.yaml` records the metadata keys, git state, and exact commands
+used — sufficient to reproduce the run at the same git commit.
 
-Use this file to reproduce experiments exactly:
+---
+
+## Post-run analysis
+
 ```bash
-python3 launch/reproduce.py experiments/run_*/execution_config.yaml
+# Parse send/receive lag from aggregator log
+python scripts/analyze_send_recv_lag.py \
+    experiments/run_*/YYYYMMDD_*_aggregator.log [--warn-threshold-s 5.0]
+
+# Compare two runs (e.g., real vs simulated time_mode)
+python scripts/compare_parity.py \
+    experiments/run_A/ experiments/run_B/
 ```
 
-## Running Multiple Experiments
+Telemetry JSONL files are line-buffered — `tail -f` works during a live run.
 
-Configs can define multiple experiments in batch:
+---
 
-```yaml
-experiments:
-  - name: exp1_syn0
-    # ... config ...
-  
-  - name: exp2_syn20
-    # ... config ...
-  
-  - name: exp3_syn50
-    # ... config ...
+## Metadata layout
+
+```
+_metadata/                               (symlinked as async_cifar10/metadata/)
+  trainer_registry.yaml                  # 300 trainers: task_id, delay_s, speed_class
+  baselines.yaml                         # selector/optimizer/stack catalog
+  aggregator_base.json                   # aggregator config template
+  dataset_splits/
+    cifar10_alpha0.1_n300.yaml           # Dirichlet α=0.1
+    cifar10_alpha1.0_n300.yaml
+    cifar10_alpha10.0_n300.yaml
+    cifar10_alpha100.0_n300.yaml
+  availability_traces/
+    synthetic_traces.yaml                # syn_0 / syn_20 / syn_50
+    mobiperf_traces.yaml                 # per-device real-world traces
 ```
 
-The launcher runs them sequentially, each producing its own output directory.
+The launcher injects per-trainer data (indices, delays, all five trace types)
+from this bundle at spawn time — no per-trainer JSON files needed.
 
-## Optional Features
-
-### Weights & Biases Logging
-
-Add to your experiment config:
-
-```yaml
-aggregator:
-  log_to_wandb: true
-  wandb_project: "my-project"
-  wandb_run_name: "oort_n300_alpha0.1_syn0"
-```
-
-### Custom Trainer ID Ranges
-
-By default, trainers spawn with IDs [1, num_trainers]. To use a different range:
-
-```yaml
-trainer:
-  num_trainers: 5
-  start_id: 101  # Will spawn trainers 101-105
-```
+---
 
 ## Troubleshooting
 
-**Issue: Aggregation completes with fewer trainers than expected**
-- **Cause:** Aggregator started before trainers joined
-- **Solution:** Increase `aggregator_warmup_time` using the formula:
-  ```
-  warmup = 0.4 × spawn_delay × num_trainers
-  ```
+**Aggregation completes with fewer trainers than expected** — aggregator started
+before trainers joined. Increase `aggregator_warmup_time`.
 
-**Issue: Losing trainers at startup**
-- **Cause:** `sleep_between_spawns` too small for scale
-- **Solution:** Use 5.0s for 300 trainers, 0.5s for small tests
+**OOM with many trainers** — too many trainers sharing a GPU. Increase `num_gpus`.
 
-**Issue: OOM errors with many trainers**
-- **Cause:** Too many trainers per GPU
-- **Solution:** Increase `num_gpus` in execution section
-
-## Examples
-
-See configs in this directory:
-- `test_phase3_mini.yaml` - Small test (5 trainers, 2 GPUs)
-- `oort_n300_all4unavail.yaml` - Full batch (4 × 300 trainers, 8 GPUs)
-
-## Additional Tools
-
-```bash
-# Validate metadata integrity
-python3 scripts/validate_metadata.py
-
-# Extract/update metadata from existing configs (if needed)
-python3 scripts/extract_metadata.py
-```
-
-## Migration Note
-
-This system replaces 5,924 static JSON trainer configs with 7 YAML metadata files (99.9% reduction). The old methodology in `expt_scripts_2026/` remains available for backwards compatibility.
+**Stack validation error** — async selectors (`async_oort`, `async_random`,
+`fedbuff`) require an asyncfl-stack baseline (e.g., `felix`, `fedbuff`); sync
+selectors require a syncfl baseline (`oort`, `refl`, `fedavg`).

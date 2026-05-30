@@ -115,7 +115,7 @@ def create_execution_config(
                     "trace_key": availability_trace_key,
                 },
                 "battery_threshold": exp_config.trainer.battery_threshold,
-                "speedup_factor": exp_config.trainer.speedup_factor,
+                "time_mode": exp_config.trainer.time_mode,
             },
             "execution": {
                 "num_gpus": exp_config.execution.num_gpus,

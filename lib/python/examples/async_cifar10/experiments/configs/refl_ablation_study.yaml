@@ -14,7 +14,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_20  # 20% unavailability
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_config_ablation_baseline.json
@@ -41,7 +40,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_20
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_config_ablation_avail.json
@@ -68,7 +66,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_20
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_config_ablation_staleness.json
@@ -95,7 +92,6 @@ experiments:
         dirichlet_alpha: 0.1
       availability:
         mode: syn_20
-      speedup_factor: 1.0
     
     aggregator:
       config_template: expt_scripts_2026/configs/refl_config_n300.json

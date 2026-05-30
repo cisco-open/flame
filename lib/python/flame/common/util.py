@@ -135,6 +135,7 @@ def run_async(coro, loop, timeout=None):
     try:
         return fut.result(timeout), True
     except concurrent.futures.TimeoutError:
+        fut.cancel()  # remove stale waiter from _rx_queue so it can't steal future messages
         return None, False
 
 

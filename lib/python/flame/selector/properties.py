@@ -15,6 +15,11 @@ PROP_ROUND_START_TIME = "round_start_time"
 PROP_ROUND_END_TIME = "round_end_time"
 PROP_ROUND_DURATION = "round_duration"
 
+# Simulated time (time_mode="simulated"): trainer-reported virtual completion
+# time, used to order updates by a virtual clock and to source round duration.
+PROP_SIM_SEND_TS = "sim_send_ts"
+PROP_SIM_COMPLETION_TS = "sim_completion_ts"
+
 # Training metadata
 PROP_DATASET_SIZE = "dataset_size"
 PROP_STAT_UTILITY = "stat_utility"      # I_m / Oort utility

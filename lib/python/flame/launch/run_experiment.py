@@ -18,7 +18,23 @@ def _autodetect_example_dir(yaml_path: Path) -> Path:
     return p.parent
 
 
+def _force_utf8_stdio() -> None:
+    """Make console output locale-independent.
+
+    The launcher prints status glyphs (checkmarks, warnings). On hosts whose
+    locale is latin-1 (LANG=en_US without .UTF-8), printing those crashes with
+    UnicodeEncodeError. Reconfigure our streams to UTF-8 (replace on failure)
+    rather than scrubbing every glyph.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+
+
 def main(argv: list[str] | None = None) -> int:
+    _force_utf8_stdio()
     parser = argparse.ArgumentParser(description="Run federated experiments from YAML.")
     parser.add_argument("config", type=Path, help="experiment YAML file")
     parser.add_argument(

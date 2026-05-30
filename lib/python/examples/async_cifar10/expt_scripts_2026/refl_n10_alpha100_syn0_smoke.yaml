@@ -19,7 +19,6 @@ experiments:
       availability:
         mode: syn_0
       enable_training_delays: true
-      speedup_factor: 1.0
       hyperparameters:
         batchSize: 32
         learningRate: 0.001

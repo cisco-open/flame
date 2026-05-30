@@ -389,6 +389,19 @@ class AsyncOortSelector(AbstractSelector):
                 )
                 self._select_run_counter = 0
 
+            self.emit_selection(
+                channel_props.get("round", 0),
+                task_to_perform,
+                ends,
+                eligible_ends.keys(),
+                list(results.keys()),
+                extra={
+                    "concurrency": concurrency,
+                    "effective_c": effective_c,
+                    "requester": self.requester,
+                },
+            )
+
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
             # TODO: (DG) See if eligible_ends should be passed here
             # too in place of ends
@@ -1041,6 +1054,16 @@ class AsyncOortSelector(AbstractSelector):
                 f"End_id {end_id} remove check from all_selected failed. "
                 f"Need to check"
             )
+
+        # A departed end must not linger in selected_ends (the in-flight set
+        # returned for recv), else the aggregator waits on a gone trainer and
+        # wastes a concurrency slot. selected_ends is {requester: set(ends)}.
+        for _req, _ends in self.selected_ends.items():
+            if end_id in _ends:
+                _ends.discard(end_id)
+                logger.debug(
+                    f"Removed ghost end_id {end_id} from selected_ends[{_req}]"
+                )
 
     # Invoked when selection mode is default i.e. of oort which trades
     # off exploitation/exploration and speed/stat_utility

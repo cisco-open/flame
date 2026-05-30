@@ -16,12 +16,19 @@
 """selector abstract class."""
 
 from abc import ABC, abstractmethod
-from typing import Tuple, Union
+from typing import Optional, Tuple, Union
 import logging
 import time
 
+from .. import telemetry
 from ..common.typing import Scalar
 from ..end import End
+from ..telemetry.events import build_selection
+from .properties import (
+    PROP_AVL_STATE,
+    PROP_ROUND_DURATION,
+    PROP_STAT_UTILITY,
+)
 
 SelectorReturnType = dict[str, Union[None, Tuple[str, Scalar]]]
 
@@ -69,6 +76,81 @@ class AbstractSelector(ABC):
         dictionary: key is end id and value is a property (as tuple)
                     used/created during selection process; value can be none
         """
+
+    def emit_selection(
+        self,
+        round_num: int,
+        task: str,
+        ends: dict[str, End],
+        eligible_ids,
+        chosen_ids,
+        per_trainer_extra: Optional[dict] = None,
+        extra: Optional[dict] = None,
+    ) -> None:
+        """Emit a structured selector-decision event (no-op if telemetry off).
+
+        Centralized here so every selector produces an identical schema, which
+        is what makes cross-selector comparison possible. ``ends`` is the full
+        candidate pool; availability composition and per-trainer utility/speed
+        are derived from end properties.
+        """
+        if not telemetry.is_enabled():
+            return
+        try:
+            chosen_set = set(chosen_ids)
+            avail_composition: dict[str, int] = {}
+            per_trainer: dict[str, dict] = {}
+            for end_id, end in ends.items():
+                state = end.get_property(PROP_AVL_STATE)
+                state_name = getattr(state, "value", None) or (
+                    str(state) if state is not None else "UNKNOWN"
+                )
+                avail_composition[state_name] = (
+                    avail_composition.get(state_name, 0) + 1
+                )
+                util = end.get_property(PROP_STAT_UTILITY)
+                speed = end.get_property(PROP_ROUND_DURATION)
+                entry = {
+                    "utility": util,
+                    "speed_s": speed.total_seconds()
+                    if hasattr(speed, "total_seconds")
+                    else speed,
+                    "selected": end_id in chosen_set,
+                }
+                if per_trainer_extra and end_id in per_trainer_extra:
+                    entry.update(per_trainer_extra[end_id])
+                per_trainer[end_id] = entry
+
+            # in-flight count: selected_ends is a set/list for most selectors,
+            # but a {requester: set(ends)} dict for fedbuff-style selectors.
+            sel = self.selected_ends
+            if isinstance(sel, dict):
+                vals = list(sel.values())
+                in_flight = (
+                    sum(len(v) for v in vals)
+                    if vals and all(isinstance(v, (set, list)) for v in vals)
+                    else len(sel)
+                )
+            elif isinstance(sel, (set, list)):
+                in_flight = len(sel)
+            else:
+                in_flight = 0
+
+            ev, fields = build_selection(
+                round_num=int(round_num),
+                task=task,
+                selector=type(self).__name__,
+                num_candidates=len(ends),
+                num_eligible=len(set(eligible_ids)),
+                avail_composition=avail_composition,
+                chosen=list(chosen_set),
+                in_flight=in_flight,
+                per_trainer=per_trainer,
+                extra=extra,
+            )
+            telemetry.emit(ev, **fields)
+        except Exception as e:  # telemetry must never break selection
+            logger.debug(f"emit_selection failed: {e}")
 
     def on_update_received(
         self, end_id: str, msg: dict, round_num: int

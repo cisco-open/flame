@@ -428,7 +428,7 @@ class Channel(object):
         return msg, timestamp
 
     def recv_fifo(
-        self, end_ids: list[str], first_k: int = 0
+        self, end_ids: list[str], first_k: int = 0, timeout: float = None
     ) -> tuple[Any, tuple[str, datetime]]:
         """Receive a message per end from a list of ends.
 
@@ -445,6 +445,10 @@ class Channel(object):
                  means that we'd like to receive messages from all
                  ends in the list. If first_k > len(end_ids), first_k
                  is set to len(end_ids).
+        timeout: optional per-message wait budget in seconds. If no message
+                 arrives within it, yield (None, ("", now)) and stop, so a
+                 caller never blocks forever on in-flight ends that have gone
+                 quiet (unavailable / departed). Default None = block (legacy).
 
         Returns
         -------
@@ -483,8 +487,19 @@ class Channel(object):
         # the _get_message_inner() coroutine fetches a message from
         # the temp queue; we call this coroutine first_k times
         for _ in range(first_k):
-            result, status = run_async(_get_message_inner(), self._backend.loop())
+            result, status = run_async(
+                _get_message_inner(), self._backend.loop(), timeout=timeout
+            )
             logger.info(f"After getting message, status: {status}")
+            # timeout (or any non-delivery): don't index into a None result;
+            # signal "no message" to the caller and stop yielding.
+            if not status or result is None:
+                logger.info(
+                    f"recv_fifo: no message within timeout={timeout}s; "
+                    f"yielding None and stopping"
+                )
+                yield None, ("", datetime.now())
+                return
             (end_id, payload) = result
             logger.info(f"get payload for {end_id}")
 

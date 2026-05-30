@@ -367,5 +367,10 @@ if __name__ == "__main__":
     config = load_config_from_argv()
 
     a = PyTorchCifar10Aggregator(config, args.log_to_wandb, args.wandb_run_name)
+
+    from flame import telemetry
+
+    telemetry.configure(role="aggregator", end_id=config.job.job_id)
+
     a.compose()
     a.run()
