@@ -37,7 +37,7 @@ from flame.optimizer.train_result import TrainResult
 from flame import telemetry
 from flame.telemetry.events import build_agg_round
 from flame.sim import SimReorderBuffer
-from flame.selector.properties import PROP_SIM_SEND_TS
+from flame.selector.properties import PROP_SIM_SEND_TS, PROP_SIM_COMPLETION_TS
 from flame.selector.oort import (
     PROP_DATASET_SIZE,
     PROP_LAST_SELECTED_ROUND,
@@ -80,40 +80,27 @@ class TopAggregator(SyncTopAgg):
         self._per_trainer_staleness_track = {}
         self._track_trainer_version_duration_s = {}
 
-        # Simulated-time receive: reorder buffer (keyed by end, ordered by
-        # sim_completion_ts), committed-end set for the current agg-goal window,
-        # and pending-commit set for cross-round stragglers (blocked from
-        # re-selection until their buffer entry is committed).
         self._sim_buffer = SimReorderBuffer()
         self._sim_committed: set = set()
         self._sim_pending_commit: set = set()
 
-        # check if distribute_weights was successful
         self._prev_distribute_weights_success = False
 
-        # variables related to checking trainer availability
         self._per_trainer_last_heartbeat_ts = {}
-        if "heartbeat_freq_s" in self.config.hyperparameters.track_trainer_avail.keys():
+        if "heartbeat_freq_s" in self.config.hyperparameters.track_trainer_avail:
             self._trainer_heartbeat_freq_s = (
                 self.config.hyperparameters.track_trainer_avail["heartbeat_freq_s"]
             )
         else:
             self._trainer_heartbeat_freq_s = 99999
 
-        if (
-            "max_allowed_miss_heartbeats"
-            in self.config.hyperparameters.track_trainer_avail.keys()
-        ):
+        if "max_allowed_miss_heartbeats" in self.config.hyperparameters.track_trainer_avail:
             self._trainer_max_miss_heartbeats = (
-                self.config.hyperparameters.track_trainer_avail[
-                    "max_allowed_miss_heartbeats"
-                ]
+                self.config.hyperparameters.track_trainer_avail["max_allowed_miss_heartbeats"]
             )
         else:
             self._trainer_max_miss_heartbeats = 99999
 
-        # maintain a set of all trainers that have sent heartbeats
-        # previously
         self.all_trainers = set()
 
     def _reset_agg_goal_variables(self):
@@ -290,31 +277,18 @@ class TopAggregator(SyncTopAgg):
                 f"agg_current_version={self._round}"
             )
 
-            # For OORT selector NOTE: (DG) Last selected round should
-            # have ideally been set in distribute weights. But it was
-            # here in the old oort code and ive kept it. Instead of
-            # PROP_LAST_SELECTED_ROUND, it should have been
-            # PROP_LAST_UPDATE_RECVD_ROUND.
             channel.set_end_property(
                 end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
             )
 
-            # Set last eval round for the trainer since training also
-            # means that eval was done for the same round.
             channel.set_end_property(
                 end, PROP_LAST_EVAL_ROUND, msg[MessageType.MODEL_VERSION]
-            )
-            # calculate round duration for this end, if the round
-            # number information is identical with round_start_time
-            logger.debug(
-                f"Getting channel property {PROP_ROUND_START_TIME} for " f"end {end}"
             )
             round_start_time_tup = channel.get_end_property(end, PROP_ROUND_START_TIME)
             end = metadata[0]
             timestamp = metadata[1]
             logger.debug(
-                f"Returned round_start_time_tup: {round_start_time_tup} for "
-                f"end {end} and timestamp {timestamp}"
+                f"round_start_time_tup={round_start_time_tup} end={end} ts={timestamp}"
             )
 
             # TODO: (DG) Also set the end property for task=eval done
@@ -441,6 +415,28 @@ class TopAggregator(SyncTopAgg):
                         f"wall_lag_s={wall_lag_s:.1f}s — possible MQTT backlog"
                     )
 
+                _budget_s = float(msg.get(MessageType.TRAINING_BUDGET_S, 0.0))
+                if _budget_s > 0:
+                    if self.simulated:
+                        _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
+                        _sct = msg.get(MessageType.SIM_COMPLETION_TS)
+                        if _sst is not None and _sct is not None:
+                            _virt_elapsed = float(_sct) - float(_sst)
+                            if _virt_elapsed <= 0.0:
+                                logger.warning(
+                                    f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={recv_wts_version} "
+                                    f"budget={_budget_s:.1f}s overrun: virtual_elapsed={_virt_elapsed:.2f}s. "
+                                    f"Reduce trainers-per-GPU or add GPUs."
+                                )
+                    else:
+                        if wall_lag_s > _budget_s:
+                            logger.warning(
+                                f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={recv_wts_version} "
+                                f"budget={_budget_s:.1f}s overrun: wall_lag={wall_lag_s:.2f}s "
+                                f"(excess={wall_lag_s - _budget_s:.2f}s). "
+                                f"Reduce trainers-per-GPU or add GPUs."
+                            )
+
             # TODO: (DG) Can pass a flag for this later.
             allow_updates_more_than_timeout_old = True
 
@@ -499,10 +495,7 @@ class TopAggregator(SyncTopAgg):
                 curr_cumulative_training_s = self._track_trainer_version_duration_s[
                     end
                 ]["total_training_time_s"]
-                # round duration drives Oort's speed/system-utility. simulated
-                # mode: use the trainer-reported modeled duration D (the real
-                # recv-send delta is ~GPU time and misrepresents speed). real
-                # mode: the wall-clock delta (the sleep makes it ~= D).
+                # Both modes: round_duration = max(gpu, D); mirrors recv_ts-sent_ts for OORT utility.
                 if self.simulated:
                     round_duration_td = timedelta(
                         seconds=float(msg.get(MessageType.SIM_ROUND_DURATION, 0.0))
@@ -535,21 +528,10 @@ class TopAggregator(SyncTopAgg):
                     end, PROP_ROUND_DURATION, round_duration_td
                 )
 
-        # capture telemetry on trainer participation in rounds
         channel._selector.ordered_updates_recv_ends.append(end)
-        logger.debug(
-            f"After appending {end} to ordered_updates_recv_ends: "
-            f"{channel._selector.ordered_updates_recv_ends}"
-        )
-
         self._updates_in_queue += 1
-
-        self._per_round_update_list.append(
-            end
-        )  # SC_TS: PER Round! In Async FwdLLM -> we need to decide whether per data bin or per iteration!
-
-        # SC_TS: what is even the diff between this and  self._updates_in_queue += 1??!!
-        if end not in self._updates_recevied.keys():
+        self._per_round_update_list.append(end)
+        if end not in self._updates_recevied:
             self._updates_recevied[end] = 1
         else:
             self._updates_recevied[end] += 1
@@ -597,8 +579,8 @@ class TopAggregator(SyncTopAgg):
             _trainer_speed_s = _round_dur.total_seconds() if _round_dur is not None else 0.0
             self._round_update_values["trainer_speed"].append(_trainer_speed_s)
 
-            # Telemetry: one record per processed train update.
             if telemetry.is_enabled():
+                _sct_recv = msg.get(MessageType.SIM_COMPLETION_TS)
                 ev, fields = build_agg_round(
                     round_num=self._round,
                     agg_goal=self._agg_goal,
@@ -608,6 +590,10 @@ class TopAggregator(SyncTopAgg):
                     stat_utility=[stat_utility],
                     trainer_speed_s=[_trainer_speed_s],
                     contributing_trainers=[end],
+                    extra={
+                        "sim_completion_ts_recv": float(_sct_recv) if _sct_recv is not None else None,
+                        "vclock_now": self._vclock.now if self.simulated else None,
+                    },
                 )
                 telemetry.emit(ev, **fields)
 
@@ -649,7 +635,6 @@ class TopAggregator(SyncTopAgg):
             #         discarding") return
 
             logger.info("proceeding to agg weights")
-            # SC_TS: append weights to this list, till agg goal reached!
             self._agg_goal_weights = self.optimizer.do(
                 self._agg_goal_weights,
                 self.cache,
@@ -661,16 +646,10 @@ class TopAggregator(SyncTopAgg):
             self._agg_goal_cnt += 1
 
         if self._agg_goal_cnt < self._agg_goal:
-            # didn't reach the aggregation goal; return
             logger.debug(
-                f"didn't reach agg goal. _agg_goal_cnt: {self._agg_goal_cnt} while _agg_goal is {self._agg_goal}"
+                f"agg_goal_cnt={self._agg_goal_cnt} < agg_goal={self._agg_goal}, waiting for more"
             )
-
-            # Set trainer participation count property here to be used
-            # later in selection.
-            channel.set_end_property(
-                end, PROP_UPDATE_COUNT, self._updates_recevied[end]
-            )
+            channel.set_end_property(end, PROP_UPDATE_COUNT, self._updates_recevied[end])
             return
 
         if self._agg_goal_weights is None:
@@ -682,15 +661,8 @@ class TopAggregator(SyncTopAgg):
         # aggregation goal
         if self._agg_goal_cnt == self._agg_goal:
             logger.info(
-                f"reached agg goal since _agg_goal_cnt: {self._agg_goal_cnt} and _agg_goal is: {self._agg_goal}"
+                f"agg_goal={self._agg_goal} reached, round={self._round}"
             )
-            logger.debug(
-                f"Reached agg_goal {self._agg_goal}, "
-                f"current _updates_in_queue: {self._updates_in_queue}, "
-                f"current round before agg: {self._round}"
-            )
-
-            # update per-trainer participation in round agg
             for trainer_update in self._per_round_update_list:
                 if (
                     trainer_update
@@ -708,10 +680,6 @@ class TopAggregator(SyncTopAgg):
                     self._trainer_participation_in_round[trainer_update][
                         self._round - 1
                     ] = 1
-
-        # Computing rate: Not used anywhere right now rate = 1 /
-        # math.sqrt(1 + self._round - tres.version) logger.debug(f"
-        # rate at top_agg: {rate}")
 
         self.weights = self.optimizer.scale_add_agg_weights(
             self.weights, self._agg_goal_weights, self._agg_goal
@@ -920,153 +888,92 @@ class TopAggregator(SyncTopAgg):
         return picked_trainer_is_available
 
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
-        """Distribute a global model in asynchronous FL fashion.
-
-        This method is overridden from one in synchronous top
-        aggregator (..top_aggregator).
-        """
+        """Distribute a global model in asynchronous FL fashion."""
         channel = self.cm.get_by_tag(tag)
         if not channel:
             logger.debug(f"channel not found for tag {tag}")
             return
 
-        # this call waits for at least one peer to join this channel
         channel.await_join()
-
-        # before distributing weights, update it from global model
         self._update_weights()
 
-        # busy wait for 0.1 seconds before proceeding. This is to wait
-        # on distribute_weights to let the system state get updated
-        # before selector is invoked again
-        logger.debug(f"Starting busy wait at time {time.time()}")
+        # Brief pause so channel state settles before selector runs.
         time.sleep(0.1)
-        logger.debug(f"Ended busy wait at time {time.time()}")
 
-        # before invoking channel.ends() to select, set the
-        # trainer_unavail if it isn't None
         if self.trainer_event_dict is not None:
             curr_unavail_trainer_list = self.get_curr_unavail_trainers()
             channel.set_curr_unavailable_trainers(
                 trainer_unavail_list=curr_unavail_trainer_list
             )
-            logger.debug(
-                f"Passed curr_unavail_trainer_list: "
-                f"{curr_unavail_trainer_list} to channel"
-            )
         else:
-            # Handling the case for oort's selector since it expects 3
-            # arguments
             channel.set_curr_unavailable_trainers(trainer_unavail_list=[])
 
-        # check if there are any ends to send weights to
+        # Expose current vclock to selector so it can attach it to selection events.
+        if self.simulated:
+            channel.properties["vclock_now"] = self._vclock.now
 
-        logger.debug(
-            f"Sending weights to trainers with task_to_perform = {task_to_perform}"
-        )
         ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
-        # NRL TODO: else will take care of randomly selecting x
-        # trainers for "eval only" operation
         if not ends:
-            logger.debug(
-                f"No trainers found for tag {tag}, will "
-                f"move to get() for fetch weights from trainers"
-            )
+            logger.debug(f"No trainers found for tag {tag}")
             return
 
-        # send out global model parameters to trainers
         ends_list = list(ends)
         for idx, end in enumerate(ends_list):
-            # AsyncFL checks: Similar to FedBuff, prevent sending weights to trainers that:
-            # 1. Already have been sent weights for current version and haven't responded
-            # 2. Are already selected in the current round
-            
-            # Check 1: Has trainer been sent this version but not responded yet?
-            if end in self._track_trainer_version_duration_s.keys():
+            if end in self._track_trainer_version_duration_s:
                 sent_versions = self._track_trainer_version_duration_s[end]["sent_wts_version_ts"]
                 recv_versions = self._track_trainer_version_duration_s[end]["recv_wts_version_ts"]
-                
-                # If current version was sent but not received, skip
                 if self._round in sent_versions and self._round not in recv_versions:
                     logger.warning(
                         f"[SELECTION_CHECK] Skipping {end}: already sent model_version={self._round} "
-                        f"but no response received yet. Sent at {sent_versions[self._round]}, "
-                        f"sent_versions={list(sent_versions.keys())}, recv_versions={list(recv_versions.keys())}"
+                        f"but no response received yet."
                     )
                     continue
-                
-                # Check 2: Are there any unreturned versions (sent but not received)?
-                unreturned_versions = [v for v in sent_versions.keys() if v not in recv_versions.keys()]
-                if unreturned_versions:
+                unreturned = [v for v in sent_versions if v not in recv_versions]
+                if unreturned:
                     logger.warning(
-                        f"[SELECTION_CHECK] Trainer {end} has {len(unreturned_versions)} unreturned versions: "
-                        f"{unreturned_versions}. Current version to send: {self._round}. "
-                        f"This may indicate concurrent selection - proceeding but this could cause issues."
+                        f"[SELECTION_CHECK] {end} has {len(unreturned)} unreturned versions: {unreturned}"
                     )
-            
-            # Send shouldn't be allowed if already sent to a trainer
-            # in that same round
-            logger.info(
-                f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
-            )
 
-            # setting start time for OORT TODO: (DG) round_start_time
-            # for all trainers in the same round may not be the same
-            logger.debug(
-                f"Setting channel property {PROP_ROUND_START_TIME} for "
-                f"end {end}. For round {self._round} at time: {datetime.now()}"
+            logger.info(
+                f"sending weights to {end} model_version={self._round} task={task_to_perform}"
             )
             channel.set_end_property(
                 end, PROP_ROUND_START_TIME, (self._round, datetime.now())
             )
 
-            # we use _round to indicate a model version
-            channel.send(
-                end,
-                {
-                    MessageType.WEIGHTS: weights_to_device(
-                        self.weights, DeviceType.CPU
-                    ),
-                    MessageType.ROUND: self._round,
-                    MessageType.MODEL_VERSION: self._round,
-                    MessageType.TASK_TO_PERFORM: task_to_perform,
-                },
-            )
-
-            # Update send_time in training_duration_s
-            if end not in self._track_trainer_version_duration_s.keys():
+            msg = {
+                MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
+                MessageType.ROUND: self._round,
+                MessageType.MODEL_VERSION: self._round,
+                MessageType.TASK_TO_PERFORM: task_to_perform,
+            }
+            # Stamp virtual send-time so trainer can compute sim_completion_ts correctly.
+            # Without this, _sim_send_ts stays None on the trainer → _sim_now()=0 →
+            # sim_completion_ts = D for all trainers regardless of when task was dispatched,
+            # collapsing the reorder buffer to sort by tiny GPU-time differences only.
+            if self.simulated:
+                sim_send_ts = self._vclock.now
+                msg[MessageType.SIM_SEND_TS] = sim_send_ts
+                channel.set_end_property(end, PROP_SIM_SEND_TS, sim_send_ts)
                 logger.debug(
-                    f"{end} not in _track_trainer_version_duration_s, " f"will add"
+                    f"[SIM_SEND] end={end[-4:]} round={self._round} sim_send_ts={sim_send_ts:.2f}"
                 )
-                self._track_trainer_version_duration_s[end] = dict()
-                self._track_trainer_version_duration_s[end]["last_send_wts_ts"] = -1
 
-                # sent_wts_version_ts, recv_wts_version_ts is a dict
-                # of version sent/recv and its timestamp. This will be
-                # primarily used by AsyncOORT selector since it needs
-                # round_duration times. TODO: (DG) Right now the dict
-                # maintains ALL sent/recv versions and timestamps for
-                # all trainers. For thousands of trainers it might
-                # incur memory-bloat. Can optimize to retain just the
-                # versions and timestamps of those that were sent but
-                # not received back for the trainer.
-                self._track_trainer_version_duration_s[end]["sent_wts_version_ts"] = {}
-                self._track_trainer_version_duration_s[end]["recv_wts_version_ts"] = {}
-                self._track_trainer_version_duration_s[end][
-                    "total_training_time_s"
-                ] = -1
+            channel.send(end, msg)
 
-            # Update sent_wts_version_ts with version and timestamp
+            if end not in self._track_trainer_version_duration_s:
+                self._track_trainer_version_duration_s[end] = {
+                    "last_send_wts_ts": -1,
+                    "sent_wts_version_ts": {},
+                    "recv_wts_version_ts": {},
+                    "total_training_time_s": -1,
+                }
+
             self._track_trainer_version_duration_s[end]["sent_wts_version_ts"][
                 self._round
             ] = datetime.now()
-            
-            # Add small delay between sends to distribute MQTT broker load
-            # This prevents overwhelming the broker with many concurrent large messages
-            # and allows the event loop to process keepalive packets
-            # Stagger sends to avoid overwhelming the MQTT broker with concurrent
-            # large weight payloads. Use a shorter interval in simulated mode since
-            # trainers cycle faster and broker load is lower.
+
+            # Stagger sends: shorter interval in sim (no real sleeps) vs real mode.
             if idx < len(ends_list) - 1:
                 time.sleep(0.2 if self.simulated else 0.5)
 

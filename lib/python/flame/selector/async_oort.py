@@ -389,16 +389,27 @@ class AsyncOortSelector(AbstractSelector):
                 )
                 self._select_run_counter = 0
 
+            per_trainer_extra = {
+                eid: {
+                    "in_all_selected": eid in self.all_selected,
+                    "in_pending_commit": eid in getattr(self, "_agg_pending_commit_ref", set()),
+                    "last_eval_round": ends[eid].get_property(PROP_LAST_EVAL_ROUND),
+                }
+                for eid in ends
+            }
             self.emit_selection(
                 channel_props.get("round", 0),
                 task_to_perform,
                 ends,
                 eligible_ends.keys(),
                 list(results.keys()),
+                per_trainer_extra=per_trainer_extra,
                 extra={
                     "concurrency": concurrency,
                     "effective_c": effective_c,
                     "requester": self.requester,
+                    "vclock_now": channel_props.get("vclock_now"),
+                    "exploration_factor": self.exploration_factor,
                 },
             )
 
@@ -465,11 +476,23 @@ class AsyncOortSelector(AbstractSelector):
         for prob_idx in range(len(over_cutoff_utility_probs)):
             over_cutoff_utility_probs[prob_idx] /= over_cutoff_utility_sum
 
+        # Exclude zero-probability entries; np.random.choice(replace=False) requires ≥size non-zero.
+        nz_pairs = [
+            (e, p)
+            for e, p in zip(over_cutoff_utility_end_ids, over_cutoff_utility_probs)
+            if p > 0
+        ]
+        if not nz_pairs:
+            return []
+        nz_ends, nz_probs = zip(*nz_pairs)
+        nz_total = sum(nz_probs)
+        nz_probs = [p / nz_total for p in nz_probs]
+
         selected_ends = np.random.choice(
-            over_cutoff_utility_end_ids,
-            size=min(len(over_cutoff_utility_end_ids), num_of_ends),
+            list(nz_ends),
+            size=min(len(nz_ends), num_of_ends),
             replace=False,
-            p=over_cutoff_utility_probs,
+            p=nz_probs,
         )
 
         return selected_ends

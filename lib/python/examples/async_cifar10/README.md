@@ -148,8 +148,17 @@ tail -f eurosys26_expts/trainer_logs/log_trainer_*.log
 
 ## Next steps
 
-- First task for a new contributor: [`ava_first_task.md`](ava_first_task.md)
-  (split the trainer delay into compute + RTT, then make RTT time-varying).
+First-task guides for new contributors (each is self-contained; start from a
+passing smoke test run):
+
+| File | Task summary |
+|------|-------------|
+| [`ava_first_task.md`](ava_first_task.md) | Split trainer delay into compute + RTT; make RTT time-varying |
+| [`david_first_task.md`](david_first_task.md) | Add per-trainer lat/long from a mobility trace; emit location as telemetry each round |
+| [`seshu_first_task.md`](seshu_first_task.md) | Make `training_delay_s` sinusoidally time-varying (±20% of mean, 0.5 s floor) |
+
+All three tasks target **`time_mode: real`** (wall-clock mode). Simulation mode
+is still being validated and is not the target for these tasks.
 
 ## References
 

@@ -21,6 +21,7 @@ EVENT_AGG_ROUND = "agg_round"        # aggregation step: staleness/agg-goal/part
 EVENT_TRAINER_ROUND = "trainer_round"  # per-round trainer timing/availability
 EVENT_UTIL_DISPARITY = "util_disparity"  # streamed-prefix vs full-pool utility
 EVENT_AVAIL_CHANGE = "avail_change"  # trainer availability state transition
+EVENT_TASK_RECV = "task_recv"        # trainer received a task from aggregator
 
 KNOWN_EVENTS = frozenset(
     {
@@ -31,6 +32,7 @@ KNOWN_EVENTS = frozenset(
         EVENT_TRAINER_ROUND,
         EVENT_UTIL_DISPARITY,
         EVENT_AVAIL_CHANGE,
+        EVENT_TASK_RECV,
     }
 )
 
@@ -200,3 +202,27 @@ def build_avail_change(
         "old_state": old_state,
         "new_state": new_state,
     }
+
+
+def build_task_recv(
+    *,
+    round_num: int,
+    trainer_id: str,
+    time_mode: str,
+    sim_send_ts: Optional[float] = None,
+    avl_state: Optional[str] = None,
+) -> tuple[str, dict[str, Any]]:
+    """Trainer received a task (weights) from the aggregator.
+
+    sim_send_ts: the virtual clock value stamped by the aggregator (sim mode only).
+    Emitting None in real mode for both sim_send_ts and vclock makes the per-round
+    trainer state directly comparable between real and sim telemetry.
+    """
+    fields: dict[str, Any] = {
+        "round": round_num,
+        "trainer_id": trainer_id,
+        "time_mode": time_mode,
+        "sim_send_ts": sim_send_ts,
+        "avl_state": avl_state,
+    }
+    return EVENT_TASK_RECV, fields

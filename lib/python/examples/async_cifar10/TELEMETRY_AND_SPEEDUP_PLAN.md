@@ -40,9 +40,27 @@ Implemented and unit-verified (156 tests green incl. `tests/sim` + `tests/mode`)
 - Trainer: `real` sleeps `D`; `simulated` skips sleeps, reports `sim_completion_ts`/`D`, evaluates availability + streaming against sim-time (`_sim_now`), and skips (rather than busy-waits) when unavailable in sim mode.
 - Async aggregator: stamps `sim_send_ts` on distribute; `simulated` commits via `_sim_recv_min` (reorder buffer → ascending `sim_completion_ts`, advances `T_v`) and sources `PROP_ROUND_DURATION` from `D`; `real` keeps arrival-order FIFO. Bounded-recv guard retained.
 
+## Update (2026-06-01): unified timing model + GPU contention tracking
+
+**Unified `max(gpu, D)` round duration** ([trainer/pytorch/main.py](trainer/pytorch/main.py), [asyncfl/top_aggregator.py](../../flame/mode/horizontal/asyncfl/top_aggregator.py)):
+- Previously both modes used a fixed `D` for round duration. Now `sim_round_duration = max(gpu_time, D)` in all modes: no contention → `D` (correct device speed); GPU overrun → `gpu > D` (OORT correctly deprioritizes the contended trainer). `sim_completion_ts = sim_send_ts + max(gpu, D)` mirrors real `recv_ts − sent_ts = max(gpu, D)` exactly.
+- Real mode sleep: `time.sleep(max(0, D − gpu))` — absorbs remaining budget. No sleep on overrun.
+- Aggregator: `PROP_ROUND_DURATION = timedelta(SIM_ROUND_DURATION)` in sim mode; `recv_ts − sent_ts` in real mode. Both yield `max(gpu, D)`.
+
+**Budget tracking + overrun detection** (`MessageType.TRAINING_BUDGET_S = 37`):
+- Trainer sends `training_delay_s` (D) as `TRAINING_BUDGET_S` on every update (both modes).
+- Aggregator: `[TIMING_OVERRUN_AGG]` warning when virtual elapsed ≤ 0 (sim) or wall lag > budget (real). Trainer: `[TIMING_OVERRUN]` warning when `gpu > D` with advice to reduce trainers-per-GPU or add GPUs.
+
+**OORT crash fix** ([selector/async_oort.py](../../flame/selector/async_oort.py)):
+- Root cause: `timedelta(0)` round duration → `system_utility = 0` for all trainers → `np.random.choice(replace=False, p=[...])` fails when all probabilities are zero. Fixed at the source (overrun now yields `gpu > D > 0`, never zero duration) plus a defensive zero-probability filter in `sample_by_util`.
+
+**Compare-parity enhancements** ([scripts/compare_parity.py](scripts/compare_parity.py)):
+- Check 9: GPU contention analysis — per-trainer overrun fraction vs budget; FAIL >25%, WARN >10%; graceful on old runs without `training_budget_s`.
+- `--plot-out PATH`: 2-panel timing sanity plot — per-trainer mean GPU bar + budget marker (top), round-by-round deviation mean/max (bottom). Overrun zone highlighted in red.
+
 Remaining / known gaps:
 - **Sync aggregator**: init + `sim_send_ts` stamping done, but the `first_k`-by-`sim_completion_ts` selection and sim-sourced round duration are **not** implemented (sync still uses arrival order in sim mode). The primary target (felix) is async; sync (oort/refl/fedavg) sim-ordering is a follow-up.
-- **End-to-end two-run verification** (Q1: `real` vs `simulated` per-round parity + speedup) needs a GPU/MQTT run — not yet executed.
+- **End-to-end two-run verification** (Q1: `real` vs `simulated` per-round parity + speedup) needs a GPU/MQTT run — in progress (initial runs done; parity investigation ongoing).
 - **Availability in sim mode** uses the trainer's own trace evaluated at the stamped sim-time; correlated-trace / oracular-at-`T_v` selection nuances (and the client-notify-vs-oracular question) want runtime validation.
 - `examples/fwdllm` still hardcodes `speedup_factor=1.0` (separate example; left as-is).
 
@@ -72,7 +90,7 @@ This is more efficient than scaling sleeps: wall-clock is bounded by *real GPU t
 
 **Q1 — Two-run verification and the equivalence expectation.** Run the same experiment in `real` and `simulated` (fixed seed). Both read availability / data-visibility / speed / ordering off the *same logical times*, so they're expected to produce the **same per-(model-version) selection sets, staleness, and loss/accuracy** — "same per round/model-version, not per wall-clock-second" — with `simulated` wall-clock ≪ `real`. Equivalence is **exact in a deterministic scripted scenario** (well-separated `D`, controlled/mocked GPU time → arrival order == sim-completion order) and **within tolerance in a live smoke** (the only divergence source is real-GPU jitter reordering two trainers whose `D` are very close). Verify both: scripted parity test + smoke per-round parity & speedup.
 
-**Q2 — Trainer speed / system-utility source.** In `simulated` mode the wall-clock recv−send delta collapses to ~GPU time and misrepresents speed, so `PROP_ROUND_DURATION` is sourced from `sim_completion_ts − sim_send_ts` (= `D`). In `real` mode the real delta already ≈ `D` (the sleep dominates), so it stays authentic. Either way the value used for Oort's system-utility is the modeled duration. (The current `recv−send` path is *already* wrong under the old `speedup_factor>1`; removing speedup + this fix resolve it.)
+**Q2 — Trainer speed / system-utility source.** In `simulated` mode the wall-clock recv−send delta collapses to ~GPU time and misrepresents speed, so `PROP_ROUND_DURATION` is sourced from `SIM_ROUND_DURATION = max(gpu, D)`. In `real` mode the real delta `recv_ts − sent_ts = max(gpu, D)` (sleep absorbs remaining budget). Both modes deliver the same quantity to OORT: correct device speed when no contention, true overrun cost when GPU is shared. (The current `recv−send` path is *already* wrong under the old `speedup_factor>1`; removing speedup + this fix resolve it.)
 
 **Q3 — Dual timestamps (real + simulated) for lineage.** Keep both on every event record and in the aggregator's `_track_trainer_version_duration_s` (`real_ts` + `sim_ts`, send & recv), so lineage and wall-clock behavior stay reconstructable. Telemetry events gain `sim_ts`/`sim_completion_ts` alongside the existing real `ts`.
 

@@ -97,52 +97,31 @@ class PyTorchCifar10Trainer(Trainer):
         self.batch_size = self.config.hyperparameters.batch_size or 16
         self.trainer_id = self.config.task_id
 
-        # Learning rate decay configuration (optional, for REFL)
-        # REFL uses decay_factor=0.98 every 10 rounds, Oort doesn't use decay
         self.lr_decay_enabled = getattr(self.config.hyperparameters, 'lr_decay_enabled', False)
         self.lr_decay_factor = getattr(self.config.hyperparameters, 'lr_decay_factor', 0.98)
         self.lr_decay_epoch = getattr(self.config.hyperparameters, 'lr_decay_epoch', 10)
         self.min_learning_rate = getattr(self.config.hyperparameters, 'min_learning_rate', 1e-4)
-        
-        logger.info(
-            f"Trainer {self.trainer_id}: LR decay {'ENABLED' if self.lr_decay_enabled else 'DISABLED'} "
-            f"(factor={self.lr_decay_factor}, epoch={self.lr_decay_epoch}, min_lr={self.min_learning_rate})"
-        )
 
         self.criterion = None
 
         self.task_to_perform = "train"
 
-        # Enable/disable use of oort_loss fromt he config. Needed for
-        # oort and asyncOORT.
         self.use_oort_loss_fn = self.config.hyperparameters.use_oort_loss_fn
-        logger.info(
-            f"Trainer: {self.trainer_id} has "
-            f"use_oort_loss_fn: {self.use_oort_loss_fn}"
-        )
-
-        # TODO: (DG) Remove the hard requirement for config to include
-        # trainer_indices_list
-        # Setting the indices used by the trainer
         self.trainer_indices_list = self.config.hyperparameters.trainer_indices_list
         self.trainer_start_ts = time.time()
 
-        # sending heartbeats to aggregator
-        if "enabled" in self.config.hyperparameters.heartbeats.keys():
+        if "enabled" in self.config.hyperparameters.heartbeats:
             self.heartbeats_enabled = self.config.hyperparameters.heartbeats["enabled"]
         else:
             self.heartbeats_enabled = False
 
-        if "frequency_s" in self.config.hyperparameters.heartbeats.keys():
+        if "frequency_s" in self.config.hyperparameters.heartbeats:
             self.heartbeats_second_freq = self.config.hyperparameters.heartbeats[
                 "frequency_s"
             ]
         else:
             self.heartbeats_second_freq = 99999
 
-        # TODO: (DG) self.timestamp_next_heartbeat_s might not be
-        # getting used. Remove? if heartbeats are enabled, compute
-        # first heartbeat time
         if self.heartbeats_enabled is True:
             self.timestamp_next_heartbeat_s = (
                 self.trainer_start_ts + self.heartbeats_second_freq
@@ -152,27 +131,18 @@ class PyTorchCifar10Trainer(Trainer):
                 time.strptime("Dec 31, 2030 @ 23:59:59 UTC", "%b %d, %Y @ %H:%M:%S UTC")
             )
 
-        # Check if client will notify aggregator of its availability
         self.client_notify = self.config.hyperparameters.client_notify
 
-        # Check if client will emulate delays in training time.
-        # Normalize to bool: config.py types this as Optional[bool] but it can
-        # arrive as a Python bool (from JSON true) or the string "True"/"False"
-        # depending on the config path. Unify here so comparisons are consistent.
+        # Normalize to bool: may arrive as Python bool or string "True"/"False".
         _tde = self.config.hyperparameters.training_delay_enabled
         self.training_delay_enabled = (
             _tde if isinstance(_tde, bool) else str(_tde).strip().lower() == "true"
         )
         self.training_delay_s = float(self.config.hyperparameters.training_delay_s)
 
-        # Simulation time mode. "real": sleep modeled delays at true pace.
-        # "simulated": skip sleeps; report a modeled completion time so the
-        # aggregator orders updates by a virtual clock. No speedup_factor.
         self.time_mode = str(time_mode)
         self.simulated = self.time_mode == "simulated"
-        # sim-time stamped by the aggregator on the current task (simulated
-        # mode); set when weights are received. None until first task.
-        self._sim_send_ts = None
+        self._sim_send_ts = None  # set by aggregator stamp on each task (sim mode)
 
         # Use the battery_threshold to determine the
         # avl_events_3_state config. Default to 50 if not provided
@@ -181,7 +151,6 @@ class PyTorchCifar10Trainer(Trainer):
             f"Trainer id {self.trainer_id} has battery threshold set to {self.event_battery_threshold}"
         )
 
-        # Helper function to handle both string and list formats
         def parse_trace(value):
             if isinstance(value, list):
                 return value  # Already parsed (from JSON config)
@@ -250,7 +219,6 @@ class PyTorchCifar10Trainer(Trainer):
         # flag to decide whether the trainer upon unavailability will wait or exit
         self.wait_until_next_avl = self.config.hyperparameters.wait_until_next_avl
 
-        # Data streaming: reveal samples over time (see MIGRATING_TO_LAUNCHER.md)
         ds_cfg = getattr(self.config.hyperparameters, "data_streaming", None) or {}
         self.data_streaming_enabled = str(ds_cfg.get("enabled", "False")) == "True"
         self.data_streaming_full_after_s = float(
@@ -262,8 +230,6 @@ class PyTorchCifar10Trainer(Trainer):
             f"(full_data_available_after_s={self.data_streaming_full_after_s})"
         )
 
-        # Streamed-vs-full statistical-utility counterfactual telemetry (opt-in).
-        # Config: util_counterfactual: {enabled, every_n_rounds, sample_size}.
         uc_cfg = getattr(self.config.hyperparameters, "util_counterfactual", None) or {}
         self.util_cf_enabled = str(uc_cfg.get("enabled", "False")) == "True"
         self.util_cf_every_n = int(uc_cfg.get("every_n_rounds", 1) or 1)
@@ -288,23 +254,13 @@ class PyTorchCifar10Trainer(Trainer):
         pass
 
     def _sim_now(self) -> float:
-        """Current simulated time (sim-seconds since trainer start).
-
-        real mode: wall-clock elapsed (1:1, no speedup). simulated mode: the
-        sim-time the aggregator stamped on the most recent task (advances only
-        as tasks arrive), so availability/streaming track the virtual clock.
-        """
+        """Wall-elapsed (real) or last-task sim_send_ts (simulated)."""
         if self.simulated:
             return float(self._sim_send_ts) if self._sim_send_ts is not None else 0.0
         return time.time() - self.trainer_start_ts
 
     def _refresh_avl_for_sim(self) -> None:
-        """Catch availability state up to the current sim-time (simulated mode).
-
-        In real mode the notify thread advances state in wall-clock; in
-        simulated mode sim-time jumps with each task, so pop all events due by
-        _sim_now() before a task decides on availability.
-        """
+        """Advance availability state to current sim-time (sim mode only)."""
         if not self.simulated:
             return
         guard = 0
@@ -686,17 +642,13 @@ class PyTorchCifar10Trainer(Trainer):
         # reset stat utility for OORT
         self.reset_stat_utility()
 
-        # Log training start with comprehensive info and the expected cycle time.
-        # real mode: wall-clock will be ~GPU + D (modeled delay).
-        # simulated mode: wall-clock will be ~GPU only; D is reported to the
-        # aggregator via sim_completion_ts so it can order updates correctly.
         num_batches = len(self.train_loader)
         dataset_size = len(self.train_loader.dataset)
         _D = self.training_delay_s if self.training_delay_enabled else 0.0
         if self.simulated:
-            _expected_wallclock_hint = f"~GPU only wall-clock; reports GPU+D to aggregator (D={_D:.1f}s)"
+            _expected_wallclock_hint = f"~GPU wall-clock only; virtual_advance=max(gpu,D={_D:.1f}s)"
         else:
-            _expected_wallclock_hint = f"~GPU + {_D:.1f}s sleep = ~{_D:.1f}s+ wall-clock"
+            _expected_wallclock_hint = f"~max(gpu,D={_D:.1f}s) wall-clock; sleep=max(0,D-gpu)"
         logger.info(
             f"[TRAIN_START] Trainer {self.trainer_id} starting training with "
             f"model_version={self._round}, dataset_size={dataset_size}, "
@@ -741,26 +693,28 @@ class PyTorchCifar10Trainer(Trainer):
         # Log memory after training round
         self.memory_profiler.log_memory_after_round()
 
-        # Round duration = actual GPU compute + modeled device delay D.
-        # In real mode, the aggregator measures recv_ts - sent_ts ≈ GPU + D + MQTT.
-        # In simulated mode we skip the sleep but must still report GPU + D so that:
-        #   1. SIM_ROUND_DURATION fed to OORT matches what real mode would measure
-        #      (giving OORT real per-trainer speed heterogeneity, not a uniform D).
-        #   2. sim_completion_ts = sim_send_ts + GPU + D correctly orders trainers by
-        #      actual completion time — trainers with lighter data / faster GPU finish
-        #      first, replicating real arrival order.
-        # Without _real_gpu_time_s, all trainers report identical D, making
-        # sim_completion_ts equal for everyone selected in the same loop iteration,
-        # which causes deterministic OORT over-selection of the top stat-utility set.
         _modeled_delay_s = self.training_delay_s if self.training_delay_enabled else 0.0
-        sim_round_duration = _real_gpu_time_s + _modeled_delay_s
+        _remaining_time = max(0.0, _modeled_delay_s - _real_gpu_time_s)
+        _overran = self.training_delay_enabled and _real_gpu_time_s > _modeled_delay_s
+        self._training_budget_s = _modeled_delay_s
+
+        if _overran:
+            logger.warning(
+                f"[TIMING_OVERRUN] Trainer {self.trainer_id} round={self._round} "
+                f"exceeded budget: gpu={_real_gpu_time_s:.2f}s > budget={_modeled_delay_s:.2f}s "
+                f"(excess={_real_gpu_time_s - _modeled_delay_s:.2f}s). "
+                f"Reduce trainers-per-GPU or add GPUs."
+            )
+
+        # max(gpu, D): no contention → D; overrun → gpu > D (OORT sees trainer as slow).
+        sim_round_duration = _real_gpu_time_s + _remaining_time  # = max(gpu, D)
+
         self._sim_round_duration = sim_round_duration
         self._sim_completion_ts = (
             (self._sim_send_ts if self._sim_send_ts is not None else self._sim_now())
             + sim_round_duration
         )
 
-        # Telemetry: per-round timing/availability + streamed-vs-full disparity.
         if telemetry.is_enabled():
             visible = (
                 self._visible_sample_count()
@@ -780,38 +734,40 @@ class PyTorchCifar10Trainer(Trainer):
                 if isinstance(self._stat_utility, (int, float))
                 else float(getattr(self._stat_utility, "item", lambda: 0.0)()),
                 final_loss=final_loss,
-                extra={"sim_completion_ts": self._sim_completion_ts,
-                       "time_mode": self.time_mode},
+                extra={
+                    "sim_completion_ts": self._sim_completion_ts,
+                    "sim_send_ts": float(self._sim_send_ts) if self._sim_send_ts is not None else None,
+                    "time_mode": self.time_mode,
+                    "training_budget_s": _modeled_delay_s,
+                    "remaining_time_s": _remaining_time,
+                    "overran": _overran,
+                },
             )
             telemetry.emit(ev, **fields)
             self._emit_util_disparity(
                 int(getattr(self, "_round", 0)), self._sim_now()
             )
 
-        # real mode: sleep D so a slow device actually takes that long in
-        # wall-clock. simulated mode: skip the sleep (the aggregator uses the
-        # reported sim_completion_ts instead).
-        if self.training_delay_enabled and not self.simulated:
-            time.sleep(self.training_delay_s)
+        if not self.simulated and _remaining_time > 0:
+            time.sleep(_remaining_time)
 
-        # Validate actual cycle time vs expected, and log the summary.
         _cycle_elapsed = time.time() - _cycle_start
         if self.simulated:
-            # Expected: ~GPU only. Log actual so we can confirm no sleep crept in.
             logger.info(
                 f"[TRAIN_CYCLE] Trainer {self.trainer_id} round={self._round} "
-                f"time_mode=simulated: actual_wall={_cycle_elapsed:.2f}s "
-                f"(GPU={_real_gpu_time_s:.2f}s + D={_modeled_delay_s:.1f}s = reported {sim_round_duration:.2f}s), "
-                f"sim_completion_ts={self._sim_completion_ts:.2f}"
+                f"time_mode=simulated: wall={_cycle_elapsed:.2f}s "
+                f"GPU={_real_gpu_time_s:.2f}s budget={_modeled_delay_s:.1f}s "
+                f"virtual_advance={sim_round_duration:.2f}s "
+                f"{'OVERRUN' if _overran else 'OK'} "
+                f"sct={self._sim_completion_ts:.2f}"
             )
         else:
-            _expected = _real_gpu_time_s + sim_round_duration
-            _ok = _cycle_elapsed >= sim_round_duration  # cycle must be at least D
             logger.info(
                 f"[TRAIN_CYCLE] Trainer {self.trainer_id} round={self._round} "
-                f"time_mode=real: actual_wall={_cycle_elapsed:.2f}s "
-                f"(GPU={_real_gpu_time_s:.2f}s + sleep={sim_round_duration:.1f}s = expected~{_expected:.1f}s) "
-                f"{'OK' if _ok else 'WARN: actual < D, sleep may not have fired'}"
+                f"time_mode=real: wall={_cycle_elapsed:.2f}s "
+                f"GPU={_real_gpu_time_s:.2f}s budget={_modeled_delay_s:.1f}s "
+                f"sleep={_remaining_time:.2f}s total={sim_round_duration:.1f}s "
+                f"{'OVERRUN' if _overran else 'OK'}"
             )
 
     def _train_epoch(self, epoch):

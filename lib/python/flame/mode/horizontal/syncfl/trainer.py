@@ -43,6 +43,8 @@ from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizers import optimizer_provider
 from flame.privacies import privacy_provider
 from flame.registries import registry_provider
+from flame import telemetry
+from flame.telemetry.events import build_task_recv
 
 # TODO: (DG) torch is needed for asyncoort in oort_loss() function,
 # but need to comment / uncomment based on the backend used. If it is
@@ -223,11 +225,22 @@ class Trainer(Role, metaclass=ABCMeta):
             self.weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
             self._update_model()
 
-        # simulated-time mode: capture the virtual send time stamped by the
-        # aggregator on this task (used to compute sim_completion_ts). No-op
-        # for trainers/aggregators that don't use it.
+        # Capture virtual send-time stamped by aggregator (sim mode); used for sim_completion_ts.
         if MessageType.SIM_SEND_TS in msg:
             self._sim_send_ts = msg[MessageType.SIM_SEND_TS]
+
+        if telemetry.is_enabled():
+            _sim_send_ts_val = getattr(self, "_sim_send_ts", None)
+            _time_mode = getattr(self, "time_mode", "real")
+            _avl = getattr(getattr(self, "avl_state", None), "value", None)
+            ev, fields = build_task_recv(
+                round_num=int(self._round),
+                trainer_id=str(getattr(self, "trainer_id", "")),
+                time_mode=_time_mode,
+                sim_send_ts=float(_sim_send_ts_val) if _sim_send_ts_val is not None else None,
+                avl_state=_avl,
+            )
+            telemetry.emit(ev, **fields)
 
         if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
@@ -376,6 +389,10 @@ class Trainer(Role, metaclass=ABCMeta):
             msg[MessageType.SIM_ROUND_DURATION] = getattr(
                 self, "_sim_round_duration", 0.0
             )
+
+        _budget = getattr(self, "_training_budget_s", None)
+        if _budget is not None:
+            msg[MessageType.TRAINING_BUDGET_S] = float(_budget)
 
         channel.send(end, msg)
 

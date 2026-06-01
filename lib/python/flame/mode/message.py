@@ -79,6 +79,7 @@ class MessageType(Enum):
     # virtual send time on the distributed task; trainer echoes its modeled
     # completion time and duration on the update. Used to order updates by a
     # virtual clock instead of physical arrival.
-    SIM_SEND_TS = 34       # virtual clock T_v at weight distribution
-    SIM_COMPLETION_TS = 35  # sim_send_ts + real_gpu_time + modeled delay D
-    SIM_ROUND_DURATION = 36  # real_gpu_time + modeled delay D (matches real-mode recv_ts - sent_ts)
+    SIM_SEND_TS = 34        # virtual clock T_v at weight distribution
+    SIM_COMPLETION_TS = 35  # sim_send_ts + max(gpu, D); reorder buffer commits by this
+    SIM_ROUND_DURATION = 36  # max(gpu_time, D) = true round cost; mirrors real recv_ts-sent_ts for OORT speed utility
+    TRAINING_BUDGET_S = 37   # trainer's configured total round budget (training_delay_s)

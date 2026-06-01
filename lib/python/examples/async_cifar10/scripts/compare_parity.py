@@ -2,18 +2,23 @@
 Parity comparator: real run vs simulated run.
 
 Checks:
-  1. Selection parity     — per round: same trainers selected? same order?
-  2. Statistical utility  — per-trainer utility distributions match?
-  3. Aggregation sequence — same contributing-trainer order per round?
-  4. Staleness            — distributions match?
-  5. Participation counts — each trainer used similar # of times?
-  6. Accuracy / loss      — convergence curves from agg_eval events
+  1. Selection parity        — per round: same trainers selected?
+  2. Statistical utility     — per-trainer utility distributions match?
+  3. Aggregation sequence    — same contributing-trainer order per round?
+  4. Staleness               — distributions match?
+  5. Participation counts    — each trainer used similar # of times?
+  6. Convergence             — accuracy / loss from agg_eval events
+  7. Round duration parity   — per-trainer sim_round_duration_s distributions match?
+  8. sim_send_ts presence    — sim mode: vclock stamps non-zero; real mode: null
+  9. GPU contention          — actual GPU time vs budget per trainer; detect overruns
 
 Usage:
     python compare_parity.py \\
-        --real  experiments/run_20260529_101200.../telemetry/aggregator_*.jsonl \\
-        --sim   experiments/run_20260529_152224.../telemetry/aggregator_*.jsonl \\
-        [--rounds 100] [--strict]
+        --real  experiments/run_.../telemetry/aggregator_*.jsonl \\
+        --sim   experiments/run_.../telemetry/aggregator_*.jsonl \\
+        [--real-trainer-dir experiments/run_.../telemetry/] \\
+        [--sim-trainer-dir  experiments/run_.../telemetry/] \\
+        [--rounds 100] [--strict] [--plot-out timing.png] [--json-out results.json]
 
 Exit 0 = all checks passed (or within tolerance)
 Exit 1 = one or more checks failed
@@ -32,6 +37,33 @@ from typing import Optional
 
 def short(end_id: str) -> str:
     return end_id[-4:] if end_id else "None"
+
+
+def load_trainer_jsonl_dir(telemetry_dir: Optional[str]) -> dict:
+    """Load all trainer_*.jsonl files from a telemetry dir.
+
+    Returns {short_id: {"task_recv": [...], "trainer_round": [...]}}
+    """
+    if not telemetry_dir:
+        return {}
+    d = Path(telemetry_dir)
+    result = {}
+    for f in sorted(d.glob("trainer_*.jsonl")):
+        short_id = f.stem[-4:]  # last 4 hex chars
+        task_recv_evs, trainer_round_evs = [], []
+        with open(f) as fp:
+            for line in fp:
+                try:
+                    e = json.loads(line.strip())
+                except json.JSONDecodeError:
+                    continue
+                ev = e.get("event")
+                if ev == "task_recv":
+                    task_recv_evs.append(e)
+                elif ev == "trainer_round":
+                    trainer_round_evs.append(e)
+        result[short_id] = {"task_recv": task_recv_evs, "trainer_round": trainer_round_evs}
+    return result
 
 
 def load_agg_jsonl(path: str) -> dict:
@@ -373,6 +405,281 @@ def check_convergence(real: dict, sim: dict) -> dict:
     }
 
 
+def check_round_duration_parity(real_trainers: dict, sim_trainers: dict) -> dict:
+    """Check 7: per-trainer sim_round_duration_s distributions match?
+
+    Sim mode: sim_round_duration_s = remaining_time = max(0, D - gpu_time) ≈ D - gpu.
+    Real mode: sim_round_duration_s = gpu + remaining_time = max(gpu, D) = D (no overrun).
+    Expected mean diff ≈ gpu_time (small, ~0.5s for fast trainers).
+    Large diffs indicate overruns or dataset-size divergence.
+    """
+    all_ids = sorted(set(real_trainers) | set(sim_trainers))
+    if not all_ids:
+        return {"status": WARN, "note": "no trainer telemetry dirs provided"}
+
+    rows, ks_stats, mean_diffs = [], [], []
+    for tid in all_ids:
+        r_evs = real_trainers.get(tid, {}).get("trainer_round", [])
+        s_evs = sim_trainers.get(tid, {}).get("trainer_round", [])
+        r_durs = [e["sim_round_duration_s"] for e in r_evs if "sim_round_duration_s" in e]
+        s_durs = [e["sim_round_duration_s"] for e in s_evs if "sim_round_duration_s" in e]
+        ks = ks_stat(r_durs, s_durs)
+        rm, _ = mean_std(r_durs)
+        sm, _ = mean_std(s_durs)
+        diff = abs(rm - sm) if not (math.isnan(rm) or math.isnan(sm)) else float("nan")
+        rows.append({"trainer": tid, "real_mean_s": round(rm, 3), "sim_mean_s": round(sm, 3),
+                     "mean_diff_s": round(diff, 3), "ks_stat": round(ks, 3) if not math.isnan(ks) else None,
+                     "n_real": len(r_durs), "n_sim": len(s_durs)})
+        if not math.isnan(ks):
+            ks_stats.append(ks)
+        if not math.isnan(diff):
+            mean_diffs.append(diff)
+
+    max_ks = max(ks_stats) if ks_stats else float("nan")
+    avg_diff = sum(mean_diffs) / len(mean_diffs) if mean_diffs else float("nan")
+    status = PASS if (math.isnan(max_ks) or max_ks < 0.2) else (WARN if max_ks < 0.4 else FAIL)
+    return {"status": status, "max_ks_stat": round(max_ks, 3) if not math.isnan(max_ks) else None,
+            "avg_mean_diff_s": round(avg_diff, 3) if not math.isnan(avg_diff) else None,
+            "per_trainer": rows}
+
+
+def check_sim_send_ts(real_trainers: dict, sim_trainers: dict) -> dict:
+    """Check 8: sim_send_ts correctness.
+
+    Real mode:  task_recv.sim_send_ts should be None (aggregator doesn't stamp vclock there).
+    Sim mode:   task_recv.sim_send_ts must be non-None and must increase over rounds,
+                confirming the SIM_SEND_TS fix is in effect.  A flat 0.0 across all rounds
+                indicates the bug is still present (trainer using _sim_now()=0 as base).
+    """
+    issues = []
+
+    # real: all sim_send_ts should be null
+    for tid, data in real_trainers.items():
+        non_null = [e["sim_send_ts"] for e in data.get("task_recv", []) if e.get("sim_send_ts") is not None]
+        if non_null:
+            issues.append(f"real/{tid}: unexpected non-null sim_send_ts values: {non_null[:3]}")
+
+    # sim: sim_send_ts should be non-null and non-trivially non-zero after round 1
+    sim_ok, sim_all_zero, sim_missing = 0, 0, 0
+    for tid, data in sim_trainers.items():
+        evs = [e for e in data.get("task_recv", []) if e.get("round", 0) > 1]
+        if not evs:
+            sim_missing += 1
+            continue
+        vals = [e.get("sim_send_ts") for e in evs]
+        nulls = [v for v in vals if v is None]
+        zeros = [v for v in vals if v is not None and v == 0.0]
+        non_zeros = [v for v in vals if v is not None and v > 0.0]
+        if nulls:
+            issues.append(f"sim/{tid}: {len(nulls)} null sim_send_ts values — SIM_SEND_TS fix may not be active")
+            sim_all_zero += 1
+        elif not non_zeros:
+            issues.append(f"sim/{tid}: all sim_send_ts==0.0 (rounds>1) — vclock not advancing")
+            sim_all_zero += 1
+        else:
+            sim_ok += 1
+
+    status = PASS if not issues else FAIL
+    return {"status": status, "issues": issues, "sim_trainers_ok": sim_ok,
+            "sim_trainers_flat_zero": sim_all_zero, "sim_trainers_no_data": sim_missing}
+
+
+def check_gpu_contention(real_trainers: dict, sim_trainers: dict) -> dict:
+    """Check 9: GPU contention — does actual GPU time respect the per-trainer budget?
+
+    Reads training_budget_s and real_gpu_time_s from trainer_round events.
+    Overrun fraction = rounds where gpu_time > budget.
+    FAIL if mean overrun fraction > 25%; WARN if > 10%.
+    Old runs without training_budget_s in telemetry are skipped with WARN.
+    """
+    def _extract(trainers):
+        stats = {}
+        for tid, d in trainers.items():
+            evs = [e for e in d.get("trainer_round", [])
+                   if "real_gpu_time_s" in e and e.get("training_budget_s", 0) > 0]
+            if not evs:
+                continue
+            gpu = [e["real_gpu_time_s"] for e in evs]
+            bgt = [e["training_budget_s"] for e in evs]
+            overruns = [g > b for g, b in zip(gpu, bgt)]
+            stats[tid] = {
+                "n": len(evs),
+                "budget_s": round(bgt[0], 2),
+                "mean_gpu_s": round(sum(gpu) / len(gpu), 3),
+                "max_gpu_s": round(max(gpu), 3),
+                "overrun_frac": round(sum(overruns) / len(overruns), 3),
+                "overran_rounds": int(sum(overruns)),
+            }
+        return stats
+
+    real_st = _extract(real_trainers)
+    sim_st  = _extract(sim_trainers)
+
+    if not real_st and not sim_st:
+        return {"status": WARN,
+                "note": "no training_budget_s in telemetry (old run without timing model changes)"}
+
+    def _agg(st):
+        if not st:
+            return None
+        fracs = [v["overrun_frac"] for v in st.values()]
+        return {
+            "n_trainers": len(st),
+            "mean_overrun_frac": round(sum(fracs) / len(fracs), 3),
+            "max_overrun_frac": round(max(fracs), 3),
+            "trainers_with_any_overrun": int(sum(1 for f in fracs if f > 0)),
+        }
+
+    real_agg = _agg(real_st)
+    sim_agg  = _agg(sim_st)
+
+    worst = max(
+        (real_agg or {}).get("mean_overrun_frac", 0),
+        (sim_agg  or {}).get("mean_overrun_frac", 0),
+    )
+    status = FAIL if worst > 0.25 else (WARN if worst > 0.10 else PASS)
+
+    all_tids = sorted(set(real_st) | set(sim_st))
+    rows = []
+    for tid in all_tids:
+        r, s = real_st.get(tid, {}), sim_st.get(tid, {})
+        rows.append({
+            "trainer": tid,
+            "budget_s":          (r or s).get("budget_s"),
+            "real_mean_gpu_s":   r.get("mean_gpu_s"),
+            "real_max_gpu_s":    r.get("max_gpu_s"),
+            "real_overrun_frac": r.get("overrun_frac"),
+            "sim_mean_gpu_s":    s.get("mean_gpu_s"),
+            "sim_max_gpu_s":     s.get("max_gpu_s"),
+            "sim_overrun_frac":  s.get("overrun_frac"),
+        })
+    rows.sort(key=lambda x: max(
+        x.get("real_overrun_frac") or 0,
+        x.get("sim_overrun_frac") or 0,
+    ), reverse=True)
+
+    return {
+        "status":      status,
+        "real_summary": real_agg,
+        "sim_summary":  sim_agg,
+        "per_trainer":  rows,
+    }
+
+
+def plot_timing_sanity(real_trainers: dict, sim_trainers: dict, out_path: str) -> None:
+    """Plot actual GPU time vs expected budget per trainer per round.
+
+    Layout (2 rows × N_modes cols):
+      Top:    per-trainer bar (mean GPU time) + red budget marker per trainer
+      Bottom: round-by-round deviation (GPU − budget); positive = contention
+
+    If contention is present the bars will exceed the red markers and the
+    bottom panel will show positive spikes.  If everything is healthy the
+    bars stay well below the red markers and the bottom panel stays negative.
+    """
+    try:
+        import matplotlib
+        matplotlib.use("Agg")
+        import matplotlib.pyplot as plt
+    except ImportError:
+        print("[plot] matplotlib not available; skipping timing plot")
+        return
+
+    def _extract(trainers):
+        data = {}
+        for tid, d in trainers.items():
+            evs = sorted(
+                [e for e in d.get("trainer_round", [])
+                 if "real_gpu_time_s" in e and e.get("training_budget_s", 0) > 0],
+                key=lambda x: x.get("round", 0),
+            )
+            if not evs:
+                continue
+            data[tid] = {
+                "rounds": [e["round"] for e in evs],
+                "gpu":    [e["real_gpu_time_s"] for e in evs],
+                "budget": evs[0]["training_budget_s"],
+            }
+        return data
+
+    real_data = _extract(real_trainers) if real_trainers else {}
+    sim_data  = _extract(sim_trainers)  if sim_trainers  else {}
+
+    modes = [(lbl, d) for lbl, d in [("Real", real_data), ("Sim", sim_data)] if d]
+    if not modes:
+        print("[plot] No training_budget_s data found; skipping timing plot")
+        return
+
+    ncols = len(modes)
+    fig, axes = plt.subplots(2, ncols, figsize=(7 * ncols, 9), squeeze=False)
+    fig.suptitle("GPU Training Time vs Budget  (Contention Sanity Check)", fontsize=13)
+    cmap = plt.cm.tab10
+
+    for col, (label, data) in enumerate(modes):
+        tids = sorted(data.keys(), key=lambda t: data[t]["budget"])
+        colors = {t: cmap(i % 10) for i, t in enumerate(tids)}
+        xs = list(range(len(tids)))
+
+        # ── top: per-trainer mean GPU bar + budget marker ──────────────────
+        ax_t = axes[0][col]
+        mean_gpus = [sum(data[t]["gpu"]) / len(data[t]["gpu"]) for t in tids]
+        budgets   = [data[t]["budget"] for t in tids]
+
+        ax_t.bar(xs, mean_gpus, color=[colors[t] for t in tids], alpha=0.75, zorder=2,
+                 label="mean GPU time")
+        for x, b in zip(xs, budgets):
+            ax_t.plot([x - 0.38, x + 0.38], [b, b], color="red", linewidth=2.5, zorder=3)
+        # dummy line for legend
+        ax_t.plot([], [], color="red", linewidth=2.5, label="budget (D)")
+
+        for x, g, b in zip(xs, mean_gpus, budgets):
+            if g > b:
+                ax_t.annotate("OVER", xy=(x, g), ha="center", va="bottom",
+                              color="red", fontsize=7, fontweight="bold")
+
+        ax_t.set_xticks(xs)
+        ax_t.set_xticklabels([f"...{t}" for t in tids], rotation=45, ha="right", fontsize=8)
+        ax_t.set_ylabel("seconds")
+        ax_t.set_title(f"{label}: mean GPU time vs budget", fontsize=10)
+        ax_t.set_ylim(bottom=0)
+        ax_t.legend(fontsize=8)
+        ax_t.grid(axis="y", alpha=0.3)
+
+        # ── bottom: round-by-round deviation (mean + max across trainers) ──
+        ax_b = axes[1][col]
+        devs_per_round: dict = collections.defaultdict(list)
+        for t in tids:
+            bgt = data[t]["budget"]
+            for r, g in zip(data[t]["rounds"], data[t]["gpu"]):
+                devs_per_round[r].append(g - bgt)
+
+        if devs_per_round:
+            rds = sorted(devs_per_round.keys())
+            means = [sum(devs_per_round[r]) / len(devs_per_round[r]) for r in rds]
+            maxes = [max(devs_per_round[r]) for r in rds]
+
+            ax_b.fill_between(rds, means, maxes, alpha=0.20, color="orange")
+            ax_b.plot(rds, means, color="steelblue", linewidth=1.5, label="mean deviation")
+            ax_b.plot(rds, maxes, color="darkorange", linewidth=1.0, alpha=0.8,
+                      label="max deviation")
+            ax_b.fill_between(rds, 0, maxes,
+                              where=[m > 0 for m in maxes],
+                              alpha=0.10, color="red")
+            ax_b.axhline(0, color="red", linestyle="--", linewidth=1.5,
+                         label="budget boundary (0 = on budget)")
+
+        ax_b.set_xlabel("round")
+        ax_b.set_ylabel("GPU time − budget (s)")
+        ax_b.set_title(f"{label}: GPU contention deviation per round", fontsize=10)
+        ax_b.legend(fontsize=8, loc="upper left")
+        ax_b.grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.savefig(out_path, dpi=120, bbox_inches="tight")
+    plt.close()
+    print(f"[plot] Timing sanity plot → {out_path}")
+
+
 # ── reporting ─────────────────────────────────────────────────────────────────
 
 def _status_icon(s: str) -> str:
@@ -392,6 +699,9 @@ def print_report(results: dict, strict: bool) -> bool:
         ("4. Staleness distribution",                    "staleness"),
         ("5. Trainer participation counts",              "participation"),
         ("6. Convergence (accuracy / loss)",             "convergence"),
+        ("7. Round duration parity (sim_round_duration_s)", "round_duration"),
+        ("8. sim_send_ts presence / correctness",        "sim_send_ts"),
+        ("9. GPU contention (actual GPU time vs budget)", "gpu_contention"),
     ]
 
     for title, key in checks:
@@ -457,6 +767,51 @@ def print_report(results: dict, strict: bool) -> bool:
                           f"acc real={row['real_acc']} sim={row['sim_acc']}  "
                           f"loss real={row['real_loss']} sim={row['sim_loss']}")
 
+        elif key == "round_duration":
+            note = r.get("note")
+            if note:
+                print(f"         note: {note}")
+            else:
+                print(f"         max KS stat:      {r.get('max_ks_stat')}  (<0.2=good)")
+                print(f"         avg mean diff (s): {r.get('avg_mean_diff_s')}")
+                for row in r.get("per_trainer", []):
+                    print(f"           ...{row['trainer']}: real={row['real_mean_s']}s "
+                          f"sim={row['sim_mean_s']}s diff={row['mean_diff_s']}s "
+                          f"KS={row['ks_stat']}  (n_real={row['n_real']} n_sim={row['n_sim']})")
+
+        elif key == "sim_send_ts":
+            print(f"         sim trainers OK (non-zero vclock): {r.get('sim_trainers_ok')}")
+            print(f"         sim trainers flat-zero (bug present): {r.get('sim_trainers_flat_zero')}")
+            print(f"         sim trainers no task_recv data: {r.get('sim_trainers_no_data')}")
+            for issue in r.get("issues", [])[:5]:
+                print(f"           [!] {issue}")
+
+        elif key == "gpu_contention":
+            note = r.get("note")
+            if note:
+                print(f"         note: {note}")
+            else:
+                ra, sa = r.get("real_summary"), r.get("sim_summary")
+                if ra:
+                    print(f"         real: {ra['n_trainers']} trainers, "
+                          f"mean_overrun_frac={ra['mean_overrun_frac']:.1%}  "
+                          f"max_overrun_frac={ra['max_overrun_frac']:.1%}  "
+                          f"trainers_with_overruns={ra['trainers_with_any_overrun']}")
+                if sa:
+                    print(f"         sim:  {sa['n_trainers']} trainers, "
+                          f"mean_overrun_frac={sa['mean_overrun_frac']:.1%}  "
+                          f"max_overrun_frac={sa['max_overrun_frac']:.1%}  "
+                          f"trainers_with_overruns={sa['trainers_with_any_overrun']}")
+                print("         per trainer (sorted by worst overrun fraction):")
+                for row in r.get("per_trainer", []):
+                    r_str = (f"real: gpu={row['real_mean_gpu_s']}s max={row['real_max_gpu_s']}s "
+                             f"overrun={row['real_overrun_frac']:.1%}"
+                             if row.get("real_mean_gpu_s") is not None else "real: n/a")
+                    s_str = (f"sim: gpu={row['sim_mean_gpu_s']}s max={row['sim_max_gpu_s']}s "
+                             f"overrun={row['sim_overrun_frac']:.1%}"
+                             if row.get("sim_mean_gpu_s") is not None else "sim: n/a")
+                    print(f"           ...{row['trainer']} D={row['budget_s']}s | {r_str} | {s_str}")
+
         if status == "FAIL" or (strict and status == "WARN"):
             overall_ok = False
         print()
@@ -474,12 +829,18 @@ def main():
     parser = argparse.ArgumentParser(description="Compare real vs simulated run parity")
     parser.add_argument("--real", required=True, help="Path to real aggregator JSONL")
     parser.add_argument("--sim",  required=True, help="Path to simulated aggregator JSONL")
+    parser.add_argument("--real-trainer-dir", default=None,
+                        help="Dir containing real trainer_*.jsonl files (for checks 7-8)")
+    parser.add_argument("--sim-trainer-dir",  default=None,
+                        help="Dir containing sim trainer_*.jsonl files (for checks 7-8)")
     parser.add_argument("--rounds", type=int, default=None,
                         help="Only compare up to this round number")
     parser.add_argument("--strict", action="store_true",
                         help="Treat WARN as FAIL")
     parser.add_argument("--json-out", default=None,
                         help="Write full results as JSON to this path")
+    parser.add_argument("--plot-out", default=None,
+                        help="Write timing sanity plot (GPU vs budget) to this PNG path")
     args = parser.parse_args()
 
     print(f"Loading real: {args.real}")
@@ -494,6 +855,11 @@ def main():
           f"{len(sim['selection_train'])} train-selection events, "
           f"{len(sim['agg_evals'])} eval events")
 
+    real_trainers = load_trainer_jsonl_dir(args.real_trainer_dir)
+    sim_trainers  = load_trainer_jsonl_dir(args.sim_trainer_dir)
+    if real_trainers or sim_trainers:
+        print(f"  real trainer files: {len(real_trainers)}, sim trainer files: {len(sim_trainers)}")
+
     results = {
         "selection":     check_selection_parity(real, sim, args.rounds),
         "utility":       check_utility_parity(real, sim),
@@ -501,9 +867,15 @@ def main():
         "staleness":     check_staleness(real, sim),
         "participation": check_participation(real, sim),
         "convergence":   check_convergence(real, sim),
+        "round_duration":  check_round_duration_parity(real_trainers, sim_trainers),
+        "sim_send_ts":     check_sim_send_ts(real_trainers, sim_trainers),
+        "gpu_contention":  check_gpu_contention(real_trainers, sim_trainers),
     }
 
     ok = print_report(results, args.strict)
+
+    if args.plot_out:
+        plot_timing_sanity(real_trainers, sim_trainers, args.plot_out)
 
     if args.json_out:
         with open(args.json_out, "w") as f:
