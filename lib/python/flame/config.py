@@ -183,6 +183,7 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     inc_model_version_per_data_id: t.Optional[bool] = Field(
         alias="incModelVersionPerDataId", default=False
     )
+    location_trace: t.Optional[list[dict]]=None
 
 
 class Groups(FlameSchema):

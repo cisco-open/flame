@@ -172,7 +172,7 @@ class PyTorchCifar10Aggregator(TopAggregator):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data"),
             train=False,
             download=True,
             transform=transform_test,

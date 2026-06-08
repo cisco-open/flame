@@ -1,0 +1,63 @@
+snapshot_version: '1.0'
+timestamp: '2026-06-08T13:52:38.342548'
+hostname: Mac.local
+experiment:
+  name: felix_n10_alpha100_syn20_smoke
+  description: Felix smoke (10 trainers, alpha=100, syn_20). Validates baseline merge
+    + launch pipeline.
+  trainer:
+    num_trainers: 10
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 100.0
+    availability:
+      mode: syn_20
+    battery_threshold: 50
+    time_mode: real
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: async_oort
+    tracking_mode: client_notify
+    agg_goal: 5
+  execution:
+    num_gpus: 2
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 15
+spawn_commands:
+  aggregator:
+  - /opt/homebrew/Caskroom/miniconda/base/envs/my_flame_env/bin/python
+  - /Users/dovy/Documents/GTech/CS8903 Space Computing/lib/python/examples/async_cifar10/aggregator/pytorch/main_asyncfl_agg.py
+  - --config-json
+  - <inline>
+  trainers:
+  - python3
+  - -m
+  - flame.launch.spawn_trainer_cli
+  - --alpha
+  - '100.0'
+  - --availability
+  - syn_20
+  - --num-trainers
+  - '10'
+  - --start-id
+  - '1'
+  - --num-gpus
+  - '2'
+git_info:
+  commit: 74b17f4d9715fd992f18b453fad1d000c532959f
+  branch: dg-fork-main
+  clean: false
+  uncommitted_changes: true
+metadata_location: /Users/dovy/Documents/GTech/CS8903 Space Computing/lib/python/examples/async_cifar10/metadata
+metadata_checksums:
+  trainer_registry: cb3a3cfb73edeb6dd423f7583f17ac125e26b14acd09886a40dea40dfa7f9922
+  dataset_splits:
+    cifar10_alpha0.1_n300.yaml: dcbc7ad04b53add63287e2855101806a62018eeb7452556d604d59e91adef8b9
+    cifar10_alpha1.0_n300.yaml: 8ba4d3bde49ab0c7cee8a6c3ffaf79f3ab9e2f357ffbcd937a40be9bffeb8be8
+    cifar10_alpha10.0_n300.yaml: eb019d6692ad566e8a93c6e709660520e0a48a9d52359ba788fa1dd54b0dcc77
+    cifar10_alpha100.0_n300.yaml: 13cbbbad0e9600bfc4847b216e70030bd42e46ec38c58b1a1515ec454cf9bb5c
+  availability_traces:
+    mobiperf_traces.yaml: f1e2da681116f0cdd6b08aa327f2b485990b9aba93f4a25949c5db7bf0355fa2
+    synthetic_traces.yaml: b33d0220be78cf1a389ccc912981c15a92e52cb56860eafdfc5bd57d6a5727ca
+aggregator_config: /Users/dovy/Documents/GTech/CS8903 Space Computing/lib/python/examples/async_cifar10/experiments/run_20260608_135226_felix_n10_alpha100_syn20_smoke/aggregator_config.json

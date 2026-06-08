@@ -1,0 +1,3001 @@
+traces:
+  device_001:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_002:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_003:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_004:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_005:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_006:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_007:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_008:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_009:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_010:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_011:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_012:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_013:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_014:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_015:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_016:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_017:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_018:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_019:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_020:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_021:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_022:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_023:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_024:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_025:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_026:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_027:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_028:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_029:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_030:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_031:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_032:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_033:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_034:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_035:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_036:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_037:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_038:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_039:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_040:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_041:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_042:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_043:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_044:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_045:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_046:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_047:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_048:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_049:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_050:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_051:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_052:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_053:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_054:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_055:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_056:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_057:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_058:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_059:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_060:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_061:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_062:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_063:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_064:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_065:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_066:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_067:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_068:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_069:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_070:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_071:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_072:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_073:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_074:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_075:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_076:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_077:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_078:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_079:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_080:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_081:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_082:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_083:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_084:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_085:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_086:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_087:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_088:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_089:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_090:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_091:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_092:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_093:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_094:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_095:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_096:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_097:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_098:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_099:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_100:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_101:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_102:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_103:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_104:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_105:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_106:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_107:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_108:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_109:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_110:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_111:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_112:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_113:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_114:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_115:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_116:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_117:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_118:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_119:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_120:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_121:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_122:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_123:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_124:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_125:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_126:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_127:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_128:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_129:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_130:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_131:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_132:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_133:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_134:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_135:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_136:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_137:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_138:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_139:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_140:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_141:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_142:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_143:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_144:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_145:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_146:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_147:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_148:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_149:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_150:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_151:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_152:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_153:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_154:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_155:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_156:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_157:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_158:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_159:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_160:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_161:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_162:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_163:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_164:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_165:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_166:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_167:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_168:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_169:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_170:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_171:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_172:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_173:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_174:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_175:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_176:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_177:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_178:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_179:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_180:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_181:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_182:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_183:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_184:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_185:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_186:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_187:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_188:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_189:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_190:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_191:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_192:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_193:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_194:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_195:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_196:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_197:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_198:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_199:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_200:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_201:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_202:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_203:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_204:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_205:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_206:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_207:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_208:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_209:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_210:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_211:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_212:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_213:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_214:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_215:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_216:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_217:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_218:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_219:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_220:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_221:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_222:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_223:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_224:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_225:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_226:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_227:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_228:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_229:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_230:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_231:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_232:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_233:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_234:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_235:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_236:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_237:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_238:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_239:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_240:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_241:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_242:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_243:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_244:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_245:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_246:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_247:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_248:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_249:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_250:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_251:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_252:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_253:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_254:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_255:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_256:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_257:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_258:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_259:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_260:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_261:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_262:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_263:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_264:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_265:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_266:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_267:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_268:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_269:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_270:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_271:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_272:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_273:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_274:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_275:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_276:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_277:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_278:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_279:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_280:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_281:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_282:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_283:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_284:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_285:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_286:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_287:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_288:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_289:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_290:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_291:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_292:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_293:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_294:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863
+  device_295:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_296:
+  - elapsed_s: 0.0
+    lat: 33.749
+    lon: -84.388
+  - elapsed_s: 300.0
+    lat: 36.1627
+    lon: -86.7816
+  - elapsed_s: 600.0
+    lat: 35.2271
+    lon: -80.8431
+  device_297:
+  - elapsed_s: 0.0
+    lat: 51.5074
+    lon: -0.1278
+  - elapsed_s: 300.0
+    lat: 48.8566
+    lon: 2.3522
+  - elapsed_s: 600.0
+    lat: 52.52
+    lon: 13.405
+  device_298:
+  - elapsed_s: 0.0
+    lat: 39.9526
+    lon: -75.1652
+  - elapsed_s: 300.0
+    lat: 42.3601
+    lon: -71.0589
+  - elapsed_s: 600.0
+    lat: 40.7128
+    lon: -74.006
+  device_299:
+  - elapsed_s: 0.0
+    lat: 39.0997
+    lon: -94.5786
+  - elapsed_s: 300.0
+    lat: 38.627
+    lon: -90.1994
+  - elapsed_s: 600.0
+    lat: 40.4578
+    lon: -92.1713
+  device_300:
+  - elapsed_s: 0.0
+    lat: 37.7749
+    lon: -122.4194
+  - elapsed_s: 300.0
+    lat: 37.3861
+    lon: -122.0839
+  - elapsed_s: 600.0
+    lat: 37.3382
+    lon: -121.8863

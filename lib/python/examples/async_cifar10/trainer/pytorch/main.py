@@ -26,27 +26,27 @@ import calendar
 import gc
 import hashlib
 import logging
+import math
 import os
 import sys
 import threading
 import time
-import math
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.utils.data as data_utils
 import torchvision.transforms as transforms
+from flame import telemetry
 from flame.config import Config, TrainerAvailState
 from flame.mode.horizontal.trainer import Trainer
-from flame import telemetry
 from flame.telemetry.events import (
     build_avail_change,
     build_trainer_round,
     build_util_disparity,
 )
-from torchvision.datasets import CIFAR10
 from memory_profiler import MemoryProfiler
+from torchvision.datasets import CIFAR10
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +80,9 @@ class Net(nn.Module):
 class PyTorchCifar10Trainer(Trainer):
     """PyTorch CIFAR-10 Trainer."""
 
-    def __init__(self, config: Config, battery_threshold, time_mode="simulated") -> None:
+    def __init__(
+        self, config: Config, battery_threshold, time_mode="simulated"
+    ) -> None:
         """Initialize a class instance."""
         self.config = config
         self.dataset_size = 0
@@ -97,10 +99,16 @@ class PyTorchCifar10Trainer(Trainer):
         self.batch_size = self.config.hyperparameters.batch_size or 16
         self.trainer_id = self.config.task_id
 
-        self.lr_decay_enabled = getattr(self.config.hyperparameters, 'lr_decay_enabled', False)
-        self.lr_decay_factor = getattr(self.config.hyperparameters, 'lr_decay_factor', 0.98)
-        self.lr_decay_epoch = getattr(self.config.hyperparameters, 'lr_decay_epoch', 10)
-        self.min_learning_rate = getattr(self.config.hyperparameters, 'min_learning_rate', 1e-4)
+        self.lr_decay_enabled = getattr(
+            self.config.hyperparameters, "lr_decay_enabled", False
+        )
+        self.lr_decay_factor = getattr(
+            self.config.hyperparameters, "lr_decay_factor", 0.98
+        )
+        self.lr_decay_epoch = getattr(self.config.hyperparameters, "lr_decay_epoch", 10)
+        self.min_learning_rate = getattr(
+            self.config.hyperparameters, "min_learning_rate", 1e-4
+        )
 
         self.criterion = None
 
@@ -189,6 +197,9 @@ class PyTorchCifar10Trainer(Trainer):
         self.avl_events_syn_50 = parse_trace(
             self.config.hyperparameters.avl_events_syn_50
         )
+
+        # Store location trace
+        self.location_trace = self.config.hyperparameters.location_trace
 
         if self.client_notify["trace"] == "mobiperf_3st":
             self.state_avl_event_ts = self.avl_events_3_state
@@ -352,7 +363,7 @@ class PyTorchCifar10Trainer(Trainer):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = Net().to(self.device)
-        
+
         # Log model memory usage
         model_info = self.memory_profiler.analyze_model_memory(self.model)
         logger.info(
@@ -360,9 +371,9 @@ class PyTorchCifar10Trainer(Trainer):
             f"{model_info['total_params']} params, "
             f"{model_info['param_memory_mb']:.1f} MB"
         )
-        
+
         self.memory_profiler.log_component_memory("initialize", "AFTER")
-        
+
         logger.debug(
             f"Task_id: {self.trainer_id} initialize completed at timestamp: "
             f"{time.time()}"
@@ -371,7 +382,7 @@ class PyTorchCifar10Trainer(Trainer):
     def load_data(self) -> None:
         """Load data."""
         self.memory_profiler.log_component_memory("load_data", "BEFORE")
-        
+
         transform_train = transforms.Compose(
             [
                 transforms.RandomCrop(32, padding=4),
@@ -384,7 +395,9 @@ class PyTorchCifar10Trainer(Trainer):
         )
 
         dataset = CIFAR10(
-            "/home/dgarg39/flame/lib/python/examples/async_cifar10/data",
+            os.path.join(
+                os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "data"
+            ),
             train=True,
             download=True,
             transform=transform_train,
@@ -451,7 +464,9 @@ class PyTorchCifar10Trainer(Trainer):
         # Fixed shuffle of the pool (seeded by trainer_id) = data arrival
         # order; streaming reveals a growing prefix of it.
         self._stream_total = dataset_size
-        seed = int(hashlib.sha256(str(self.trainer_id).encode()).hexdigest(), 16) % (2**31)
+        seed = int(hashlib.sha256(str(self.trainer_id).encode()).hexdigest(), 16) % (
+            2**31
+        )
         self._stream_order = torch.randperm(
             self._stream_total, generator=torch.Generator().manual_seed(seed)
         )
@@ -468,7 +483,7 @@ class PyTorchCifar10Trainer(Trainer):
             f"batch_size={dataloader_info['batch_size']}, "
             f"num_workers={dataloader_info['num_workers']}"
         )
-        
+
         self.memory_profiler.log_component_memory("load_data", "AFTER")
 
         logger.debug(
@@ -570,11 +585,16 @@ class PyTorchCifar10Trainer(Trainer):
             order = self._stream_order.to(data.device)
             ss = self.util_cf_sample_size
             util_streamed, _ = self._oort_utility(
-                data[order[:visible_n]], targets[order[:visible_n]],
-                norm_n=visible_n, sample_size=ss,
+                data[order[:visible_n]],
+                targets[order[:visible_n]],
+                norm_n=visible_n,
+                sample_size=ss,
             )
             util_full, n_used = self._oort_utility(
-                data[order], targets[order], norm_n=total, sample_size=ss,
+                data[order],
+                targets[order],
+                norm_n=total,
+                sample_size=ss,
             )
             ev, fields = build_util_disparity(
                 round_num=int(round_num),
@@ -588,6 +608,34 @@ class PyTorchCifar10Trainer(Trainer):
             telemetry.emit(ev, **fields)
         except Exception as e:  # telemetry must never break training
             logger.debug(f"util disparity emit failed: {e}")
+
+    def _current_location(self, elapsed_s: float):
+        if not self.location_trace:
+            return None, None
+
+        # Find time bounds
+        i = 0
+        for coord in self.location_trace:
+            if coord["elapsed_s"] > elapsed_s:
+                break
+            i += 1
+
+        # Device completed its route
+        if i == len(self.location_trace):
+            return self.location_trace[i - 1]["lat"], self.location_trace[i - 1]["lon"]
+
+        point_a = self.location_trace[i - 1]
+        point_b = self.location_trace[i]
+
+        # Calculate latitude and longitude based on elapsed time
+        progress = (elapsed_s - point_a["elapsed_s"]) / (
+            point_b["elapsed_s"] - point_a["elapsed_s"]
+        )
+
+        lat = (point_b["lat"] - point_a["lat"]) * progress + point_a["lat"]
+        lon = (point_b["lon"] - point_a["lon"]) * progress + point_a["lon"]
+
+        return lat, lon
 
     def train(self) -> None:
         logger.info(f"Entered train method for {self.trainer_id}")
@@ -652,14 +700,14 @@ class PyTorchCifar10Trainer(Trainer):
 
         """Train a model."""
         self.criterion = torch.nn.CrossEntropyLoss()
-        
+
         # Apply learning rate decay if enabled (REFL uses this, Oort doesn't)
         current_lr = self.learning_rate
-        if self.lr_decay_enabled and hasattr(self, '_round') and self._round > 1:
+        if self.lr_decay_enabled and hasattr(self, "_round") and self._round > 1:
             num_decays = (self._round - 1) // self.lr_decay_epoch
             current_lr = max(
-                self.learning_rate * (self.lr_decay_factor ** num_decays),
-                self.min_learning_rate
+                self.learning_rate * (self.lr_decay_factor**num_decays),
+                self.min_learning_rate,
             )
             logger.info(
                 f"Trainer {self.trainer_id} Round {self._round}: LR decayed to {current_lr:.6f} "
@@ -667,7 +715,7 @@ class PyTorchCifar10Trainer(Trainer):
             )
         else:
             logger.debug(f"Trainer {self.trainer_id}: Using base LR {current_lr}")
-        
+
         self.optimizer = torch.optim.SGD(self.model.parameters(), lr=current_lr)
 
         # reset stat utility for OORT
@@ -677,9 +725,13 @@ class PyTorchCifar10Trainer(Trainer):
         dataset_size = len(self.train_loader.dataset)
         _D = self.training_delay_s if self.training_delay_enabled else 0.0
         if self.simulated:
-            _expected_wallclock_hint = f"~GPU wall-clock only; virtual_advance=max(gpu,D={_D:.1f}s)"
+            _expected_wallclock_hint = (
+                f"~GPU wall-clock only; virtual_advance=max(gpu,D={_D:.1f}s)"
+            )
         else:
-            _expected_wallclock_hint = f"~max(gpu,D={_D:.1f}s) wall-clock; sleep=max(0,D-gpu)"
+            _expected_wallclock_hint = (
+                f"~max(gpu,D={_D:.1f}s) wall-clock; sleep=max(0,D-gpu)"
+            )
         logger.info(
             f"[TRAIN_START] Trainer {self.trainer_id} starting training with "
             f"model_version={self._round}, dataset_size={dataset_size}, "
@@ -687,6 +739,13 @@ class PyTorchCifar10Trainer(Trainer):
             f"time_mode={self.time_mode}, expected_cycle_time={_expected_wallclock_hint}"
         )
         _cycle_start = time.time()
+
+        # Calculate current location
+        elapsed_s = self._sim_now()
+        lat, lon = self._current_location(elapsed_s)
+        logger.debug(
+            f"({elapsed_s}s) Trainer {self.trainer_id} Location: ({lat}, {lon})"
+        )
 
         total_batches_processed = 0
         final_loss = None
@@ -747,9 +806,8 @@ class PyTorchCifar10Trainer(Trainer):
 
         self._sim_round_duration = sim_round_duration
         self._sim_completion_ts = (
-            (self._sim_send_ts if self._sim_send_ts is not None else self._sim_now())
-            + sim_round_duration
-        )
+            self._sim_send_ts if self._sim_send_ts is not None else self._sim_now()
+        ) + sim_round_duration
 
         # ||trained - received global||: update magnitude this round. At this
         # point self.weights still holds the received global (the later
@@ -800,7 +858,9 @@ class PyTorchCifar10Trainer(Trainer):
                 delta_weight_l2=delta_weight_l2,
                 extra={
                     "sim_completion_ts": self._sim_completion_ts,
-                    "sim_send_ts": float(self._sim_send_ts) if self._sim_send_ts is not None else None,
+                    "sim_send_ts": float(self._sim_send_ts)
+                    if self._sim_send_ts is not None
+                    else None,
                     "time_mode": self.time_mode,
                     "training_budget_s": _modeled_delay_s,
                     "remaining_time_s": _remaining_time,
@@ -813,12 +873,12 @@ class PyTorchCifar10Trainer(Trainer):
                     "sleep_s": _remaining_time,
                     "post_train_s": _post_train_s,
                     **getattr(self, "_phase_times", {}),
+                    "lat": lat,
+                    "lon": lon,
                 },
             )
             telemetry.emit(ev, **fields)
-            self._emit_util_disparity(
-                int(getattr(self, "_round", 0)), self._sim_now()
-            )
+            self._emit_util_disparity(int(getattr(self, "_round", 0)), self._sim_now())
 
         if not self.simulated and _remaining_time > 0:
             time.sleep(_remaining_time)
@@ -846,7 +906,7 @@ class PyTorchCifar10Trainer(Trainer):
 
     def _train_epoch(self, epoch):
         self.model.train()
-        
+
         # Log memory for first epoch to track per-batch memory
         if epoch == 1:
             self.memory_profiler.log_component_memory(f"epoch_{epoch}", "START")
@@ -860,7 +920,9 @@ class PyTorchCifar10Trainer(Trainer):
 
         for batch_idx, (data, target) in enumerate(self.train_loader):
             data, target = data.to(self.device), target.to(self.device)
-            self.optimizer.zero_grad(set_to_none=True)  # Use set_to_none=True for better memory
+            self.optimizer.zero_grad(
+                set_to_none=True
+            )  # Use set_to_none=True for better memory
             output = self.model(data)
 
             if self.use_oort_loss_fn == "False":
@@ -904,7 +966,7 @@ class PyTorchCifar10Trainer(Trainer):
                 loss_val = loss.detach().item()
                 last_loss = loss_val
                 logger.info(
-                    f"epoch: {epoch} [{done}/{total} ({percent:.0f}%)]" 
+                    f"epoch: {epoch} [{done}/{total} ({percent:.0f}%)]"
                     f"\tloss: {loss_val:.6f}"
                 )
             
@@ -1003,7 +1065,7 @@ class PyTorchCifar10Trainer(Trainer):
             eval_delay = math.floor(self.training_delay_s / 20.0)
             time.sleep(eval_delay)
             logger.debug(
-                f"Delayed eval time for trainer " f"{self.trainer_id} by {eval_delay}s"
+                f"Delayed eval time for trainer {self.trainer_id} by {eval_delay}s"
             )
 
     def initiate_heartbeat(self) -> None:
@@ -1022,9 +1084,9 @@ class PyTorchCifar10Trainer(Trainer):
 
 def main():
     import argparse
+    import atexit
     import json
     import signal
-    import atexit
 
     parser = argparse.ArgumentParser(description="")
     parser.add_argument(
@@ -1063,7 +1125,7 @@ def main():
     )
 
     args = parser.parse_args()
-    
+
     # Early startup logging - print to ensure it appears even if logger not configured yet
     print(f"[TRAINER STARTUP] Process started, PID: {os.getpid()}")
 
@@ -1098,10 +1160,14 @@ def main():
     # Structured telemetry (no-op unless $FLAME_TELEMETRY_DIR is set by the
     # launcher). One JSONL file per trainer process.
     telemetry.configure(role="trainer", end_id=str(t.trainer_id))
-    
-    print(f"[TRAINER STARTUP] Trainer created - ID: {t.trainer_id}, Job: {t.config.job.job_id}")
-    logger.info(f"========== TRAINER STARTED: ID={t.trainer_id}, PID={os.getpid()} ==========")
-    
+
+    print(
+        f"[TRAINER STARTUP] Trainer created - ID: {t.trainer_id}, Job: {t.config.job.job_id}"
+    )
+    logger.info(
+        f"========== TRAINER STARTED: ID={t.trainer_id}, PID={os.getpid()} =========="
+    )
+
     print(
         f"# Trainer id: {t.trainer_id}, time_mode: {t.time_mode}, "
         f"has heartbeats_enabled: {t.heartbeats_enabled}, "
@@ -1119,29 +1185,29 @@ def main():
             print(f"\n{report}")
         except Exception as e:
             logger.error(f"Error generating memory report: {e}")
-    
+
     atexit.register(cleanup_and_report)
-    
+
     # Handle SIGTERM gracefully
     def signal_handler(signum, frame):
-        logger.info(f"Trainer {t.trainer_id} received signal {signum}, generating report...")
+        logger.info(
+            f"Trainer {t.trainer_id} received signal {signum}, generating report..."
+        )
         cleanup_and_report()
         sys.exit(0)
-    
+
     signal.signal(signal.SIGTERM, signal_handler)
     signal.signal(signal.SIGINT, signal_handler)
 
     if t.heartbeats_enabled == "True":
         logger.info(
-            f"Will initiate thread to send heartbeats for " f"trainer {t.trainer_id}"
+            f"Will initiate thread to send heartbeats for trainer {t.trainer_id}"
         )
         heartbeat_thread = threading.Thread(target=t.initiate_heartbeat)
         heartbeat_thread.daemon = True
         heartbeat_thread.start()
     elif t.client_notify["trace"] is not None:
-        logger.info(
-            f"Will initiate thread to update state of " f"trainer {t.trainer_id}"
-        )
+        logger.info(f"Will initiate thread to update state of trainer {t.trainer_id}")
         if t.client_notify["enabled"] == "True":
             logger.info(f"Will send avail notifications for trainer {t.trainer_id}")
         # Note that even though trainer sends notifications, only
@@ -1152,7 +1218,9 @@ def main():
         avail_notify_thread.start()
 
     print(f"[TRAINER STARTUP] Starting compose and run for trainer {t.trainer_id}...")
-    logger.info(f"Trainer {t.trainer_id} initiating compose() and run() - will now connect to aggregator")
+    logger.info(
+        f"Trainer {t.trainer_id} initiating compose() and run() - will now connect to aggregator"
+    )
     t.compose()
     t.run()
 

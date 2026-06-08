@@ -1,0 +1,115 @@
+coordinates:
+  - # Northern Border (West to East)
+    - [47.6062, -122.3321]  # Seattle WA
+    - [48.7519, -122.4787]  # Bellingham WA
+    - [49.0000, -121.0000]  # Ross Lake WA
+    - [48.9000, -119.4000]  # Oroville WA
+    - [48.8000, -115.0000]  # Eureka MT
+    - [48.6967, -113.7183]  # Glacier NP MT
+    - [48.9000, -111.9000]  # Sweetgrass MT
+    - [48.5000, -109.6000]  # Havre MT
+    - [48.7000, -111.4000]  # Plentywood MT
+    - [48.9000, -102.5000]  # Portal ND
+    - [48.2000, -101.3000]  # Minot ND
+    - [48.8000, -100.4000]  # Bottineau ND
+    - [48.9000, -97.2000]   # Pembina ND
+    - [48.9000, -95.3000]   # Warroad MN
+    - [48.6000, -93.4000]   # Int'l Falls MN
+    - [47.9000, -91.8000]   # Ely MN
+    - [47.9000, -89.6000]   # Grand Portage MN
+    - [47.9000, -89.1000]   # Isle Royale MI
+    - [47.4000, -88.5000]   # Houghton MI
+    - [47.1000, -87.3000]   # Marquette MI
+    - [46.5000, -84.3000]   # Sault Ste Marie MI
+    - [45.7000, -84.7000]   # Mackinaw City MI
+    - [45.0000, -83.4000]   # Alpena MI
+    - [42.9000, -82.4000]   # Port Huron MI
+    - [42.3000, -83.0000]   # Detroit MI
+    - [41.5000, -81.6000]   # Cleveland OH
+    - [42.1000, -80.0000]   # Erie PA
+    - [42.8000, -78.8000]   # Buffalo NY
+    - [43.1000, -77.6000]   # Rochester NY
+    - [43.4000, -76.5000]   # Oswego NY
+    - [44.7000, -75.4000]   # Ogdensburg NY
+    - [44.9000, -74.8000]   # Massena NY
+    - [44.9000, -73.4000]   # Champlain NY
+    - [45.0000, -71.3000]   # Pittsburg NH
+    - [47.2000, -68.5000]   # Fort Kent ME
+    - [47.3000, -68.3000]   # Madawaska ME
+    - [46.1000, -67.8000]   # Houlton ME
+    - [44.9000, -66.9000]   # Eastport ME
+
+  - # Eastern Border (North to South)
+    - [44.9000, -66.9000]   # Eastport ME
+    - [44.3000, -68.2000]   # Bar Harbor ME
+    - [43.6000, -70.2000]   # Portland ME
+    - [43.0000, -70.7000]   # Portsmouth NH
+    - [42.3000, -71.0000]   # Boston MA
+    - [42.0000, -70.1000]   # Provincetown MA
+    - [41.2000, -70.1000]   # Nantucket MA
+    - [41.0000, -71.9000]   # Montauk NY
+    - [40.7000, -74.0000]   # New York City NY
+    - [40.4000, -73.9000]   # Sandy Hook NJ
+    - [39.9000, -74.0000]   # Seaside Heights NJ
+    - [38.9000, -74.9000]   # Cape May NJ
+    - [38.3000, -75.0000]   # Ocean City MD
+    - [36.8000, -75.9000]   # Virginia Beach VA
+    - [35.2000, -75.5000]   # Cape Hatteras NC
+    - [34.2000, -77.9000]   # Wilmington NC
+    - [33.6000, -78.8000]   # Myrtle Beach SC
+    - [32.7000, -79.9000]   # Charleston SC
+    - [32.0000, -81.0000]   # Savannah GA
+    - [30.3000, -81.6000]   # Jacksonville FL
+    - [28.4000, -80.6000]   # Cape Canaveral FL
+    - [26.7000, -80.0000]   # Boca Raton FL
+    - [25.7000, -80.1000]   # Miami FL
+
+  - # Southern Border (East to West)
+    - [25.7000, -80.1000]   # Miami FL
+    - [25.0000, -80.4000]   # Key Largo FL
+    - [24.5000, -81.7000]   # Key West FL
+    - [26.1000, -81.7000]   # Naples FL
+    - [27.7000, -82.6000]   # Tampa FL
+    - [29.2000, -84.9000]   # Apalachicola FL
+    - [30.4000, -87.2000]   # Pensacola FL
+    - [30.6000, -88.0000]   # Mobile AL
+    - [30.3000, -88.8000]   # Biloxi MS
+    - [29.9000, -90.0000]   # New Orleans LA
+    - [29.6000, -91.2000]   # Morgan City LA
+    - [30.2000, -93.2000]   # Lake Charles LA
+    - [29.3000, -94.7000]   # Galveston TX
+    - [27.8000, -97.3000]   # Corpus Christi TX
+    - [26.1000, -97.1000]   # South Padre Island TX
+    - [25.9000, -97.4000]   # Brownsville TX
+    - [26.2000, -98.2000]   # McAllen TX
+    - [27.5000, -99.5000]   # Laredo TX
+    - [28.7000, -100.4000]  # Eagle Pass TX
+    - [29.2000, -103.2000]  # Big Bend NP TX
+    - [31.7000, -106.4000]  # El Paso TX
+    - [31.3000, -109.5000]  # Douglas AZ
+    - [31.3000, -110.9000]  # Nogales AZ
+    - [32.7000, -114.6000]  # Yuma AZ
+    - [32.6000, -115.4000]  # Calexico CA
+    - [32.5000, -117.0000]  # San Ysidro CA
+    - [32.7000, -117.1000]  # San Diego CA
+
+  - # Western Border (South to North)
+    - [32.7000, -117.1000]  # San Diego CA
+    - [33.4000, -117.6000]  # San Clemente CA
+    - [34.0000, -118.4000]  # Santa Monica CA
+    - [34.4000, -119.7000]  # Santa Barbara CA
+    - [35.3000, -120.8000]  # Morro Bay CA
+    - [36.2000, -121.8000]  # Big Sur CA
+    - [36.9000, -122.0000]  # Santa Cruz CA
+    - [37.7000, -122.4000]  # San Francisco CA
+    - [38.3000, -123.0000]  # Bodega Bay CA
+    - [40.8000, -124.1000]  # Eureka CA
+    - [41.1000, -124.2000]  # Crescent City CA
+    - [42.0000, -124.2000]  # Brookings OR
+    - [43.3000, -124.2000]  # Coos Bay OR
+    - [44.6000, -124.0000]  # Newport OR
+    - [46.1000, -123.8000]  # Astoria OR
+    - [46.9000, -124.1000]  # Ocean Shores WA
+    - [48.3000, -124.7000]  # Cape Flattery WA
+    - [48.1000, -123.4000]  # Port Angeles WA
+    - [47.6000, -122.3000]  # Seattle WA

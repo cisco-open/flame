@@ -1,0 +1,21 @@
+coordinates:
+  - # Philadelphia, Boston, New York (US East Coast)
+    - [39.9526, -75.1652]
+    - [42.3601, -71.0589]
+    - [40.7128, -74.0060]
+  - # London, Paris, Berlin (Europe)
+    - [51.5074, -0.1278]
+    - [48.8566, 2.3522]
+    - [52.5200, 13.4050]
+  - # San Francisco, Palo Alto, San Jose (US West Coast)
+    - [37.7749, -122.4194]
+    - [37.3861, -122.0839]
+    - [37.3382, -121.8863]
+  - # Atlanta GA, Nashville TN, Charlotte NC (US South)
+    - [33.7490, -84.3880]
+    - [36.1627, -86.7816]
+    - [35.2271, -80.8431]
+  - # Kansas City, St Louis, Memphis MO (US Central)
+    - [39.0997, -94.5786]
+    - [38.6270, -90.1994]
+    - [40.4578, -92.1713]
