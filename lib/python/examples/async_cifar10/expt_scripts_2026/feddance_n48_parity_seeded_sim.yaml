@@ -1,0 +1,53 @@
+# Sync-baseline real/sim PARITY config (REAL mode), seeded.
+# FedDance (feddance selector V_m*I_m*A_m + fedavg optimizer on the BASE syncfl
+# stack, client_notify availability, not oracular). 48 trainers / 2 GPUs,
+# alpha0.1, syn_0, seeded. aggr_num=5 == agg_goal. Trainer use_oort_loss_fn=True
+# (I_m) + local-accuracy (A_m) come from the baseline catalog. Run with _sim twin.
+
+experiments:
+  - name: feddance_n48_parity_seeded_sim
+    description: "Sync (feddance) real/sim parity (sim), seeded, 48 trainers/2 GPUs."
+
+    baseline: feddance
+
+    trainer:
+      num_trainers: 48
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: simulated
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: feddance
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: feddance_n48_parity_seeded_sim
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 40
+          aggGoal: 5
+          seed: 1234
+          min_trainers_to_start: 48
+          max_runtime_s: 1200
+        selector:
+          kwargs:
+            aggr_num: 5
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

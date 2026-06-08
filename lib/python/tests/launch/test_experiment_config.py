@@ -73,7 +73,9 @@ class TestExperimentConfig:
         batch = load_experiment_config(path)
         e = batch.experiments[0]
         assert e.example.trainer_main == "trainer/pytorch/main.py"
-        assert e.example.aggregator_main == "aggregator/pytorch/main.py"
+        # aggregator_main is baseline-owned; it defaults to None here and the
+        # runner falls back to "aggregator/pytorch/main.py" at resolve time.
+        assert e.example.aggregator_main is None
         assert e.example.trainer_base == "configs/trainer_base.yaml"
 
     def test_batch_of_experiments(self, tmp_path):

@@ -1,0 +1,172 @@
+# QUICK 4-WAY PILOT (~30 min total, one 8-GPU node, sequential arms).
+# Goal: confirm the pipeline COMPLETES and shows training + initial data unlock +
+# differences in stat-utility / mis-selection across trainers, for ALL FOUR
+# selectors: felix, oort, refl, feddance.
+#
+# Small + fast on purpose:
+#   - 32 trainers (first 32 of the n300 alpha=0.1 split), agg_goal=5
+#   - time_mode: real (per current default), but enable_training_delays: FALSE
+#     so real-mode rounds run at GPU pace (no modeled sleeps) and 4 arms fit in
+#     ~30 min. The full experiment keeps delays on.
+#   - streaming horizon 300 real-seconds: data visibly unlocks over each ~5-7 min
+#     arm so util_disparity / mis-selection divergence is observable.
+#   - 60 rounds, checkpoint + util_counterfactual every 5 (for the oracle).
+#
+# Run (one node):
+#   python -m flame.launch.run_experiment \
+#     lib/python/examples/async_cifar10/expt_scripts_2026/felix_oort_refl_feddance_quickpilot_n32.yaml
+# Then per run dir:
+#   python scripts/analysis/oracle_misselection.py --run-dir <dir> --full-after-s 300
+#   python scripts/analysis/analyze_run.py --compare-streaming <4 dirs>/telemetry \
+#     --labels felix oort refl feddance --target 0.6 --out compare_quickpilot
+
+experiments:
+  - name: felix_quickpilot_n32
+    description: "Felix quick pilot (32 trainers, alpha=0.1, syn_0, real, streaming)."
+    baseline: felix
+    trainer: &felix_tr
+      num_trainers: 32
+      start_id: 1
+      dataset: {name: cifar10, dirichlet_alpha: 0.1}
+      availability: {mode: syn_0}
+      enable_training_delays: false
+      time_mode: real
+      hyperparameters: {batchSize: 10, learningRate: 0.01}
+      config_overrides:
+        hyperparameters:
+          data_streaming: {enabled: "True", full_data_available_after_s: 300}
+          util_counterfactual: {enabled: "True", every_n_rounds: 5, sample_size: 128}
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job: {id: felix_quickpilot_n32}
+        hyperparameters:
+          batchSize: 10
+          learningRate: 0.01
+          rounds: 60
+          aggGoal: 5
+          evalEveryNRounds: 5
+          checkpoint: {enabled: "True", every_n_rounds: 5}
+        selector: {kwargs: {c: 5, aggGoal: 5}}
+    execution: &exec
+      num_gpus: 8
+      sleep_between_spawns: 1.0
+      aggregator_warmup_time: 30
+      monitoring: {enabled: false}
+
+  - name: oort_quickpilot_n32
+    description: "OORT quick pilot."
+    baseline: oort
+    trainer:
+      num_trainers: 32
+      start_id: 1
+      dataset: {name: cifar10, dirichlet_alpha: 0.1}
+      availability: {mode: syn_0}
+      enable_training_delays: false
+      time_mode: real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        lrDecayEnabled: true
+        lrDecayFactor: 0.98
+        lrDecayEpoch: 10
+        minLearningRate: 0.0001
+      config_overrides:
+        hyperparameters:
+          data_streaming: {enabled: "True", full_data_available_after_s: 300}
+          util_counterfactual: {enabled: "True", every_n_rounds: 5, sample_size: 128}
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job: {id: oort_quickpilot_n32}
+        hyperparameters:
+          batchSize: 10
+          learningRate: 0.01
+          rounds: 60
+          aggGoal: 5
+          evalEveryNRounds: 5
+          checkpoint: {enabled: "True", every_n_rounds: 5}
+          trackTrainerAvail: {trace: syn_0}
+        selector: {kwargs: {aggr_num: 5}}
+    execution: *exec
+
+  - name: refl_quickpilot_n32
+    description: "REFL quick pilot."
+    baseline: refl
+    trainer:
+      num_trainers: 32
+      start_id: 1
+      dataset: {name: cifar10, dirichlet_alpha: 0.1}
+      availability: {mode: syn_0}
+      enable_training_delays: false
+      time_mode: real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        lrDecayEnabled: true
+        lrDecayFactor: 0.98
+        lrDecayEpoch: 10
+        minLearningRate: 0.0001
+      config_overrides:
+        hyperparameters:
+          data_streaming: {enabled: "True", full_data_available_after_s: 300}
+          util_counterfactual: {enabled: "True", every_n_rounds: 5, sample_size: 128}
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job: {id: refl_quickpilot_n32}
+        hyperparameters:
+          batchSize: 10
+          learningRate: 0.01
+          rounds: 60
+          aggGoal: 5
+          evalEveryNRounds: 5
+          checkpoint: {enabled: "True", every_n_rounds: 5}
+          trackTrainerAvail: {trace: syn_0}
+        selector: {kwargs: {aggr_num: 5}}
+    execution: *exec
+
+  - name: feddance_quickpilot_n32
+    description: "FedDance quick pilot (V_m*I_m*A_m selection)."
+    baseline: feddance
+    trainer:
+      num_trainers: 32
+      start_id: 1
+      dataset: {name: cifar10, dirichlet_alpha: 0.1}
+      availability: {mode: syn_0}
+      enable_training_delays: false
+      time_mode: real
+      hyperparameters: {batchSize: 10, learningRate: 0.01}
+      config_overrides:
+        hyperparameters:
+          data_streaming: {enabled: "True", full_data_available_after_s: 300}
+          util_counterfactual: {enabled: "True", every_n_rounds: 5, sample_size: 128}
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: feddance
+      tracking_mode: client_notify
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job: {id: feddance_quickpilot_n32}
+        hyperparameters:
+          batchSize: 10
+          learningRate: 0.01
+          rounds: 60
+          aggGoal: 5
+          evalEveryNRounds: 5
+          checkpoint: {enabled: "True", every_n_rounds: 5}
+        selector: {kwargs: {aggr_num: 5}}
+    execution: *exec

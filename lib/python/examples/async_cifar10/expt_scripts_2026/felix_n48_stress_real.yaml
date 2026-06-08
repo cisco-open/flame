@@ -1,0 +1,59 @@
+# Real/sim STRESS config (REAL mode): heavy contention to map sim limits.
+# 48 trainers / 2 GPUs (HEAVY contention 48/1 GPU), alpha0.1, syn_0 (always available),
+# NO streaming (stable per-trainer data -> stable utility), seeded selector RNG
+# so selection is reproducible. Run this and the _sim twin (same seed), then:
+#   FLAME_E2E_REAL_DIR=<real run> FLAME_E2E_SIM_DIR=<sim run> FLAME_E2E_AGG_GOAL=5 \
+#     pytest lib/python/tests/mode/test_real_sim_e2e_parity.py -v
+# or scripts/compare_parity.py for the full report.
+
+experiments:
+  - name: felix_n48_stress_real
+    description: "Real/sim parity (real), seeded, 48 trainers/2 GPUs, alpha0.1 syn_0, no streaming."
+
+    baseline: felix
+
+    trainer:
+      num_trainers: 48
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: real
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 8
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: felix_n48_stress_real
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 40
+          aggGoal: 8
+          seed: 1234
+          max_runtime_s: 1200
+        selector:
+          kwargs:
+            c: 12
+            aggGoal: 8
+
+    execution:
+      num_gpus: 1
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

@@ -9,9 +9,20 @@ def test_profiler():
     """Test basic profiler functionality."""
     print("Testing MemoryProfiler...")
     
-    # Initialize profiler
-    profiler = MemoryProfiler(trainer_id="test_trainer", log_interval_rounds=1)
+    # Initialize profiler (enabled=True to exercise the round-logging path;
+    # default is disabled, where these methods are no-ops).
+    profiler = MemoryProfiler(
+        trainer_id="test_trainer", log_interval_rounds=1, enabled=True
+    )
     print("✓ Profiler initialized")
+
+    # Disabled profiler must no-op (regression guard for the default path).
+    disabled = MemoryProfiler(trainer_id="disabled", enabled=False)
+    disabled.log_memory_before_round()
+    disabled.log_memory_after_round()
+    disabled.log_component_memory("c", "BEFORE")
+    assert disabled.round_memory == [], "disabled profiler must not record rounds"
+    print("✓ Disabled profiler no-ops as expected")
     
     # Test basic memory stats
     stats = profiler.get_memory_stats()

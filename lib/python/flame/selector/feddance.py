@@ -146,8 +146,21 @@ class FedDanceSelector(AbstractSelector):
         )
 
         self.round = round_num
+        # Log FedDance's believed scoring factors per candidate (V_m, I_m, A_m, U_m)
+        # so the offline staleness audit can compare believed-vs-true per factor.
+        ptx = {
+            eid: {
+                "feddance_V": eligible[eid].get_property(PROP_V),
+                "feddance_I": eligible[eid].get_property(PROP_I),
+                "feddance_A": eligible[eid].get_property(PROP_A),
+                "feddance_U": eligible[eid].get_property(PROP_U),
+                "last_engaged_round": self.last_engaged_round.get(eid),
+            }
+            for eid in eligible
+        }
         self.emit_selection(
             round_num, task_to_perform, ends, eligible.keys(), selected,
+            per_trainer_extra=ptx,
             extra={"num_unavail": len(unavail)},
         )
         return {key: None for key in selected}

@@ -15,6 +15,7 @@ import re
 import signal
 import subprocess
 import sys
+import time
 from datetime import datetime
 from pathlib import Path
 from typing import Optional
@@ -283,15 +284,27 @@ class ExperimentRunner:
 
         batch = load_experiment_config(config_file)
         print(f"loaded {len(batch.experiments)} experiments from {config_file}")
+        # Overnight/CI-safe: when stdin is not a TTY (or FLAME_BATCH_CONTINUE_ON_ERROR
+        # is set) a failed experiment is logged and the batch proceeds to the next,
+        # rather than blocking on input(). run_experiment already cleans up its own
+        # spawners in a finally; we additionally hard-sweep stragglers between runs.
+        auto_continue = (
+            not sys.stdin.isatty()
+            or os.environ.get("FLAME_BATCH_CONTINUE_ON_ERROR", "") not in ("", "0", "false")
+        )
         for i, exp in enumerate(batch.experiments, 1):
             print(f"\n[{i}/{len(batch.experiments)}] {exp.name}")
             try:
                 self.run_experiment(exp)
             except Exception as e:
                 print(f"experiment {exp.name} failed: {e}")
-                resp = input("continue? (y/n): ")
-                if resp.lower() != "y":
-                    break
+                if not auto_continue:
+                    if input("continue? (y/n): ").lower() != "y":
+                        break
+                else:
+                    print("  (non-interactive: continuing to next experiment)")
+            finally:
+                self._sweep_stragglers()
 
     def _resolve_baseline(
         self, exp: ExperimentConfig, baselines: dict
@@ -432,3 +445,32 @@ class ExperimentRunner:
             self.trainer_spawner.terminate_all()
         if self.aggregator_spawner:
             self.aggregator_spawner.terminate()
+
+    def _sweep_stragglers(self, gpu_settle_timeout_s: float = 45.0) -> None:
+        """Between batch experiments, hard-kill any example trainer/aggregator
+        processes that outlived ``_cleanup`` (e.g. a hung trainer) and wait for
+        GPU memory to drain, so the next experiment starts from a clean slate.
+
+        Matches ONLY the example's main scripts — never the batch runner itself
+        (``run_experiment``) — so it is safe to call from inside the batch loop."""
+        for pat in ("trainer/pytorch/main.py", "aggregator/pytorch/main_"):
+            try:
+                subprocess.run(["pkill", "-9", "-f", pat], check=False,
+                               stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            except Exception:
+                pass
+        # best-effort: wait until our user's GPU procs are gone (or timeout)
+        deadline = time.time() + gpu_settle_timeout_s
+        while time.time() < deadline:
+            try:
+                out = subprocess.run(
+                    ["pgrep", "-f", "trainer/pytorch/main.py"],
+                    capture_output=True, text=True, check=False)
+                if not out.stdout.strip():
+                    break
+            except Exception:
+                break
+            time.sleep(2)
+        # drop spawner handles so stale references aren't reused next iteration
+        self.trainer_spawner = None
+        self.aggregator_spawner = None

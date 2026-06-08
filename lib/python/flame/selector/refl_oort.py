@@ -222,6 +222,18 @@ class REFLOortSelector(OortSelector):
                 count = ends[end_id].get_property(PROP_SELECTED_COUNT) or 0
                 ends[end_id].set_property(PROP_SELECTED_COUNT, count + 1)
 
+        # Emit selector-decision telemetry (same schema as oort/feddance) so the
+        # mis-selection oracle can score REFL too.
+        self.emit_selection(
+            round_num, task_to_perform, ends, eligible_ends.keys(), newly_selected,
+            per_trainer_extra=getattr(self, "_audit_components", None),
+            extra={
+                "avail_priority": self.avail_priority,
+                "num_priority": len(priority_ends),
+                "num_blacklist": len(blacklist),
+                "exploration_factor": self.exploration_factor,
+            },
+        )
         return {key: None for key in newly_selected}
 
     def build_priority_lists(

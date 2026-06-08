@@ -473,7 +473,9 @@ class Channel(object):
 
         async def _put_message_to_rxq_inner():
             logger.info("Created task for recv_fifo in put_msg_to_rxq_inner")
-            _ = asyncio.create_task(self._streamer_for_recv_fifo(end_ids))
+            _ = asyncio.create_task(
+                self._streamer_for_recv_fifo(end_ids, timeout=timeout)
+            )
 
         async def _get_message_inner():
             logger.info("In _get_msg_inner(), will await until getting a message")
@@ -543,49 +545,80 @@ class Channel(object):
 
             yield msg, metadata
 
-    async def _streamer_for_recv_fifo(self, end_ids: list[str]):
+    async def _streamer_for_recv_fifo(self, end_ids: list[str], timeout=None):
         """Read messages in a FIFO fashion.
 
         This method reads messages from queues associated with each
         end and puts first_k number of the messages into a queue; The
         remaining messages are saved back into a variable (peek_buf)
         of their corresponding end so that they can be read later.
+
+        ``timeout`` (seconds) bounds how long we wait for a single end's
+        message. It is essential for the active-task bookkeeping: this
+        coroutine is fire-and-forget and outlives the ``recv_fifo`` caller,
+        so an end whose trainer never sends (slow / dropped / unavailable)
+        would otherwise block on ``End.get()`` forever, leaving the end
+        permanently in ``self._active_recv_fifo_tasks`` and blocking every
+        future receive for that end (manifesting as a stuck aggregator with
+        a monotonically growing ``active_tasks`` count). With a timeout the
+        per-end task always completes, and a ``finally`` guarantees the end
+        is removed from the active set regardless of outcome. ``None``
+        preserves the legacy blocking behavior used by synchronous callers.
         """
 
         async def _get_inner(end_id) -> tuple[str, Any]:
-            if not self.has(end_id):
-                # can't receive message from end_id
-                logger.warning(
-                    f"[RECV_FIFO] Cannot receive message from end_id {end_id} - end not in channel"
-                )
-                yield end_id, None
-
             payload = None
             try:
+                if not self.has(end_id):
+                    # can't receive message from end_id
+                    logger.warning(
+                        f"[RECV_FIFO] Cannot receive message from end_id {end_id} - end not in channel"
+                    )
+                    return
                 logger.info(
                     f"[RECV_FIFO] channel {self._name} awaiting get() on end_id {end_id} in self.ends"
                 )
-                payload = await self._ends[end_id].get()
-                if payload:
-                    # ignore timestamp for measuring bytes received
-                    self.mc.accumulate("bytes", "recv", len(payload[0]))
+                try:
+                    get_coro = self._ends[end_id].get()
+                    if timeout is not None:
+                        payload = await asyncio.wait_for(get_coro, timeout)
+                    else:
+                        payload = await get_coro
+                    if payload:
+                        # ignore timestamp for measuring bytes received
+                        self.mc.accumulate("bytes", "recv", len(payload[0]))
+                        logger.info(
+                            f"[RECV_FIFO] Received payload from end_id {end_id}, size={len(payload[0])} bytes"
+                        )
+                    else:
+                        logger.warning(
+                            f"[RECV_FIFO] Got empty/None payload from end_id {end_id}"
+                        )
+                except asyncio.TimeoutError:
                     logger.info(
-                        f"[RECV_FIFO] Received payload from end_id {end_id}, size={len(payload[0])} bytes"
+                        f"[RECV_FIFO] timeout ({timeout}s) waiting on end_id {end_id}; "
+                        f"releasing active task so it can be re-selected"
                     )
-                else:
-                    logger.warning(
-                        f"[RECV_FIFO] Got empty/None payload from end_id {end_id}"
+                    payload = None
+                except KeyError as e:
+                    logger.error(
+                        f"[RECV_FIFO] KeyError when getting from end_id {end_id}: {e}"
                     )
-            except KeyError as e:
-                logger.error(
-                    f"[RECV_FIFO] KeyError when getting from end_id {end_id}: {e}"
-                )
-                yield end_id, None
+                    payload = None
 
-            logger.info(
-                f"[RECV_FIFO] _get_inner() yielding for end_id: {end_id}, payload={'present' if payload else 'None'}"
-            )
-            yield end_id, payload
+                logger.info(
+                    f"[RECV_FIFO] _get_inner() yielding for end_id: {end_id}, payload={'present' if payload else 'None'}"
+                )
+                yield end_id, payload
+            finally:
+                # Always release the active-task slot, whether we delivered a
+                # message, timed out, hit an error, or were cancelled. This is
+                # what prevents the permanent active_tasks leak.
+                self._active_recv_fifo_tasks.discard(end_id)
+                logger.info(
+                    f"[RECV_FIFO] active task released for {end_id}, "
+                    f"active_tasks={len(self._active_recv_fifo_tasks)}"
+                )
 
         runs = []
         skipped_ends = []
@@ -625,13 +658,20 @@ class Channel(object):
         async with merged.stream() as streamer:
             msg_count = 0
             async for result in streamer:
-                (end_id, _) = result
+                (end_id, payload) = result
+                # Active-task cleanup is handled in _get_inner's finally.
+                # Don't enqueue non-messages (timed-out / quiet ends): they
+                # would consume a first_k slot ahead of a real update. The
+                # caller's own timeout bounds how long it waits on the rx queue.
+                if payload is None:
+                    logger.info(
+                        f"[RECV_FIFO] no message from {end_id}; not enqueuing"
+                    )
+                    continue
                 msg_count += 1
-
                 await self._rx_queue.put(result)
-                self._active_recv_fifo_tasks.remove(end_id)
                 logger.info(
-                    f"[RECV_FIFO] active task removed for {end_id}, delivered message {msg_count}/{len(runs)}"
+                    f"[RECV_FIFO] delivered message {msg_count} from {end_id}"
                 )
 
         logger.info(

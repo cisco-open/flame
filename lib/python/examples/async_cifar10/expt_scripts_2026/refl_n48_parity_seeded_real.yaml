@@ -1,0 +1,55 @@
+# Sync-baseline real/sim PARITY config (REAL mode), seeded.
+# REFL (refl selector + fedavg optimizer, oracular tracking, refl sync stack).
+# 48 trainers / 2 GPUs, alpha0.1, syn_0 (always available -> oracular trace is
+# trivial/deterministic), seeded. Select aggr_num=5 == agg_goal (no overcommit
+# on the refl sync stack). Run with the _sim twin (same seed) and compare.
+
+experiments:
+  - name: refl_n48_parity_seeded_real
+    description: "Sync (refl) real/sim parity (real), seeded, 48 trainers/2 GPUs."
+
+    baseline: refl
+
+    trainer:
+      num_trainers: 48
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: real
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: refl_oort
+      tracking_mode: oracular
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: refl_n48_parity_seeded_real
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 40
+          aggGoal: 5
+          seed: 1234
+          min_trainers_to_start: 48
+          max_runtime_s: 1200
+          trackTrainerAvail:
+            trace: syn_0
+        selector:
+          kwargs:
+            aggr_num: 5
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

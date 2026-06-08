@@ -59,6 +59,7 @@ baselines:
       selector:
         sort: refl_oort
         kwargs:
+          aggr_num: 10  # per-round selection count (OortSelector requires it); override per experiment to match agg_goal
           avail_priority: 1
           blacklist_rounds: 50
           pacer_step: 20
@@ -89,13 +90,19 @@ baselines:
   feddance:
     description: >-
       FedDance = feddance selector (V_m * I_m * A_m with MAB exploration) +
-      FedAvg optimizer.
+      FedAvg optimizer on the base syncfl stack (main_fedavg_agg.py), which
+      drives the selector's on_update_received / on_round_completed hooks.
+      Availability comes from FedDance's own check-in predictor (not oracular).
+      aggr_num is the per-round selection count (override per experiment to match
+      agg_goal). Needs trainer use_oort_loss_fn=True (I_m) and local-accuracy
+      reporting (A_m), both emitted by the async_cifar10 trainer.
     example:
       aggregator_main: aggregator/pytorch/main_fedavg_agg.py
     aggregator:
       selector:
         sort: feddance
         kwargs:
+          aggr_num: 10
           history_window: 50
           prediction_window: 5
           accuracy_window: 5
@@ -107,8 +114,8 @@ baselines:
         kwargs: {}
       hyperparameters:
         trackTrainerAvail:
-          enabled: "True"
-          type: ORACULAR
+          enabled: "False"
+          type: "NA"
     trainer:
       hyperparameters:
         use_oort_loss_fn: "True"

@@ -51,6 +51,9 @@ from flame.selector.oort import (
 logger = logging.getLogger(__name__)
 
 SEND_TIMEOUT_WAIT_S = 90  # 90 seconds timeout
+# Real MQTT delivery overhead (agg→trainer + trainer→agg) expected in both real
+# and sim (localhost). Added to budget_s before firing [TIMING_OVERRUN_AGG].
+_NETWORK_SLACK_S = 2.0
 
 # Max wall-clock to block on one async receive before skipping the cycle and
 # re-selecting; guards against hanging when all in-flight trainers go quiet.
@@ -217,12 +220,25 @@ class TopAggregator(SyncTopAgg):
             f"[SIM_RECV] committed end={_end[-4:]} sct={sct:.1f} "
             f"T_v={self._vclock.now:.1f} buf={len(self._sim_buffer)}"
         )
+        # recv_fifo marks every delivered end RECVD, but we only COMMITTED the
+        # popped one — the rest are buffered yet still in-flight. _handle_recv_state
+        # strips RECVD ends from selected_ends (freeing their concurrency slot),
+        # which would let the selector over-select to N. Reset the still-buffered
+        # ends back to NONE so they keep their in-flight slot until they commit;
+        # to_probe already skips them via _sim_buffer.has(), so they aren't re-recv'd.
+        for _buf_end in self._sim_buffer.pending_ends():
+            if channel.has(_buf_end):
+                channel._ends[_buf_end].set_property(KEY_END_STATE, VAL_END_STATE_NONE)
         # Release trainer that was blocked waiting for this cross-round commit.
+        # Free its concurrency slot too (selected_ends), now that it committed,
+        # so the next selection can refill it — the slot was held since round end.
         if _end in self._sim_pending_commit:
             self._sim_pending_commit.discard(_end)
             sel = channel._selector
             if _end in sel.all_selected:
                 del sel.all_selected[_end]
+            if sel.requester in sel.selected_ends:
+                sel.selected_ends[sel.requester].discard(_end)
             if channel.has(_end):
                 channel._ends[_end].set_property(KEY_END_STATE, VAL_END_STATE_NONE)
             logger.info(f"[SIM_PENDING_COMMIT] released {_end[-4:]} sct={sct:.1f}")
@@ -262,6 +278,7 @@ class TopAggregator(SyncTopAgg):
         if not msg:
             logger.debug(f"[AGG_RECV] No data from {end}; skipping it, agg_model_version={self._round}")
             return
+        _t_msg_start = datetime.now()  # start of per-message processing (vii)
 
         # NOTE: Only 2 types of messages are expected here: (i) model
         # updates after task_to_perform=TRAIN with weights or (ii)
@@ -315,14 +332,15 @@ class TopAggregator(SyncTopAgg):
             # TODO: (DG) Also set the end property for task=eval done
             # at timestamp=current.
 
-            # add trainer to list of ends that have replied with eval
-            # updates capture telemetry on trainer participation in
-            # rounds
-            channel._selector.trainer_eval_recv_ends.append(end)
-            logger.debug(
-                f"After appending {end} to trainer_eval_recv_ends: "
-                f"{channel._selector.trainer_eval_recv_ends}"
-            )
+            # add trainer to list of ends that have replied with eval updates
+            # (async_oort tracks these for its round-end cleanup; other async
+            # selectors e.g. fedbuff don't define the list — skip for them).
+            if hasattr(channel._selector, "trainer_eval_recv_ends"):
+                channel._selector.trainer_eval_recv_ends.append(end)
+                logger.debug(
+                    f"After appending {end} to trainer_eval_recv_ends: "
+                    f"{channel._selector.trainer_eval_recv_ends}"
+                )
 
             # Remove end from selected_ends and set its state to none
             # so that it can be selected for training in this round.
@@ -362,7 +380,13 @@ class TopAggregator(SyncTopAgg):
                 f"during aggregation"
             )
         else:
-            recv_wts_ts = datetime.now()
+            # Use the MQTT arrival timestamp (captured when the message first landed
+            # in the per-trainer rxq) so that wall_lag_s measures actual
+            # send→receive latency, not commit latency. In sim mode the reorder
+            # buffer delays commit by several real seconds after MQTT delivery;
+            # using datetime.now() here would inflate the lag measurement by the
+            # entire buffer-wait duration and fire false SEND_RECV_LAG_HIGH alerts.
+            recv_wts_ts = timestamp if isinstance(timestamp, datetime) else datetime.now()
             recv_wts_version = msg[MessageType.MODEL_VERSION]
 
             # check0- verify that this recvd version was sent to
@@ -408,32 +432,53 @@ class TopAggregator(SyncTopAgg):
                     f"[SEND_RECV_LAG] end={end} version={recv_wts_version} "
                     f"wall_lag_s={wall_lag_s:.3f}"
                 )
-                _lag_warn_threshold_s = 30.0 if not self.simulated else 10.0
-                if wall_lag_s > _lag_warn_threshold_s:
-                    logger.warning(
-                        f"[SEND_RECV_LAG_HIGH] end={end} version={recv_wts_version} "
-                        f"wall_lag_s={wall_lag_s:.1f}s — possible MQTT backlog"
-                    )
+                # Full per-message lag decomposition into 6 components.
+                _wst = msg.get(MessageType.WALL_SEND_TS)   # trainer send (float unix)
+                _wrt = msg.get(MessageType.WALL_RECV_TS)   # trainer recv of agg weights (float unix)
+                _rcs = msg.get(MessageType.ROUND_COMPUTE_S) # modeled compute duration (float s)
+                _agg_sent_unix = sent_wts_ts.timestamp() if hasattr(sent_wts_ts, "timestamp") else None
+                _agg_recv_unix = recv_wts_ts.timestamp() if hasattr(recv_wts_ts, "timestamp") else None
+                _agg_to_trainer = f"{float(_wrt) - _agg_sent_unix:.3f}" if (_wrt and _agg_sent_unix) else "-"
+                _compute = f"{float(_rcs):.3f}" if _rcs is not None else "-"
+                _post_wait = f"{float(_wst) - float(_wrt) - float(_rcs):.3f}" if (_wst and _wrt and _rcs is not None) else "-"
+                _mqtt_lag = f"{_agg_recv_unix - float(_wst):.3f}" if (_wst and _agg_recv_unix) else "-"
+                _queue_wait = f"{(_t_msg_start - recv_wts_ts).total_seconds():.3f}"
+                _process = f"{(datetime.now() - _t_msg_start).total_seconds():.3f}"
+                logger.info(
+                    f"[LAG_DECOMP] end={end} version={recv_wts_version} "
+                    f"wall_lag_s={wall_lag_s:.3f} "
+                    f"agg_to_trainer_s={_agg_to_trainer} "
+                    f"compute_s={_compute} "
+                    f"post_wait_s={_post_wait} "
+                    f"mqtt_lag_s={_mqtt_lag} "
+                    f"queue_wait_s={_queue_wait} "
+                    f"process_s={_process}"
+                )
 
                 _budget_s = float(msg.get(MessageType.TRAINING_BUDGET_S, 0.0))
                 if _budget_s > 0:
                     if self.simulated:
+                        # sim overrun: virtual round duration exceeded budget.
+                        # virtual_elapsed = SIM_COMPLETION_TS - SIM_SEND_TS = SIM_ROUND_DURATION.
                         _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
                         _sct = msg.get(MessageType.SIM_COMPLETION_TS)
                         if _sst is not None and _sct is not None:
                             _virt_elapsed = float(_sct) - float(_sst)
-                            if _virt_elapsed <= 0.0:
+                            if _virt_elapsed > _budget_s:
                                 logger.warning(
                                     f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={recv_wts_version} "
-                                    f"budget={_budget_s:.1f}s overrun: virtual_elapsed={_virt_elapsed:.2f}s. "
+                                    f"budget={_budget_s:.1f}s overrun: "
+                                    f"virtual_elapsed={_virt_elapsed:.2f}s "
+                                    f"(excess={_virt_elapsed - _budget_s:.2f}s). "
                                     f"Reduce trainers-per-GPU or add GPUs."
                                 )
                     else:
-                        if wall_lag_s > _budget_s:
+                        if wall_lag_s > _budget_s + _NETWORK_SLACK_S:
                             logger.warning(
                                 f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={recv_wts_version} "
-                                f"budget={_budget_s:.1f}s overrun: wall_lag={wall_lag_s:.2f}s "
-                                f"(excess={wall_lag_s - _budget_s:.2f}s). "
+                                f"budget={_budget_s:.1f}s+slack={_NETWORK_SLACK_S:.1f}s "
+                                f"overrun: wall_lag={wall_lag_s:.2f}s "
+                                f"(excess={wall_lag_s - _budget_s - _NETWORK_SLACK_S:.2f}s). "
                                 f"Reduce trainers-per-GPU or add GPUs."
                             )
 
@@ -590,6 +635,7 @@ class TopAggregator(SyncTopAgg):
                     stat_utility=[stat_utility],
                     trainer_speed_s=[_trainer_speed_s],
                     contributing_trainers=[end],
+                    agg_observed_s={end: _trainer_speed_s},
                     extra={
                         "sim_completion_ts_recv": float(_sct_recv) if _sct_recv is not None else None,
                         "vclock_now": self._vclock.now if self.simulated else None,
@@ -761,12 +807,18 @@ class TopAggregator(SyncTopAgg):
             # Block every trainer with a pending buffer entry from re-selection.
             # cleanup_recvd_ends may have freed them early; re-block here so the
             # real-mode invariant holds: one in-flight update per trainer at a time.
+            # Crucially, KEEP them in selected_ends: concurrency is budgeted as
+            # extra = c - len(selected_ends), so a buffered-but-uncommitted update
+            # must hold its slot until it actually commits — exactly like real
+            # mode. Dropping it here frees a phantom slot the selector refills
+            # with a NEW trainer, so in-flight grows toward N each round (the
+            # over-selection bug). The slot is released on commit in _sim_recv_min.
             for end_id in pending_in_buffer:
                 self._sim_pending_commit.add(end_id)
                 if end_id not in sel.all_selected:
                     sel.all_selected[end_id] = time.time()
-                if requester in sel.selected_ends and end_id in sel.selected_ends[requester]:
-                    sel.selected_ends[requester].discard(end_id)
+                if requester in sel.selected_ends:
+                    sel.selected_ends[requester].add(end_id)
             if pending_in_buffer:
                 logger.info(
                     f"[SIM_PENDING] round={self._round} blocked {len(pending_in_buffer)} "
@@ -779,8 +831,14 @@ class TopAggregator(SyncTopAgg):
         picked_trainer_is_available = True
 
         if end in self.trainer_unavail_durations.keys():
-            # get aggregator seconds from start
-            agg_time_since_start_s = time.time() - self.agg_start_time_ts
+            # aggregator seconds from start, on the trace's timeline: virtual
+            # clock in simulated mode (wall-clock would barely advance vs the
+            # sim timeline, so every unavailability window would be missed),
+            # wall-clock in real mode. Mirrors the trainer-side _sim_now() path.
+            agg_time_since_start_s = (
+                self._vclock.now if self.simulated
+                else time.time() - self.agg_start_time_ts
+            )
 
             curr_trainer_unavail_list = self.trainer_unavail_durations[end]
 
@@ -895,6 +953,8 @@ class TopAggregator(SyncTopAgg):
             return
 
         channel.await_join()
+        # wait for the configured cohort so real/sim select from the same pool
+        self._await_min_trainers(channel)
         self._update_weights()
 
         # Brief pause so channel state settles before selector runs.
@@ -1023,6 +1083,7 @@ class TopAggregator(SyncTopAgg):
                 >> c.tasklet("evaluate")
                 >> c.tasklet("analysis")
                 >> c.tasklet("save_metrics")
+                >> c.tasklet("checkpoint")
                 >> c.tasklet("inc_round")
             )
             >> c.tasklet("inform_end_of_training")

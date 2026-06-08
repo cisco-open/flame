@@ -150,6 +150,14 @@ class PyTorchCifar10Aggregator(TopAggregator):
 
     def evaluate(self) -> None:
         """Evaluate (test) a model."""
+        # Gate eval cadence (evalEveryNRounds) instead of evaluating every round;
+        # the full test pass dominates per-round cost at n300. Used by the
+        # FedDance arm (this is its aggregator stack). Always eval round 1.
+        eval_every = (
+            getattr(self.config.hyperparameters, "eval_every_n_rounds", 10) or 10
+        )
+        if self._round != 1 and (self._round % eval_every != 0):
+            return
         self.model.eval()
         test_loss = 0
         correct = 0

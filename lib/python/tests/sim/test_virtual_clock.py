@@ -33,6 +33,12 @@ class TestVirtualClock:
         c.reset()
         assert c.now == 0.0
 
+    def test_advance_equal_ts_is_noop(self):
+        c = VirtualClock()
+        c.advance(5.0)
+        assert c.advance(5.0) == 5.0  # equal ts must not regress or double-count
+        assert c.now == 5.0
+
 
 class TestSimOrderedEnds:
     def test_ascending_by_completion(self):
@@ -99,6 +105,22 @@ class TestSimReorderBuffer:
         buf.add("t2", 1.0)
         buf.add("t1", 1.0)
         assert buf.pop_min()[0] == "t1"
+
+    def test_add_same_end_overwrites(self):
+        # The aggregator re-probes an end across fill passes; a second add for
+        # the same end must replace (not duplicate) its buffered entry.
+        buf = SimReorderBuffer()
+        buf.add("a", 5.0, "old")
+        buf.add("a", 8.0, "new")
+        assert len(buf) == 1
+        assert buf.pop_min() == ("a", 8.0, "new")
+
+    def test_clear_drops_all(self):
+        buf = SimReorderBuffer()
+        buf.add("a", 1.0)
+        buf.add("b", 2.0)
+        buf.clear()
+        assert len(buf) == 0 and buf.pop_min() is None
 
 
 class TestStalenessReconstruction:

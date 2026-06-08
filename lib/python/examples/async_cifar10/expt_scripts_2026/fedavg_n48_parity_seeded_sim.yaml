@@ -1,0 +1,54 @@
+# Sync-baseline real/sim PARITY config (SIMULATED mode), seeded.
+# FedAvg (random selector + fedavg optimizer, sync stack). Validates the sync
+# sim-ordering (commit first_k by smallest sim_completion_ts). 48 trainers / 2
+# GPUs, alpha0.1, syn_0, seeded. Select k=8, aggregate first_k=5 (overcommit so
+# the first_k-by-sct choice is exercised). Run with the _sim twin and compare.
+
+experiments:
+  - name: fedavg_n48_parity_seeded_sim
+    description: "Sync (fedavg) real/sim parity (sim), seeded, 48 trainers/2 GPUs."
+
+    baseline: fedavg
+
+    trainer:
+      num_trainers: 48
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: simulated
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: random
+      tracking_mode: default
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: fedavg_n48_parity_seeded_sim
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 40
+          aggGoal: 5
+          seed: 1234
+          min_trainers_to_start: 48
+          max_runtime_s: 1200
+        selector:
+          kwargs:
+            k: 8
+            c: 8
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

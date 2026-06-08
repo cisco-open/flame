@@ -11,6 +11,14 @@ from pathlib import Path
 from collections import defaultdict, Counter
 from datetime import datetime
 
+# Logs/markers contain non-latin-1 glyphs (⚠, 🔍, ...). When stdout is a pipe
+# its encoding may default to latin-1 and crash on print(). Force UTF-8 with a
+# safe fallback so the report never dies mid-analysis.
+try:
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+except Exception:
+    pass
+
 
 def analyze_aggregator_log(log_path):
     """Analyze aggregator log for message sending and receiving patterns."""
@@ -369,6 +377,120 @@ def analyze_trainer_log(log_path):
         'trainer_stats': trainer_stats,
         'fetch_complete_list': fetch_weights_complete,
         'weights_sent_list': weights_sent,
+    }
+
+
+def analyze_streaming_active_tasks(log_path):
+    """Detect the streaming recv_fifo active-task leak.
+
+    The streaming receive path (channel._streamer_for_recv_fifo) tracks an
+    "active task" per end while awaiting its message. If an end never delivers
+    (slow / dropped / unavailable trainer) the task can be left in the active
+    set forever, so that end is skipped ("already has active task") on every
+    future receive -> the aggregator makes no progress / gets stuck.
+
+    Signature of the bug: monotonically growing `active_tasks=N` and many ends
+    that are "active task added" but never "active task removed".
+    """
+    print(f"\n{'='*80}")
+    print(f"STREAMING RECV_FIFO ACTIVE-TASK ANALYSIS")
+    print(f"{'='*80}\n")
+
+    added = []          # (timestamp, end_id)
+    removed = []        # (timestamp, end_id)
+    active_series = []  # (timestamp, active_tasks count)
+    skipped_active = Counter()  # end_id -> times skipped as already_active
+    delivered_zero = 0
+    delivered_nonzero = 0
+
+    add_re = re.compile(r"active task added for (\w{40})")
+    # "removed" (legacy, logged only on delivery) and "released" (current,
+    # logged in the finally on delivery/timeout/error/cancel) both free a slot.
+    rem_re = re.compile(r"active task (?:removed|released) for (\w{40})")
+    skip_re = re.compile(r"Skipping end_id (\w{40}) - already has active task")
+    merge_re = re.compile(r"Starting merge stream with \d+ tasks, active_tasks=(\d+)")
+    done_re = re.compile(r"Merge stream completed, delivered (\d+) messages")
+    ts_re = re.compile(r"(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})")
+
+    with open(log_path, "r", errors="replace") as f:
+        for line in f:
+            ts_m = ts_re.match(line)
+            ts = ts_m.group(1) if ts_m else None
+
+            m = add_re.search(line)
+            if m:
+                added.append((ts, m.group(1)))
+                continue
+            m = rem_re.search(line)
+            if m:
+                removed.append((ts, m.group(1)))
+                continue
+            m = skip_re.search(line)
+            if m:
+                skipped_active[m.group(1)] += 1
+                continue
+            m = merge_re.search(line)
+            if m:
+                active_series.append((ts, int(m.group(1))))
+                continue
+            m = done_re.search(line)
+            if m:
+                if int(m.group(1)) == 0:
+                    delivered_zero += 1
+                else:
+                    delivered_nonzero += 1
+
+    if not added and not active_series:
+        print("No streaming recv_fifo markers found "
+              "(not a streaming run, or different log format).")
+        return None
+
+    added_ids = Counter(e for _, e in added)
+    removed_ids = Counter(e for _, e in removed)
+    leaked_ids = sorted(
+        (e for e in added_ids if added_ids[e] > removed_ids.get(e, 0)),
+        key=lambda e: added_ids[e] - removed_ids.get(e, 0),
+        reverse=True,
+    )
+
+    print(f"active task added (total):   {len(added)}")
+    print(f"active task removed (total): {len(removed)}")
+    print(f"net leaked (added - removed): {len(added) - len(removed)}")
+    if active_series:
+        peak = max(c for _, c in active_series)
+        last_ts, last_c = active_series[-1]
+        print(f"peak active_tasks:           {peak}")
+        print(f"last active_tasks:           {last_c} (at {last_ts})")
+    print(f"merge streams delivering 0 msgs: {delivered_zero}")
+    print(f"merge streams delivering >0 msgs: {delivered_nonzero}")
+
+    print(f"\nactive_tasks trajectory (sampled):")
+    if active_series:
+        step = max(1, len(active_series) // 20)
+        for ts, c in active_series[::step]:
+            print(f"  [{ts}] active_tasks={c}")
+        print(f"  [{active_series[-1][0]}] active_tasks={active_series[-1][1]}  (final)")
+
+    print(f"\nEnds added to active set but NEVER removed (stuck): {len(leaked_ids)}")
+    for e in leaked_ids[:30]:
+        net = added_ids[e] - removed_ids.get(e, 0)
+        print(f"  ...{e[-8:]}: added={added_ids[e]:3d} removed={removed_ids.get(e,0):3d} "
+              f"net_stuck={net} skipped_already_active={skipped_active.get(e,0)}")
+
+    if len(added) - len(removed) > 0:
+        print(f"\n[DIAGNOSIS] ACTIVE-TASK LEAK CONFIRMED.")
+        print(f"  {len(added) - len(removed)} receive tasks were started but never released.")
+        print(f"  These ends are skipped on every subsequent receive, so their updates")
+        print(f"  are never consumed -> aggregator stalls. Root cause: per-end get() in")
+        print(f"  _streamer_for_recv_fifo has no timeout / cleanup for ends that never send.")
+    else:
+        print(f"\n[OK] No net active-task leak detected.")
+
+    return {
+        "added": len(added),
+        "removed": len(removed),
+        "leaked_ids": leaked_ids,
+        "active_series": active_series,
     }
 
 
@@ -922,6 +1044,10 @@ def main():
         print(f"Error: Trainer log not found: {trainer_log}")
         sys.exit(1)
     
+    # Streaming-specific leak check first: this is the fastest path to the
+    # root cause for streaming runs and doesn't depend on the older regexes.
+    analyze_streaming_active_tasks(agg_log)
+
     # Analyze logs
     agg_stats = analyze_aggregator_log(agg_log)
     trainer_stats = analyze_trainer_log(trainer_log)

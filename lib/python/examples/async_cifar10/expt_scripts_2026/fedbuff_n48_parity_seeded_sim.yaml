@@ -1,0 +1,57 @@
+# Async-baseline real/sim PARITY config (REAL mode), seeded.
+# FedBuff (fedbuff selector, uniform async + fedbuff optimizer, async stack).
+# 48 trainers / 2 GPUs, alpha0.1, syn_0, seeded. Concurrency c=8, aggGoal=5
+# (overcommit so the sim reorder-by-sct buffer is exercised). Run with _sim twin.
+
+experiments:
+  - name: fedbuff_n48_parity_seeded_sim
+    description: "Async (fedbuff) real/sim parity (sim), seeded, 48 trainers/2 GPUs."
+
+    baseline: fedbuff
+
+    trainer:
+      num_trainers: 48
+      start_id: 1
+      dataset:
+        name: cifar10
+        dirichlet_alpha: 0.1
+      availability:
+        mode: syn_0
+      enable_training_delays: true
+      time_mode: simulated
+      hyperparameters:
+        batchSize: 32
+        learningRate: 0.001
+      config_overrides:
+        hyperparameters:
+          client_notify:
+            trace: syn_0
+
+    aggregator:
+      config_template: ../_metadata/aggregator_base.json
+      selector: fedbuff
+      tracking_mode: default
+      agg_goal: 5
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: fedbuff_n48_parity_seeded_sim
+        hyperparameters:
+          batchSize: 32
+          learningRate: 0.001
+          rounds: 40
+          aggGoal: 5
+          seed: 1234
+          min_trainers_to_start: 48
+          max_runtime_s: 1200
+        selector:
+          kwargs:
+            c: 8
+            aggGoal: 5
+
+    execution:
+      num_gpus: 2
+      sleep_between_spawns: 0.5
+      aggregator_warmup_time: 15
+      monitoring:
+        enabled: false

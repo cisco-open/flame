@@ -98,3 +98,9 @@ scripts/plotters/old_plots/*
 # Local json files (fwdllm) - populated with $USER - do not commit
 /tmp_expanded_configs_*
 specs/*
+
+# Experiment run outputs (telemetry / plots / logs) — generated, not source
+lib/python/examples/async_cifar10/experiments/run_*/
+# Stray trainer log + local Claude Code project dir
+temp_trainer.log
+.claude/

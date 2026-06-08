@@ -190,6 +190,7 @@ class TrainerSpawner:
         log_file: Optional[Path] = None,
         time_mode: str = "simulated",
         battery_threshold: int = 50,
+        cpu_pinning: bool = True,
     ):
         self.config_gen = config_generator
         self.num_gpus = num_gpus
@@ -198,8 +199,19 @@ class TrainerSpawner:
         # CLI-only trainer knobs: read from argv, not config JSON.
         self.time_mode = time_mode
         self.battery_threshold = battery_threshold
+        self.cpu_pinning = cpu_pinning
         self.processes = []
         self._log_handle = None
+
+        # Discover usable CPU cores (respects cgroup/Slurm affinity).
+        self._usable_cores: List[int] = []
+        if self.cpu_pinning:
+            try:
+                self._usable_cores = sorted(os.sched_getaffinity(0))
+                print(f"  CPU pinning ON: {len(self._usable_cores)} usable cores: {self._usable_cores[:8]}{'...' if len(self._usable_cores) > 8 else ''}")
+            except AttributeError:
+                print("  CPU pinning requested but os.sched_getaffinity unavailable (non-Linux); pinning disabled.")
+                self.cpu_pinning = False
 
         # Open combined log file if specified
         if self.log_file:
@@ -238,9 +250,22 @@ class TrainerSpawner:
         # Determine GPU
         gpu_id = (trainer_id - 1) % self.num_gpus
 
+        # Determine CPU core (round-robin across usable cores when pinning is on)
+        cpu_core: Optional[int] = None
+        preexec_fn = None
+        if self.cpu_pinning and self._usable_cores:
+            cpu_core = self._usable_cores[(trainer_id - 1) % len(self._usable_cores)]
+            _core_set = {cpu_core}
+            preexec_fn = lambda c=_core_set: os.sched_setaffinity(0, c)
+
         # Build command
         env = os.environ.copy()
         env["CUDA_VISIBLE_DEVICES"] = str(gpu_id)
+        if self.cpu_pinning and cpu_core is not None:
+            # Prevent thread oversubscription when pinned to one core.
+            for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS", "OPENBLAS_NUM_THREADS",
+                         "NUMEXPR_NUM_THREADS"):
+                env[_var] = "1"
 
         cmd = [
             sys.executable,  # Use same Python interpreter
@@ -265,14 +290,16 @@ class TrainerSpawner:
 
         # Spawn process
         process = subprocess.Popen(
-            cmd, env=env, stdout=stdout_target, stderr=stderr_target, text=True
+            cmd, env=env, stdout=stdout_target, stderr=stderr_target, text=True,
+            preexec_fn=preexec_fn,
         )
 
         self.processes.append(
-            {"trainer_id": trainer_id, "gpu_id": gpu_id, "process": process}
+            {"trainer_id": trainer_id, "gpu_id": gpu_id, "cpu_core": cpu_core, "process": process}
         )
 
-        print(f"  Spawned trainer {trainer_id} on GPU {gpu_id} (PID: {process.pid})")
+        core_str = f", CPU core {cpu_core}" if cpu_core is not None else ""
+        print(f"  Spawned trainer {trainer_id} on GPU {gpu_id}{core_str} (PID: {process.pid})")
 
         return process
 
@@ -311,6 +338,12 @@ class TrainerSpawner:
             time.sleep(self.sleep_between_spawns)
 
         print(f"\n✓ Spawned {len(self.processes)} trainers")
+        # Dump trainer→(gpu, core) assignment table
+        if self.cpu_pinning and self._usable_cores:
+            print(f"\n  Trainer assignments (cpu_pinning=ON, {len(self._usable_cores)} cores):")
+            print(f"  {'Trainer':>8}  {'GPU':>4}  {'CPU core':>9}  {'PID':>7}")
+            for p in self.processes:
+                print(f"  {p['trainer_id']:>8}  {p['gpu_id']:>4}  {str(p.get('cpu_core', 'N/A')):>9}  {p['process'].pid:>7}")
 
     def wait_all(self, timeout_per_trainer: float = 30.0):
         """Wait for all trainer processes to complete.
@@ -402,6 +435,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--test", action="store_true", help="Test mode: spawn only 5 trainers"
     )
+    parser.add_argument(
+        "--cpu_pinning",
+        type=str,
+        choices=["on", "off"],
+        default="on",
+        help="Pin each trainer to a single CPU core round-robin (default: on)",
+    )
 
     args = parser.parse_args()
 
@@ -426,7 +466,7 @@ if __name__ == "__main__":
     print(f"  ✓ Loaded base config from {base_config_path.name}")
 
     print("\n[3/3] Spawning trainers...")
-    spawner = TrainerSpawner(config_gen, num_gpus=args.num_gpus)
+    spawner = TrainerSpawner(config_gen, num_gpus=args.num_gpus, cpu_pinning=(args.cpu_pinning == "on"))
 
     # Determine trainer IDs to spawn
     if args.test:

@@ -50,7 +50,6 @@ def initialize_wandb(run_name=None):
             # fedbuff
             "server_learning_rate": 40.9,
             "client_learning_rate": 0.000195,
-            # oort "client_learning_rate": 0.04,
             "architecture": "CNN",
             "dataset": "CIFAR-10",
             "fl-type": "async, fedbuff",
@@ -159,18 +158,6 @@ class PyTorchCifar10Aggregator(TopAggregator):
         This allows the aggregator to work with dynamic trainer spawning
         without hardcoding the number of expected trainers.
         """
-        print(f"REFL oracular mode with trace: {trace}")
-        print("Aggregator will work with trainers dynamically as they connect")
-        print(
-            f"Oracular per-trainer tracking disabled - will proceed when agg_goal met"
-        )
-
-        # Return None to disable oracular pre-tracking
-        # This prevents get_curr_unavail_trainers() from expecting specific trainer IDs
-        # The selector (if REFL-based) has access to availability_trace_file in config
-        # and can handle availability checking independently
-
-        print("Trace setup complete - ready for dynamic trainers")
         return None
 
     def load_data(self) -> None:
@@ -199,13 +186,10 @@ class PyTorchCifar10Aggregator(TopAggregator):
         }
 
         self.test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
-
-        # store data into dataset for analysis (e.g., bias)
         self.dataset = Dataset(dataloader=self.test_loader)
 
     def train(self) -> None:
         """Train a model."""
-        # Implement this if testing is needed in aggregator
         pass
 
     def evaluate(self) -> None:
@@ -237,22 +221,16 @@ class PyTorchCifar10Aggregator(TopAggregator):
             f"{correct}/{total} ({test_accuracy})"
         )
 
-        # update metrics after each evaluation so that the metrics can
-        # be logged in a model registry.
         self.update_metrics({"test-loss": test_loss, "test-accuracy": test_accuracy})
 
-        # Send metrics to wandb
         if self.log_to_wandb:
             wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
         self.loss_list.append(test_loss)
 
-        # print to save to file
         logger.debug(f"loss list at cifar agg: {self.loss_list}")
 
     def check_and_sleep(self) -> None:
         """Induce transient unavailability"""
-        # Implement this if transient unavailability need to be
-        # emulated in aggregator
         pass
 
 

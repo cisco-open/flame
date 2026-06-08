@@ -34,6 +34,7 @@ from flame.common.typing import Scalar
 from flame.common.util import MLFramework, get_ml_framework_in_use
 from flame.end import KEY_END_STATE, VAL_END_STATE_NONE, VAL_END_STATE_RECVD, End
 from flame.selector import AbstractSelector, SelectorReturnType
+from flame.selector import scoring
 
 from flame.selector.properties import (
     PROP_AVL_STATE,
@@ -389,11 +390,19 @@ class AsyncOortSelector(AbstractSelector):
                 )
                 self._select_run_counter = 0
 
+            _audit = getattr(self, "_audit_components", {}) or {}
             per_trainer_extra = {
                 eid: {
                     "in_all_selected": eid in self.all_selected,
                     "in_pending_commit": eid in getattr(self, "_agg_pending_commit_ref", set()),
                     "last_eval_round": ends[eid].get_property(PROP_LAST_EVAL_ROUND),
+                    # last TRAIN selection round; with last_eval_round this shows
+                    # whether Felix's believed I_m was refreshed by eval vs train
+                    # (the freshness mechanism the staleness audit measures).
+                    "last_train_round": ends[eid].get_property(PROP_LAST_SELECTED_ROUND),
+                    # score components (believed_I, temporal, system_util) for the
+                    # offline counterfactual replay.
+                    **(_audit.get(eid, {})),
                 }
                 for eid in ends
             }
@@ -799,6 +808,10 @@ class AsyncOortSelector(AbstractSelector):
         logger.info(
             f"stat_utility, temporal_uncertainty, global_system_utility, final_utility, end_id"
         )
+        # Per-candidate score components stashed for the offline staleness audit.
+        if getattr(self, "_audit_round", None) != model_version:
+            self._audit_components = {}
+            self._audit_round = model_version
         for utility_idx in range(len(utility_list)):
             curr_end_utility = utility_list[utility_idx][PROP_UTILITY]
             curr_end_id = utility_list[utility_idx][PROP_END_ID]
@@ -809,9 +822,8 @@ class AsyncOortSelector(AbstractSelector):
             temporal_uncertainty = self.calculate_temporal_uncertainty_of_trainer(
                 ends, curr_end_id, model_version
             )
-            curr_end_utility += temporal_uncertainty
             logger.debug(
-                f"end_id: {curr_end_id}, adding temporal_uncertainty: {temporal_uncertainty} to get curr_end_utility: {curr_end_utility}"
+                f"end_id: {curr_end_id}, temporal_uncertainty: {temporal_uncertainty}"
             )
 
             # Multiply global system utility
@@ -819,8 +831,14 @@ class AsyncOortSelector(AbstractSelector):
                 ends, curr_end_id
             )
 
-            utility_list[utility_idx][PROP_UTILITY] = (
-                curr_end_utility * global_system_utility
+            self._audit_components[curr_end_id] = {
+                "believed_I": stat_utility,
+                "temporal": temporal_uncertainty,
+                "system_util": global_system_utility,
+            }
+            # Score = (stat_util + temporal) * system_util via shared scorer.
+            utility_list[utility_idx][PROP_UTILITY] = scoring.oort_combine_score(
+                stat_utility, temporal_uncertainty, global_system_utility
             )
 
             # TODO (GD): Change this back to DEBUG

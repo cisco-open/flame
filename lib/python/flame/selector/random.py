@@ -152,103 +152,6 @@ class RandomSelector(AbstractSelector):
         self,
         ends: dict[str, End],
         channel_props: dict[str, Scalar],
-        task_to_perform: str = "train",
-        **kwargs,
-    ) -> SelectorReturnType:
-        """Return ends from the given ends to maintain concurrency self.c.
-        If it is not possible to maintain concurrency, fails fast and selects
-        none. It is left to the aggregator to make ends available for future
-        selection.
-        """
-        logger.debug("calling random select")
-        # self.requester = channel_props[KEY_CH_SELECT_REQUESTER] if
-        # self.requester not in self.selected_ends:
-        #     self.selected_ends[self.requester] = set()
-
-        # default, availability unaware way of using ends
-        eligible_ends = ends
-
-        if self.enforce_min_start(len(ends)):
-            return {}
-
-        if len(ends) == 0:
-            logger.debug("ends is empty")
-            return {}
-
-        logger.debug(f"len(ends), self.k: {len(ends)}, {self.k}")
-        # trainers
-        trainers_in_use_cnt = len(set(self.selected_ends))
-        required_trainers = min(len(ends), self.c - trainers_in_use_cnt)
-        logger.info(
-            f"Waiting on {trainers_in_use_cnt}, need {required_trainers} more to maintain concurrency {self.c}"
-        )
-        if len(ends) < required_trainers:
-            logger.info(f"not enough ends, need atleast {required_trainers}")
-            time.sleep(0.1)
-            return {}
-
-        if "round" in channel_props:
-            round = channel_props["round"]
-        else:
-            round = 0
-            logger.warning(
-                f"round not found in channel_props: {channel_props}. Defaulting to 0"
-            )
-
-        if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
-
-            trainers_in_use = self.selected_ends
-            logger.info(f"already_in_use: {trainers_in_use}")
-            avl_candidates = set()
-            for end_ in ends.keys():
-                if end_ not in trainers_in_use:
-                    curr_end_id_avl_state = ends[end_].get_property(PROP_AVL_STATE)
-                    logger.info(f"state of {end_} : {curr_end_id_avl_state}")
-                    if curr_end_id_avl_state in (
-                        TrainerAvailState.AVL_TRAIN.value,
-                        None,
-                    ):
-                        avl_candidates.add(end_)
-                    else:
-                        logger.info(f"state of {end_} is not avail, skipping ")
-                        continue
-
-            logger.info(f"available ends: {avl_candidates}")
-
-            if len(avl_candidates) < required_trainers:
-                time.sleep(0.1)
-                # cannot handle concurrency, wait further to clear and reselect
-                logger.info(
-                    f" {len(avl_candidates)} new selection less than concurrency {required_trainers}"
-                )
-                return {}
-
-            selected_candidates = set(
-                random.sample(list(avl_candidates), required_trainers)
-            )
-            logger.info(f"new selected ends: {selected_candidates}")
-
-            self.selected_ends = set(self.selected_ends).union(selected_candidates)
-            if round > self.round:
-                self.round = round
-
-            logger.info("select in send state")
-            return {key: None for key in selected_candidates}
-
-        elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
-            logger.info("select in recv state")
-            return {key: None for key in self.selected_ends}
-
-        logger.info(
-            f"selected ends: {self.selected_ends} for round {round} and self.round: {self.round}"
-        )
-
-        return {key: None for key in self.selected_ends}
-
-    def select(
-        self,
-        ends: dict[str, End],
-        channel_props: dict[str, Scalar],
         trainer_unavail_list: list,
         task_to_perform: str = "train",
         **kwargs,
@@ -297,7 +200,12 @@ class RandomSelector(AbstractSelector):
                 f"round not found in channel_props: {channel_props}. Defaulting to 0"
             )
 
-        if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
+        # SEND/RECV channel state drives the *buffered* concurrency pattern
+        # (FwdLLM / async stack): SEND picks new trainers to send the model to,
+        # RECV returns the in-flight set to receive from. Stateless sync FL
+        # (e.g. fedavg) never sets it and only needs the SEND path, so default.
+        _ch_state = channel_props.get(KEY_CH_STATE, VAL_CH_STATE_SEND)
+        if _ch_state == VAL_CH_STATE_SEND:
             # --- START TIMEOUT LOGIC ---
             current_time = time.time()
             # We use list() to avoid "dictionary changed size during iteration" errors
@@ -360,7 +268,7 @@ class RandomSelector(AbstractSelector):
             logger.info("select in send state")
             return {key: None for key in selected_candidates}
 
-        elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
+        elif _ch_state == VAL_CH_STATE_RECV:
             logger.info("select in recv state")
             return {key: None for key in self.selected_ends}
         

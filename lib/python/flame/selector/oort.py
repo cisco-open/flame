@@ -26,6 +26,7 @@ from flame.common.typing import Scalar
 from flame.common.util import MLFramework, get_ml_framework_in_use
 from flame.end import End
 from flame.selector import AbstractSelector, SelectorReturnType
+from flame.selector import scoring
 from flame.selector.properties import (
     PROP_DATASET_SIZE,
     PROP_END_ID,
@@ -271,6 +272,9 @@ class OortSelector(AbstractSelector):
 
         self._select_run_counter += 1
         for selected_end_id in self.selected_ends:
+            # in-flight ids may not be in the current eligible `ends`; skip them
+            if selected_end_id not in ends:
+                continue
             end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
             end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
             end_last_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
@@ -301,6 +305,7 @@ class OortSelector(AbstractSelector):
         self.emit_selection(
             round, task_to_perform, all_ends, eligible_ends.keys(),
             self.selected_ends,
+            per_trainer_extra=getattr(self, "_audit_components", None),
             extra={
                 "exploration_factor": self.exploration_factor,
                 "explore_ids": list(explore_end_ids),
@@ -360,7 +365,9 @@ class OortSelector(AbstractSelector):
             p=over_cutoff_utility_probs,
         )
 
-        return selected_ends
+        # np.random.choice yields np.str_ entries; cast to plain str so the
+        # ids match the python-str keys of the ``ends`` dict downstream.
+        return [str(e) for e in selected_ends]
 
     def sample_by_speed(
         self, unexplored_end_ids: list[str], num_of_ends: int
@@ -369,7 +376,13 @@ class OortSelector(AbstractSelector):
 
         # Oort paper prioritizes unexplored ends with faster system
         # speed We initially implement to perform random here
-        return np.random.choice(unexplored_end_ids, size=num_of_ends, replace=False)
+        # Cast np.str_ -> str so ids match the python-str keys of ``ends``.
+        return [
+            str(e)
+            for e in np.random.choice(
+                unexplored_end_ids, size=num_of_ends, replace=False
+            )
+        ]
 
     def pacer(self) -> None:
         """
@@ -474,7 +487,7 @@ class OortSelector(AbstractSelector):
         """
 
         end_last_selected_round = ends[end_id].get_property(PROP_LAST_SELECTED_ROUND)
-        return math.sqrt(0.1 * math.log(round) / end_last_selected_round)
+        return scoring.oort_temporal_uncertainty(round, end_last_selected_round)
 
     def calculate_global_system_utility_of_trainer(
         self, ends: dict[str, End], end_id: str
@@ -488,20 +501,19 @@ class OortSelector(AbstractSelector):
 
         if end_round_duration is None:
             return 1
-
-        if end_round_duration <= self.round_preferred_duration:
-            return 1
-        else:
-            return math.pow(
-                self.round_preferred_duration.total_seconds()
-                / end_round_duration.total_seconds(),
-                self.alpha,
-            )
+        pref = self.round_preferred_duration
+        return scoring.oort_system_utility(
+            end_round_duration.total_seconds(),
+            pref.total_seconds() if pref is not None else None,
+            self.alpha,
+        )
 
     def save_exploited_utility_history(
         self, ends: dict[str, End], exploit_end_ids: list[str]
     ) -> None:
-        if not exploit_end_ids:
+        # exploit_end_ids may be a numpy array (from sample_by_util); use len()
+        # so the emptiness check doesn't raise "truth value ambiguous".
+        if len(exploit_end_ids) == 0:
             return
         total = sum(
             ends[eid].get_property(PROP_STAT_UTILITY) for eid in exploit_end_ids
@@ -516,6 +528,10 @@ class OortSelector(AbstractSelector):
 
     def increment_selected_count_on_selected_ends(self, ends: dict[str, End]) -> None:
         for end_id in self.selected_ends:
+            # selected_ends may hold in-flight ids no longer in the current
+            # eligible `ends`; skip those rather than KeyError.
+            if end_id not in ends:
+                continue
             count = ends[end_id].get_property(PROP_SELECTED_COUNT) or 0
             ends[end_id].set_property(PROP_SELECTED_COUNT, count + 1)
 
@@ -533,27 +549,32 @@ class OortSelector(AbstractSelector):
 
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 
-        # Clip at 95th percentile to bound outliers
-        clip_value = utility_list[
-            min(int(len(utility_list) * 0.95), len(utility_list) - 1)
-        ][PROP_UTILITY]
-
+        # Per-candidate score components stashed for the offline staleness audit
+        # (believed I_m, temporal, system_util); read in emit_selection. Reset
+        # per round so REFL's multiple per-group calls accumulate within a round.
+        if getattr(self, "_audit_round", None) != round:
+            self._audit_components = {}
+            self._audit_round = round
         for utility_idx in range(len(utility_list)):
-            curr_end_utility = utility_list[utility_idx][PROP_UTILITY]
+            stat_util = utility_list[utility_idx][PROP_UTILITY]
             curr_end_id = utility_list[utility_idx][PROP_END_ID]
 
-
-            utility_list[utility_idx][PROP_UTILITY] = min(
-                utility_list[utility_idx][PROP_UTILITY], clip_value
-            )
-
-            curr_end_utility += self.calculate_temporal_uncertainty_of_trainer(
+            # Score = (stat_util + temporal) * system_util, via the shared pure
+            # scorer so the offline staleness audit reproduces it exactly.
+            temporal = self.calculate_temporal_uncertainty_of_trainer(
                 ends, curr_end_id, round
             )
-            curr_end_utility *= self.calculate_global_system_utility_of_trainer(
+            system_util = self.calculate_global_system_utility_of_trainer(
                 ends, curr_end_id
             )
-            utility_list[utility_idx][PROP_UTILITY] = curr_end_utility
+            self._audit_components[curr_end_id] = {
+                "believed_I": stat_util,
+                "temporal": temporal,
+                "system_util": system_util,
+            }
+            utility_list[utility_idx][PROP_UTILITY] = scoring.oort_combine_score(
+                stat_util, temporal, system_util
+            )
 
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 

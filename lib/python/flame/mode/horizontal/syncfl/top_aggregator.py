@@ -16,9 +16,10 @@
 """horizontal FL top level aggregator."""
 
 import logging
+import os
 import time
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta
 import numpy as np
 
 from diskcache import Cache
@@ -32,6 +33,7 @@ from flame.common.util import (
     weights_to_device,
     weights_to_model_device,
 )
+from flame.channel import VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.config import Config
 from flame.datasamplers import datasampler_provider
 from flame.mode.composer import Composer
@@ -52,7 +54,7 @@ from flame.selector.properties import (
 )
 from flame import telemetry
 from flame.telemetry.events import build_agg_eval, build_agg_round
-from flame.sim import VirtualClock
+from flame.sim import VirtualClock, SimReorderBuffer
 from flame.selector.properties import PROP_SIM_SEND_TS, PROP_SIM_COMPLETION_TS
 
 logger = logging.getLogger(__name__)
@@ -60,6 +62,22 @@ logger = logging.getLogger(__name__)
 TAG_DISTRIBUTE = "distribute"
 TAG_AGGREGATE = "aggregate"
 TAG_HEARTBEAT = "heartbeat_recv"
+
+# Simulated-mode receive bounds (sync): how long to keep draining selected ends
+# before committing, and the per-probe wait. In simulated mode trainers do not
+# sleep, so available responders land in a tiny physical window; we collect them
+# and commit the first_k with the smallest sim_completion_ts (the k that would
+# finish first in real mode), independent of physical arrival jitter.
+# Real MQTT delivery overhead (agg→trainer + trainer→agg) expected in both real
+# and sim (localhost). Added to budget_s before firing [TIMING_OVERRUN_AGG].
+_NETWORK_SLACK_S = 2.0
+SYNC_SIM_RECV_DEADLINE_S = 30
+SYNC_SIM_RECV_FILL_TIMEOUT_S = 0.5
+
+# Startup join barrier: how long to wait for the trainer cohort to join before
+# the first selection (see _await_min_trainers). Bounded so a crashed/slow
+# trainer can't deadlock startup.
+MIN_TRAINERS_JOIN_TIMEOUT_S = 180
 
 
 class TopAggregator(Role, metaclass=ABCMeta):
@@ -83,6 +101,29 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
     def internal_init(self) -> None:
         """Initialize internal state for role."""
+        # Optional deterministic seeding for real/sim parity. The selector runs
+        # in this (the aggregator) process and draws from the process-global
+        # np.random / random RNGs, so seeding here makes selection reproducible
+        # across runs/modes (given identical decision-point ordering). Also
+        # seeds torch for reproducible model init. seed=None (default) preserves
+        # the legacy unseeded behaviour.
+        _seed = getattr(self.config.hyperparameters, "seed", None)
+        if _seed is not None:
+            import random as _random
+
+            _seed = int(_seed)
+            np.random.seed(_seed)
+            _random.seed(_seed)
+            try:
+                import torch as _torch
+
+                _torch.manual_seed(_seed)
+                if _torch.cuda.is_available():
+                    _torch.cuda.manual_seed_all(_seed)
+            except Exception:
+                pass
+            logger.info(f"[SEED] aggregator seeded RNGs with seed={_seed}")
+
         # global variable for plugin manager
         self.plugin_manager = PluginManager()
         logger.info("Intializing Channel Manager in Top Aggregator for SYNC")
@@ -241,6 +282,63 @@ class TopAggregator(Role, metaclass=ABCMeta):
                     f"but got message of type {msg}"
                 )
 
+    def _sync_sim_recv_first_k(self, channel, ends, first_k):
+        """Simulated mode: commit the first_k updates with the SMALLEST
+        sim_completion_ts (the k that would physically finish first in real),
+        independent of arrival jitter, and advance the virtual clock to the
+        k-th smallest. Returns an ascending-sct list of (msg, metadata); also
+        stamps each committed end's PROP_ROUND_DURATION from SIM_ROUND_DURATION
+        so OORT/REFL see the correct simulated speed.
+
+        Sync aggregation is order-independent (weighted average), so parity only
+        requires the right *set* of k committers and the round duration.
+        """
+        buf = SimReorderBuffer()
+        ends = list(ends)
+        deadline = time.time() + SYNC_SIM_RECV_DEADLINE_S
+        while len(buf) < len(ends) and time.time() < deadline:
+            pending = [e for e in ends if not buf.has(e) and channel.has(e)]
+            if not pending:
+                break
+            got_any = False
+            for msg, md in channel.recv_fifo(
+                pending, first_k=len(pending),
+                timeout=SYNC_SIM_RECV_FILL_TIMEOUT_S,
+            ):
+                if not msg:
+                    break  # per-probe timeout: nothing more ready this pass
+                end = md[0]
+                sct = msg.get(MessageType.SIM_COMPLETION_TS)
+                sct = float(sct) if sct is not None else self._vclock.now
+                buf.add(end, sct, (msg, md))
+                got_any = True
+            # Once we have at least k and a pass added nothing new, the rest are
+            # unavailable/quiet — stop waiting (real mode would time them out).
+            if len(buf) >= first_k and not got_any:
+                break
+
+        committed = []
+        for _ in range(min(first_k, len(buf))):
+            popped = buf.pop_min()
+            if popped is None:
+                break
+            end, sct, (msg, md) = popped
+            self._vclock.advance(sct)
+            _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
+            _srd = msg.get(MessageType.SIM_ROUND_DURATION)
+            if _srd is not None:
+                channel.set_end_property(end, PROP_ROUND_DURATION,
+                                         timedelta(seconds=float(_srd)))
+            elif _sst is not None:
+                channel.set_end_property(end, PROP_ROUND_DURATION,
+                                         timedelta(seconds=max(0.0, sct - float(_sst))))
+            logger.info(
+                f"[SYNC_SIM_RECV] committed {end[-4:]} sct={sct:.1f} "
+                f"T_v={self._vclock.now:.1f}"
+            )
+            committed.append((msg, md))
+        return committed
+
     def _aggregate_weights(self, tag: str) -> None:
         logger.info("Agg weights inside top_aggregator syncfl")
         channel = self.cm.get_by_tag(tag)
@@ -252,19 +350,99 @@ class TopAggregator(Role, metaclass=ABCMeta):
         # For REFL/Oort with overcommitment: wait for aggGoal responses, not all selected
         agg_goal = self.config.hyperparameters.aggregation_goal
         first_k = agg_goal if agg_goal and agg_goal > 0 else 0
+
+        # RECV state: receive from the in-flight set we already sent to. A
+        # buffered selector (random) returns its selected_ends here rather than
+        # picking new trainers (SEND would return none once concurrency is full,
+        # stalling aggregation); stateless selectors ignore the state.
+        # ends() can be None transiently before selections populate (notably in
+        # simulated mode where distribute/aggregate run back-to-back) — skip and
+        # retry rather than crash on len(None).
+        ends = channel.ends(VAL_CH_STATE_RECV)
+        if not ends:
+            time.sleep(0.5)
+            return
         logger.info(
-            f"Waiting for first_k={first_k} responses from {len(channel.ends())} selected trainers"
+            f"Waiting for first_k={first_k} responses from {len(ends)} selected trainers"
         )
 
+        # simulated: commit k-smallest-sim_completion_ts (reorder by sim time);
+        # real: commit the first_k by physical arrival (authentic baseline).
+        if self.simulated:
+            _resolved_k = first_k if first_k > 0 else len(ends)
+            updates = self._sync_sim_recv_first_k(channel, ends, _resolved_k)
+        else:
+            updates = channel.recv_fifo(ends, first_k=first_k)
+
         # receive local model parameters from trainers
-        for msg, metadata in channel.recv_fifo(channel.ends(), first_k=first_k):
+        for msg, metadata in updates:
             end, timestamp = metadata
+            _t_msg_start = datetime.now()  # start of per-message processing (vii)
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
 
             logger.info(f"received data from {end}")
             channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
+
+            # Send→recv lag: mirrors asyncFL's [SEND_RECV_LAG] so the same
+            # post-processing/plots work for both sync and async baselines.
+            _send_prop = channel.get_end_property(end, PROP_ROUND_START_TIME)
+            if _send_prop is not None:
+                # PROP_ROUND_START_TIME is stored as (round, datetime)
+                _sent_ts = _send_prop[1] if isinstance(_send_prop, tuple) else _send_prop
+                recv_ts = timestamp if isinstance(timestamp, datetime) else datetime.now()
+                wall_lag_s = (recv_ts - _sent_ts).total_seconds()
+                logger.info(
+                    f"[SEND_RECV_LAG] end={end} version={self._round} "
+                    f"wall_lag_s={wall_lag_s:.3f}"
+                )
+                # Full per-message lag decomposition into 6 components.
+                _wst = msg.get(MessageType.WALL_SEND_TS)   # trainer send (float unix)
+                _wrt = msg.get(MessageType.WALL_RECV_TS)   # trainer recv of agg weights (float unix)
+                _rcs = msg.get(MessageType.ROUND_COMPUTE_S) # modeled compute duration (float s)
+                _agg_sent_unix = _sent_ts.timestamp() if hasattr(_sent_ts, "timestamp") else None
+                _agg_recv_unix = recv_ts.timestamp() if hasattr(recv_ts, "timestamp") else None
+                _agg_to_trainer = f"{float(_wrt) - _agg_sent_unix:.3f}" if (_wrt and _agg_sent_unix) else "-"
+                _compute = f"{float(_rcs):.3f}" if _rcs is not None else "-"
+                _post_wait = f"{float(_wst) - float(_wrt) - float(_rcs):.3f}" if (_wst and _wrt and _rcs is not None) else "-"
+                _mqtt_lag = f"{_agg_recv_unix - float(_wst):.3f}" if (_wst and _agg_recv_unix) else "-"
+                _queue_wait = f"{(_t_msg_start - recv_ts).total_seconds():.3f}"
+                _process = f"{(datetime.now() - _t_msg_start).total_seconds():.3f}"
+                logger.info(
+                    f"[LAG_DECOMP] end={end} version={self._round} "
+                    f"wall_lag_s={wall_lag_s:.3f} "
+                    f"agg_to_trainer_s={_agg_to_trainer} "
+                    f"compute_s={_compute} "
+                    f"post_wait_s={_post_wait} "
+                    f"mqtt_lag_s={_mqtt_lag} "
+                    f"queue_wait_s={_queue_wait} "
+                    f"process_s={_process}"
+                )
+                _budget_s = float(msg.get(MessageType.TRAINING_BUDGET_S, 0.0))
+                if _budget_s > 0:
+                    if self.simulated:
+                        _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
+                        _sct = msg.get(MessageType.SIM_COMPLETION_TS)
+                        if _sst is not None and _sct is not None:
+                            _virt_elapsed = float(_sct) - float(_sst)
+                            if _virt_elapsed > _budget_s:
+                                logger.warning(
+                                    f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={self._round} "
+                                    f"budget={_budget_s:.1f}s overrun: "
+                                    f"virtual_elapsed={_virt_elapsed:.2f}s "
+                                    f"(excess={_virt_elapsed - _budget_s:.2f}s). "
+                                    f"Reduce trainers-per-GPU or add GPUs."
+                                )
+                    else:
+                        if wall_lag_s > _budget_s + _NETWORK_SLACK_S:
+                            logger.warning(
+                                f"[TIMING_OVERRUN_AGG] {end[-4:]} ver={self._round} "
+                                f"budget={_budget_s:.1f}s+slack={_NETWORK_SLACK_S:.1f}s "
+                                f"overrun: wall_lag={wall_lag_s:.2f}s "
+                                f"(excess={wall_lag_s - _budget_s - _NETWORK_SLACK_S:.2f}s). "
+                                f"Reduce trainers-per-GPU or add GPUs."
+                            )
 
             logger.debug(f"received message in agg_weights {msg} from {end}")
 
@@ -308,24 +486,31 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 # Populate round statistics vars
                 self._round_update_values["staleness"].append(update_staleness_val)
                 self._round_update_values["stat_utility"].append(stat_utility)
+                # PROP_ROUND_DURATION is only populated by the Oort stack; on the
+                # base (fedavg / feddance) flow it's unset -> guard against None.
+                _rd = channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION)
                 self._round_update_values["trainer_speed"].append(
-                    channel.get_end_property(
-                        end_id=end, key=PROP_ROUND_DURATION
-                    ).total_seconds()
+                    _rd.total_seconds() if _rd is not None else 0.0
                 )
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
         if telemetry.is_enabled():
+            agg_obs = {}
+            for eid in list(self.cache):
+                _rd = channel.get_end_property(end_id=eid, key=PROP_ROUND_DURATION)
+                if _rd is not None:
+                    agg_obs[eid] = _rd.total_seconds() if hasattr(_rd, "total_seconds") else _rd
             ev, fields = build_agg_round(
                 round_num=self._round,
-                in_flight=len(channel.ends()),
+                in_flight=len(channel.ends(VAL_CH_STATE_RECV) or []),
                 staleness=list(self._round_update_values.get("staleness", [])),
                 stat_utility=list(self._round_update_values.get("stat_utility", [])),
                 trainer_speed_s=list(
                     self._round_update_values.get("trainer_speed", [])
                 ),
-                contributing_trainers=list(self.cache.keys()),
+                contributing_trainers=list(self.cache),  # diskcache iterates keys
+                agg_observed_s=agg_obs or None,
             )
             telemetry.emit(ev, **fields)
 
@@ -339,7 +524,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             deepcopy(self.weights),
             self.cache,
             total=total,
-            num_trainers=len(channel.ends()),
+            num_trainers=len(channel.ends(VAL_CH_STATE_RECV) or []),
         )
         if global_weights is None:
             logger.debug("failed model aggregation")
@@ -361,10 +546,56 @@ class TopAggregator(Role, metaclass=ABCMeta):
             self.dist_tag = tag
             self._distribute_weights(tag, task_to_perform)
 
+    def _await_min_trainers(self, channel) -> None:
+        """One-shot startup barrier: block until ``min_trainers_to_start`` ends
+        have joined the channel before the first selection.
+
+        Trainers are real processes that spawn + join over wall-clock time in
+        BOTH real and simulated mode — simulated only virtualizes training
+        *sleeps*, not process startup. Without this barrier, simulated mode races
+        through the early rounds before the cohort finishes joining, so the
+        selector picks from a partially-joined pool and selection diverges from
+        real (which, pacing at true speed, sees the full pool by then). Waiting
+        for the same join threshold in both modes makes the candidate set — and
+        hence the seeded selection — match. Bounded by a timeout so a crashed or
+        slow trainer cannot deadlock startup; runs once (it is a startup-only
+        concern, and gating every round would stall on any mid-run dropout)."""
+        if getattr(self, "_join_barrier_done", False):
+            return
+        min_start = getattr(self.config.hyperparameters, "min_trainers_to_start", None)
+        if not min_start or int(min_start) <= 0:
+            self._join_barrier_done = True
+            return
+        min_start = int(min_start)
+        # Allow override: large cohorts (e.g. n300 at sleep_between_spawns=1s take
+        # ~5 min to all spawn/join) need a longer wait than the default.
+        timeout_s = float(getattr(
+            self.config.hyperparameters, "min_trainers_join_timeout_s",
+            MIN_TRAINERS_JOIN_TIMEOUT_S))
+        deadline = time.time() + timeout_s
+        while time.time() < deadline:
+            n = len(channel._ends)
+            if n >= min_start:
+                logger.info(f"[JOIN_BARRIER] {n}/{min_start} trainers joined; starting")
+                self._join_barrier_done = True
+                return
+            logger.info(f"[JOIN_BARRIER] waiting for {min_start} trainers to join; have {n}")
+            time.sleep(1.0)
+        logger.warning(
+            f"[JOIN_BARRIER] timed out after {timeout_s:.0f}s; "
+            f"proceeding with {len(channel._ends)}/{min_start} trainers"
+        )
+        self._join_barrier_done = True
+
     @timer_decorator
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
+        # data_id / iteration_per_data_id are FwdLLM-only; default them so
+        # non-FwdLLM aggregators (fedavg, feddance) on this base stack don't
+        # AttributeError here.
         self.fwd_llm_stage = FwdLLMStage(
-            self._round, self.data_id, self.iteration_per_data_id
+            self._round,
+            getattr(self, "data_id", 0),
+            getattr(self, "iteration_per_data_id", 0),
         )
 
         channel = self.cm.get_by_tag(tag)
@@ -374,6 +605,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         # this call waits for at least one peer to join this channel
         channel.await_join()
+        # then wait for the configured cohort so real/sim select from the same pool
+        self._await_min_trainers(channel)
 
         # before distributing weights, update it from global model
         self._update_weights()
@@ -381,7 +614,15 @@ class TopAggregator(Role, metaclass=ABCMeta):
         logger.debug(
             f"Sending weights to trainers with task_to_perform = {task_to_perform}"
         )
-        selected_ends = channel.ends()
+        # SEND state: pick (new) trainers to send the model to. With a buffered
+        # selector (random) this fills concurrency; stateless selectors ignore
+        # the state and return their normal selection.
+        selected_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
+        if not selected_ends:
+            # ends() can be None/empty before trainers join + get selected
+            # (notably in simulated mode where the loop spins without sleeps).
+            time.sleep(0.5)
+            return
         datasampler_metadata = self.datasampler.get_metadata(self._round, selected_ends)
 
         for idx, end in enumerate(selected_ends):
@@ -460,6 +701,69 @@ class TopAggregator(Role, metaclass=ABCMeta):
         self._round += 1
         self._work_done = self._round > self._rounds
 
+        # Optional runtime cap: stop once max_runtime_s has elapsed.
+        # In simulated mode use the virtual clock (vclock_now = simulated seconds
+        # elapsed) so the run covers max_runtime_s of *virtual* time, not wall
+        # time. In real mode use wall-clock elapsed.
+        _max_rt = getattr(self.config.hyperparameters, "max_runtime_s", None)
+        # sim_wall_ceiling_s: tight wall-clock guard for sim mode (iii-b).
+        # A sim run should finish in <= max_runtime_s wall (it runs faster than
+        # real when the parity bug is fixed). Default = max_runtime_s (1×).
+        # Separate from max_wall_runtime_s (kept for backward compat, used as
+        # secondary fallback if sim_wall_ceiling_s is absent).
+        _sim_wall_ceil = getattr(self.config.hyperparameters, "sim_wall_ceiling_s", None)
+        _max_wall_rt = getattr(self.config.hyperparameters, "max_wall_runtime_s", None)
+        if _max_rt:
+            if self.simulated and hasattr(self, "_vclock"):
+                elapsed = float(self._vclock.now)
+                clock_label = "sim"
+            else:
+                elapsed = time.time() - self.agg_start_time_ts
+                clock_label = "wall"
+            if elapsed > float(_max_rt):
+                logger.info(
+                    f"max_runtime_s={_max_rt}s reached ({clock_label}_elapsed={elapsed:.0f}s) "
+                    f"at round {self._round}; stopping run."
+                )
+                self._work_done = True
+            # Failsafe: in sim mode the primary check is virtual time.
+            # sim_wall_ceiling_s (default = max_runtime_s = 1×) caps the wall time
+            # a sim may use — a well-behaved sim finishes in ≤ real-mode wall time.
+            if self.simulated and not self._work_done:
+                _wall_elapsed = time.time() - self.agg_start_time_ts
+                if _sim_wall_ceil:
+                    _failsafe_s = float(_sim_wall_ceil)
+                elif _max_wall_rt:
+                    _failsafe_s = float(_max_wall_rt)
+                else:
+                    _failsafe_s = float(_max_rt)  # default: 1× virtual budget
+                if _wall_elapsed > _failsafe_s:
+                    logger.warning(
+                        f"[SIM_WALL_CEILING] sim_wall_ceiling={_failsafe_s:.0f}s reached "
+                        f"(wall_elapsed={_wall_elapsed:.0f}s, "
+                        f"vclock={self._vclock.now:.0f}s, max_runtime_s={_max_rt}s) "
+                        f"at round {self._round}. "
+                        f"Sim is slower than real — investigate per-round parity (bug iii-c). "
+                        f"Stopping run."
+                    )
+                    self._work_done = True
+
+        # Periodic virtual-clock progress log (sim mode only).
+        # sim_rate = vclock/wall (virtual-seconds per wall-second; < 1 when sim is slow).
+        # wall_speedup is computed post-hoc in compare_clock_parity.py as real_wall/sim_wall
+        # for matched virtual time — that is the true "sim is faster/slower than real" measure.
+        if self.simulated and hasattr(self, "_vclock"):
+            _now = getattr(self, "_last_vclock_log_wall_ts", 0.0)
+            if time.time() - _now >= 30.0:
+                _wall_e = time.time() - self.agg_start_time_ts
+                _v = float(self._vclock.now)
+                _sim_rate = _v / _wall_e if _wall_e > 0 else 0.0
+                logger.info(
+                    f"[VCLOCK_PROGRESS] vclock={_v:.1f}s wall={_wall_e:.1f}s "
+                    f"sim_rate={_sim_rate:.3f} (virtual-s/wall-s) round={self._round}"
+                )
+                self._last_vclock_log_wall_ts = time.time()
+
         channel = self.cm.get_by_tag(self.dist_tag)
         if not channel:
             logger.debug(f"channel not found for tag {self.dist_tag}")
@@ -480,6 +784,79 @@ class TopAggregator(Role, metaclass=ABCMeta):
         if self.model:
             model_name = f"{self.config.job.name}-{self.config.job.job_id}"
             self.registry_client.save_model(model_name, self.model)
+
+    def save_round_checkpoint(self):
+        """Periodically checkpoint the global model for the offline oracle.
+
+        Writes a plain ``state_dict`` (decoupled from the model class location)
+        tagged with round + sim/wall time to ``<run>/checkpoints/`` (sibling of
+        the ``telemetry/`` dir). The post-run ``oracle_misselection.py`` script
+        recomputes each trainer's *true* current utility on its
+        deterministically-unlocked data from these checkpoints, so we can
+        measure mis-selection against the selector's stale belief.
+
+        Self-contained (lazy config load) so it works identically whether the
+        async stack overrides ``internal_init`` or not. Gated by the
+        ``checkpoint`` hyperparameter and a no-op unless enabled. Telemetry-grade:
+        must never break the training loop.
+        """
+        try:
+            if not getattr(self, "_checkpoint_cfg_loaded", False):
+                ckpt_cfg = (
+                    getattr(self.config.hyperparameters, "checkpoint", None) or {}
+                )
+                self._checkpoint_enabled = (
+                    str(ckpt_cfg.get("enabled", "False")) == "True"
+                )
+                self._checkpoint_every_n = int(
+                    ckpt_cfg.get("every_n_rounds", 10) or 10
+                )
+                tdir = os.environ.get("FLAME_TELEMETRY_DIR")
+                self._checkpoint_dir = (
+                    os.path.join(os.path.dirname(tdir.rstrip("/")), "checkpoints")
+                    if tdir
+                    else None
+                )
+                self._checkpoint_cfg_loaded = True
+
+            if not self._checkpoint_enabled or not self._checkpoint_dir:
+                return
+            if self.model is None or self.framework != MLFramework.PYTORCH:
+                return
+            if self._checkpoint_every_n > 1 and (
+                self._round % self._checkpoint_every_n != 0
+            ):
+                return
+
+            import torch
+
+            # Aggregator sim-clock at this round: the virtual clock in simulated
+            # mode (same clock that stamps trainers' sim_send_ts), else wall
+            # elapsed. The oracle feeds this into _visible_sample_count.
+            if self.simulated and hasattr(self, "_vclock"):
+                sim_time_s = float(self._vclock.now)
+            else:
+                sim_time_s = float(time.time() - self.agg_start_time_ts)
+
+            os.makedirs(self._checkpoint_dir, exist_ok=True)
+            path = os.path.join(
+                self._checkpoint_dir, f"round_{self._round:05d}.pt"
+            )
+            torch.save(
+                {
+                    "round": int(self._round),
+                    "sim_time_s": sim_time_s,
+                    "wall_ts": time.time(),
+                    "time_mode": self.time_mode,
+                    "state_dict": self.model.state_dict(),
+                },
+                path,
+            )
+            logger.info(
+                f"Saved round checkpoint: {path} (sim_time_s={sim_time_s:.2f})"
+            )
+        except Exception as e:  # checkpointing must never break training
+            logger.warning(f"save_round_checkpoint failed (non-fatal): {e}")
 
     def update_metrics(self, metrics: dict[str, float]):
         """Update metrics."""
@@ -506,8 +883,16 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
         # Ensure trainer_event_dict exists
         if self.trainer_event_dict is not None:
-            # Get aggregator time since start
-            agg_time_since_start_s = time.time() - self.agg_start_time_ts
+            # Aggregator time since start, on the SAME timeline the trace's event
+            # timestamps live on. In simulated mode that is the virtual clock
+            # (sim-seconds); wall-clock would be a few seconds total while the
+            # virtual timeline spans the whole trace, making every window look
+            # available. Trainer-side availability already keys off _sim_now()
+            # (sim_send_ts); this mirrors it for the aggregator-side oracular path.
+            agg_time_since_start_s = (
+                self._vclock.now if self.simulated
+                else time.time() - self.agg_start_time_ts
+            )
 
             for trainer_id, event_dict in list(self.trainer_event_dict.items()):
                 logger.debug(
@@ -590,6 +975,8 @@ class TopAggregator(Role, metaclass=ABCMeta):
 
             task_save_model = Tasklet("save_model", self.save_model)
 
+            task_checkpoint = Tasklet("checkpoint", self.save_round_checkpoint)
+
         # create a loop object with loop exit condition function
         loop = Loop(loop_check_fn=lambda: self._work_done)
         (
@@ -603,6 +990,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 >> task_eval
                 >> task_analysis
                 >> task_save_metrics
+                >> task_checkpoint
                 >> task_increment_round
                 >> task_get_heartbeat
             )

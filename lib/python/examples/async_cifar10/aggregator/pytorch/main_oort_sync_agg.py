@@ -72,7 +72,6 @@ def initialize_wandb(run_name=None):
             "alpha": 100,
             "failures": "No failure",
             "total clients N": 100,
-            # fedbuff "client-concurrency C": 20,
             "client agg goal K": 10,
             "server_batch_size": 32,
             "client_batch_size": 32,
@@ -243,17 +242,23 @@ class PyTorchCifar10Aggregator(TopAggregator):
         }
 
         self.test_loader = torch.utils.data.DataLoader(dataset, **test_kwargs)
-
-        # store data into dataset for analysis (e.g., bias)
         self.dataset = Dataset(dataloader=self.test_loader)
 
     def train(self) -> None:
         """Train a model."""
-        # Implement this if testing is needed in aggregator
         pass
 
     def evaluate(self) -> None:
         """Evaluate (test) a model."""
+        # Gate eval cadence to match the async stack (evalEveryNRounds) instead
+        # of evaluating every round: the full test-set pass is the dominant
+        # per-round cost at n300, and an every-round eval makes sync runs
+        # intractable. Always eval round 1 (baseline) and every Nth round.
+        eval_every = (
+            getattr(self.config.hyperparameters, "eval_every_n_rounds", 10) or 10
+        )
+        if self._round != 1 and (self._round % eval_every != 0):
+            return
         self.model.eval()
         test_loss = 0
         correct = 0
@@ -278,64 +283,37 @@ class PyTorchCifar10Aggregator(TopAggregator):
             f"{correct}/{total} ({test_accuracy})"
         )
 
-        # update metrics after each evaluation so that the metrics can
-        # be logged in a model registry.
         self.update_metrics({"test-loss": test_loss, "test-accuracy": test_accuracy})
 
-        # add metrics to wandb log
         if self.log_to_wandb:
             wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
         self.loss_list.append(test_loss)
 
-        # print to save to file
         logger.debug(f"loss list at cifar agg: {self.loss_list}")
 
     def get_curr_unavail_trainers(self) -> list:
-        """
-        Get list of currently unavailable trainers based on oracular traces.
-        
-        Uses binary search to find the most recent event for each trainer
-        at the current time, and returns trainers that are in UN_AVL state.
-        
-        Returns:
-            list: List of trainer IDs that are currently unavailable
-        """
+        """Return trainer IDs currently in UN_AVL state based on oracular traces."""
         curr_unavail_trainer_list = []
-        
+
         if self.trainer_event_dict is None:
             return curr_unavail_trainer_list
-        
-        # Get aggregator time since start
+
         agg_time_since_start_s = time.time() - self.agg_start_time_ts
-        
+
         for trainer_id, event_dict in list(self.trainer_event_dict.items()):
-            logger.debug(
-                f"Checking trainer {trainer_id}'s availability at time {agg_time_since_start_s}s"
-            )
-            
             if not event_dict:
-                continue  # Skip if no events for trainer
-            
-            # Binary search for closest past event
-            # bisect_right returns insertion point, subtract 1 for last event <= time
+                continue
+
             idx = event_dict.bisect_right(agg_time_since_start_s) - 1
-            logger.debug(f"Trainer {trainer_id}: event index = {idx}")
-            
             if idx >= 0:
-                # Get the most recent event
                 most_recent_event = event_dict.peekitem(idx)
                 most_recent_event_ts = most_recent_event[0]
                 most_recent_event_state = most_recent_event[1]
-                
-                logger.debug(
-                    f"Trainer {trainer_id}: most recent event at {most_recent_event_ts}s -> {most_recent_event_state}"
-                )
-                
+
                 if most_recent_event_state == "UN_AVL":
-                    logger.debug(f"Marking trainer {trainer_id} as unavailable")
                     curr_unavail_trainer_list.append(trainer_id)
                 elif most_recent_event_state == "AVL_TRAIN":
-                    logger.debug(f"Trainer {trainer_id} is available")
+                    pass
                 else:
                     logger.warning(
                         f"Trainer {trainer_id} has unknown state: {most_recent_event_state}"
@@ -350,8 +328,6 @@ class PyTorchCifar10Aggregator(TopAggregator):
 
     def check_and_sleep(self) -> None:
         """Induce transient unavailability"""
-        # Implement this if transient unavailability need to be
-        # emulated in aggregator
         pass
 
 

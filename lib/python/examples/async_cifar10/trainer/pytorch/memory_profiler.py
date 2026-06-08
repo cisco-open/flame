@@ -16,15 +16,25 @@ logger = logging.getLogger(__name__)
 class MemoryProfiler:
     """Track memory usage and identify leaks across training rounds."""
 
-    def __init__(self, trainer_id: str, log_interval_rounds: int = 1):
+    def __init__(self, trainer_id: str, log_interval_rounds: int = 1,
+                 enabled: bool = False):
         """Initialize memory profiler.
-        
+
         Args:
             trainer_id: Identifier for this trainer
             log_interval_rounds: Log detailed memory stats every N rounds
+            enabled: When False (default), the per-round heap-walk methods
+                (`log_memory_before_round`, `log_memory_after_round`,
+                `log_component_memory`) are no-ops. These walk *all* Python
+                objects (3x) with a per-object `torch.is_tensor()` check and
+                call `gc.collect()`; at high trainer-per-host concurrency that
+                dominates per-round wall time (it is the bulk of the observed
+                "excess" trainer time). Leave off in production runs; turn on
+                only when actively chasing a leak.
         """
         self.trainer_id = trainer_id
         self.log_interval_rounds = log_interval_rounds
+        self.enabled = enabled
         self.round_count = 0
         self.process = psutil.Process()
         
@@ -88,7 +98,9 @@ class MemoryProfiler:
     def log_memory_before_round(self):
         """Log memory state before training round starts."""
         self.round_count += 1
-        
+        if not self.enabled:
+            return
+
         # Force garbage collection before measuring
         gc.collect()
         
@@ -119,6 +131,8 @@ class MemoryProfiler:
     
     def log_memory_after_round(self):
         """Log memory state after training round completes."""
+        if not self.enabled:
+            return
         gc.collect()
         
         stats = self.get_memory_stats()
@@ -192,6 +206,8 @@ class MemoryProfiler:
     
     def log_component_memory(self, component_name: str, before_after: str = ""):
         """Log memory for a specific component (e.g., dataloader, model, optimizer)."""
+        if not self.enabled:
+            return
         stats = self.get_memory_stats()
         prefix = f"{before_after} " if before_after else ""
         

@@ -472,9 +472,11 @@ class FedBuffSelector(AbstractSelector):
         candidates = []
         idx = 0
 
-        # reservoir sampling DG: Updated existing reservoir sampling
-        # to randomized sampling. NOTE: Might revert back if needed
-        random.seed(time.time())  # Seed with current system time
+        # Randomized sampling over the candidate ends. Do NOT reseed the global
+        # RNG here: a per-call `random.seed(time.time())` made selection
+        # non-reproducible, clobbered the process-global random state for every
+        # other consumer, and defeated the aggregator's deterministic seed
+        # (breaking real/sim parity). The RNG is seeded once at aggregator init.
         shuffled_end_ids = list(ends.keys())  # get the keys
         logger.debug(f"Original shuffled_end_ids: {shuffled_end_ids}")
         random.shuffle(shuffled_end_ids)  # then shuffle
