@@ -46,6 +46,9 @@ experiments:
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
+        # PARITY 4.5 (Jun 16): sct-gated pool exclusion; sim-only. Validated in
+        # run_20260614_152648 (emergent all-green). See OVERNIGHT_node2 note.
+        simInflightResidence: true
         checkpoint:
           enabled: 'True'
           every_n_rounds: 10

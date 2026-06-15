@@ -139,7 +139,13 @@ def test_run_all_parity_smoke():
              agg_rounds=[_round(1, ["a"], [0], vclock=1.0)])
     tr = {"aa": {"task_recv": [], "trainer_round": []}}
     res = pc.run_all_parity(a, a, tr, tr, agg_goal=2)
-    assert all(v["ok"] for v in res.values())
+    # Identical inputs ⇒ no parity check fails. field_coverage may flag the
+    # deliberately-sparse fixture's missing telemetry fields (a coverage signal,
+    # not a parity divergence), and data-less checks SKIP — both are excluded.
+    for name, v in res.items():
+        if name == "field_coverage" or v.get("status") == "SKIP":
+            continue
+        assert v["ok"], f"{name}: {v}"
 
 
 # ── §3.H clock / throughput new checks ──────────────────────────────────────
@@ -282,10 +288,13 @@ class TestTotalCommitsParity:
 
 class TestTerminalStateParity:
     def test_matched_passes(self):
-        # Sim: 10 rounds in 100s vclock; Real: 10 rounds in 100s wall
+        # Both modes: 10 rounds on a normalized 0..90s timeline → rel_diff 0.
+        # (real wall normalizes by t0=min(ts); sim vclock is used directly, so the
+        # sim vclocks must span 0..90 to match real's normalized 0..90 — otherwise
+        # the V=min cutoff drops sim's last round and yields a spurious 10% edge.)
         real = _agg(agg_rounds=[_round(r, ["a", "b"], [0, 0], ts=float(r * 10))
                                   for r in range(1, 11)])
-        sim = _agg(agg_rounds=[_round(r, ["a", "b"], [0, 0], vclock=float(r * 10),
+        sim = _agg(agg_rounds=[_round(r, ["a", "b"], [0, 0], vclock=float((r - 1) * 10),
                                        ts=float(r))
                                  for r in range(1, 11)])
         r = pc.terminal_state_parity(real, sim)
@@ -370,6 +379,62 @@ class TestRunAllParityExtended:
                                  for r in range(1, 42)])
         tr: dict = {}
         res = pc.run_all_parity(real, sim, tr, tr)
-        passed, failures, _ = pc.overall_verdict(res)
+        passed, roots, downstream, _warnings = pc.overall_verdict(res)
         assert not passed
+        failures = set(roots) | set(downstream)
         assert "throughput" in failures or "per_round_advance" in failures
+
+
+def _sel_pool(round_, speeds, ts=0.0):
+    """selection event with a per_trainer pool carrying speed_s (for A2b)."""
+    per_trainer = {f"t{i:03d}": {"speed_s": sp, "utility": None, "selected": i < 10}
+                   for i, sp in enumerate(speeds)}
+    return {"event": "selection", "task": "train", "round": round_, "ts": ts,
+            "num_candidates": len(speeds), "num_eligible": len(speeds),
+            "per_trainer": per_trainer}
+
+
+class TestEligibleSpeedComposition:
+    """A2b: eligible-pool speed-composition parity (catches what A2's count misses)."""
+
+    def test_matched_pool_passes(self):
+        pool = [3.0, 5.0, 8.0, 12.0, 20.0] * 6
+        real = _agg(selection=[_sel_pool(r, pool) for r in range(1, 6)])
+        sim = _agg(selection=[_sel_pool(r, pool) for r in range(1, 6)])
+        res = pc.eligible_speed_composition_parity(real, sim)
+        assert res["ok"], res
+
+    def test_diverged_pool_fails(self):
+        # Same eligible-set SIZE (30) in both, but sim pool is slow-skewed (the refl
+        # signature: slow clients re-enter sim's pool). A2b must FAIL on composition.
+        fast = [2.0, 3.0, 4.0, 5.0, 6.0] * 6   # real: fast-skewed pool
+        slow = [10.0, 12.0, 14.0, 18.0, 22.0] * 6  # sim: slow-skewed pool
+        real = _agg(selection=[_sel_pool(r, fast) for r in range(1, 6)])
+        sim = _agg(selection=[_sel_pool(r, slow) for r in range(1, 6)])
+        res = pc.eligible_speed_composition_parity(real, sim)
+        assert not res["ok"], res
+        assert res["real_mean_pool_speed_s"] < res["sim_mean_pool_speed_s"]
+
+    def test_no_per_trainer_skips(self):
+        real = _agg(selection=[_sel(1, ["a"])])
+        sim = _agg(selection=[_sel(1, ["a"])])
+        res = pc.eligible_speed_composition_parity(real, sim)
+        assert res["ok"] and res.get("status") == "SKIP", res
+
+
+class TestInflightResidenceEvent:
+    """The oort in-flight residence telemetry builder (PARITY §4.x fine-tuning)."""
+
+    def test_builder_shape(self):
+        from flame.telemetry.events import build_inflight_residence, EVENT_INFLIGHT_RESIDENCE
+        ev, f = build_inflight_residence(
+            round_num=7, time_mode="sim", in_flight_before=16, in_flight_after=13,
+            committed_fresh=10, cleaned=3, stale_rejected=0,
+            residence_rounds=[0, 1, 2], carried_over_ages=[0, 0, 1])
+        assert ev == EVENT_INFLIGHT_RESIDENCE
+        assert f["time_mode"] == "sim" and f["in_flight_before"] == 16
+        assert f["residence_rounds"] == [0, 1, 2]
+        # optional fields omitted when None
+        ev2, f2 = build_inflight_residence(
+            round_num=1, time_mode="real", in_flight_before=13, in_flight_after=13)
+        assert "residence_rounds" not in f2 and "cleaned" not in f2

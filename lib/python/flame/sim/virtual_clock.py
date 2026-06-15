@@ -80,6 +80,14 @@ class SimReorderBuffer:
             return None
         return min(ts for ts, _ in self._items.values())
 
+    def pending_after(self, ts: float) -> set[str]:
+        """Buffered ends whose completion time is still in the future (> ``ts``)
+        — i.e. modeled as STILL COMPUTING at virtual time ``ts`` (their update has
+        arrived physically but is not yet "available" in sim time). Used by the
+        sync sim stack to keep such trainers occupying their selection slot /
+        out of the eligible pool until ``vclock >= sct``."""
+        return {e for e, (sct, _) in self._items.items() if sct > ts}
+
     def pop_min(self) -> Optional[tuple[str, float, Any]]:
         """Remove and return ``(end_id, sim_completion_ts, payload)`` with the
         smallest completion time (ties by end id). ``None`` if empty."""

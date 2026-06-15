@@ -1,22 +1,20 @@
 #!/bin/bash
 # Configurable debug runner for targeted baseline comparison.
 #
-# Generates per-node YAML configs on the fly from the OVERNIGHT templates,
-# filtering to the requested baselines and overriding runtime. Designed for
-# short 1h debugging runs to isolate overrun root causes between baselines.
+# Generates a single filtered+patched YAML on the fly from the parity template
+# (felix_oort_refl_feddance_alpha0.1_parity.yaml — each baseline as a sim+real
+# pair), keeping only the requested baselines and overriding runtime. Node- and
+# duration-agnostic: the same invocation works on any machine — pick baselines,
+# mode, duration.
 #
-# Usage (run on each node separately):
-#   debug_run.sh --node node1 [--baselines felix] [--runtime-s 1800]
-#   debug_run.sh --node node2 [--baselines refl]  [--runtime-s 1800]
+# Usage (run anywhere):
+#   debug_run.sh --baselines oort [--runtime-s 3600] [--mode sim|real|both]
+#   debug_run.sh --baselines 'refl feddance' --runtime-s 1800
 #   debug_run.sh smoke        # 48 trainers, 4 rounds, all baselines
 #
-# Node→baseline assignment (matches OVERNIGHT config split):
-#   node1: felix, oort
-#   node2: refl, feddance
-#
-# --baselines is matched against the 'baseline:' field in the OVERNIGHT YAML
-# for that node, so only baselines present on this node's config actually run.
-# Specifying a baseline from the other node is a no-op (not an error).
+# --baselines is matched against the 'baseline:' field in the parity config, so
+# any baseline runs regardless of machine (felix/oort/refl/feddance). An unknown
+# baseline is a no-op (not an error).
 #
 # Runtime:
 #   --runtime-s sets max_runtime_s for BOTH real and sim variants.
@@ -55,15 +53,21 @@ LOGDIR=/tmp/debug_run_logs; mkdir -p "$LOGDIR"
 export FLAME_BATCH_CONTINUE_ON_ERROR=1
 
 # defaults
-NODE=""
 RUNTIME_S=10800
 BASELINES="felix refl"
 SIM_WALL_CEILING_S=""  # empty = max_runtime_s (1×, tight guard; sim should be faster than real)
+MODE="both"            # sim | real | both — which time_mode variant(s) of each baseline to run
 
 usage() {
-  echo "usage: $0 --node node1|node2 [--baselines 'felix refl'] [--runtime-s 3600] [--sim-wall-ceiling-s 2700]"
-  echo "       $0 smoke"
+  echo "usage: $0 [--baselines 'felix refl'] [--runtime-s 3600] [--mode sim|real|both] [--sim-wall-ceiling-s 2700]"
+  echo "       $0 smoke [--baselines ...] [--mode sim|real|both]"
   echo ""
+  echo "  --baselines           which baselines to run (any of felix oort refl feddance);"
+  echo "                        filtered from the parity config, node-agnostic."
+  echo "  --mode                which time_mode variant(s) to run for each baseline:"
+  echo "                        'sim' (only the simulated run), 'real' (only the real run),"
+  echo "                        or 'both' (default, runs both sequentially). Lets you split"
+  echo "                        e.g. felix-sim on one machine and felix-real on another."
   echo "  --sim-wall-ceiling-s  wall-clock ceiling for sim mode (default: = runtime_s)."
   echo "                        A well-behaved sim finishes in <= real-mode wall time."
   echo "                        Fires [SIM_WALL_CEILING] warning + stops when exceeded."
@@ -72,48 +76,93 @@ usage() {
 
 # parse args
 if [ "${1:-}" = "smoke" ]; then
-  NODE="smoke"
-else
+  SMOKE=1; shift
+  BASELINES="felix oort refl feddance"   # smoke default: validate all
   while [[ $# -gt 0 ]]; do
     case "$1" in
-      --node)                NODE="$2"; shift 2 ;;
+      --baselines) BASELINES="$2"; shift 2 ;;
+      --mode)      MODE="$2"; shift 2 ;;
+      *) shift ;;
+    esac
+  done
+else
+  SMOKE=0
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
       --baselines)           BASELINES="$2"; shift 2 ;;
       --runtime-s)           RUNTIME_S="$2"; shift 2 ;;
+      --mode)                MODE="$2"; shift 2 ;;
       --sim-wall-ceiling-s)  SIM_WALL_CEILING_S="$2"; shift 2 ;;
       --wall-runtime-s)      SIM_WALL_CEILING_S="$2"; shift 2 ;;  # backward compat alias
+      # --node is DEPRECATED (node1/node2 split removed): baselines are filtered
+      # from a single node-agnostic parity config, so the node is irrelevant.
+      # Accept+ignore so existing wrappers don't hard-error.
+      --node)                echo "WARNING: --node '$2' is deprecated and ignored (runner is now node-agnostic)." >&2; shift 2 ;;
       *) usage ;;
     esac
   done
-  [ -z "$NODE" ] && usage
 fi
+case "$MODE" in sim|real|both) ;; *) echo "ERROR: --mode must be sim|real|both (got '$MODE')" >&2; exit 2 ;; esac
 
-# Generate a filtered+patched YAML from the OVERNIGHT source configs.
-# $1 = node (node1|node2), $2 = baselines (space-separated), $3 = runtime_s,
-# $4 = output path, [$5 = smoke: 1|0], [$6 = sim_wall_ceiling_s: int or ""]
+# Generate a single filtered+patched YAML from the parity source config.
+# $1 = baselines (space-separated), $2 = runtime_s, $3 = output path,
+# [$4 = smoke: 1|0], [$5 = sim_wall_ceiling_s: int or ""], [$6 = mode: sim|real|both]
 make_debug_yaml() {
-  python - "$SCR" "$1" "$2" "$3" "$4" "${5:-0}" "${6:-}" <<'PY'
-import yaml, sys, copy
-scr, node, baselines_str, runtime_s, outpath, smoke, ceil_arg = (
-    sys.argv[1], sys.argv[2], sys.argv[3], int(sys.argv[4]), sys.argv[5], sys.argv[6] == "1",
-    sys.argv[7] if len(sys.argv) > 7 else ""
+  python - "$SCR" "$1" "$2" "$3" "${4:-0}" "${5:-}" "${6:-both}" <<'PY'
+import yaml, sys, copy, os
+scr, baselines_str, runtime_s, outpath, smoke, ceil_arg = (
+    sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4], sys.argv[5] == "1",
+    sys.argv[6] if len(sys.argv) > 6 else ""
 )
+mode = (sys.argv[7] if len(sys.argv) > 7 else "both").lower()
 requested = set(baselines_str.lower().split())
+# Deterministic selection seed (same for real+sim). Default 1234; SEED=none disables.
+_seed_env = os.environ.get("SEED", "1234").strip()
+seed_val = None if _seed_env.lower() in ("none", "") else int(_seed_env)
 
-src = f"{scr}/felix_oort_refl_feddance_alpha0.1_OVERNIGHT_{node}.yaml"
+
+def exp_mode(e):
+    """sim | real for an experiment, from its time_mode field (preferred) or its
+    name suffix (_sim / _real)."""
+    tm = str((e.get("trainer") or {}).get("time_mode") or "").lower()
+    if tm.startswith("sim"):
+        return "sim"
+    if tm == "real":
+        return "real"
+    n = e.get("name", "").lower()
+    if n.endswith("_real"):
+        return "real"
+    if n.endswith("_sim"):
+        return "sim"
+    return "unknown"
+
+
+# Single node-agnostic parity config holding every baseline (felix, oort, refl,
+# feddance) × {sim, real}; filter it to the requested baselines/mode.
+src = f"{scr}/felix_oort_refl_feddance_alpha0.1_parity.yaml"
 try:
-    d = yaml.safe_load(open(src))
+    cfg = yaml.safe_load(open(src))
 except FileNotFoundError:
-    print(f"SKIP: no config for {node}", flush=True)
-    sys.exit(0)
+    print(f"ERROR: parity config not found: {src}", flush=True)
+    sys.exit(1)
 
 kept = []
-for e in d["experiments"]:
+for e in cfg.get("experiments", []):
     bl = e.get("baseline", "").lower()
     if bl not in requested:
+        continue
+    if mode != "both" and exp_mode(e) != mode:
         continue
     e = copy.deepcopy(e)
     h = e["aggregator"]["config_overrides"]["hyperparameters"]
     h["max_runtime_s"] = runtime_s
+    # Deterministic seed: the SAME value for every experiment so the real and sim
+    # variants of each baseline make identical selection draws (dedicated per-
+    # selector RNG, PARITY "Determinism / seeding"). Without this, real vs sim are
+    # two independent stochastic paths and participation/utility can never match.
+    # Override per-invocation with SEED=<n>; SEED=none disables (legacy unseeded).
+    if seed_val is not None:
+        h["seed"] = seed_val
     # sim_wall_ceiling_s: tight wall guard — sim must finish in <= this many
     # wall-seconds (default = max_runtime_s = 1×; a healthy sim is faster).
     h["sim_wall_ceiling_s"] = int(ceil_arg) if ceil_arg else runtime_s
@@ -124,7 +173,7 @@ for e in d["experiments"]:
         h["min_trainers_join_timeout_s"] = 120
         e["name"] = "dbg_smoke_" + e["name"]
     else:
-        # High round cap so the 3h wall/vclock budget (max_runtime_s) is the
+        # High round cap so the wall/vclock budget (max_runtime_s) is the
         # binding stop condition, not an early round-count termination.
         h["rounds"] = 20000
         e["name"] = f"dbg_{e['name']}"
@@ -132,11 +181,12 @@ for e in d["experiments"]:
     kept.append(e)
 
 if not kept:
-    print(f"WARNING: no experiments matched baselines={baselines_str} on {node}", flush=True)
+    print(f"WARNING: no experiments matched baselines={baselines_str} mode={mode}",
+          flush=True)
     sys.exit(0)
 
-d["experiments"] = kept
-yaml.safe_dump(d, open(outpath, "w"), sort_keys=False)
+cfg["experiments"] = kept
+yaml.safe_dump(cfg, open(outpath, "w"), sort_keys=False)
 print(f"Generated {outpath} with {len(kept)} experiment(s): "
       f"{[e['name'] for e in kept]}", flush=True)
 PY
@@ -152,13 +202,14 @@ run_node() {
 }
 
 # ---- smoke mode ----
-if [ "$NODE" = "smoke" ]; then
+if [ "$SMOKE" = "1" ]; then
   echo "=== SMOKE DEBUG: 48 trainers, 4 rounds, baselines=${BASELINES} ==="
-  for node in node1 node2; do
-    cfg="$LOGDIR/dbg_smoke_${node}.yaml"
-    make_debug_yaml "$node" "$BASELINES" 240 "$cfg" 1 "$SIM_WALL_CEILING_S"
-    [ -f "$cfg" ] && run_node "dbg_smoke_$node" "$cfg"
-  done
+  cfg="$LOGDIR/dbg_smoke.yaml"
+  # Clear any stale config from a previous invocation so a no-match run is
+  # skipped (not silently re-running a leftover config).
+  rm -f "$cfg"
+  make_debug_yaml "$BASELINES" 240 "$cfg" 1 "$SIM_WALL_CEILING_S" "$MODE"
+  [ -f "$cfg" ] && run_node "dbg_smoke" "$cfg"
   echo "=== SMOKE RESULTS ==="
   for dd in experiments/run_*dbg_smoke_*; do
     [ -d "$dd" ] || continue
@@ -170,15 +221,18 @@ if [ "$NODE" = "smoke" ]; then
 fi
 
 # ---- normal run mode ----
-echo "=== DEBUG RUN: node=$NODE baselines='$BASELINES' runtime_s=$RUNTIME_S sim_wall_ceiling_s=${SIM_WALL_CEILING_S:-auto(=runtime_s)} ==="
-cfg="$LOGDIR/debug_${NODE}.yaml"
-make_debug_yaml "$NODE" "$BASELINES" "$RUNTIME_S" "$cfg" 0 "$SIM_WALL_CEILING_S"
+echo "=== DEBUG RUN: baselines='$BASELINES' mode=$MODE runtime_s=$RUNTIME_S sim_wall_ceiling_s=${SIM_WALL_CEILING_S:-auto(=runtime_s)} ==="
+cfg="$LOGDIR/debug_run.yaml"
+# Clear any stale config so a no-match run is skipped (not silently re-running
+# a previous baseline's leftover config).
+rm -f "$cfg"
+make_debug_yaml "$BASELINES" "$RUNTIME_S" "$cfg" 0 "$SIM_WALL_CEILING_S" "$MODE"
 
 if [ ! -f "$cfg" ]; then
-  echo "No experiments matched for node=$NODE baselines='$BASELINES'. Nothing to run."
+  echo "No experiments matched for baselines='$BASELINES'. Nothing to run."
   exit 0
 fi
 
-run_node "debug_$NODE" "$cfg"
-echo "Logs: $LOGDIR/debug_${NODE}.out"
+run_node "debug_run" "$cfg"
+echo "Logs: $LOGDIR/debug_run.out"
 echo "Run dirs: experiments/run_*dbg_*"

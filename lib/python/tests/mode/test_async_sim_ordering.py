@@ -19,16 +19,23 @@ from flame.sim import SimReorderBuffer, VirtualClock
 
 class _FakeEnd:
     """Minimal end with the get/set_property surface _sim_recv_min touches
-    (it resets buffered ends' KEY_END_STATE so the selector keeps their slot)."""
+    (it resets buffered ends' KEY_END_STATE so the selector keeps their slot).
 
-    def __init__(self):
+    `is_rxq_empty()` models physical readiness (§3j): the drain pulls any
+    in-flight end whose rxq is non-empty regardless of modeled completion."""
+
+    def __init__(self, ready_fn=None):
         self._props = {}
+        self._ready_fn = ready_fn  # callable -> True if a message has arrived
 
     def get_property(self, key):
         return self._props.get(key)
 
     def set_property(self, key, value):
         self._props[key] = value
+
+    def is_rxq_empty(self):
+        return True if self._ready_fn is None else not self._ready_fn()
 
 
 class FakeChannel:
@@ -42,7 +49,12 @@ class FakeChannel:
     def __init__(self, inflight, arrival_order):
         self._inflight = set(inflight)
         self._queue = list(arrival_order)  # list of (end_id, sct)
-        self._ends = {e: _FakeEnd() for e in self._inflight}
+        # An end's rxq is "non-empty" iff it has a message still queued — models
+        # physical arrival (§3j drains ready in-flight ends regardless of exp).
+        self._ends = {
+            e: _FakeEnd(ready_fn=(lambda e=e: any(q[0] == e for q in self._queue)))
+            for e in self._inflight
+        }
 
     def has(self, end_id):
         return end_id in self._inflight
@@ -51,21 +63,24 @@ class FakeChannel:
         return list(self._inflight)
 
     def recv_fifo(self, end_ids, first_k=0, timeout=None):
-        # Find and remove the first queued message whose end is in end_ids,
-        # then yield it. The eager pop means next() leaves the queue consistent.
-        end_ids = set(end_ids)
-        for i, (end_id, sct) in enumerate(self._queue):
-            if end_id in end_ids:
+        # Model the real recv_fifo: drain ALL currently-ready messages whose end
+        # is in end_ids (FIFO across the set) in a single call, then signal "no
+        # more ready" with (None, ...). The barrier drain relies on this set-wide
+        # behavior; yielding one-at-a-time would misrepresent the real API.
+        ids = set(end_ids)
+        i = 0
+        while i < len(self._queue):
+            end_id, sct = self._queue[i]
+            if end_id in ids:
                 self._queue.pop(i)
                 yield (
                     {MessageType.WEIGHTS: f"w_{end_id}",
                      MessageType.SIM_COMPLETION_TS: sct},
                     (end_id, None),
                 )
-                return
-        # Nothing found: yield nothing (caller gets StopIteration on next())
-        return
-        yield  # make this a generator
+            else:
+                i += 1
+        yield (None, ("", None))  # nothing more ready this pass
 
 
 class _ConcreteAgg(TopAggregator):
@@ -96,6 +111,11 @@ def _make_agg():
     # _sim_recv_min consults _sim_pending_commit to release cross-round-blocked
     # ends; the real __init__ sets it, which __new__ bypasses here.
     agg._sim_pending_commit = set()
+    # Virtual-completion gate state (real __init__ sets these; __new__ bypasses).
+    agg._sim_inflight_expected = {}
+    agg._sim_trainer_budget = {}
+    agg._sim_budget_running_mean = 12.0
+    agg._sim_budget_n = 0
     return agg
 
 
@@ -216,6 +236,7 @@ class TestRealVsSimPathEquivalence:
             if arrival != self.COMPLETION_ORDER:
                 assert _real_path_drain(arrival) != sim
 
+
     def test_sim_staleness_independent_of_arrival(self):
         # staleness is a function of completion order, not arrival order — so
         # sim yields one canonical staleness sequence under any arrival jitter.
@@ -225,3 +246,163 @@ class TestRealVsSimPathEquivalence:
         for perm in itertools.permutations(self.SCENARIO.items()):
             sim = _sim_path_drain(list(perm))
             assert _staleness_seq(sim, self.SENT_VERSION, 2) == ref
+
+
+class TestRedispatchGap:
+    """§3k: the post-commit re-dispatch gap records a per-trainer cooldown
+    (sct + gap) at commit time. _distribute_weights consumes it to hold a
+    just-committed end out of selection until vclock passes the cooldown, so the
+    end returns with a fresher model_version and the gap does NOT inflate the
+    committing update's staleness (which is already set by the pre-commit sct).
+    """
+
+    def test_gap_off_records_no_cooldown(self):
+        # Default (gap unset / 0): the mechanism is inert — no cooldown bookkeeping.
+        durations = {"t1": 10.0, "t2": 5.0}
+        agg = _make_agg()
+        channel = FakeChannel(set(durations), [("t2", 5.0), ("t1", 10.0)])
+        _drain(agg, channel)
+        assert not getattr(agg, "_sim_cooldown_until", {})
+
+    def test_gap_on_records_cooldown_at_sct_plus_gap(self):
+        durations = {"t1": 10.0, "t2": 5.0, "t3": 25.0}
+        gap = 1.5
+        agg = _make_agg()
+        agg._sim_redispatch_gap_s = gap
+        agg._sim_cooldown_until = {}
+        channel = FakeChannel(set(durations),
+                              [("t3", 25.0), ("t2", 5.0), ("t1", 10.0)])
+        committed, _ = _drain(agg, channel)
+        # every committed end gets cooldown = its own sct + gap
+        assert agg._sim_cooldown_until == {
+            end: sct + gap for end, sct in committed
+        }
+        # cooldown is strictly in the future of each commit's sct (gap > 0)
+        for end, sct in committed:
+            assert agg._sim_cooldown_until[end] == pytest.approx(sct + gap)
+
+    def test_gap_does_not_change_commit_order_or_clock(self):
+        # The gap is a post-commit scheduling effect: it must not perturb the
+        # in-cycle commit order or the virtual clock advance.
+        durations = {"a": 3.0, "b": 1.0, "c": 2.0}
+        agg_off = _make_agg()
+        ch_off = FakeChannel(set(durations), [("a", 3.0), ("b", 1.0), ("c", 2.0)])
+        committed_off, tv_off = _drain(agg_off, ch_off)
+        agg_on = _make_agg()
+        agg_on._sim_redispatch_gap_s = 1.0
+        agg_on._sim_cooldown_until = {}
+        ch_on = FakeChannel(set(durations), [("a", 3.0), ("b", 1.0), ("c", 2.0)])
+        committed_on, tv_on = _drain(agg_on, ch_on)
+        assert committed_on == committed_off
+        assert tv_on == tv_off
+
+
+class TestCoolingHoldsConcurrency:
+    """§3L: cooling trainers (post-commit re-dispatch limbo) must occupy a
+    concurrency slot so the idle pool can't refill it — otherwise the redispatch
+    gap is inert (computing concurrency pinned at c) and advance/staleness miss
+    parity. The selector subtracts ``sim_cooling_count`` from the free-slot budget.
+    """
+
+    @staticmethod
+    def _stub_selector():
+        from flame.selector.async_oort import AsyncOortSelector
+
+        sel = AsyncOortSelector.__new__(AsyncOortSelector)
+        sel.requester = "agg"
+        sel.selected_ends = {"agg": set()}  # no in-flight
+        sel.all_selected = {}
+        return sel
+
+    def _call(self, sel, concurrency, cooling_count):
+        ends = {f"t{i}": _FakeEnd() for i in range(5)}
+        return sel._handle_send_state(
+            ends=ends,
+            concurrency=concurrency,
+            channel_props={"round": 1, "sim_cooling_count": cooling_count},
+            trainer_unavail_list=[],
+            task_to_perform="train",
+            agg_version_state=(1, 0, 0),
+            trainer_version_states={},
+        )
+
+    def test_full_cooling_holds_all_slots_no_refill(self):
+        # 2 free slots fully consumed by 2 cooling ends -> extra == 0 -> no dispatch.
+        sel = self._stub_selector()
+        assert self._call(sel, concurrency=2, cooling_count=2) == {}
+
+    def test_zero_cooling_proceeds_past_shortcircuit(self):
+        # With no cooling and free slots, selection must NOT short-circuit at
+        # extra == 0; a pacer tripwire (hit only past the short-circuit) proves it.
+        sel = self._stub_selector()
+
+        class _Tripwire(Exception):
+            pass
+
+        def _boom():
+            raise _Tripwire()
+
+        sel.pacer = _boom
+        with pytest.raises(_Tripwire):
+            self._call(sel, concurrency=2, cooling_count=0)
+
+
+class TestGateProbesLiveInflight:
+    """§3g: the gate must probe the LIVE in-flight set (_sim_inflight_expected),
+    not just the recv_ends snapshot taken once per cycle. Otherwise it holds the
+    clock for the earliest-expected straggler but never probes it (it's absent
+    from the stale snapshot), spins, and commits past it — the past-dated commit
+    that decouples version from the clock and drifts staleness."""
+
+    def test_commits_earliest_inflight_absent_from_recv_snapshot(self):
+        agg = _make_agg()
+        # T has the earliest modeled completion but is NOT in the recv_ends
+        # snapshot we pass (mimics a trainer that entered RECV after the snapshot
+        # was taken at the top of _aggregate_weights).
+        agg._sim_inflight_expected = {"A": 10.0, "B": 15.0, "T": 1.0}
+        channel = FakeChannel(
+            inflight={"A", "B", "T"},
+            arrival_order=[("A", 10.0), ("B", 15.0), ("T", 1.0)],
+        )
+        msg, (end, _) = agg._sim_recv_min(channel, ["A", "B"])  # snapshot omits T
+        # The earliest completion is committed first and drives the clock — the
+        # gate pulled T in via the live in-flight set instead of lapping it.
+        assert end == "T"
+        assert msg[MessageType.SIM_COMPLETION_TS] == 1.0
+        assert agg._vclock.now == 1.0
+
+    def test_does_not_block_on_future_inflight(self):
+        # An in-flight trainer expected far in the FUTURE (beyond the buffered
+        # minimum) must NOT be waited for — we commit the ready earliest instead.
+        agg = _make_agg()
+        agg._sim_inflight_expected = {"A": 2.0, "FUT": 999.0}
+        channel = FakeChannel(
+            inflight={"A", "FUT"},
+            arrival_order=[("A", 2.0)],  # FUT has not arrived (and shouldn't block)
+        )
+        msg, (end, _) = agg._sim_recv_min(channel, ["A"])
+        assert end == "A"
+        assert agg._vclock.now == 2.0
+
+    def test_drains_ready_inflight_above_ceiling(self):
+        # §3j: a SLOW trainer whose modeled exp is far future (above the probe
+        # ceiling) but whose message has ALREADY ARRIVED must be drained NOW, so it
+        # buffers as a future and commits in sct-order — not drained-in late and
+        # committed past-dated (the residence~0, gap~45 staleness-tail signature).
+        #
+        # A pre-buffered entry makes the ceiling FINITE (buffered_min + slack); with
+        # an empty buffer the ceiling is +inf and everything drains regardless, so
+        # this non-empty-buffer setup is what isolates the §3j readiness admit.
+        agg = _make_agg()
+        agg._sim_inflight_expected = {"SLOW": 999.0}
+        agg._sim_buffer.add(
+            "A", 2.0,
+            ({MessageType.WEIGHTS: "w_A", MessageType.SIM_COMPLETION_TS: 2.0}, ("A", None)),
+        )
+        channel = FakeChannel(inflight={"SLOW"}, arrival_order=[("SLOW", 5.0)])
+        # recv_ends empty; buffer min = 2.0 → ceiling = 4.0 < SLOW.exp (999), so the
+        # exp bound alone would NOT admit SLOW — only its rxq readiness does.
+        msg, (end, _) = agg._sim_recv_min(channel, [])
+        assert end == "A"                      # earliest still commits first
+        assert agg._sim_buffer.has("SLOW")     # SLOW was DRAINED, not lapped
+        assert agg._sim_buffer.peek_min_ts() == 5.0  # buffered as a future

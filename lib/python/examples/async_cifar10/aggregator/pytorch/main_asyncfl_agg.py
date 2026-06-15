@@ -37,6 +37,10 @@ from flame.config import Config
 from flame.dataset import Dataset
 from flame.mode.horizontal.asyncfl.top_aggregator import TopAggregator
 from torchvision.datasets import CIFAR10
+
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+from oracle_utility import OracleInjectMixin  # noqa: E402
 from sortedcontainers import SortedDict
 
 
@@ -98,7 +102,7 @@ class Net(nn.Module):
         return F.log_softmax(x, dim=1)
 
 
-class PyTorchCifar10Aggregator(TopAggregator):
+class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
     """PyTorch CIFAR-10 Aggregator."""
 
     def __init__(
@@ -147,6 +151,9 @@ class PyTorchCifar10Aggregator(TopAggregator):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         self.model = Net().to(self.device)
+        self._init_oracle_util(
+            _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
+                          "..", "..", "data"))
 
     def read_trainer_unavailability(self, trace=None) -> None:
         """
@@ -197,35 +204,35 @@ class PyTorchCifar10Aggregator(TopAggregator):
         eval_every = self.config.hyperparameters.eval_every_n_rounds or 10
         if self._round % eval_every != 0:
             return
-        self.model.eval()
-        test_loss = 0
-        correct = 0
-        with torch.no_grad():
-            for data, target in self.test_loader:
-                data, target = data.to(self.device), target.to(self.device)
-                output = self.model(data)
-                test_loss += F.nll_loss(
-                    output, target, reduction="sum"
-                ).item()  # sum up batch loss
-                pred = output.argmax(
-                    dim=1, keepdim=True
-                )  # get the index of the max log-probability
-                correct += pred.eq(target.view_as(pred)).sum().item()
+        # Off the critical path: snapshot weights now, run the test-set forward
+        # pass in a daemon thread so the aggregator keeps committing/dispatching
+        # (the synchronous eval penalised async — more rounds -> more pauses).
+        eval_model = self._eval_snapshot_model()
+        if eval_model is None:
+            return  # prior async eval still running
+        round_num = self._round
+        test_loader, device = self.test_loader, self.device
 
-        total = len(self.test_loader.dataset)
-        test_loss /= total
-        test_accuracy = correct / total
+        def _job():
+            try:
+                eval_model.eval()
+                test_loss = 0
+                correct = 0
+                with torch.no_grad():
+                    for data, target in test_loader:
+                        data, target = data.to(device), target.to(device)
+                        output = eval_model(data)
+                        test_loss += F.nll_loss(output, target, reduction="sum").item()
+                        pred = output.argmax(dim=1, keepdim=True)
+                        correct += pred.eq(target.view_as(pred)).sum().item()
+                total = len(test_loader.dataset)
+                self._eval_emit(round_num, test_loss / total, correct / total)
+            except Exception as e:  # eval must never break training
+                logger.warning(f"[ASYNC_EVAL] failed (non-fatal): {e}")
+                self._eval_inflight = False
 
-        logger.info(
-            f"Test loss: {test_loss}, test accuracy: "
-            f"{correct}/{total} ({test_accuracy})"
-        )
-
-        self.update_metrics({"test-loss": test_loss, "test-accuracy": test_accuracy})
-
-        if self.log_to_wandb:
-            wandb.log({"test_acc": test_accuracy, "test_loss": test_loss})
-        self.loss_list.append(test_loss)
+        import threading
+        threading.Thread(target=_job, daemon=True).start()
 
         logger.debug(f"loss list at cifar agg: {self.loss_list}")
 

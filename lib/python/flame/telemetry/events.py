@@ -22,6 +22,9 @@ EVENT_TRAINER_ROUND = "trainer_round"  # per-round trainer timing/availability
 EVENT_UTIL_DISPARITY = "util_disparity"  # streamed-prefix vs full-pool utility
 EVENT_AVAIL_CHANGE = "avail_change"  # trainer availability state transition
 EVENT_TASK_RECV = "task_recv"        # trainer received a task from aggregator
+EVENT_TASK_SEND = "task_send"        # trainer finished & sent the update back
+EVENT_INFLIGHT_RESIDENCE = "inflight_residence"  # per-round in-flight drain accounting (oort sync)
+EVENT_UTILITY_BELIEF = "utility_belief"  # believed (at selection) vs actual (at return) client utility
 
 KNOWN_EVENTS = frozenset(
     {
@@ -33,6 +36,9 @@ KNOWN_EVENTS = frozenset(
         EVENT_UTIL_DISPARITY,
         EVENT_AVAIL_CHANGE,
         EVENT_TASK_RECV,
+        EVENT_TASK_SEND,
+        EVENT_INFLIGHT_RESIDENCE,
+        EVENT_UTILITY_BELIEF,
     }
 )
 
@@ -241,3 +247,106 @@ def build_task_recv(
         "avl_state": avl_state,
     }
     return EVENT_TASK_RECV, fields
+
+
+def build_task_send(
+    *,
+    round_num: int,
+    trainer_id: str,
+    task_to_perform: Optional[str],
+    wall_recv_ts: Optional[float],
+    wall_send_ts: float,
+    time_mode: str,
+) -> tuple[str, dict[str, Any]]:
+    """Trainer finished a task and sent the update back to the aggregator.
+
+    Unlike trainer_round (emitted inside train(), BEFORE the real-mode budget
+    sleep), this fires from _send_weights — AFTER the sleep and the upload — so
+    ``[wall_recv_ts, wall_send_ts]`` brackets the trainer's true busy/in-flight
+    window in real mode.  That interval is the sound basis for real concurrency
+    in validate_real: trainer_round's own ts cannot bracket it.
+    """
+    return EVENT_TASK_SEND, {
+        "round": round_num,
+        "trainer_id": trainer_id,
+        "task_to_perform": task_to_perform,
+        "wall_recv_ts": wall_recv_ts,
+        "wall_send_ts": wall_send_ts,
+        "time_mode": time_mode,
+    }
+
+
+def build_inflight_residence(
+    *,
+    round_num: int,
+    time_mode: str,
+    in_flight_before: int,
+    in_flight_after: int,
+    newly_selected: Optional[int] = None,
+    committed_fresh: Optional[int] = None,
+    cleaned: Optional[int] = None,
+    stale_rejected: Optional[int] = None,
+    residence_rounds: Optional[list[int]] = None,
+    carried_over_ages: Optional[list[int]] = None,
+) -> tuple[str, dict[str, Any]]:
+    """Per-round in-flight drain accounting for the oort sync aggregator.
+
+    Localizes the in-flight RESIDENCE divergence (real holds ~15.6 in-flight, sim
+    drains to the designed ~13): a straggler occupies ``selected_ends`` from selection
+    until it is cleaned. ``residence_rounds`` = (current_round − entry_round) for each
+    trainer cleaned this round; ``carried_over_ages`` = ages of those still in-flight
+    AFTER cleanup. Comparing sim vs real residence distributions shows whether sim
+    evicts stragglers a round too early (the eviction-timing fine-tune). ``time_mode``
+    = "sim"|"real" so the two are directly comparable.
+    """
+    fields: dict[str, Any] = {
+        "round": round_num,
+        "time_mode": time_mode,
+        "in_flight_before": in_flight_before,
+        "in_flight_after": in_flight_after,
+    }
+    for k, v in (
+        ("newly_selected", newly_selected),
+        ("committed_fresh", committed_fresh),
+        ("cleaned", cleaned),
+        ("stale_rejected", stale_rejected),
+        ("residence_rounds", residence_rounds),
+        ("carried_over_ages", carried_over_ages),
+    ):
+        if v is not None:
+            fields[k] = v
+    return EVENT_INFLIGHT_RESIDENCE, fields
+
+
+def build_utility_belief(
+    *,
+    round_num: int,
+    end_id: str,
+    believed: Optional[float],
+    actual: Optional[float],
+    staleness: Optional[int] = None,
+    time_mode: Optional[str] = None,
+) -> tuple[str, dict[str, Any]]:
+    """Believed-vs-actual client statistical utility, per returning trainer.
+
+    ``believed`` = the utility the selector held for this client when it was selected
+    (``PROP_STAT_UTILITY`` *before* this return overwrites it — the value from the
+    client's previous return, i.e. STALE by ``staleness`` rounds). ``actual`` = the
+    fresh Oort statistical utility the client computed this round and reports on return
+    (``MessageType.STAT_UTILITY``). Both are the SAME quantity (Oort stat-utility), so
+    ``believed − actual`` is the pure staleness error in the selector's belief — the
+    quantity the "believed vs actual utility" plot needs. Emitted for EVERY baseline
+    (every client reports stat-utility on return, even non-utility selectors), so the
+    plot compares felix/eval-refreshed beliefs against the stale-utility baselines.
+    ``believed`` is None on a client's first-ever return (no prior belief)."""
+    fields: dict[str, Any] = {
+        "round": round_num,
+        "end_id": end_id,
+        "believed": believed,
+        "actual": actual,
+    }
+    if staleness is not None:
+        fields["staleness"] = staleness
+    if time_mode is not None:
+        fields["time_mode"] = time_mode
+    return EVENT_UTILITY_BELIEF, fields

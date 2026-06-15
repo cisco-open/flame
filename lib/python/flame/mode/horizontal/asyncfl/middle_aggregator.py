@@ -25,6 +25,7 @@ from flame.common.util import (
     delta_weights_pytorch,
     delta_weights_tensorflow,
     get_ml_framework_in_use,
+    materialize_weights,
     valid_frameworks,
 )
 from flame.mode.composer import Composer
@@ -183,7 +184,7 @@ class MiddleAggregator(SyncMidAgg):
 
         logger.debug(f"received data from {end}")
 
-        if MessageType.WEIGHTS in msg:
+        if materialize_weights(msg) is not None:  # restore tensor from bytes
             weights = msg[MessageType.WEIGHTS]
 
         if MessageType.DATASET_SIZE in msg:

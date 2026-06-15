@@ -222,7 +222,7 @@ class AsyncRandomSelector(AbstractSelector):
     def select_random(self, ends: dict[str, End], num_of_ends: int) -> dict[str, None]:
         """Randomly select num_of_ends ends."""
 
-        selected_random_ends = set(random.sample(list(ends), num_of_ends))
+        selected_random_ends = set(self._pyrng.sample(sorted(ends), num_of_ends))
         logger.debug(f"selected_random_ends: {selected_random_ends}")
 
         return {key: None for key in selected_random_ends}
@@ -762,7 +762,7 @@ class AsyncRandomSelector(AbstractSelector):
                 f"Will pick cc: {cc} as min(candidates,concurrency) "
                 f"from candidates: {candidates}"
             )
-            selected_ends = set(random.sample(list(candidates), cc))
+            selected_ends = set(self._pyrng.sample(sorted(candidates), cc))
 
             self.selected_ends[self.requester] = selected_ends
             logger.debug(

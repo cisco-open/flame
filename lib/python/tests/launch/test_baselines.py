@@ -135,6 +135,25 @@ class TestSharedBaselinesYaml:
             felix["trainer"]["hyperparameters"]["client_notify"]["enabled"]
             == "True"
         )
+        # §3i: felix overhead stays OFF the clock (0); the per-trainer cycle leg is
+        # modeled in the trainer sct instead. Guards the two against re-coupling.
+        assert (
+            float(felix["aggregator"]["hyperparameters"]["simCommitOverheadSeconds"])
+            == 0.0
+        )
+        assert (
+            float(felix["trainer"]["hyperparameters"]["simCompletionLegSeconds"]) > 0.0
+        )
+
+    def test_completion_leg_alias_maps_to_field(self):
+        """simCompletionLegSeconds (baselines.yaml) must populate the trainer
+        Hyperparameters.sim_completion_leg_s field the example trainer reads."""
+        from flame.config import Hyperparameters
+        base = {"rounds": 1, "epochs": 1}
+        hp = Hyperparameters(**base, **{"simCompletionLegSeconds": 1.6})
+        assert hp.sim_completion_leg_s == 1.6
+        # default is off when unset
+        assert Hyperparameters(**base).sim_completion_leg_s == 0.0
 
     def test_other_baselines_present(self):
         shared = (

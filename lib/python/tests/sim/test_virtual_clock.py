@@ -122,6 +122,19 @@ class TestSimReorderBuffer:
         buf.clear()
         assert len(buf) == 0 and buf.pop_min() is None
 
+    def test_pending_after_returns_future_completions(self):
+        # PARITY §4.5: ends whose sct > vclock are "still computing".
+        buf = SimReorderBuffer()
+        buf.add("done", 5.0)
+        buf.add("slow1", 12.0)
+        buf.add("slow2", 30.0)
+        assert buf.pending_after(10.0) == {"slow1", "slow2"}
+        # boundary: sct == vclock is NOT still-computing (already available).
+        assert buf.pending_after(12.0) == {"slow2"}
+        # once vclock passes all sct, nothing is held (they all commit).
+        assert buf.pending_after(99.0) == set()
+        assert SimReorderBuffer().pending_after(0.0) == set()
+
 
 class TestStalenessReconstruction:
     """A scripted scenario: committing buffered updates in completion order and

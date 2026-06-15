@@ -19,6 +19,8 @@ import inspect
 import logging
 import math
 import time
+
+import cloudpickle
 from contextlib import contextmanager
 
 import torch
@@ -45,7 +47,7 @@ from flame.optimizers import optimizer_provider
 from flame.privacies import privacy_provider
 from flame.registries import registry_provider
 from flame import telemetry
-from flame.telemetry.events import build_task_recv
+from flame.telemetry.events import build_task_recv, build_task_send
 
 # TODO: (DG) torch is needed for asyncoort in oort_loss() function,
 # but need to comment / uncomment based on the backend used. If it is
@@ -420,6 +422,18 @@ class Trainer(Role, metaclass=ABCMeta):
                 self, "_sim_round_duration", 0.0
             )
 
+        # Lazy-deserialize (BOTH real and sim): ship the weight update as raw
+        # pre-serialized bytes so the aggregator reconstructs the tensor only for
+        # the updates it commits, not the surplus/stale ones it discards. The
+        # channel's recv otherwise eagerly cloudpickle.loads every received tensor
+        # (channel.py), even ones thrown away to overcommitment / a sync barrier
+        # that only needs the K fastest. The aggregator side restores the tensor
+        # via common.util.materialize_weights at its read site.
+        if MessageType.WEIGHTS in msg:
+            msg[MessageType.WEIGHTS_BYTES] = cloudpickle.dumps(
+                msg.pop(MessageType.WEIGHTS)
+            )
+
         _budget = getattr(self, "_training_budget_s", None)
         if _budget is not None:
             msg[MessageType.TRAINING_BUDGET_S] = float(_budget)
@@ -443,6 +457,21 @@ class Trainer(Role, metaclass=ABCMeta):
 
         with self._phase("mqtt_send_s"):
             channel.send(end, msg)
+
+        # In-flight window for validate_real: wall_send_ts is stamped here,
+        # AFTER the real-mode budget sleep in train(), so [wall_recv_ts, wall_send_ts]
+        # brackets the trainer's true busy window — which trainer_round (emitted
+        # pre-sleep) cannot. No-op when telemetry is disabled.
+        if telemetry.is_enabled():
+            ev, fields = build_task_send(
+                round_num=int(getattr(self, "_round", 0)),
+                trainer_id=str(getattr(self, "trainer_id", "")),
+                task_to_perform=getattr(self, "task_to_perform", None),
+                wall_recv_ts=getattr(self, "_wall_recv_ts", None),
+                wall_send_ts=_wall_send_ts,
+                time_mode=getattr(self, "time_mode", "real"),
+            )
+            telemetry.emit(ev, **fields)
 
         if self.task_to_perform == "train":
             # To allow the trainer to participate in eval AND train in

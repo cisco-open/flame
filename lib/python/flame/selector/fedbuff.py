@@ -479,7 +479,7 @@ class FedBuffSelector(AbstractSelector):
         # (breaking real/sim parity). The RNG is seeded once at aggregator init.
         shuffled_end_ids = list(ends.keys())  # get the keys
         logger.debug(f"Original shuffled_end_ids: {shuffled_end_ids}")
-        random.shuffle(shuffled_end_ids)  # then shuffle
+        self._pyrng.shuffle(shuffled_end_ids)  # then shuffle (dedicated RNG)
         logger.debug(f"Updated shuffled_end_ids: {shuffled_end_ids}")
 
         # Invalidate previous all_selected entry if you don't get an
@@ -555,7 +555,7 @@ class FedBuffSelector(AbstractSelector):
                 logger.debug(f"Added end_id: {end_id} to candidates: {candidates}")
                 continue
 
-            i = random.randrange(idx)
+            i = self._pyrng.randrange(idx)
             if i < extra:
                 candidates[i] = end_id
 
@@ -672,7 +672,7 @@ class FedBuffSelector(AbstractSelector):
                 f"Will pick cc: {cc} as min(candidates,concurrency) "
                 f"from candidates: {candidates}"
             )
-            selected_ends = set(random.sample(list(candidates), cc))
+            selected_ends = set(self._pyrng.sample(sorted(candidates), cc))
 
             self.selected_ends[self.requester] = selected_ends
             logger.debug(

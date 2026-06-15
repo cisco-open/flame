@@ -23,7 +23,7 @@ from flame.mode.horizontal.syncfl.top_aggregator import PROP_ROUND_END_TIME
 from flame.mode.horizontal.syncfl.top_aggregator import (
     TopAggregator as BaseTopAggregator,
 )
-from flame.common.util import weights_to_model_device
+from flame.common.util import materialize_weights, weights_to_model_device
 from flame.mode.message import MessageType
 from flame.optimizer.train_result import TrainResult
 
@@ -50,7 +50,8 @@ class TopAggregator(BaseTopAggregator):
             logger.debug(f"received data from {end}")
             channel.set_end_property(end, PROP_ROUND_END_TIME, (round, timestamp))
 
-            if MessageType.WEIGHTS in msg:
+            weights = None
+            if materialize_weights(msg) is not None:
                 weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
             if MessageType.DATASET_SIZE in msg:

@@ -58,6 +58,70 @@ def color_for(label: str) -> Optional[str]:
     return None
 
 
+# Canonical CDF color — every single-series CDF uses this red for consistency.
+CDF_RED = "tab:red"
+# Readable, high-contrast palette for multi-series CDFs.
+MULTI_COLORS = ["#d62728", "#1f77b4", "#2ca02c", "#9467bd", "#ff7f0e",
+                "#17becf", "#8c564b", "#e377c2"]
+
+
+def fmt_val(v) -> str:
+    """Format a number for percentile labels.
+
+    3 decimal places normally; if that rounds to 0.000, fall back to the first
+    significant figure (e.g. 0.00008). Keeps tiny CDF percentiles legible.
+    """
+    import math
+    try:
+        v = float(v)
+    except (TypeError, ValueError):
+        return str(v)
+    if v != v:  # NaN
+        return "nan"
+    if v == 0:
+        return "0.000"
+    if abs(v) >= 0.0005:  # rounds to >= 0.001 at 3 dp
+        return f"{v:.3f}"
+    exp = math.floor(math.log10(abs(v)))
+    return f"{v:.{-exp}f}"  # first significant figure
+
+
+def _cdf_percentiles(sorted_arr):
+    """Return [(label, value), ...] for P50/P90/P99 of a sorted array."""
+    import numpy as np
+    return [(lab, float(np.quantile(sorted_arr, q)))
+            for q, lab in ((0.5, "P50"), (0.9, "P90"), (0.99, "P99"))]
+
+
+def _annotate_cdf_inline(ax, sorted_arr, color):
+    """Dotted vline + colored text at P50/P90/P99 on a CDF axes."""
+    for (lab, xv), q in zip(_cdf_percentiles(sorted_arr), (0.5, 0.9, 0.99)):
+        ax.axvline(xv, color=color, ls=":", lw=1, alpha=0.6)
+        ax.annotate(f"{lab}={fmt_val(xv)}", (xv, q),
+                    textcoords="offset points", xytext=(4, -11),
+                    fontsize=9, color=color)
+
+
+def _percentile_table(ax, rows):
+    """Compact P50/P90/P99 table for a multi-series CDF: one colored row per
+    series in the lower-right, so each curve's percentiles are readable without
+    crowding the curves. `rows` = [(label, color, sorted_arr), ...]."""
+    if not rows:
+        return
+    n = len(rows)
+    ax.text(0.985, 0.02 + 0.05 * n,
+            f"{'':>12} {'P50':>7} {'P90':>7} {'P99':>7}",
+            transform=ax.transAxes, ha="right", va="bottom",
+            fontsize=7, family="monospace", color="0.35")
+    for i, (label, color, arr) in enumerate(rows):
+        pcs = _cdf_percentiles(arr)
+        line = (f"{str(label)[:12]:>12} "
+                + " ".join(f"{fmt_val(v):>7}" for _, v in pcs))
+        ax.text(0.985, 0.02 + 0.05 * (n - 1 - i), line,
+                transform=ax.transAxes, ha="right", va="bottom",
+                fontsize=7, family="monospace", color=color)
+
+
 # --- config stamp -----------------------------------------------------------
 
 
@@ -169,20 +233,31 @@ def no_data_plot(title, out_dir, file_name, stamp=None,
 
 
 def line_plot(series, x_label, y_label, title, out_dir, file_name,
-              stamp=None, logy=False, target=None):
+              stamp=None, logy=False, target=None, clip_outliers=False):
+    """Line plot. ``clip_outliers``: when one/few points dwarf the rest (e.g. a
+    warmup spike), cap the y-axis at ~P99 of all values so the body stays
+    visible, and note the clipped peak in the title."""
     if not series:
         return no_data_plot(title, out_dir, file_name, stamp)
     fig, ax = plt.subplots()
     plotted = False
+    all_y = []
     for label, (xs, ys) in series.items():
         if xs is None or ys is None or len(xs) == 0:
             continue
         ax.plot(xs, ys, marker=".", markersize=3, linewidth=1.5, label=label,
                 color=color_for(label))
+        all_y.extend([v for v in ys if v is not None])
         plotted = True
     if not plotted:
         plt.close(fig)
         return no_data_plot(title, out_dir, file_name, stamp)
+    if clip_outliers and len(all_y) > 5 and not logy:
+        peak = max(all_y)
+        cap = float(np.quantile(np.asarray(all_y, float), 0.99))
+        if peak > cap * 1.5 and cap > 0:
+            ax.set_ylim(min(0, min(all_y)), cap * 1.15)
+            title = f"{title}\n(y clipped at P99={fmt_val(cap)}; peak={fmt_val(peak)})"
     if target is not None:
         ax.axhline(target, ls="--", color="0.5", lw=1)
     if logy:
@@ -210,6 +285,82 @@ def banded_line(x, mean, lo, hi, x_label, y_label, title, out_dir, file_name,
     ax.set_title(title)
     ax.grid(True, alpha=0.3)
     ax.legend(fontsize=12)
+    return _save(fig, out_dir, file_name, stamp)
+
+
+def _bin_reduce(xs, ys, nbins, reducer):
+    """Bucket (xs, ys) into ~nbins equal-width x-bins; reduce ys per bin.
+
+    Returns (bin_centers, reduced, lo, hi) where lo/hi are the P10/P90 of each
+    bin (for an optional band). Bins with no points are dropped. ``reducer`` is
+    one of "mean", "p50", "p90", "p99", "max", "sum".
+    """
+    pairs = [(float(a), float(b)) for a, b in zip(xs, ys)
+             if a is not None and b is not None]
+    if not pairs:
+        return [], [], [], []
+    xs = np.asarray([a for a, _ in pairs], float)
+    ys = np.asarray([b for _, b in pairs], float)
+    lo_x, hi_x = float(xs.min()), float(xs.max())
+    if hi_x <= lo_x:
+        return [float(xs.mean())], [float(ys.mean())], [float(ys.min())], [float(ys.max())]
+    nb = max(1, min(int(nbins), len(xs)))
+    edges = np.linspace(lo_x, hi_x, nb + 1)
+    idx = np.clip(np.digitize(xs, edges) - 1, 0, nb - 1)
+    _red = {
+        "mean": np.mean, "max": np.max, "sum": np.sum,
+        "p50": lambda a: np.quantile(a, 0.5),
+        "p90": lambda a: np.quantile(a, 0.9),
+        "p99": lambda a: np.quantile(a, 0.99),
+    }[reducer]
+    cx, cy, clo, chi = [], [], [], []
+    for b in range(nb):
+        sel = ys[idx == b]
+        if sel.size == 0:
+            continue
+        cx.append(0.5 * (edges[b] + edges[b + 1]))
+        cy.append(float(_red(sel)))
+        clo.append(float(np.quantile(sel, 0.1)))
+        chi.append(float(np.quantile(sel, 0.9)))
+    return cx, cy, clo, chi
+
+
+def binned_line(series, x_label, y_label, title, out_dir, file_name, stamp=None,
+                nbins=200, reducer="mean", band=False, target=None, logy=False):
+    """Density-reducing line plot: the single fix for "scatter too dense / line
+    too noisy / too slow to render".  ``series`` = {label: (xs, ys)} (raw, un-binned).
+    Each series is bucketed into ~``nbins`` equal-width x-bins and reduced by
+    ``reducer`` ("mean"|"p50"|"p90"|"p99"|"max"|"sum"). ``band``: shade P10-P90 per
+    bin (only for a single series, to avoid clutter)."""
+    series = {lab: (xs, ys) for lab, (xs, ys) in (series or {}).items()
+              if xs is not None and ys is not None and len(xs)}
+    if not series:
+        return no_data_plot(title, out_dir, file_name, stamp)
+    fig, ax = plt.subplots()
+    single = len(series) == 1
+    plotted = False
+    for i, (lab, (xs, ys)) in enumerate(series.items()):
+        cx, cy, clo, chi = _bin_reduce(xs, ys, nbins, reducer)
+        if not cx:
+            continue
+        color = color_for(lab) or MULTI_COLORS[i % len(MULTI_COLORS)]
+        ax.plot(cx, cy, lw=1.8, label=lab, color=color)
+        if band and single:
+            ax.fill_between(cx, clo, chi, color=color, alpha=0.18,
+                            label="P10–P90")
+        plotted = True
+    if not plotted:
+        plt.close(fig)
+        return no_data_plot(title, out_dir, file_name, stamp)
+    if target is not None:
+        ax.axhline(target, ls="--", color="0.5", lw=1)
+    if logy:
+        ax.set_yscale("log")
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(f"{y_label} ({reducer}/bin)")
+    ax.set_title(title)
+    ax.grid(True, alpha=0.3)
+    _legend(ax, len(series) + (1 if band and single else 0))
     return _save(fig, out_dir, file_name, stamp)
 
 
@@ -259,7 +410,7 @@ def hist_plot(values, x_label, title, out_dir, file_name, stamp=None, vline=0.0)
     for q, lab in [(0.5, "P50"), (0.9, "P90"), (0.99, "P99")]:
         xv = float(np.quantile(arr, q))
         ax.axvline(xv, color="0.3", ls=":", lw=1)
-        ax.annotate(f"{lab}={xv:.3g}", (xv, 0), textcoords="offset points",
+        ax.annotate(f"{lab}={fmt_val(xv)}", (xv, 0), textcoords="offset points",
                     xytext=(3, 12), fontsize=10, rotation=90, color="0.3")
     ax.set_xlabel(x_label)
     ax.set_ylabel("count")
@@ -292,13 +443,16 @@ def signed_bar_line(x, bar_values, line_values, x_label, bar_label, line_label,
         return None
     fig, ax1 = plt.subplots()
     v = np.asarray(bar_values, float)
-    ax1.bar(x, v, color=["#2ca02c" if b >= 0 else "#d62728" for b in v], alpha=0.7)
+    # Darker, higher-contrast green/red for the gain bars; thicker accuracy line.
+    ax1.bar(x, v, color=["#1a8a1a" if b >= 0 else "#c62121" for b in v],
+            alpha=0.85, label=bar_label)
     ax1.axhline(0, color="0.3", lw=1)
     ax1.set_xlabel(x_label); ax1.set_ylabel(bar_label)
     ax2 = ax1.twinx()
-    ax2.plot(x, line_values, color="#1f77b4", lw=2, marker="o", ms=3, label=line_label)
-    ax2.set_ylabel(line_label, color="#1f77b4")
-    ax2.tick_params(axis="y", labelcolor="#1f77b4")
+    ax2.plot(x, line_values, color="#08306b", lw=2.6, marker="o", ms=3.5,
+             label=line_label)
+    ax2.set_ylabel(line_label, color="#08306b")
+    ax2.tick_params(axis="y", labelcolor="#08306b")
     ax1.set_title(title); ax1.grid(True, axis="y", alpha=0.3)
     return _save(fig, out_dir, file_name, stamp)
 
@@ -310,12 +464,9 @@ def cdf_plot(values, x_label, title, out_dir, file_name, stamp=None):
     arr = np.sort(np.asarray(vals, dtype=float))
     y = np.arange(1, len(arr) + 1) / len(arr)
     fig, ax = plt.subplots()
-    ax.plot(arr, y, color="tab:red", linewidth=2)
-    for q, label in [(0.5, "P50"), (0.9, "P90"), (0.99, "P99")]:
-        xv = float(np.quantile(arr, q))
-        ax.axvline(xv, color="0.4", ls=":", lw=1)
-        ax.annotate(f"{label}={xv:.3g}", (xv, q), textcoords="offset points",
-                    xytext=(5, -12), fontsize=10)
+    ax.plot(arr, y, color=CDF_RED, linewidth=2)
+    _annotate_cdf_inline(ax, arr, CDF_RED)
+    ax.set_ylim(0, 1.02)
     ax.set_xlabel(x_label)
     ax.set_ylabel("CDF")
     ax.set_title(title)
@@ -332,14 +483,24 @@ def cdf_multi(series, x_label, title, out_dir, file_name, stamp=None):
     if not series:
         return no_data_plot(title, out_dir, file_name, stamp)
     fig, ax = plt.subplots()
-    for lab, vals in series.items():
+    # Single-series multi-CDF should still read as the canonical red CDF.
+    single = len(series) == 1
+    table_rows = []
+    for i, (lab, vals) in enumerate(series.items()):
+        color = CDF_RED if single else MULTI_COLORS[i % len(MULTI_COLORS)]
         arr = np.sort(np.asarray(vals, dtype=float))
         y = np.arange(1, len(arr) + 1) / len(arr)
-        ax.plot(arr, y, lw=2, label=lab)
+        ax.plot(arr, y, lw=2, label=lab, color=color)
+        if single:
+            _annotate_cdf_inline(ax, arr, color)
+        else:
+            table_rows.append((lab, color, arr))
+    _percentile_table(ax, table_rows)
+    ax.set_ylim(0, 1.02)
     ax.set_xlabel(x_label)
     ax.set_ylabel("CDF")
     ax.set_title(title)
-    ax.legend(fontsize=9)
+    ax.legend(fontsize=9, loc="lower right" if not table_rows else "upper left")
     ax.grid(True, alpha=0.3)
     return _save(fig, out_dir, file_name, stamp)
 
@@ -379,7 +540,11 @@ def stacked_area(x, series, x_label, y_label, title, out_dir, file_name, stamp=N
 
 
 def stacked_bar(categories, segments, y_label, title, out_dir, file_name, stamp=None,
-                horizontal=False):
+                horizontal=False, annotate=False, colors=None):
+    """Stacked bar. ``annotate``: write each segment's value (and the per-bar
+    total) on the bar — useful for the whole-run summary where exact seconds
+    matter. ``colors``: optional {segment_label: color} for stable semantics
+    (e.g. idle=grey)."""
     if not segments or len(categories) == 0:
         return None
     n = len(categories)
@@ -388,11 +553,36 @@ def stacked_bar(categories, segments, y_label, title, out_dir, file_name, stamp=
     bottom = np.zeros(n, dtype=float)
     for label, vals in segments.items():
         v = np.asarray(vals, dtype=float)
+        c = (colors or {}).get(label)
         if horizontal:
-            ax.barh(range(n), v, left=bottom, label=label)
+            ax.barh(range(n), v, left=bottom, label=label, color=c)
         else:
-            ax.bar(range(n), v, bottom=bottom, label=label)
+            ax.bar(range(n), v, bottom=bottom, label=label, color=c)
+        if annotate:
+            for i in range(n):
+                if v[i] > 0:
+                    if horizontal:
+                        ax.annotate(fmt_val(v[i]), (bottom[i] + v[i] / 2, i),
+                                    ha="center", va="center", fontsize=7, color="white")
+                    else:
+                        ax.annotate(fmt_val(v[i]), (i, bottom[i] + v[i] / 2),
+                                    ha="center", va="center", fontsize=7, color="white")
         bottom += v
+    if annotate:  # total at the end of each bar
+        for i in range(n):
+            if horizontal:
+                ax.annotate(f"Σ={fmt_val(bottom[i])}", (bottom[i], i),
+                            ha="left", va="center", fontsize=8, color="0.2",
+                            xytext=(3, 0), textcoords="offset points")
+            else:
+                ax.annotate(f"Σ={fmt_val(bottom[i])}", (i, bottom[i]),
+                            ha="center", va="bottom", fontsize=8, color="0.2",
+                            xytext=(0, 2), textcoords="offset points")
+    if annotate:  # headroom so the Σ total label clears the bar top / title
+        if horizontal:
+            ax.set_xlim(0, max(bottom) * 1.12 if max(bottom) else 1)
+        else:
+            ax.set_ylim(0, max(bottom) * 1.10 if max(bottom) else 1)
     if horizontal:
         ax.set_yticks(range(n)); ax.set_yticklabels([str(c) for c in categories], fontsize=7)
         ax.set_xlabel(y_label)

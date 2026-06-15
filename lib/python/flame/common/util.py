@@ -23,6 +23,7 @@ from enum import Enum
 from threading import Thread
 from typing import List, Union
 import logging
+import cloudpickle
 from pip._internal.cli.main import main as pipmain
 
 from flame.common.constants import DeviceType
@@ -223,3 +224,26 @@ def weights_to_model_device(weights, model):
         return {name: weights[name].to(torch_device) for name in weights}
 
     return None
+
+
+def materialize_weights(msg):
+    """Up-path lazy-deserialize for a trainer->aggregator model update.
+
+    Trainers ship a weight update as pre-serialized raw bytes
+    (``MessageType.WEIGHTS_BYTES``) instead of a live tensor, so the aggregator
+    pays the (expensive) tensor reconstruction only for the updates it actually
+    commits — not the surplus/stale ones it discards. (The transport's recv path
+    otherwise eagerly cloudpickle.loads every received tensor, even ones thrown
+    away to overcommitment.) Call this at the aggregation read site to obtain the
+    live weights regardless of which encoding arrived: it converts
+    WEIGHTS_BYTES -> WEIGHTS in place, is a no-op when WEIGHTS is already present
+    (backward compatible + idempotent), and returns msg[WEIGHTS] (or None when
+    the message carries no weights, e.g. an eval-only update).
+    """
+    from flame.mode.message import MessageType  # local import: avoid cycle
+
+    if MessageType.WEIGHTS not in msg and MessageType.WEIGHTS_BYTES in msg:
+        msg[MessageType.WEIGHTS] = cloudpickle.loads(
+            msg.pop(MessageType.WEIGHTS_BYTES)
+        )
+    return msg.get(MessageType.WEIGHTS)

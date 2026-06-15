@@ -82,6 +82,7 @@ class SelectorType(str, Enum):
     REFL_OORT = "refl_oort"  # REFL-enhanced Oort with priority selection and availability tracking
     ASYNC_RANDOM = "async_random"
     FEDDANCE = "feddance"  # FedDance: Poisson V_m, loss I_m, accuracy slope A_m, UCB exploration
+    ORACLE = "oracle"  # Streaming-misprioritization ceiling: greedy top-K by fresh true utility
 
 
 class DataSamplerType(str, Enum):
@@ -148,11 +149,23 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     rounds: int
     epochs: int
     aggregation_goal: t.Optional[int] = Field(alias="aggGoal", default=None)
-    eval_every_n_rounds: t.Optional[int] = Field(alias="evalEveryNRounds", default=10)
+    eval_every_n_rounds: t.Optional[int] = Field(alias="evalEveryNRounds", default=50)
     eval_goal_factor: t.Optional[float] = Field(alias="evalGoalFactor", default=None)
+    # Target-accuracy stopping: stop once test accuracy stays >= target for
+    # `stable_evals_above_target` consecutive evals (resets on any dip). The
+    # existing `rounds` / `max_runtime_s` caps remain as the safety net so a
+    # non-converging run still terminates. None disables the rule.
+    target_accuracy: t.Optional[float] = Field(alias="targetAccuracy", default=None)
+    stable_evals_above_target: t.Optional[int] = Field(
+        alias="stableEvalsAboveTarget", default=20
+    )
     round_nudge_type: t.Optional[str] = Field(
         alias="roundNudgeType", default="last_train"
     )
+    # Deterministic RNG seed: seeds the global RNGs (torch model init, syncfl
+    # internal_init) and each selector's dedicated RNG, making selection
+    # reproducible across real/sim. None = unseeded.
+    seed: t.Optional[int] = Field(alias="seed", default=None)
     # TODO: concurrency is for coordinator in coordinated asyncfl this
     #       is a workaround since there is no per-role config
     #       mechanism in the control plane. This needs to be revisited
@@ -175,6 +188,36 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     )
     training_delay_factor: t.Optional[float] = Field(
         alias="trainingDelayFactor", default=None
+    )
+    # Sim-mode per-commit virtual-clock overhead (MQTT/dispatch). 0 = off.
+    sim_commit_overhead_s: t.Optional[float] = Field(
+        alias="simCommitOverheadSeconds", default=0.0
+    )
+    # Sim PRE-commit holding leg added to trainer sct (counts toward staleness).
+    sim_completion_leg_s: t.Optional[float] = Field(
+        alias="simCompletionLegSeconds", default=0.0
+    )
+    # Sim POST-commit re-dispatch cooldown; spaces completions without inflating staleness.
+    sim_redispatch_gap_s: t.Optional[float] = Field(
+        alias="simRedispatchGapSeconds", default=0.0
+    )
+    # Real-only settle sleep before selection (hit 2x/commit). 0 = compute-bound.
+    real_distribute_settle_s: t.Optional[float] = Field(
+        alias="realDistributeSettleSeconds", default=0.1
+    )
+    # Sim sync-stack: hold a dispatched trainer in-flight (occupying its slot, out of the
+    # eligible pool) until vclock >= its modeled completion sct, instead of freeing the
+    # slot at instant physical arrival — so the committed/eligible mix matches real.
+    sim_inflight_residence: t.Optional[bool] = Field(
+        alias="simInflightResidence", default=False
+    )
+    # Sim sync-stack: keep a prior-round straggler still computing at round start
+    # (sct > vclock_round_start) buffered and carried in-flight until vclock >= sct,
+    # instead of popping + stale-rejecting it on instant arrival (which drains sim's
+    # in-flight to ~0 while real carries the overcommit). Gates carry/cleanup, whereas
+    # sim_inflight_residence gates pool re-entry.
+    sim_inflight_carryover: t.Optional[bool] = Field(
+        alias="simInflightCarryover", default=False
     )
     use_oort_loss_fn: t.Optional[str] = Field(alias="useOORTLossFn", default="False")
     wait_until_next_avl: t.Optional[bool] = Field(

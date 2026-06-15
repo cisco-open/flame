@@ -253,7 +253,7 @@ class RandomSelector(AbstractSelector):
                 return {}
 
             selected_candidates = set(
-                random.sample(list(avl_candidates), required_trainers)
+                self._pyrng.sample(sorted(avl_candidates), required_trainers)
             )
             logger.info(f"new selected ends: {selected_candidates}")
 

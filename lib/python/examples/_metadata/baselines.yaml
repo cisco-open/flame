@@ -43,11 +43,65 @@ baselines:
         trackTrainerAvail:
           enabled: "False"
           type: "NA"
+        # Overhead OFF the virtual clock so it tracks completions, not a ramp. PARITY §3c.
+        simCommitOverheadSeconds: 0.0
+        # Post-commit re-dispatch leg, calibrated to real's measured LAG_DECOMP leg.
+        # §3m's 0.0 over-overlapped (advance 3.68 vs 4.14, staleness 4.75 vs 2.80); restored
+        # to 1.0 per PARITY §4.1. The 2700s run then OVER-shot: sim advance 4.35 vs real 3.93
+        # (K3b .106, U2 .096). Advance moved ~3.68->4.35 across gap 0->1.0 (~0.67s/s slope), so
+        # real 3.93 implies gap ~0.6. Retuned 1.0 -> 0.6 (do NOT fit to pass K3b; this tracks
+        # real's measured leg). §3L slot-hold engages -> completions de-bunch.
+        simRedispatchGapSeconds: 0.6
+        # 0 = drop the real-only settle-sleep brake -> real compute-bound at ~c. PARITY §3m.
+        realDistributeSettleSeconds: 0.0
     trainer:
       hyperparameters:
         client_notify:
           enabled: "True"
         wait_until_next_avl: "True"
+        # Pre-commit holding leg (counts toward staleness). Placeholder; retune vs real
+        # LAG_DECOMP after the overnight run (expect ~0.1-0.3 once queue_wait drops). PARITY §3.
+        simCompletionLegSeconds: 0.6
+
+  oracle:
+    description: >-
+      Oracle = streaming-misprioritization performance ceiling. Same async stack
+      as Felix (oracle selector + fedbuff optimizer), but run with c = num_trainers
+      and a large evalGoalFactor so EVERY client is evaluated on the current model
+      each round -> its reported utility is fresh (true), and the selector picks the
+      true top-K (no temporal/system/exploration terms, no overcommitment). Set
+      selector.kwargs.c = num_trainers and evalGoalFactor = num_trainers/aggGoal in
+      the experiment YAML.
+    example:
+      aggregator_main: aggregator/pytorch/main_asyncfl_agg.py
+    aggregator:
+      selector:
+        sort: oracle
+        kwargs:
+          evalGoalFactor: 5.0  # >= num_trainers/aggGoal so all clients are eval'd each round; override per experiment
+          selectType: default
+          roundNudgeType: last_train
+      optimizer:
+        sort: fedbuff
+        kwargs:
+          use_oort_lr: "True"
+          dataset_name: cifar-10
+          agg_rate_conf:
+            type: new
+            scale: 0.4
+            a_exp: 0.25
+            b_exp: 0.1
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NA"
+        simCommitOverheadSeconds: 0.0
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "True"
+        wait_until_next_avl: "True"
+        use_oort_loss_fn: "True"
 
   refl:
     description: >-
@@ -81,6 +135,16 @@ baselines:
         trackTrainerAvail:
           enabled: "True"
           type: ORACULAR
+        # See felix note (overhead must stay below the sct-progression rate).
+        # Jun9: 0.24 over-charged (sim 4031 rounds vs real 7254, residual
+        # -0.14/commit) -> 0.10 (PARITY.md).
+        # Jun10: after the lazy-deserialize barrier speedup (sim_rate 1.18->2.31x),
+        # 0.10 now OVER-charges: advance 1.74 vs real 1.48 (residual -0.26,
+        # implied -0.026/commit) -> 0.10 + (-0.26/K=10) = 0.074.
+        simCommitOverheadSeconds: 0.074
+        # Hold still-computing trainers in their selection slot until vclock>=sct so
+        # sim's eligible pool stops carrying the slow tail (A2b 12.41->~6.5). PARITY §4.5.
+        simInflightResidence: True
     trainer:
       hyperparameters:
         client_notify:
@@ -135,6 +199,11 @@ baselines:
         trackTrainerAvail:
           enabled: "True"
           type: ORACULAR
+        # NOTE: oort is NOT a pool-composition case -- its eligible pool already
+        # matches real (sim 12.12 vs real 11.35); the divergence is the selector
+        # picking ~average (12.21) vs real picking fast (8.81). That is a
+        # selector-scoring/path issue (see PARITY sec 4.5 oort note), so the
+        # sct-gated pool exclusion is intentionally left OFF for oort.
     trainer:
       hyperparameters:
         use_oort_loss_fn: "True"

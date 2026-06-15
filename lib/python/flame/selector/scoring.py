@@ -16,6 +16,24 @@ from __future__ import annotations
 import math
 
 
+# Canonical Oort hyperparameters = the paper's standalone Oort defaults
+# (third_party/Oort/training/argParser.py). The `oort` and `felix` baselines use
+# these; the `refl` baseline overrides a subset via selector.kwargs to match the
+# REFL fork (third_party/REFL/core/argParser.py): round_threshold 30, clip_bound
+# 0.9, cut_off_util 0.05, exploration_decay 0.98, exploration_min 0.3.
+OORT_PAPER_DEFAULTS = {
+    "round_threshold": 10.0,    # argParser.py:52
+    "round_penalty": 2.0,       # :53  (== system_util exponent `alpha`)
+    "clip_bound": 0.98,         # :56  (reward clip percentile, get_norm)
+    "cut_off_util": 0.7,        # :105 (exploitation pool breadth factor)
+    "pacer_step": 20,           # :20
+    "pacer_delta": 5.0,         # :19
+    "exploration_factor": 0.9,  # :24
+    "exploration_decay": 0.95,  # :25
+    "exploration_min": 0.2,     # :104
+}
+
+
 # ---- OORT / AsyncOort (Felix) -------------------------------------------------
 # Final score = (stat_util + temporal_uncertainty) * system_utility
 
@@ -43,8 +61,33 @@ def oort_system_utility(
     return math.pow(preferred_duration_s / round_duration_s, alpha)
 
 
+def oort_norm_stats(rewards: list, clip_bound: float = 0.95, thres: float = 1e-4):
+    """Reference Oort ``get_norm`` (oort/oort.py:394): returns ``(min, range,
+    clip_value)`` over the candidate reward list, used to normalize+clip the
+    statistical reward into ~[0,1] before adding the temporal term. ``min`` is
+    deflated by 0.999 and ``range`` floored at ``thres`` exactly as upstream."""
+    if not rewards:
+        return 0.0, thres, float("inf")
+    s = sorted(rewards)
+    clip_value = s[min(int(len(s) * clip_bound), len(s) - 1)]
+    _min = s[0] * 0.999
+    _range = max(s[-1] - _min, thres)
+    return _min, _range, clip_value
+
+
+def oort_normalize_reward(raw: float, min_: float, range_: float, clip_value: float) -> float:
+    """Clip the raw reward at ``clip_value`` then min-max normalize to ~[0,1]
+    (reference Oort score calc, oort.py:292-295). With no normalization the raw
+    reward (~70) dwarfs the temporal/UCB term (~0.05), making exploration inert."""
+    creward = min(raw, clip_value)
+    return (creward - min_) / range_
+
+
 def oort_combine_score(stat_util: float, temporal: float, system_util: float) -> float:
-    """The exact combination used by OortSelector / AsyncOortSelector."""
+    """The exact combination used by OortSelector / AsyncOortSelector.
+
+    ``stat_util`` is expected NORMALIZED (see ``oort_normalize_reward``) so the
+    additive ``temporal`` term is meaningful, matching reference Oort."""
     return (stat_util + temporal) * system_util
 
 

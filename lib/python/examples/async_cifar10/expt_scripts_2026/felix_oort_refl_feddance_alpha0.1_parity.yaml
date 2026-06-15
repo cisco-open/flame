@@ -1,0 +1,538 @@
+# OVERNIGHT (node-agnostic): per-baseline sim THEN real (both with join barrier),
+# so simulated and real are directly comparable. Runs sequentially. All four
+# baselines (felix, oort, refl, feddance) live here; scripts/debug_run.sh filters
+# to the requested --baselines, so any subset runs on any machine.
+experiments:
+- name: felix_n300_alpha0.1_syn0_stream_sim
+  description: Felix (async_oort + fedbuff) WITH data streaming.
+  baseline: felix
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: async_oort
+    tracking_mode: client_notify
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: felix_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+      selector:
+        kwargs:
+          c: 30
+          aggGoal: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: felix_n300_alpha0.1_syn0_stream_real
+  description: Felix (async_oort + fedbuff) WITH data streaming.
+  baseline: felix
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: async_oort
+    tracking_mode: client_notify
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: felix_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          c: 30
+          aggGoal: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: oort_n300_alpha0.1_syn0_stream_sim
+  description: OORT (sync oort + fedavg, oracular) WITH data streaming.
+  baseline: oort
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: oort_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        # PARITY §4.9: carry still-computing (sct>vclock) overcommit stragglers
+        # in-flight across rounds instead of draining them at instant physical
+        # arrival, so sim in_flight (~3 carry) matches real. Sim-only; validated
+        # by this run (Sr residence rung). See PARITY.md Jun-17c.
+        simInflightCarryover: true
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: oort_n300_alpha0.1_syn0_stream_real
+  description: OORT (sync oort + fedavg, oracular) WITH data streaming.
+  baseline: oort
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: oort_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        aggGoal: 10
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: refl_n300_alpha0.1_syn0_stream_sim
+  description: REFL (refl_oort + refl, oracular) WITH data streaming.
+  baseline: refl
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: refl_oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: refl_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        # PARITY 4.5 (Jun 16): sct-gated pool exclusion. Sim-only (code path is
+        # 'if self.simulated and ...'); validated in run_20260614_152648 (emergent
+        # all-green; hold ~52/67 in-flight). Keeps sim's eligible pool from carrying
+        # the still-computing tail. SIM block only; no-op/omit in the real block.
+        simInflightResidence: true
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+      selector:
+        kwargs:
+          aggr_num: 10
+          # REFL fork hyperparameters (third_party/REFL/core/argParser.py); code
+          # defaults are the Oort paper, so refl must override to match its base.
+          round_threshold: 30
+          clip_bound: 0.9
+          cut_off_util: 0.05
+          exploration_decay: 0.98
+          exploration_min: 0.3
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: refl_n300_alpha0.1_syn0_stream_real
+  description: REFL (refl_oort + refl, oracular) WITH data streaming.
+  baseline: refl
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: refl_oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: refl_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        aggGoal: 10
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          aggr_num: 10
+          # REFL fork hyperparameters (match the real baseline's algorithm to its base).
+          round_threshold: 30
+          clip_bound: 0.9
+          cut_off_util: 0.05
+          exploration_decay: 0.98
+          exploration_min: 0.3
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: feddance_n300_alpha0.1_syn0_stream_sim
+  description: FedDance (V_m*I_m*A_m + MAB, fedavg base stack) WITH data streaming.
+  baseline: feddance
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: feddance
+    tracking_mode: client_notify
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: feddance_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: feddance_n300_alpha0.1_syn0_stream_real
+  description: FedDance (V_m*I_m*A_m + MAB, fedavg base stack) WITH data streaming.
+  baseline: feddance
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: 'True'
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: 'True'
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: feddance
+    tracking_mode: client_notify
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: feddance_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_runtime_s: 12600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        checkpoint:
+          enabled: 'True'
+          every_n_rounds: 50
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0

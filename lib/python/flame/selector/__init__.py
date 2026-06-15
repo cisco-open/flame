@@ -17,8 +17,13 @@
 
 from abc import ABC, abstractmethod
 from typing import Optional, Tuple, Union
+import hashlib
 import logging
 import time
+# Import classes directly: bare `import random` here resolves to the sibling
+# flame/selector/random.py submodule, not stdlib.
+from random import Random as _StdRandom
+from numpy.random import RandomState as _NpRandomState
 
 from .. import telemetry
 from ..common.typing import Scalar
@@ -35,14 +40,35 @@ SelectorReturnType = dict[str, Union[None, Tuple[str, Scalar]]]
 logger = logging.getLogger(__name__)
 
 
+def _round_or_none(v, ndigits: int = 4):
+    """Round for the decision fingerprint; pass through None / non-numerics."""
+    try:
+        return round(float(v), ndigits)
+    except (TypeError, ValueError):
+        return None
+
+
 class AbstractSelector(ABC):
     """Abstract base class for selector implementation."""
 
     def __init__(self, **kwargs) -> None:
+        # Reserved kwarg (consumed, not setattr'd as a hyperparameter).
+        _seed = kwargs.pop("_seed", None)
         for key, value in kwargs.items():
             setattr(self, key, value)
         self.selected_ends: set = set()
         self.ordered_updates_recv_ends: list = []
+        # Dedicated, seed-able RNGs insulated from the process-global np.random/
+        # random. Selectors MUST draw from these (never bare np.random/random) so
+        # selection is reproducible across real/sim. seed=None = unseeded (legacy).
+        self._seed = _seed
+        self._rng = _NpRandomState(_seed)
+        self._pyrng = _StdRandom(_seed)
+        if _seed is not None:
+            logger.info(
+                f"[SELECTOR_SEED] {type(self).__name__} dedicated RNGs seeded "
+                f"with seed={_seed}"
+            )
 
     def enforce_min_start(self, ends_count: int) -> bool:
         """Return True if selection should wait due to min-start threshold."""
@@ -135,6 +161,26 @@ class AbstractSelector(ABC):
                 in_flight = len(sel)
             else:
                 in_flight = 0
+
+            # Determinism fingerprints: eligible = candidate set; decision = set +
+            # per-candidate utility/speed + k. Same fingerprint but different
+            # `chosen` => RNG desync; different fingerprint => input drift.
+            elig = sorted(set(eligible_ids))
+            elig_fp = hashlib.sha1(
+                "|".join(elig).encode()
+            ).hexdigest()[:12]
+            dec_payload = ";".join(
+                f"{e}:{_round_or_none(per_trainer.get(e, {}).get('utility'))}"
+                f":{_round_or_none(per_trainer.get(e, {}).get('speed_s'))}"
+                for e in elig
+            ) + f"#k={len(chosen_set)}"
+            dec_fp = hashlib.sha1(dec_payload.encode()).hexdigest()[:12]
+            extra = dict(extra or {})
+            extra.update({
+                "seed": self._seed,
+                "eligible_fingerprint": elig_fp,
+                "decision_fingerprint": dec_fp,
+            })
 
             ev, fields = build_selection(
                 round_num=int(round_num),

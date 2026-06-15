@@ -362,8 +362,8 @@ class REFLOortSelector(OortSelector):
                 utility_list.append({PROP_END_ID: end_id, PROP_UTILITY: stat_util})
 
         if not utility_list:
-            # No utility info, select randomly
-            return random.sample(list(candidate_end_ids), num_to_select)
+            # sorted(): cross-process-stable order for the seeded draw.
+            return self._pyrng.sample(sorted(candidate_end_ids), num_to_select)
 
         # Calculate total utility with temporal uncertainty and system utility
         utility_list = self.calculate_total_utility(
@@ -374,26 +374,49 @@ class REFLOortSelector(OortSelector):
         num_exploit = int(num_to_select * (1 - self.exploration_factor))
         num_explore = num_to_select - num_exploit
 
-        # Sort by utility
+        # Sort by utility (descending)
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY], reverse=True)
 
-        # Exploitation: top utility clients
-        exploit_clients = [item[PROP_END_ID] for item in utility_list[:num_exploit]]
+        # Exploitation, faithful to the REFL fork (thirdparty/oort/oort.py:316-355):
+        # threshold at cut_off_util * the exploitLen-th-highest score, augment the
+        # pool down to that cutoff (or 10x exploitLen), then sample exploitLen
+        # WEIGHTED by utility. The prior port took a deterministic top-k (no
+        # cut_off_util, no probabilistic draw).
+        exploit_clients = []
+        if num_exploit > 0:
+            boundary = min(num_exploit, len(utility_list) - 1)
+            cutoff = self.cut_off_util * utility_list[boundary][PROP_UTILITY]
+            pool = []
+            for item in utility_list:
+                if item[PROP_UTILITY] < cutoff and len(pool) > 10 * num_exploit:
+                    break
+                pool.append(item)
+            scores = np.array([max(p[PROP_UTILITY], 0.0) for p in pool], dtype=np.float64)
+            ids = [p[PROP_END_ID] for p in pool]
+            k = min(num_exploit, len(ids))
+            if scores.sum() > 0:
+                exploit_clients = list(
+                    self._rng.choice(ids, k, replace=False, p=scores / scores.sum())
+                )
+            else:
+                exploit_clients = ids[:k]
 
-        # Exploration: random from remaining
+        # Exploration: random from clients not already exploited
         remaining_candidates = [
-            item[PROP_END_ID] for item in utility_list[num_exploit:]
+            item[PROP_END_ID]
+            for item in utility_list
+            if item[PROP_END_ID] not in set(exploit_clients)
         ]
-        explore_clients = random.sample(
+        explore_clients = self._pyrng.sample(
             remaining_candidates, min(num_explore, len(remaining_candidates))
         )
 
-        selected = exploit_clients + explore_clients
+        selected = [str(c) for c in exploit_clients] + explore_clients
 
-        # Pad with random if needed
+        # Pad with random if needed (sorted() for cross-process-stable order)
         while len(selected) < num_to_select and len(candidate_end_ids) > len(selected):
             remaining = candidate_end_ids - set(selected)
-            selected.append(random.choice(list(remaining)))
+            selected.append(self._pyrng.choice(sorted(remaining)))
 
         return selected[:num_to_select]
 

@@ -361,6 +361,23 @@ class Channel(object):
 
         _, status = run_async(_put(), self._backend.loop())
 
+    def dumps(self, message) -> bytes:
+        """Serialize a message once for reuse across sends (see send_payload)."""
+        return cloudpickle.dumps(message)
+
+    def send_payload(self, end_id, payload):
+        """Send a pre-serialized payload (from dumps) — avoids re-pickling the
+        same message per recipient when broadcasting one model to many ends."""
+
+        async def _put():
+            if not self.has(end_id):
+                return
+            self.mc.accumulate("bytes", "send", len(payload))
+            await self._ends[end_id].put(payload)
+
+        _, status = run_async(_put(), self._backend.loop())
+        return status
+
     def send(self, end_id, message):
         """Send a message to an end in a blocking call fashion."""
 
@@ -454,31 +471,31 @@ class Channel(object):
         -------
         The function yields a pair: end id and message
         """
-        logger.info(f"Receive fifo: first_k = {first_k}, len(end_ids) = {len(end_ids)}")
+        logger.debug(f"Receive fifo: first_k = {first_k}, len(end_ids) = {len(end_ids)}")
 
         first_k = min(first_k, len(end_ids))
         if first_k <= 0:
             # a negative value in first_k is an error we handle it by
             # setting first_k as the length of the array
-            logger.info(f"first_k < 0 with value {first_k}")
+            logger.debug(f"first_k < 0 with value {first_k}")
             first_k = len(end_ids)
 
         self.first_k = first_k
-        logger.info(f"self.first_k: {self.first_k}")
+        logger.debug(f"self.first_k: {self.first_k}")
 
         if self.first_k == 0:
             # we got an empty end id list
-            logger.info("Got an empty end id list, will yield None")
+            logger.debug("Got an empty end id list, will yield None")
             yield None, ("", datetime.now())
 
         async def _put_message_to_rxq_inner():
-            logger.info("Created task for recv_fifo in put_msg_to_rxq_inner")
+            logger.debug("Created task for recv_fifo in put_msg_to_rxq_inner")
             _ = asyncio.create_task(
                 self._streamer_for_recv_fifo(end_ids, timeout=timeout)
             )
 
         async def _get_message_inner():
-            logger.info("In _get_msg_inner(), will await until getting a message")
+            logger.debug("In _get_msg_inner(), will await until getting a message")
             return await self._rx_queue.get()
 
         # first, create an asyncio task to fetch messages and put a
@@ -492,26 +509,26 @@ class Channel(object):
             result, status = run_async(
                 _get_message_inner(), self._backend.loop(), timeout=timeout
             )
-            logger.info(f"After getting message, status: {status}")
+            logger.debug(f"After getting message, status: {status}")
             # timeout (or any non-delivery): don't index into a None result;
             # signal "no message" to the caller and stop yielding.
             if not status or result is None:
-                logger.info(
+                logger.debug(
                     f"recv_fifo: no message within timeout={timeout}s; "
                     f"yielding None and stopping"
                 )
                 yield None, ("", datetime.now())
                 return
             (end_id, payload) = result
-            logger.info(f"get payload for {end_id}")
+            logger.debug(f"get payload for {end_id}")
 
             if self.has(end_id):
-                logger.info(f"channel got a msg for {end_id}")
+                logger.debug(f"channel got a msg for {end_id}")
                 # set a property to indicate that a message was
                 # received for the end
                 self._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_RECVD)
             else:
-                logger.info(f"channel {self._name} has no end id {end_id} for msg")
+                logger.debug(f"channel {self._name} has no end id {end_id} for msg")
 
             msg, timestamp = (
                 (cloudpickle.loads(payload[0]), payload[1])
@@ -523,15 +540,15 @@ class Channel(object):
             if msg is not None:
                 if MessageType.MODEL_VERSION in msg:
                     model_version = msg[MessageType.MODEL_VERSION]
-                    logger.info(
+                    logger.debug(
                         f"msg of type MODEL_VERSION recvd for end {end_id}, model_version={model_version}"
                     )
                 elif MessageType.HEARTBEAT in msg:
-                    logger.info(f"msg of type HEARTBEAT recvd for end {end_id}")
+                    logger.debug(f"msg of type HEARTBEAT recvd for end {end_id}")
                     # TODO: (DG) Check if it helps here- can reset
                     # ends state to VAL_END_STATE_HEARTBEAT
                 else:
-                    logger.info(f"msg of type UNKNOWN recvd for end {end_id}")
+                    logger.debug(f"msg of type UNKNOWN recvd for end {end_id}")
             else:
                 # TODO: (DG) It comes here even for channel leave
                 # notifications. Need a cleaner processing for it

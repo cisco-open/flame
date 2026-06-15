@@ -70,21 +70,31 @@ class OortSelector(AbstractSelector):
         self.overcommitment = 1.3
         self.num_of_ends = int(self.aggr_num * self.overcommitment)
 
-        self.exploration_factor = 0.9
-        self.exploration_factor_decay = 0.98
-        self.min_exploration_factor = 0.2
+        # Algorithm hyperparameters default to the Oort paper (scoring.OORT_PAPER_DEFAULTS);
+        # the refl baseline overrides a subset via selector.kwargs to match the REFL fork.
+        _d = scoring.OORT_PAPER_DEFAULTS
+        self.exploration_factor = kwargs.get("exploration_factor", _d["exploration_factor"])
+        self.exploration_factor_decay = kwargs.get("exploration_decay", _d["exploration_decay"])
+        self.min_exploration_factor = kwargs.get("exploration_min", _d["exploration_min"])
 
         self.exploitation_util_history = []
 
         # Assuming a max round duration of 99999 seconds (~1.2 days)
         self.round_preferred_duration = timedelta(seconds=99999)
-        self.round_threshold = 30
-        self.pacer_delta = 5
-        self.pacer_step = 20
+        self.round_threshold = kwargs.get("round_threshold", _d["round_threshold"])
+        self.pacer_delta = kwargs.get("pacer_delta", _d["pacer_delta"])
+        self.pacer_step = kwargs.get("pacer_step", _d["pacer_step"])
 
         self.blocklist_threshold = -1
 
-        self.alpha = 2
+        self.alpha = kwargs.get("round_penalty", _d["round_penalty"])  # system_util exponent
+
+        # Reference Oort normalizes+clips the reward into ~[0,1] (get_norm) before
+        # adding the temporal term; the raw reward (~70) had made it inert.
+        self.normalize_reward = kwargs.get("normalize_reward", True)
+        self.clip_bound = kwargs.get("clip_bound", _d["clip_bound"])
+        # cut_off_util: exploitation-pool breadth factor; was hardcoded 0.95.
+        self.cut_off_util = kwargs.get("cut_off_util", _d["cut_off_util"])
 
         # Track sliding window statistics for the selector
         self._selector_stats = {}
@@ -302,6 +312,10 @@ class OortSelector(AbstractSelector):
             )
             self._select_run_counter = 0
 
+        # system_util = (pref/round_duration)^alpha depends on the dynamic
+        # round_preferred_duration (a per-round percentile of candidate durations);
+        # emit it so a divergence can be traced to the target vs the duration input.
+        _pref = getattr(self, "round_preferred_duration", None)
         self.emit_selection(
             round, task_to_perform, all_ends, eligible_ends.keys(),
             self.selected_ends,
@@ -310,6 +324,11 @@ class OortSelector(AbstractSelector):
                 "exploration_factor": self.exploration_factor,
                 "explore_ids": list(explore_end_ids),
                 "exploit_ids": list(exploit_end_ids),
+                "round_preferred_duration_s": _pref.total_seconds()
+                if hasattr(_pref, "total_seconds") else _pref,
+                "alpha": getattr(self, "alpha", None),
+                # per-round speed-penalty summary over selected (see _system_util_summary)
+                **self._system_util_summary(),
             },
         )
         return {key: None for key in self.selected_ends}
@@ -319,15 +338,22 @@ class OortSelector(AbstractSelector):
         sorted_utility_list: list[tuple[str, float]],
         num_of_ends: int,
     ) -> float:
-        """Return a cutoff utility based on Oort."""
+        """Cutoff utility = cut_off_util * the (exploitLen-th HIGHEST) score.
+
+        Reference Oort thresholds at the exploitation boundary's score then samples
+        above it (oort.py:329). `sorted_utility_list` is ASCENDING, so the
+        exploitLen-th highest is at index ``len-1-exploitLen``. The prior port
+        indexed near the bottom, making the factor inert.
+        """
         if not sorted_utility_list:
             logger.debug("Got empty utility_list, returning 999999.0")
             return 999999.0
 
-        index = int(num_of_ends * (1 - self.exploration_factor)) - 1
+        exploit_len = int(num_of_ends * (1.0 - self.exploration_factor))
+        index = len(sorted_utility_list) - 1 - exploit_len
         index = max(0, min(index, len(sorted_utility_list) - 1))
 
-        return 0.95 * sorted_utility_list[index][PROP_UTILITY]
+        return self.cut_off_util * sorted_utility_list[index][PROP_UTILITY]
 
     def sample_by_util(
         self,
@@ -358,7 +384,7 @@ class OortSelector(AbstractSelector):
         for prob_idx in range(len(over_cutoff_utility_probs)):
             over_cutoff_utility_probs[prob_idx] /= over_cutoff_utility_sum
 
-        selected_ends = np.random.choice(
+        selected_ends = self._rng.choice(
             over_cutoff_utility_end_ids,
             size=min(len(over_cutoff_utility_end_ids), num_of_ends),
             replace=False,
@@ -379,7 +405,7 @@ class OortSelector(AbstractSelector):
         # Cast np.str_ -> str so ids match the python-str keys of ``ends``.
         return [
             str(e)
-            for e in np.random.choice(
+            for e in self._rng.choice(
                 unexplored_end_ids, size=num_of_ends, replace=False
             )
         ]
@@ -462,6 +488,8 @@ class OortSelector(AbstractSelector):
                     sorted_round_duration.append(end_round_duration)
                 else:
                     sorted_round_duration.append(timedelta(seconds=60))
+            # pref = round_threshold-th PERCENTILE -> sort first (ref Oort oort.py:272)
+            sorted_round_duration.sort()
             round_preferred_duration = timedelta(
                 seconds=sorted_round_duration[
                     min(
@@ -478,6 +506,27 @@ class OortSelector(AbstractSelector):
         logger.debug(f"returning round_preferred_duration: {round_preferred_duration}")
         return round_preferred_duration
 
+    def _system_util_summary(self) -> dict:
+        """Per-round speed-penalty summary over selected ends, for telemetry.
+
+        When `pref` is non-binding the system_util penalty never fires and the
+        selector ignores speed; logging this makes that visible without recompute.
+        """
+        audit = getattr(self, "_audit_components", None) or {}
+        sel = [
+            audit[e]["system_util"]
+            for e in getattr(self, "selected_ends", [])
+            if e in audit and audit[e].get("system_util") is not None
+        ]
+        if not sel:
+            return {"sys_util_mean": None, "frac_penalized": None, "pref_binds": None}
+        penalized = sum(1 for su in sel if su < 1.0)
+        return {
+            "sys_util_mean": sum(sel) / len(sel),
+            "frac_penalized": penalized / len(sel),
+            "pref_binds": penalized > 0,
+        }
+
     def calculate_temporal_uncertainty_of_trainer(
         self, ends: dict[str, End], end_id: str, round: int
     ) -> float:
@@ -486,6 +535,9 @@ class OortSelector(AbstractSelector):
         selected round.
         """
 
+        # NOTE: reference Oort keys this on the round the util was last UPDATED (on
+        # completion), not last SELECTED — would need a new aggregator-stamped
+        # property across real+sim. Subtle effect; deferred.
         end_last_selected_round = ends[end_id].get_property(PROP_LAST_SELECTED_ROUND)
         return scoring.oort_temporal_uncertainty(round, end_last_selected_round)
 
@@ -537,7 +589,7 @@ class OortSelector(AbstractSelector):
 
     def select_random(self, ends: dict[str, End], num_of_ends: int) -> dict[str, None]:
         """Randomly select num_of_ends ends, merging with any in-flight set."""
-        newly_selected = set(random.sample(list(ends), num_of_ends))
+        newly_selected = set(self._pyrng.sample(sorted(ends), num_of_ends))
         self.selected_ends = self.selected_ends | newly_selected
         return {key: None for key in newly_selected}
 
@@ -549,6 +601,16 @@ class OortSelector(AbstractSelector):
 
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 
+        # Normalize+clip the statistical reward across this round's candidates
+        # (reference Oort get_norm) so `believed_I` lands in ~[0,1] and the additive
+        # temporal/UCB term is meaningful. Stats computed once over the raw rewards.
+        if self.normalize_reward and utility_list:
+            _min, _range, _clip = scoring.oort_norm_stats(
+                [u[PROP_UTILITY] for u in utility_list], self.clip_bound
+            )
+        else:
+            _min, _range, _clip = None, None, None
+
         # Per-candidate score components stashed for the offline staleness audit
         # (believed I_m, temporal, system_util); read in emit_selection. Reset
         # per round so REFL's multiple per-group calls accumulate within a round.
@@ -557,6 +619,10 @@ class OortSelector(AbstractSelector):
             self._audit_round = round
         for utility_idx in range(len(utility_list)):
             stat_util = utility_list[utility_idx][PROP_UTILITY]
+            if self.normalize_reward and _range is not None:
+                stat_util = scoring.oort_normalize_reward(
+                    stat_util, _min, _range, _clip
+                )
             curr_end_id = utility_list[utility_idx][PROP_END_ID]
 
             # Score = (stat_util + temporal) * system_util, via the shared pure

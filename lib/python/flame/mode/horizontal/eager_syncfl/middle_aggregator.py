@@ -19,6 +19,7 @@ import logging
 import time
 from copy import deepcopy
 
+from flame.common.util import materialize_weights
 from flame.mode.horizontal.syncfl.middle_aggregator import (
     MiddleAggregator as BaseMiddleAggregator,
 )
@@ -45,7 +46,7 @@ class MiddleAggregator(BaseMiddleAggregator):
                 logger.debug(f"No data from {end}; skipping it")
                 continue
 
-            if MessageType.WEIGHTS in msg:
+            if materialize_weights(msg) is not None:
                 weights = msg[MessageType.WEIGHTS]
 
             if MessageType.DATASET_SIZE in msg:

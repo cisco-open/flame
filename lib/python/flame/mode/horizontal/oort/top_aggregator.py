@@ -25,7 +25,11 @@ from flame.sim import SimReorderBuffer
 
 from flame.channel import VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
-from flame.common.util import weights_to_device, weights_to_model_device
+from flame.common.util import (
+    materialize_weights,
+    weights_to_device,
+    weights_to_model_device,
+)
 from flame.mode.message import MessageType
 from flame.optimizer.train_result import TrainResult
 from flame.selector.oort import (
@@ -39,12 +43,14 @@ from flame.selector.properties import PROP_SIM_SEND_TS
 
 from ..top_aggregator import TopAggregator as BaseTopAggregator
 from flame import telemetry
-from flame.telemetry.events import build_agg_round
+from flame.telemetry.events import (
+    build_agg_round,
+    build_inflight_residence,
+    build_utility_belief,
+)
 
 logger = logging.getLogger(__name__)
 
-# per-end probe wait when filling the simulated reorder buffer
-OORT_SIM_RECV_FILL_TIMEOUT_S = 0.5
 # Real MQTT delivery overhead (agg→trainer + trainer→agg) expected in both real
 # and sim (localhost). Added to budget_s before firing [TIMING_OVERRUN_AGG].
 _NETWORK_SLACK_S = 2.0
@@ -76,23 +82,56 @@ class TopAggregator(BaseTopAggregator):
         if not hasattr(self, "_sim_buffer"):
             self._sim_buffer = SimReorderBuffer()
         buf = self._sim_buffer
-        for e in [e for e in end_ids if not buf.has(e)]:
+        # Barrier: drain the whole un-buffered set in one recv_fifo pass; the
+        # yield-loop below commits in ascending sim_completion_ts order.
+        to_probe = [e for e in end_ids if not buf.has(e)]
+        barrier_t0 = time.time()
+        drained_all = True
+        if to_probe:
+            grace = self._sim_recv_grace_s()
             for msg, md in channel.recv_fifo(
-                [e], 1, timeout=OORT_SIM_RECV_FILL_TIMEOUT_S
+                to_probe, first_k=len(to_probe), timeout=grace
             ):
-                if not msg:
+                if not msg:  # no more ready (grace expired or set drained)
                     break
                 actual_end = md[0]
                 sct = msg.get(MessageType.SIM_COMPLETION_TS)
                 sct = float(sct) if sct is not None else self._vclock.now
                 buf.add(actual_end, sct, (msg, md))
+            drained_all = all(buf.has(e) for e in to_probe)
+        barrier_wait = time.time() - barrier_t0
+        if to_probe:
+            self._note_sim_fill(barrier_wait, drained_all)
+            logger.info(
+                f"[SIM_BARRIER] round={getattr(self, '_round', -1)} probed={len(to_probe)} "
+                f"barrier_wait_s={barrier_wait:.3f} buf_depth={len(buf)}"
+            )
 
+        # Carry-over gate: a prior-round straggler whose modeled
+        # completion sct is still in the future at THIS round's start is STILL
+        # COMPUTING — in real its update has not arrived, so it occupies its slot
+        # (in-flight) rather than being delivered and stale-cleaned. Sim delivers it
+        # physically at once; without the gate it is popped, stale-rejected, and freed
+        # → in-flight drains to ~0 while real carries ~3 (overcommit). When on, hold
+        # such stragglers in the buffer (and thus in selected_ends) until a later round
+        # starts with vclock >= sct. Fresh (this-round) ends are always delivered; a
+        # prior straggler that has already completed (sct <= round_start) is delivered
+        # and stale-committed exactly as before. Default off.
+        _hp = getattr(getattr(self, "config", None), "hyperparameters", None)
+        carryover = bool(getattr(_hp, "sim_inflight_carryover", False))
+        vclock_round_start = self._vclock.now
+        held_over: list = []
         while True:
             popped = buf.pop_min()
             if popped is None:
-                return
+                break
             end, sct, (msg, md) = popped
-            self._vclock.advance(sct)
+            if carryover:
+                _tr = msg.get(MessageType.MODEL_VERSION, 0)
+                if (self._round - _tr) > 0 and sct > vclock_round_start:
+                    held_over.append((end, sct, (msg, md)))
+                    continue
+            self._advance_sim_clock(sct)
             _srd = msg.get(MessageType.SIM_ROUND_DURATION)
             _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
             if _srd is not None:
@@ -105,6 +144,10 @@ class TopAggregator(BaseTopAggregator):
                     timedelta(seconds=max(0.0, sct - float(_sst))),
                 )
             yield msg, md
+        # Re-buffer the still-computing stragglers so they carry to the next round
+        # (occupying their in-flight slot) and commit once vclock reaches their sct.
+        for _e, _sct, _payload in held_over:
+            buf.add(_e, _sct, _payload)
 
     def _aggregate_weights(self, tag: str) -> None:
         """
@@ -143,7 +186,16 @@ class TopAggregator(BaseTopAggregator):
                 f"[AGGREGATE] Round {self._round}: selected_ends not found, using channel.ends(). "
                 f"Stale updates may not be consumed!"
             )
-        
+
+        # In-flight residence tracking: record the round each trainer
+        # entered the in-flight set so cleanup can emit per-straggler residence. A
+        # carryover straggler keeps its earlier entry round (setdefault); a
+        # newly-selected one gets the current round.
+        if not hasattr(self, "_inflight_entry_round"):
+            self._inflight_entry_round = {}
+        for _e in end_ids:
+            self._inflight_entry_round.setdefault(_e, self._round)
+
         configured_aggr_num = self.config.selector.kwargs.get("aggr_num", 10)
         aggr_num = min(configured_aggr_num, len(end_ids))
         
@@ -371,13 +423,23 @@ class TopAggregator(BaseTopAggregator):
                 trainer_speed_s=speeds,
                 contributing_trainers=contrib,
                 agg_observed_s=agg_obs or None,
+                extra={"vclock_now": self._vclock.now if self.simulated else None},
             )
             telemetry.emit(ev, **fields)
 
         # optimizer conducts optimization (in this case, aggregation)
+        _opt0 = time.time()
         global_weights = self.optimizer.do(
             deepcopy(self.weights), self.cache, total=total
         )
+        # [AGG_COMMIT_TIMING] per-round aggregate cost (cache store in-memory +
+        # optimizer + weight deepcopy).
+        logger.info(
+            f"[AGG_COMMIT_TIMING] round={self._round} "
+            f"cache_store_s={getattr(self, '_agg_cache_store_s', 0.0):.4f} "
+            f"optimizer_s={time.time() - _opt0:.4f}"
+        )
+        self._agg_cache_store_s = 0.0
         if global_weights is None:
             logger.debug("failed model aggregation")
             time.sleep(1)
@@ -431,6 +493,28 @@ class TopAggregator(BaseTopAggregator):
                 f"[TRACK_411] Round {self._round}: After cleanup - in_flight={test_in_flight_after}, "
                 f"successfully_freed={test_in_flight_before and not test_in_flight_after}"
             )
+
+        # [INFLIGHT_RESIDENCE] per-straggler residence telemetry. residence
+        # = rounds a cleaned trainer spent in selected_ends; carried_over_ages = ages of
+        # those still in-flight. Comparing sim vs real residence distributions reveals
+        # whether sim evicts stragglers a round too early (sim in-flight 13.4 vs real 15.6).
+        _entry = getattr(self, "_inflight_entry_round", {})
+        _resid = [self._round - _entry.pop(_e, self._round) for _e in cleanup_list]
+        if telemetry.is_enabled():
+            _remaining = getattr(channel._selector, "selected_ends", set()) or set()
+            _ages = [self._round - _entry.get(_e, self._round) for _e in _remaining]
+            ev, fields = build_inflight_residence(
+                round_num=self._round,
+                time_mode="sim" if self.simulated else "real",
+                in_flight_before=in_flight_before,
+                in_flight_after=in_flight_after,
+                committed_fresh=received_end_count,
+                cleaned=num_to_cleanup,
+                stale_rejected=max(0, num_to_cleanup - received_end_count),
+                residence_rounds=_resid,
+                carried_over_ages=_ages,
+            )
+            telemetry.emit(ev, **fields)
 
         logger.info(
             f"====== aggregation finished for round {self._round}, "
@@ -488,17 +572,45 @@ class TopAggregator(BaseTopAggregator):
         # before distributing weights, update it from global model
         self._update_weights()
 
+        # Per-baseline online oracle: overwrite candidate stat-utility with true
+        # current values before the selector ranks. No-op unless enabled.
+        self._inject_oracle_utilities(channel, task_to_perform)
+
         # before invoking channel.ends() to select, set the
         # trainer_unavail if it isn't None
         if self.trainer_event_dict is not None:
             curr_unavail_trainer_list = self.get_curr_unavail_trainers()
-            channel.set_curr_unavailable_trainers(
-                trainer_unavail_list=curr_unavail_trainer_list
-            )
         else:
-            # Handling the case for oort's selector since it expects 3
-            # arguments
-            channel.set_curr_unavailable_trainers(trainer_unavail_list=[])
+            curr_unavail_trainer_list = []
+
+        # [SIM_RESIDENCE] Mark trainers that are STILL COMPUTING in
+        # sim time as unavailable for this selection. In sim a dispatched trainer's
+        # update arrives physically at once, so it can re-enter the eligible pool
+        # before its modeled completion `sct`; real keeps it busy (out of the pool)
+        # for its whole compute. A buffered end with `sct > vclock` is exactly such
+        # a straggler. Excluding it via the unavailable list (NOT selected_ends —
+        # that would re-dispatch it) keeps sim's eligible pool from carrying the slow
+        # tail, matching real's pool composition (refl A2b 12.41->~6.5). Bounded:
+        # released once `vclock >= sct` (the buffer pops & commits it). Default off.
+        if self.simulated and getattr(
+            self.config.hyperparameters, "sim_inflight_residence", False
+        ):
+            _buf = getattr(self, "_sim_buffer", None)
+            if _buf is not None:
+                _held = _buf.pending_after(self._vclock.now)
+                if _held:
+                    curr_unavail_trainer_list = list(
+                        set(curr_unavail_trainer_list) | _held
+                    )
+                    logger.info(
+                        f"[SIM_RESIDENCE] round={self._round} held {len(_held)} "
+                        f"still-computing trainers out of selection "
+                        f"(vclock={self._vclock.now:.1f})"
+                    )
+
+        channel.set_curr_unavailable_trainers(
+            trainer_unavail_list=curr_unavail_trainer_list
+        )
 
         logger.debug(
             f"Sending weights to trainers with task_to_perform = {task_to_perform}"
@@ -576,7 +688,7 @@ class TopAggregator(BaseTopAggregator):
                         f"desired: {desired_selection}). THIS MAY IMPACT TRAINING QUALITY!"
                     )
                     break
-        
+
         # Now perform the actual selection
         selected_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
         
@@ -592,44 +704,39 @@ class TopAggregator(BaseTopAggregator):
             f"Will aggregate when {min(aggr_num, len(selected_ends))} updates received."
         )
 
-        # send out global model parameters to trainers
+        # Same model goes to every recipient this round; build + serialize once.
+        _sim_send_ts = self._vclock.now if self.simulated else None
+        msg = {
+            MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
+            MessageType.ROUND: self._round,
+            MessageType.MODEL_VERSION: self._round,
+            MessageType.TASK_TO_PERFORM: task_to_perform,
+        }
+        if self.simulated:
+            msg[MessageType.SIM_SEND_TS] = _sim_send_ts
+        _payload = channel.dumps(msg)
+        _send_t0 = time.time()
         for end in selected_ends:
             logger.info(
                 f"sending weights to {end} with model_version: {self._round} for task: {task_to_perform}"
-            )
-            logger.debug(
-                f"Setting channel property {PROP_ROUND_START_TIME} for "
-                f"end {end}. For round {self._round} at time: {datetime.now()}"
             )
             _send_ts = datetime.now()
             channel.set_end_property(
                 end, PROP_ROUND_START_TIME, (self._round, _send_ts)
             )
-            # Per-version send timestamp so stale-update SEND_RECV_LAG can use
-            # the original send time for version N even when the aggregator has
-            # already moved to a later round (which would overwrite PROP_ROUND_START_TIME).
+            # Per-version send timestamp so stale-update SEND_RECV_LAG can use the
+            # original send time for version N even after the round advances.
             if not hasattr(self, "_oort_sent_version_ts"):
                 self._oort_sent_version_ts: dict = {}
             self._oort_sent_version_ts.setdefault(end, {})[self._round] = _send_ts
-
-            msg = {
-                MessageType.WEIGHTS: weights_to_device(
-                    self.weights, DeviceType.CPU
-                ),
-                MessageType.ROUND: self._round,
-                MessageType.MODEL_VERSION: self._round,
-                MessageType.TASK_TO_PERFORM: task_to_perform,
-            }
-            # simulated mode: stamp the virtual send time so the trainer reports
-            # sim_completion_ts = sim_send_ts + D; the sim recv path then commits
-            # the aggr_num smallest sim_completion_ts (ordering by simulated, not
-            # physical, arrival) and advances the virtual clock.
             if self.simulated:
-                sim_send_ts = self._vclock.now
-                msg[MessageType.SIM_SEND_TS] = sim_send_ts
-                channel.set_end_property(end, PROP_SIM_SEND_TS, sim_send_ts)
-
-            channel.send(end, msg)
+                channel.set_end_property(end, PROP_SIM_SEND_TS, _sim_send_ts)
+            channel.send_payload(end, _payload)
+        if selected_ends:
+            logger.info(
+                f"[DISTRIBUTE_TIMING] round={self._round} n_sends={len(selected_ends)} "
+                f"send_wall_s={time.time() - _send_t0:.3f}"
+            )
 
     def _handle_weights_msg(
         self, msg: Any, metadata: Tuple[str, datetime], channel: Any, total: int
@@ -715,13 +822,34 @@ class TopAggregator(BaseTopAggregator):
                             f"Reduce trainers-per-GPU or add GPUs."
                         )
 
-        if MessageType.WEIGHTS in msg:
+        # Lazy-deserialize: restore the tensor from WEIGHTS_BYTES (only paid for
+        # this committed update). weights defaults to None so an eval-only or
+        # malformed message can never UnboundLocalError at the `weights is not
+        # None` check below.
+        weights = None
+        if materialize_weights(msg) is not None:
             weights = weights_to_model_device(msg[MessageType.WEIGHTS], self.model)
 
         if MessageType.DATASET_SIZE in msg:
             count = msg[MessageType.DATASET_SIZE]
 
         if MessageType.STAT_UTILITY in msg:
+            # Believed-vs-actual utility telemetry: the PROP_STAT_UTILITY held NOW
+            # (before this return overwrites it) is what the selector BELIEVED at
+            # selection (stale by `staleness` rounds); the incoming value is the
+            # ACTUAL fresh utility. Emit before overwriting. (believed-vs-actual)
+            if telemetry.is_enabled():
+                _believed = channel.get_end_property(end, PROP_STAT_UTILITY)
+                _mv = msg.get(MessageType.MODEL_VERSION)
+                ev, f = build_utility_belief(
+                    round_num=self._round,
+                    end_id=end,
+                    believed=float(_believed) if _believed is not None else None,
+                    actual=float(msg[MessageType.STAT_UTILITY]),
+                    staleness=(self._round - _mv) if _mv is not None else None,
+                    time_mode="sim" if self.simulated else "real",
+                )
+                telemetry.emit(ev, **f)
             channel.set_end_property(
                 end, PROP_STAT_UTILITY, msg[MessageType.STAT_UTILITY]
             )
@@ -775,9 +903,11 @@ class TopAggregator(BaseTopAggregator):
                 end_id=end
             )
             
-            # Save training result from trainer in a disk cache
-            self.cache[end] = tres
-            
+            _cs0 = time.time()
+            self.cache[end] = tres   # in-memory (MemCache)
+            self._agg_cache_store_s = (
+                getattr(self, "_agg_cache_store_s", 0.0) + time.time() - _cs0)
+
             logger.debug(
                 f"Created TrainResult for {end}: staleness={update_staleness_val}, "
                 f"stat_utility={stat_utility}, round_duration={round_duration_seconds}"

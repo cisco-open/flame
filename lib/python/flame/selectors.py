@@ -22,6 +22,7 @@ from .selector.default import DefaultSelector
 from .selector.feddance import FedDanceSelector
 from .selector.fedbuff import FedBuffSelector
 from .selector.oort import OortSelector
+from .selector.oracle import OracleSelector
 from .selector.random import RandomSelector
 from .selector.refl_oort import REFLOortSelector
 from .selector.async_random import AsyncRandomSelector
@@ -44,3 +45,4 @@ selector_provider.register(SelectorType.ASYNC_OORT, AsyncOortSelector)
 selector_provider.register(SelectorType.REFL_OORT, REFLOortSelector)
 selector_provider.register(SelectorType.ASYNC_RANDOM, AsyncRandomSelector)
 selector_provider.register(SelectorType.FEDDANCE, FedDanceSelector)
+selector_provider.register(SelectorType.ORACLE, OracleSelector)

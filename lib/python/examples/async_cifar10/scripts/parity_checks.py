@@ -52,6 +52,24 @@ from parity.checks import (  # noqa: F401, E402
     # §3.C sim invariants
     sim_send_ts_ok,
     gpu_budget_ok,
+    trainer_phase_parity,
+    # Stage 0 / 1 / 2 / 4 / 8 additions (causal ladder)
+    field_coverage,
+    modeled_compute_advance,
+    overhead_residual,
+    avail_timebase_parity,
+    duty_cycle_parity,
+    training_budget_parity,
+    trainer_phase_split,
+    convergence_loss_parity,
+    avail_composition_parity,
+    eligibility_parity,
+    eligible_speed_composition_parity,
+    selection_detail_parity,
+    # registry / verdict helpers
+    CHECK_META,
+    check_stage,
+    check_role,
     # §3.H clock
     vclock_telemetry_present,
     sim_commit_order_monotone,

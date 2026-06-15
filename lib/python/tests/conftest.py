@@ -19,7 +19,11 @@ def _force_pytorch_framework(monkeypatch):
     import flame.common.util as _cu
 
     monkeypatch.setattr(_cu, "get_ml_framework_in_use", lambda: MLFramework.PYTORCH)
-    for mod_name in ("flame.selector.oort", "flame.selector.refl_oort"):
+    for mod_name in (
+        "flame.selector.oort",
+        "flame.selector.refl_oort",
+        "flame.selector.async_oort",
+    ):
         try:
             mod = __import__(mod_name, fromlist=["get_ml_framework_in_use"])
         except ImportError:

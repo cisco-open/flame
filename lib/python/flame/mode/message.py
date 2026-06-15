@@ -86,3 +86,4 @@ class MessageType(Enum):
     WALL_SEND_TS = 38        # wall-clock unix timestamp (float) when trainer calls channel.send()
     WALL_RECV_TS = 39        # wall-clock unix timestamp (float) when trainer's channel.recv() returns (weights received from agg)
     ROUND_COMPUTE_S = 40     # modeled round compute duration in seconds: max(real_gpu_time, training_delay_s); stamped by trainer unconditionally (real and sim)
+    WEIGHTS_BYTES = 41       # pre-serialized weights (raw cloudpickle bytes) for lazy sync-barrier deserialization in sim mode

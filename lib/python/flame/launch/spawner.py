@@ -191,9 +191,11 @@ class TrainerSpawner:
         time_mode: str = "simulated",
         battery_threshold: int = 50,
         cpu_pinning: bool = True,
+        reserved_cores: Optional[set] = None,
     ):
         self.config_gen = config_generator
         self.num_gpus = num_gpus
+        self.reserved_cores = {int(c) for c in reserved_cores} if reserved_cores else set()
         self.sleep_between_spawns = sleep_between_spawns
         self.log_file = log_file
         # CLI-only trainer knobs: read from argv, not config JSON.
@@ -208,7 +210,13 @@ class TrainerSpawner:
         if self.cpu_pinning:
             try:
                 self._usable_cores = sorted(os.sched_getaffinity(0))
-                print(f"  CPU pinning ON: {len(self._usable_cores)} usable cores: {self._usable_cores[:8]}{'...' if len(self._usable_cores) > 8 else ''}")
+                # Exclude cores reserved for the aggregator so trainers don't
+                # time-slice the (bottlenecked) aggregator process.
+                if self.reserved_cores:
+                    self._usable_cores = [c for c in self._usable_cores
+                                          if c not in self.reserved_cores]
+                _resv = f", {len(self.reserved_cores)} reserved for aggregator" if self.reserved_cores else ""
+                print(f"  CPU pinning ON: {len(self._usable_cores)} usable cores for trainers{_resv}: {self._usable_cores[:8]}{'...' if len(self._usable_cores) > 8 else ''}")
             except AttributeError:
                 print("  CPU pinning requested but os.sched_getaffinity unavailable (non-Linux); pinning disabled.")
                 self.cpu_pinning = False

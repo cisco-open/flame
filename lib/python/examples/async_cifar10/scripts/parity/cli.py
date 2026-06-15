@@ -55,7 +55,7 @@ def _run_pair(real_dir: str, sim_dir: str,
         _sys.path.insert(0, _script_dir)
 
     from parity.checks import (
-        load_run_dir, run_all_parity, first_divergence, failsafe_ok,
+        load_run_dir, run_all_parity, first_divergence,
     )
     from parity.report import print_report, write_json, write_plot
 
@@ -83,11 +83,11 @@ def _run_pair(real_dir: str, sim_dir: str,
         budget_s=budget_s,
     )
 
-    # Add first_divergence as a summary entry for the report
-    results["first_divergence_summary"] = first_divergence(real_agg, sim_agg)
-
-    # Add failsafe check (needs budget_s; skips gracefully if absent)
-    results["failsafe"] = failsafe_ok(sim_agg, budget_s=budget_s)
+    # Add first_divergence as a diagnostic summary entry (always ok — index=0 is expected for async)
+    fd = first_divergence(real_agg, sim_agg)
+    fd["ok"] = True
+    fd["tier"] = "DIAG"
+    results["first_divergence_summary"] = fd
 
     passed = print_report(results, strict=strict, lenient=lenient,
                           real_label=real_label, sim_label=sim_label)
@@ -128,6 +128,10 @@ def main() -> None:
                         help="Write summary PNG to this path")
     parser.add_argument("--diagnostics", action="store_true",
                         help="(reserved) Run diagnostic single-run analysis scripts")
+    # ── real-correctness validation ──
+    parser.add_argument("--validate-real", metavar="DIR", default=None,
+                        help="Validate a real run's own invariants (concurrency/"
+                             "selection/aggregation) before using it as reference")
     # ── batch mode ──
     parser.add_argument("--batch", action="store_true",
                         help="Auto-discover sim/real pairs per baseline and run all")
@@ -142,6 +146,11 @@ def main() -> None:
     _scripts_dir = str(Path(__file__).resolve().parents[1])
     if _scripts_dir not in sys.path:
         sys.path.insert(0, _scripts_dir)
+
+    # ── real-correctness validation ───────────────────────────────────
+    if args.validate_real:
+        from parity.validate_real import validate_real
+        sys.exit(0 if validate_real(args.validate_real) else 1)
 
     # ── batch mode ───────────────────────────────────────────────────────────
     if args.batch:

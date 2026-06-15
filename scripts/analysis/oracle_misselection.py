@@ -131,6 +131,21 @@ def resolve_config(run_dir: str, args) -> dict:
         "full_after_s": float(full_after_s),
         "sample_size": int(sample_size) if sample_size else None,
         "split_key": (exec_cfg.get("metadata_refs", {}) or {}).get("dataset_split_key"),
+        "stagger": _dig_stagger(tr),
+    }
+
+
+def _dig_stagger(trainer_cfg: dict) -> dict:
+    """Read the staggered-streaming sub-config (mirror of trainer parse)."""
+    hp = trainer_cfg.get("hyperparameters") or {}
+    co = ((trainer_cfg.get("config_overrides") or {}).get("hyperparameters")) or {}
+    ds = (co.get("data_streaming") or hp.get("data_streaming") or {})
+    stg = ds.get("stagger") or {}
+    return {
+        "enabled": str(stg.get("enabled", "False")) == "True",
+        "onset_max_s": float(stg.get("onset_max_s", 0.0)),
+        "rate_jitter": float(stg.get("rate_jitter", 0.0)),
+        "min_visible": int(stg.get("min_visible", 1) or 1),
     }
 
 
@@ -200,13 +215,31 @@ def build_trainer_table(cfg: dict) -> dict:
 # --- streaming + utility (mirror main.py) -----------------------------------
 
 
-def visible_count(sim_now: float, full_after_s: float, total: int) -> int:
-    """Replicate main.py:_visible_sample_count."""
-    if full_after_s <= 0:
+def visible_count(
+    sim_now: float, onset_s: float, span_s: float, total: int, min_visible: int = 1
+) -> int:
+    """Replicate main.py:_visible_sample_count (uniform: onset=0, span=full_after_s)."""
+    if span_s <= 0:
         return total
-    frac = min(1.0, sim_now / full_after_s)
+    frac = min(1.0, max(0.0, (sim_now - onset_s) / span_s))
     n = math.floor(frac * total)
-    return min(total, max(1, n))
+    return min(total, max(min_visible, n))
+
+
+def stagger_params(trainer_id, onset_max_s, base_span_s, rate_jitter):
+    """Per-client (onset, span). MUST match trainer main.py:_stagger_params.
+
+        onset_s = onset_max_s * u1
+        span_s  = base_span_s * (1 + rate_jitter * (2*u2 - 1))   (>= base_span/4)
+
+    u1, u2 from disjoint 32-bit slices of sha256(f"{trainer_id}:stagger").
+    """
+    h = hashlib.sha256(f"{trainer_id}:stagger".encode()).hexdigest()
+    u1 = int(h[0:8], 16) / 0xFFFFFFFF
+    u2 = int(h[8:16], 16) / 0xFFFFFFFF
+    onset_s = onset_max_s * u1
+    span_s = base_span_s * (1.0 + rate_jitter * (2.0 * u2 - 1.0))
+    return onset_s, max(base_span_s / 4.0, span_s)
 
 
 def oort_utility(model, data, targets, norm_n, device, sample_size=None):
@@ -416,6 +449,22 @@ def main():
     full_after_s = cfg["full_after_s"]
     sample_size = cfg["sample_size"]
 
+    # Per-client streaming schedule (uniform: onset=0, span=full_after_s).
+    stagger = cfg.get("stagger") or {}
+    stg_on = bool(stagger.get("enabled")) and full_after_s > 0
+    min_visible = int(stagger.get("min_visible", 1) or 1)
+    for tid, info in table.items():
+        if stg_on:
+            info["onset_s"], info["span_s"] = stagger_params(
+                tid, stagger.get("onset_max_s", 0.0), full_after_s,
+                stagger.get("rate_jitter", 0.0),
+            )
+        else:
+            info["onset_s"], info["span_s"] = 0.0, full_after_s
+    if stg_on:
+        print(f"staggered streaming: onset_max={stagger.get('onset_max_s')}s "
+              f"rate_jitter={stagger.get('rate_jitter')}")
+
     # true utility per (round, trainer)
     # round -> {end_id: {"true": .., "true_full": .., "visible_fraction": ..}}
     true_by_round: dict[int, dict[str, dict]] = {}
@@ -429,7 +478,9 @@ def main():
         per_t: dict[str, dict] = {}
         for tid, info in table.items():
             total = info["total"]
-            vis_n = visible_count(sim_now, full_after_s, total)
+            vis_n = visible_count(
+                sim_now, info["onset_s"], info["span_s"], total, min_visible
+            )
             gidx = info["arrival_global_idx"]
             vis_g = gidx[:vis_n]
             u_stream, acc_stream = oort_utility_acc(

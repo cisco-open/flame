@@ -120,21 +120,29 @@ class AsyncOortSelector(AbstractSelector):
         self.overcommitment = 1.3
         self.num_of_ends = int(self.agg_goal * self.overcommitment)
 
-        self.exploration_factor = 0.9
-        self.exploration_factor_decay = 0.98
-        self.min_exploration_factor = 0.2
+        # Algorithm hyperparameters default to the Oort paper (scoring.OORT_PAPER_DEFAULTS),
+        # overridable via selector.kwargs (see OortSelector).
+        _d = scoring.OORT_PAPER_DEFAULTS
+        self.exploration_factor = kwargs.get("exploration_factor", _d["exploration_factor"])
+        self.exploration_factor_decay = kwargs.get("exploration_decay", _d["exploration_decay"])
+        self.min_exploration_factor = kwargs.get("exploration_min", _d["exploration_min"])
 
         self.exploitation_util_history = []
 
         # Assuming a max round duration of 99999 seconds (~1.2 days)
         self.round_preferred_duration = timedelta(seconds=99999)
-        self.round_threshold = 30
-        self.pacer_delta = 5
-        self.pacer_step = 20
+        self.round_threshold = kwargs.get("round_threshold", _d["round_threshold"])
+        self.pacer_delta = kwargs.get("pacer_delta", _d["pacer_delta"])
+        self.pacer_step = kwargs.get("pacer_step", _d["pacer_step"])
 
         self.blocklist_threshold = -1
 
-        self.alpha = 2
+        self.alpha = kwargs.get("round_penalty", _d["round_penalty"])  # system_util exponent
+
+        # Normalize+clip the reward into ~[0,1] before adding temporal.
+        self.normalize_reward = kwargs.get("normalize_reward", True)
+        self.clip_bound = kwargs.get("clip_bound", _d["clip_bound"])
+        self.cut_off_util = kwargs.get("cut_off_util", _d["cut_off_util"])  # breadth factor
 
         # #### CHANGES BASED OFF FEDBUFF FOR ASYNCFL
         # Tracking selected ends to ensure selection correctness for
@@ -445,16 +453,17 @@ class AsyncOortSelector(AbstractSelector):
         sorted_utility_list: list[tuple[str, float]],
         num_of_ends: int,
     ) -> float:
-        """Return a cutoff utility based on Oort."""
+        """Cutoff = cut_off_util * the (exploitLen-th HIGHEST) score (ref Oort
+        oort.py:329). `sorted_utility_list` is ASCENDING -> index len-1-exploitLen."""
         if not sorted_utility_list:
             logger.debug("Got empty utility_list, returning 999999.0")
             return 999999.0
 
-        index = int(len(sorted_utility_list) * self.exploration_factor)
-        index = min(index, len(sorted_utility_list) - 1)
-        # This is the first index to exploit
+        exploit_len = int(num_of_ends * (1.0 - self.exploration_factor))
+        index = len(sorted_utility_list) - 1 - exploit_len
+        index = max(0, min(index, len(sorted_utility_list) - 1))
 
-        return 0.95 * sorted_utility_list[index][PROP_UTILITY]
+        return self.cut_off_util * sorted_utility_list[index][PROP_UTILITY]
 
     def sample_by_util(
         self,
@@ -497,7 +506,7 @@ class AsyncOortSelector(AbstractSelector):
         nz_total = sum(nz_probs)
         nz_probs = [p / nz_total for p in nz_probs]
 
-        selected_ends = np.random.choice(
+        selected_ends = self._rng.choice(
             list(nz_ends),
             size=min(len(nz_ends), num_of_ends),
             replace=False,
@@ -513,7 +522,7 @@ class AsyncOortSelector(AbstractSelector):
 
         # Oort paper prioritizes unexplored ends with faster system
         # speed We initially implement to perform random here
-        return np.random.choice(unexplored_end_ids, size=num_of_ends, replace=False)
+        return self._rng.choice(unexplored_end_ids, size=num_of_ends, replace=False)
 
     def pacer(self) -> None:
         """
@@ -628,6 +637,8 @@ class AsyncOortSelector(AbstractSelector):
             logger.debug(
                 f"after for loop, sorted_round_duration: {sorted_round_duration}"
             )
+            # pref = round_threshold-th PERCENTILE -> sort first (ref Oort oort.py:272)
+            sorted_round_duration.sort()
             round_preferred_duration = timedelta(
                 seconds=sorted_round_duration[
                     min(
@@ -773,7 +784,7 @@ class AsyncOortSelector(AbstractSelector):
         # TODO: (DG) Check. Changed from self.selected_ends to local
         # selected_ends.
 
-        selected_random_ends = set(random.sample(list(ends), num_of_ends))
+        selected_random_ends = set(self._pyrng.sample(sorted(ends), num_of_ends))
         logger.debug(f"selected_random_ends: {selected_random_ends}")
 
         return {key: None for key in selected_random_ends}
@@ -808,6 +819,15 @@ class AsyncOortSelector(AbstractSelector):
         logger.info(
             f"stat_utility, temporal_uncertainty, global_system_utility, final_utility, end_id"
         )
+        # Normalize+clip the statistical reward across candidates (reference Oort
+        # get_norm) so the temporal term is meaningful.
+        if self.normalize_reward:
+            _min, _range, _clip = scoring.oort_norm_stats(
+                [u[PROP_UTILITY] for u in utility_list], self.clip_bound
+            )
+        else:
+            _min, _range, _clip = None, None, None
+
         # Per-candidate score components stashed for the offline staleness audit.
         if getattr(self, "_audit_round", None) != model_version:
             self._audit_components = {}
@@ -817,6 +837,10 @@ class AsyncOortSelector(AbstractSelector):
             curr_end_id = utility_list[utility_idx][PROP_END_ID]
 
             stat_utility = curr_end_utility
+            if self.normalize_reward and _range is not None:
+                stat_utility = scoring.oort_normalize_reward(
+                    stat_utility, _min, _range, _clip
+                )
 
             # Add temproal uncertainty term
             temporal_uncertainty = self.calculate_temporal_uncertainty_of_trainer(
@@ -1393,7 +1417,10 @@ class AsyncOortSelector(AbstractSelector):
 
         logger.debug(f"Current selected_ends: {selected_ends}")
 
-        extra = max(0, concurrency - len(selected_ends))
+        # Cooling (committed, not-yet-redispatched) ends hold a concurrency slot so
+        # the idle pool can't refill it — else the redispatch gap is inert.
+        cooling_count = int(channel_props.get("sim_cooling_count", 0))
+        extra = max(0, concurrency - len(selected_ends) - cooling_count)
 
         logger.debug(
             f"c: {concurrency}, "
@@ -1940,7 +1967,7 @@ class AsyncOortSelector(AbstractSelector):
                 f"Will pick cc: {cc} as min(candidates,concurrency) "
                 f"from candidates: {candidates}"
             )
-            selected_ends = set(random.sample(list(candidates), cc))
+            selected_ends = set(self._pyrng.sample(sorted(candidates), cc))
 
             self.selected_ends[self.requester] = selected_ends
             logger.debug(

@@ -4,6 +4,7 @@ Aggregator spawner for Phase 3.
 Spawns aggregator process with log capture.
 """
 
+import os
 import subprocess
 import sys
 import time
@@ -26,10 +27,15 @@ class AggregatorSpawner:
         config_json: Optional[str] = None,
         log_to_wandb: bool = False,
         wandb_run_name: Optional[str] = None,
+        cpu_cores: Optional[set] = None,
     ) -> subprocess.Popen:
         """Spawn aggregator process.
 
         Pass either `config_path` (file) or `config_json` (serialized dict).
+        ``cpu_cores``: optional set of CPU core ids to pin the aggregator to. The
+        aggregator is a single, message-processing-bound process (chunk reassembly
+        + recv loop + serial commit); pinning it to cores reserved away from the
+        trainer pool keeps the 300 pinned trainers from time-slicing it.
         """
         if (config_path is None) == (config_json is None):
             raise ValueError("provide exactly one of config_path or config_json")
@@ -78,9 +84,27 @@ class AggregatorSpawner:
                 if wandb_run_name:
                     cmd.extend(["--wandb_run_name", wandb_run_name])
 
+        # CPU pinning: confine the aggregator to its reserved cores and let its
+        # math libs use exactly that many threads (it benefits from a few cores
+        # for chunk reassembly / aggregation, unlike a 1-core-pinned trainer).
+        env = os.environ.copy()
+        preexec_fn = None
+        if cpu_cores:
+            _cores = {int(c) for c in cpu_cores}
+            if hasattr(os, "sched_setaffinity"):
+                preexec_fn = lambda c=_cores: os.sched_setaffinity(0, c)
+                _nthreads = str(len(_cores))
+                for _var in ("OMP_NUM_THREADS", "MKL_NUM_THREADS",
+                             "OPENBLAS_NUM_THREADS", "NUMEXPR_NUM_THREADS"):
+                    env[_var] = _nthreads
+                print(f"  ✓ Aggregator pinned to {len(_cores)} core(s): {sorted(_cores)}")
+            else:
+                print("  (aggregator pinning requested but sched_setaffinity unavailable)")
+
         # Spawn process
         self.process = subprocess.Popen(
-            cmd, stdout=stdout_target, stderr=stderr_target, text=True
+            cmd, stdout=stdout_target, stderr=stderr_target, text=True,
+            env=env, preexec_fn=preexec_fn,
         )
 
         print(f"  ✓ Aggregator started (PID: {self.process.pid})")
@@ -128,6 +152,21 @@ class AggregatorSpawner:
 
         print(f"  ⚠ Timeout waiting for aggregator")
         return self.is_running()
+
+    def wait(self, timeout: Optional[float] = None) -> bool:
+        """Block until the aggregator process exits, or ``timeout`` seconds pass.
+
+        Returns True if the process exited, False if the timeout fired while it
+        was still running (deadlock guard — caller should then ``terminate``).
+        ``timeout=None`` blocks indefinitely (legacy behavior).
+        """
+        if not self.process:
+            return True
+        try:
+            self.process.wait(timeout=timeout)
+            return True
+        except subprocess.TimeoutExpired:
+            return False
 
     def terminate(self):
         """Terminate aggregator process."""
