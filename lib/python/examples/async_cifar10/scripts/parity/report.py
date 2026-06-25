@@ -13,7 +13,7 @@ from typing import Optional
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-from .checks import overall_verdict, check_role, check_stage
+from .checks import overall_verdict, verdict_summary, check_role, check_stage
 
 # ── status decorators ─────────────────────────────────────────────────────────
 
@@ -80,6 +80,7 @@ _SECTIONS = [
         ("U4  agg_goal_count cycles (sim)",     "agg_goal_cycles_sim"),
     ]),
     ("6", "Aggregation", [
+        ("U6  commit visibility lag",           "commit_visibility"),
         ("U3  staleness distribution",          "staleness"),
         ("P1  aggregation sequence",            "aggregation_sequence"),
         ("U1  first divergence",                "first_divergence_summary"),
@@ -119,7 +120,8 @@ def _fmt_metric(name: str, res: dict) -> list:
         lines += [
             f"         sim mean advance:  {res.get('sim_mean_advance_s')}s/round",
             f"         real mean advance: {res.get('real_mean_advance_s')}s/round",
-            f"         KS={res.get('ks_stat')} (<={res.get('ks_tol')})  "
+            f"         grid_KS={res.get('ks_stat')} (<={res.get('ks_tol')})  "
+            f"raw_KS={res.get('raw_ks_stat')}  "
             f"mean_rel_diff={res.get('mean_rel_diff')} (<={res.get('mean_tol_rel')})",
         ]
     elif name == "overlap_factor":
@@ -159,6 +161,16 @@ def _fmt_metric(name: str, res: dict) -> list:
             f"         sim_rate={res.get('sim_rate')} virtual-s/wall-s  "
             f"vclock={res.get('final_vclock_s')}s wall={res.get('wall_elapsed_s')}s",
         ]
+    elif name == "commit_visibility":
+        if res.get("skipped"):
+            lines += [f"         SKIP — {res.get('reason')} "
+                      f"(real_n={res.get('real_n')} sim_n={res.get('sim_n')})"]
+        else:
+            lines += [
+                f"         real_mean={res.get('real_mean')}s sim_mean={res.get('sim_mean')}s  "
+                f"real_p90={res.get('real_p90')}s sim_p90={res.get('sim_p90')}s  "
+                f"KS={res.get('ks_stat')} mean_diff={res.get('mean_diff')}s",
+            ]
     elif name == "staleness":
         lines += [
             f"         real_mean={res.get('real_mean')}  sim_mean={res.get('sim_mean')}  "
@@ -192,11 +204,14 @@ def _fmt_metric(name: str, res: dict) -> list:
             ]
     elif name == "trainer_speed":
         if res.get("n_real"):
+            defer = "  [mix-deferred to A2c]" if res.get("mix_deferred") else ""
             lines += [
-                f"         grid_KS={res.get('ks_stat')} (<={res.get('ks_tol')})  "
-                f"raw_KS={res.get('raw_ks_stat')}  "
-                f"mean_overhead={res.get('mean_overhead_s')}s "
-                f"(<={res.get('max_mean_overhead_s')})",
+                f"         support: sim_p99={res.get('sim_p99_speed_s')}s "
+                f"real_p99={res.get('real_p99_speed_s')}s  "
+                f"ratio={res.get('support_ratio')} (<={1.0 + (res.get('support_tol') or 0)}) "
+                f"[enforced]{defer}",
+                f"         diag: grid_KS={res.get('ks_stat')} raw_KS={res.get('raw_ks_stat')} "
+                f"mean_overhead={res.get('mean_overhead_s')}s (selection-mix; A2c owns)",
                 f"         real_mean={res.get('real_mean_speed_s')}s "
                 f"sim_mean={res.get('sim_mean_speed_s')}s  "
                 f"real_max={res.get('real_max_speed_s')}s "
@@ -400,8 +415,14 @@ def _fmt_metric(name: str, res: dict) -> list:
             )
     elif name == "training_budget":
         if res.get("ks_stat") is not None:
+            defer = "  [mix-deferred to A2c]" if res.get("mix_deferred") else ""
             lines.append(
-                f"         KS={res.get('ks_stat')} (<={res.get('ks_tol')})  "
+                f"         support: sim_p99={res.get('sim_p99_s')}s "
+                f"real_p99={res.get('real_p99_s')}s ratio={res.get('support_ratio')} "
+                f"(<={1.0 + (res.get('support_tol') or 0)}) [enforced]{defer}"
+            )
+            lines.append(
+                f"         diag: KS={res.get('ks_stat')}  "
                 f"real_mean={res.get('real_mean_s')}s sim_mean={res.get('sim_mean_s')}s"
             )
     elif name.startswith("phase_"):
@@ -485,11 +506,14 @@ def print_report(results: dict, strict: bool = False, lenient: bool = False,
                 print(detail)
         print()
 
+    summary = verdict_summary(results, strict=strict, lenient=lenient)
     verdict_word = "ALL CHECKS PASSED" if passed else "ONE OR MORE CHECKS FAILED"
     if warnings and passed:
         verdict_word += f"  ({len(warnings)} warning(s))"
     icon = _ICONS["PASS"] if passed else _ICONS["FAIL"]
     print(f"{'='*width}")
+    print(f"  SCORE: {summary['n_pass']}/{summary['n_enforced']} enforced checks pass"
+          f"  (warn {summary['n_warn']}, skip {summary['n_skip']})")
     print(f"  {icon} {verdict_word}")
     if roots:
         print(f"  Root cause(s): {', '.join(roots)}")
@@ -594,15 +618,18 @@ def roll_up_table(batch_results: dict) -> None:
     The ROOT column names the lowest broken rung so a batch sweep shows where
     each baseline first diverges at a glance.
     """
-    print(f"\n{'='*100}")
-    print(f"  {'Baseline':<18} {'rounds(r/s)':<14} {'s/round(r/s)':<16} "
+    print(f"\n{'='*108}")
+    print(f"  {'Baseline':<18} {'pass/tot':>8} {'rounds(r/s)':<14} {'s/round(r/s)':<16} "
           f"{'K2':>3} {'K3':>3} {'K10':>3} {'P3':>3} {'overall':>7}  {'ROOT':<22}")
-    print(f"  {'-'*18} {'-'*14} {'-'*16} {'-'*3} {'-'*3} {'-'*3} {'-'*3} "
+    print(f"  {'-'*18} {'-'*8} {'-'*14} {'-'*16} {'-'*3} {'-'*3} {'-'*3} {'-'*3} "
           f"{'-'*7}  {'-'*22}")
     for baseline, res in sorted(batch_results.items()):
         results = res.get("results", {})
         th = results.get("throughput", {})
         passed, roots, downstream, _ = overall_verdict(results)
+        summ = verdict_summary(results)
+        score_str = (f"{summ['n_pass']}/{summ['n_enforced']}"
+                     if results else "n/a")
 
         rounds_str = (
             f"{th.get('real_rounds','?')}/{th.get('sim_rounds','?')}"
@@ -619,8 +646,8 @@ def roll_up_table(batch_results: dict) -> None:
 
         overall = "PASS" if passed else "FAIL"
         root_str = roots[0] if roots else ("—" if passed else "?")
-        print(f"  {baseline:<18} {rounds_str:<14} {spr_str:<16} "
+        print(f"  {baseline:<18} {score_str:>8} {rounds_str:<14} {spr_str:<16} "
               f"{_s('throughput'):>3} {_s('per_round_advance'):>3} "
               f"{_s('vclock_telemetry'):>3} {_s('trainer_speed'):>3} "
               f"{overall:>7}  {root_str:<22}")
-    print(f"{'='*100}\n")
+    print(f"{'='*108}\n")

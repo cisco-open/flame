@@ -275,12 +275,10 @@ class ExperimentRunner:
             # exit cleanly. Without this, wait_all()'s per-trainer timeout fires
             # immediately after spawn and kills trainers every 30s regardless of
             # whether training is still in progress.
-            # Watchdog: the aggregator self-stops at max_runtime_s (real) /
-            # sim_wall_ceiling_s (sim). If it instead DEADLOCKS (MQTT/barrier) it
-            # would block this wait forever and hang the whole batch — the most
-            # likely "stuck run" cause. Bound the wait at the run's own budget +
-            # a generous grace (join/startup/eval-drain) and hard-kill on timeout
-            # so the batch proceeds to _cleanup/_sweep_stragglers instead of hanging.
+            # Watchdog: the aggregator self-stops at max_runtime_s (real) / sim_wall_ceiling_s
+            # (sim). If it instead DEADLOCKS (MQTT/barrier) it would block this wait forever and
+            # hang the batch. Bound the wait at the run's budget + a generous grace and hard-kill
+            # on timeout so the batch proceeds to _cleanup/_sweep_stragglers instead of hanging.
             hp = agg_cfg.get("hyperparameters", {}) or {}
             try:
                 budget_s = max(float(hp.get("max_runtime_s") or 0.0),

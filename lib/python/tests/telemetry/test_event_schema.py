@@ -15,7 +15,7 @@ import pytest
 from flame import telemetry
 from flame.selector.properties import (
     PROP_AVL_STATE,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_STAT_UTILITY,
 )
 from flame.telemetry.events import (
@@ -143,7 +143,7 @@ def test_selector_emits_selection_event(factory, make_ends, channel_props, tmp_p
     # round-1 behavior); the selection event is emitted either way.
     for i, end in enumerate(ends.values()):
         end.set_property(PROP_AVL_STATE, "AVL_TRAIN" if i < 7 else "UN_AVL")
-        end.set_property(PROP_ROUND_DURATION, timedelta(seconds=i + 1))
+        end.set_property(PROP_CLIENT_TASK_TRAIN_DURATION, timedelta(seconds=i + 1))
 
     selector.select(
         ends, channel_props, trainer_unavail_list=[], task_to_perform="train"

@@ -132,10 +132,10 @@ class REFLOortSelector(OortSelector):
             f"task: {task_to_perform}, avail_priority={self.avail_priority}"
         )
 
-        if round_num <= self.round and len(self.newly_selected_this_round) != 0:
+        if round_num <= self._last_selection_round and len(self.newly_selected_this_round) != 0:
             return {key: None for key in self.newly_selected_this_round}
 
-        self.pacer()
+        self.pacer(round_num)
 
         unavail_set = set(trainer_unavail_list) if trainer_unavail_list else set()
 
@@ -214,7 +214,7 @@ class REFLOortSelector(OortSelector):
             f"in-flight total {len(self.selected_ends)}"
         )
 
-        self.round = round_num
+        self._last_selection_round = round_num
         self.update_exploration_factor()
 
         for end_id in selected:
@@ -378,10 +378,8 @@ class REFLOortSelector(OortSelector):
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY], reverse=True)
 
         # Exploitation, faithful to the REFL fork (thirdparty/oort/oort.py:316-355):
-        # threshold at cut_off_util * the exploitLen-th-highest score, augment the
-        # pool down to that cutoff (or 10x exploitLen), then sample exploitLen
-        # WEIGHTED by utility. The prior port took a deterministic top-k (no
-        # cut_off_util, no probabilistic draw).
+        # threshold at cut_off_util * the exploitLen-th-highest score, augment the pool
+        # down to that cutoff (or 10x exploitLen), then sample exploitLen WEIGHTED by utility.
         exploit_clients = []
         if num_exploit > 0:
             boundary = min(num_exploit, len(utility_list) - 1)
@@ -394,6 +392,19 @@ class REFLOortSelector(OortSelector):
             scores = np.array([max(p[PROP_UTILITY], 0.0) for p in pool], dtype=np.float64)
             ids = [p[PROP_END_ID] for p in pool]
             k = min(num_exploit, len(ids))
+            # Stamp the final per-candidate draw probability + pool/cutoff membership
+            # into the audit so the parity checker can compare the SELECTION weighting
+            # (not just per-term KS) sim vs real — the divergence that drives refl K3b.
+            _audit = getattr(self, "_audit_components", None)
+            if _audit is not None:
+                _tot = float(scores.sum())
+                for _i, _eid in enumerate(ids):
+                    if _eid in _audit:
+                        _audit[_eid]["in_exploit_pool"] = True
+                        _audit[_eid]["exploit_cutoff"] = cutoff
+                        _audit[_eid]["selection_prob"] = (
+                            float(scores[_i]) / _tot if _tot > 0 else 0.0
+                        )
             if scores.sum() > 0:
                 exploit_clients = list(
                     self._rng.choice(ids, k, replace=False, p=scores / scores.sum())
@@ -454,52 +465,6 @@ class REFLOortSelector(OortSelector):
 
         return set(blacklist)
 
-    def pacer(self) -> None:
-        """
-        Adaptive pacer mechanism to adjust round_threshold.
-
-        Monitors exploitation utility trends and adjusts round_threshold:
-        - If utility is flat (< 10% change): increase threshold (faster clients)
-        - If utility is volatile (> 500% change): decrease threshold (more clients)
-        """
-        if self.pacer_step <= 0:
-            return  # Pacer disabled
-
-        # Only run pacer at specified intervals
-        if self.round < 2 * self.pacer_step or self.round % self.pacer_step != 0:
-            return
-
-        # Calculate utility change over last two pacer windows
-        if len(self.exploitation_util_history) < 2 * self.pacer_step:
-            return
-
-        history_list = list(self.exploitation_util_history)
-        util_last_window = sum(history_list[-2 * self.pacer_step : -self.pacer_step])
-        util_current_window = sum(history_list[-self.pacer_step :])
-
-        if util_last_window == 0:
-            return
-
-        relative_change = abs(util_current_window - util_last_window) / util_last_window
-
-        # Flat utility: increase threshold (prefer faster clients)
-        if relative_change <= 0.1:
-            old_threshold = self.round_threshold
-            self.round_threshold = min(100.0, self.round_threshold + self.pacer_delta)
-            logger.info(
-                f"Pacer: Utility flat ({relative_change:.2%}), "
-                f"increasing threshold {old_threshold}% -> {self.round_threshold}%"
-            )
-
-        # Volatile utility: decrease threshold (include more clients)
-        elif relative_change >= 5.0:
-            old_threshold = self.round_threshold
-            self.round_threshold = max(
-                self.pacer_delta, self.round_threshold - self.pacer_delta
-            )
-            logger.info(
-                f"Pacer: Utility volatile ({relative_change:.2%}), "
-                f"decreasing threshold {old_threshold}% -> {self.round_threshold}%"
-            )
-
-        self.last_pacer_round = self.round
+    # pacer() inherited from OortSelector — the base is the faithful reference port
+    # (flat→relax / sharp→tighten, current-round keyed), matching the REFL fork, so no
+    # override is needed here (§S.pacer, third_party/Oort/oort/oort.py:184-199).

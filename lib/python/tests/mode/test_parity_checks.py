@@ -321,13 +321,25 @@ class TestTrainerSpeedParity:
         r = pc.trainer_speed_parity(agg, agg, ks_tol=0.1)
         assert r["ok"]
 
-    def test_diverged_fails(self):
+    def test_out_of_support_tail_fails(self):
+        # Jun-16 support-guard semantics: P3 fails when sim produces speeds BEYOND
+        # real's support (the genuine speed-model bug — oort's old 56s→sim tail).
         real_rounds = [_round_speed(r, ["a"], [0], speed=11.0) for r in range(1, 11)]
-        sim_rounds = [_round_speed(r, ["a"], [0], speed=7.0) for r in range(1, 11)]
+        sim_rounds = [_round_speed(r, ["a"], [0], speed=56.0) for r in range(1, 11)]
         real = _agg(agg_rounds=real_rounds)
         sim = _agg(agg_rounds=sim_rounds)
-        r = pc.trainer_speed_parity(real, sim, ks_tol=0.1)
+        r = pc.trainer_speed_parity(real, sim)
         assert not r["ok"]
+        assert r["support_ratio"] > 1.0 + r["support_tol"]
+
+    def test_faster_sim_within_support_defers_to_mix(self):
+        # sim faster than real, same support direction (wall-capture / faster
+        # selection mix) is NOT a speed-model bug — P3 passes, A2c owns the mix.
+        real_rounds = [_round_speed(r, ["a"], [0], speed=11.0) for r in range(1, 11)]
+        sim_rounds = [_round_speed(r, ["a"], [0], speed=7.0) for r in range(1, 11)]
+        r = pc.trainer_speed_parity(_agg(agg_rounds=real_rounds),
+                                    _agg(agg_rounds=sim_rounds))
+        assert r["ok"], r
 
 
 class TestBudgetNotCap:
@@ -438,3 +450,20 @@ class TestInflightResidenceEvent:
         ev2, f2 = build_inflight_residence(
             round_num=1, time_mode="real", in_flight_before=13, in_flight_after=13)
         assert "residence_rounds" not in f2 and "cleaned" not in f2
+
+    def test_builder_paired_commit_class(self):
+        """residence_staleness / residence_was_fresh ride alongside residence_rounds
+        (paired 1:1) to decompose the residence-shape gap by commit class (refl A2)."""
+        from flame.telemetry.events import build_inflight_residence
+        ev, f = build_inflight_residence(
+            round_num=7, time_mode="real", in_flight_before=16, in_flight_after=13,
+            residence_rounds=[3, 3, 5], residence_staleness=[0, 2, 4],
+            residence_was_fresh=[True, False, False])
+        assert f["residence_staleness"] == [0, 2, 4]
+        assert f["residence_was_fresh"] == [True, False, False]
+        assert len(f["residence_staleness"]) == len(f["residence_rounds"])
+        # omitted when not supplied
+        _, f2 = build_inflight_residence(
+            round_num=1, time_mode="sim", in_flight_before=13, in_flight_after=13,
+            residence_rounds=[1])
+        assert "residence_staleness" not in f2

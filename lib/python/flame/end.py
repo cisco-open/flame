@@ -75,6 +75,33 @@ class End(object):
 
         return payload
 
+    def get_ready_nowait(self) -> Union[None, bytes]:
+        """Non-blocking receive of a ready payload, or None if none is ready.
+
+        Returns a previously peeked message (``peek_buf``) first, otherwise pops
+        one from the rx queue without awaiting. Unlike ``get()`` this never
+        blocks, so a caller can sweep everything currently sitting in the queue
+        in one pass. Must be called on the backend event loop (it touches the
+        asyncio queue).
+
+        This is the primitive the simulated-mode sct-ordered drain uses to ingest
+        in-flight updates directly, bypassing the ``recv_fifo`` streamer. The
+        streamer is a fire-and-forget background task with per-end dedup and a
+        grace timeout; a message delivered after that grace can end up on the
+        channel's shared ``_rx_queue`` with no live consumer, where the
+        ``is_rxq_empty()`` readiness probe can no longer see it. Pulling straight
+        from the End's own queue removes that stranding hazard entirely."""
+        if self.peek_buf is not None:
+            data = self.peek_buf
+            self.peek_buf = None
+            return data
+        try:
+            payload = self.rxq.get_nowait()
+        except asyncio.QueueEmpty:
+            return None
+        self.rxq.task_done()
+        return payload
+
     async def peek(self) -> Union[None, bytes]:
         """Peek item in a rxq."""
         if self.peek_buf is not None:
@@ -96,8 +123,14 @@ class End(object):
         return self.txq
 
     def is_rxq_empty(self) -> bool:
-        """Return true if rxq is empty; otherwise, false."""
-        return self.rxq.empty()
+        """Return true iff NO message is ready — neither peeked nor queued.
+
+        Honors ``peek_buf``: a prior ``peek()`` pulls the message out of the
+        rx queue and parks it in ``peek_buf``, leaving ``rxq.empty()`` True even
+        though a message is pending. Ignoring ``peek_buf`` here would report
+        "no message" for an end that actually has one ready, letting the sim
+        clock lap it — so emptiness must consider both."""
+        return self.peek_buf is None and self.rxq.empty()
 
     def is_txq_empty(self) -> bool:
         """Return true if txq is empty; otherwise, false."""

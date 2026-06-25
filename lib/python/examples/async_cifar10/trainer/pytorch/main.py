@@ -163,11 +163,10 @@ class PyTorchCifar10Trainer(Trainer):
         )
         self.training_delay_s = float(self.config.hyperparameters.training_delay_s)
 
-        # Sim-only post-compute completion leg (§3i): the real per-trainer cycle has
-        # ~1.6s after compute (buffer-residence queue_wait + re-dispatch latency)
-        # that the sim sct omitted -> sim cycle short -> advance under-charges.
-        # Added to sim_round_duration so sct = send_ts + max(gpu, D) + leg. Staleness
-        # (= cycle/advance) is invariant to it; only advance/throughput are corrected.
+        # Sim-only post-compute completion leg (§3i): real has ~1.6s after compute
+        # (buffer-residence queue_wait + re-dispatch latency) that the sim sct omitted, so sim's
+        # cycle was short and advance under-charged. sct = send_ts + max(gpu, D) + leg; staleness
+        # (= cycle/advance) is invariant to it, only advance/throughput change.
         _leg = getattr(self.config.hyperparameters, "sim_completion_leg_s", 0.0)
         self.sim_completion_leg_s = float(_leg) if _leg is not None else 0.0
 
@@ -813,11 +812,10 @@ class PyTorchCifar10Trainer(Trainer):
 
         self._sim_round_duration = sim_round_duration
 
-        # §3i: the completion timestamp (sct = when the update COMMITS) = send_ts +
-        # compute + post-compute leg. The leg (buffer-residence + re-dispatch latency)
-        # is added ONLY here, NOT to _sim_round_duration — so trainer_speed_s, OORT
-        # utility, the gate predictor and the P3/T2 controls all keep pure compute,
-        # and only the virtual clock (which advances to sct) sees the real cycle time.
+        # §3i: sct (when the update COMMITS) = send_ts + compute + post-compute leg. The leg is
+        # added ONLY here, NOT to _sim_round_duration — so trainer_speed_s, OORT utility, the gate
+        # predictor and P3/T2 controls keep pure compute; only the vclock (which advances to sct)
+        # sees the real cycle time.
         _leg = self.sim_completion_leg_s if self.simulated else 0.0
         self._sim_completion_ts = (
             (self._sim_send_ts if self._sim_send_ts is not None else self._sim_now())
@@ -1046,6 +1044,7 @@ class PyTorchCifar10Trainer(Trainer):
             self._rebuild_stream_loader()
 
         logger.info(f"Starting eval (forward pass) for trainer id {self.trainer_id}")
+        _eval_gpu_t0 = time.time()
         for epoch in range(1, self.epochs + 1):
             for batch_idx, (data, target) in enumerate(self.train_loader):
                 data, target = data.to(self.device), target.to(self.device)
@@ -1070,10 +1069,24 @@ class PyTorchCifar10Trainer(Trainer):
             # normalize statistical utility of a trainer based on the size
             # of the dataset
             self.normalize_stat_utility(epoch)
-        # Eval is ~20x faster than training (NPUs don't support training), so
-        # the modeled eval delay is training_delay_s/20. real mode sleeps it;
-        # simulated mode skips it (folded into the reported sim duration).
-        if self.training_delay_enabled and not self.simulated:
+        _real_eval_gpu_s = time.time() - _eval_gpu_t0
+        # Eval is ~20x faster than training (NPUs don't support training), so the
+        # modeled eval delay is training_delay_s/20.
+        _modeled_eval_delay_s = (
+            self.training_delay_s / 20.0 if self.training_delay_enabled else 0.0
+        )
+        if self.simulated:
+            # Stamp THIS eval's own completion ts (= send_ts + max(gpu, D_eval)).
+            # Without it the send path reuses the last TRAIN round's _sim_completion_ts,
+            # so every eval commits with a stale, long-past sct -> the virtual clock has
+            # already lapped it -> past-dated commit that poisons the reorder-buffer key.
+            _eval_dur = max(_real_eval_gpu_s, _modeled_eval_delay_s)
+            self._sim_round_duration = _eval_dur
+            self._sim_completion_ts = (
+                (self._sim_send_ts if self._sim_send_ts is not None else self._sim_now())
+                + _eval_dur
+            )
+        elif self.training_delay_enabled:
             eval_delay = math.floor(self.training_delay_s / 20.0)
             time.sleep(eval_delay)
             logger.debug(

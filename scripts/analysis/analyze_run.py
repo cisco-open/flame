@@ -1872,6 +1872,45 @@ def system_plots(records, out, stamp, tdir):
             d, "staleness_over_rounds.pdf", stamp=stamp, clip_outliers=True)
         if p: saved.append(p)
 
+    # commit-visibility lag (U6): per-update delay between an update becoming
+    # ready to aggregate and being committed, in the aggregator's own clock
+    # (sim: vclock-sct; real: wall commit-arrival). Sim past-dating shows up as a
+    # large/growing lag here BEFORE it propagates into staleness; the over-rounds
+    # series exposes the felix clock-jump pattern a single CDF would smear.
+    # Split train vs eval (different lines): eval reusing a stale train sct shows
+    # up as an eval-only lag blowup the combined series would smear. For baselines
+    # that dispatch no eval (e.g. sync oort) the eval series is simply absent.
+    vis_by_round = defaultdict(lambda: defaultdict(list)); all_vis = defaultdict(list)
+    for r in by_event(records, EVENT_AGG_ROUND):
+        v = r.get("update_visibility_lag_s")
+        if v is None:
+            continue
+        v = v if isinstance(v, list) else [v]
+        task = str(r.get("task_to_perform", "train"))
+        for x in v:
+            if x is not None:
+                vis_by_round[task][int(r.get("round", 0))].append(float(x))
+                all_vis[task].append(float(x))
+    if any(all_vis.values()):
+        series_cdf = {f"{t} (n={len(xs)}, mean={sum(xs) / len(xs):.2f}s)": sorted(xs)
+                      for t, xs in sorted(all_vis.items()) if xs}
+        p = ph.cdf_multi(series_cdf, "commit visibility lag (s, own clock)",
+                         "Commit-visibility lag by task (train vs eval)", d,
+                         "commit_visibility_lag_cdf.pdf", stamp=stamp)
+        if p: saved.append(p)
+        series_line = {}
+        for t, rmap in sorted(vis_by_round.items()):
+            vr = sorted(rr for rr in rmap if rr >= 1)
+            if vr:
+                series_line[f"P50 {t} lag"] = (vr, [_m(rmap[rr]) for rr in vr])
+        if series_line:
+            p = ph.binned_line(
+                series_line, "round", "commit visibility lag (s)",
+                "Commit-visibility lag over rounds by task (P50/bin)",
+                d, "commit_visibility_lag_over_rounds.pdf", stamp=stamp,
+                nbins=200, reducer="p50", band=True)
+            if p: saved.append(p)
+
     # Send-recv lag over rounds (binned). The round is the model `version`
     # stamped on each [SEND_RECV_LAG] line (version=N == round N), parsed once in
     # parse_agg_log. Instrumented in BOTH sync and async aggregators, so this
@@ -2162,24 +2201,35 @@ def aggregation_plots(records, out, stamp, tdir):
     # 3) reorder-buffer health: commit_gap_s (vclock − sct; >0 = buffer backed up)
     # and buf_depth over round-bins. The direct visual for the felix overhead bug
     # A rising commit_gap_s = updates committing long after completion.
-    gx, gap_v, depth_v = [], [], []
+    # Split commit_gap_s train vs eval (eval past-dating from a stale sct is the
+    # bug this catches); buf_depth is buffer-global so it stays a single line.
+    gap_by_task = defaultdict(lambda: ([], []))  # task -> (rounds, gaps)
+    dx, depth_v = [], []
     for r in ar:
         rd = int(r.get("round", 0))
         if rd < 1:
             continue
         if r.get("commit_gap_s") is not None:
-            gx.append(rd); gap_v.append(float(r["commit_gap_s"]))
-            depth_v.append(float(r.get("buf_depth") or 0.0))
-    if gx:
-        p = ph.binned_line({"commit_gap_s (vclock−sct)": (gx, gap_v),
-                            "buf_depth": (gx, depth_v)},
-                           "round", "value", "Reorder-buffer health "
+            t = str(r.get("task_to_perform", "train"))
+            gx_t, gv_t = gap_by_task[t]
+            gx_t.append(rd); gv_t.append(float(r["commit_gap_s"]))
+        if r.get("buf_depth") is not None:
+            dx.append(rd); depth_v.append(float(r["buf_depth"]))
+    if any(gx for gx, _ in gap_by_task.values()):
+        line_series = {f"commit_gap_s {t}": (gx, gv)
+                       for t, (gx, gv) in sorted(gap_by_task.items()) if gx}
+        if dx:
+            line_series["buf_depth"] = (dx, depth_v)
+        p = ph.binned_line(line_series,
+                           "round", "value", "Reorder-buffer health by task "
                            "(commit_gap_s>0 & rising = backup)", d,
                            "buffer_health_over_rounds.pdf", stamp=stamp,
                            nbins=150, reducer="p50")
         if p: saved.append(p)
-        p = ph.cdf_plot(gap_v, "commit_gap_s (vclock − sct)",
-                        f"Commit-gap CDF (n={len(gap_v)}; 0 = no buffer backup)", d,
+        cdf_series = {f"{t} (n={len(gv)})": sorted(gv)
+                      for t, (gx, gv) in sorted(gap_by_task.items()) if gv}
+        p = ph.cdf_multi(cdf_series, "commit_gap_s (vclock − sct)",
+                        "Commit-gap CDF by task (0 = no buffer backup)", d,
                         "commit_gap_cdf.pdf", stamp=stamp)
         if p: saved.append(p)
 

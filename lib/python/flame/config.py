@@ -201,13 +201,44 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     sim_redispatch_gap_s: t.Optional[float] = Field(
         alias="simRedispatchGapSeconds", default=0.0
     )
+    # Sim async-stack: cap each commit's clock advance at the earliest in-flight
+    # FUTURE modeled completion (+slack), so a forced far-future straggler commit
+    # can't lap the fresh fast cohort still mid-flight (the dominant past-dating
+    # source). Re-bases the inert arrival-gate onto modeled completion.
+    sim_clock_jump_clamp: t.Optional[bool] = Field(
+        alias="simClockJumpClamp", default=True
+    )
+    # Sim async-stack: event-driven re-dispatch. Stamp each TRAIN dispatch at the
+    # vclock its slot freed (a prior commit) instead of one frozen round-start
+    # frontier, so the per-trainer completion stagger (sct = sim_send_ts + compute)
+    # is preserved across the round boundary as it is in real. Sync stays batched.
+    sim_staggered_redispatch: t.Optional[bool] = Field(
+        alias="simStaggeredRedispatch", default=False
+    )
+    # Sim async-stack: ingest in-flight updates into the sct-ordered reorder
+    # buffer by draining each end's rx queue DIRECTLY (channel.drain_ready),
+    # instead of through the recv_fifo streamer. The streamer's background task +
+    # shared queue can strand a delivered update where the readiness probe can't
+    # see it, so the buffer commits an incomplete subset and the virtual clock
+    # laps the stranded (lower-sct) updates → they commit past-dated (async
+    # staleness ~15 vs real ~3; only ~1.6 of 10 commits/round advance the clock).
+    # Draining directly keeps the buffer a COMPLETE snapshot of arrived in-flight
+    # updates so the existing min-sct gate commits in true completion order.
+    # Default off ⇒ recv_fifo path (byte-identical to today). Sync untouched.
+    sim_sct_ordered_drain: t.Optional[bool] = Field(
+        alias="simSctOrderedDrain", default=False
+    )
     # Real-only settle sleep before selection (hit 2x/commit). 0 = compute-bound.
     real_distribute_settle_s: t.Optional[float] = Field(
         alias="realDistributeSettleSeconds", default=0.1
     )
-    # Sim sync-stack: hold a dispatched trainer in-flight (occupying its slot, out of the
-    # eligible pool) until vclock >= its modeled completion sct, instead of freeing the
-    # slot at instant physical arrival — so the committed/eligible mix matches real.
+    # Hold a dispatched trainer in-flight (occupying its concurrency slot, out of the
+    # eligible pool) until its update commits, instead of freeing the slot at instant
+    # physical arrival — so the committed/eligible mix matches real. Sync stack (oort):
+    # adds the still-computing set to the unavailable list (§4.5). Async stack (felix):
+    # widens _sim_hold_busy_slots to the full dispatched-but-not-committed set, held via
+    # selected_ends (a slot), NOT the unavailable list. Default off ⇒ holds only the
+    # already-buffered set.
     sim_inflight_residence: t.Optional[bool] = Field(
         alias="simInflightResidence", default=False
     )

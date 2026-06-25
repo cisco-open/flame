@@ -81,9 +81,9 @@ class MessageType(Enum):
     # virtual clock instead of physical arrival.
     SIM_SEND_TS = 34        # virtual clock T_v at weight distribution
     SIM_COMPLETION_TS = 35  # sim_send_ts + max(gpu, D); reorder buffer commits by this
-    SIM_ROUND_DURATION = 36  # max(gpu_time, D) = true round cost; mirrors real recv_ts-sent_ts for OORT speed utility
-    TRAINING_BUDGET_S = 37   # trainer's configured total round budget (training_delay_s)
-    WALL_SEND_TS = 38        # wall-clock unix timestamp (float) when trainer calls channel.send()
+    SIM_CLIENT_TASK_TRAIN_DURATION_S = 36  # max(gpu_time, D) = client task-train duration; sim analog of real WALL_SEND_TS - dispatch (excludes aggregator read-wait), feeds OORT speed utility
+    TRAINING_BUDGET_S = 37   # trainer's configured total task budget (training_delay_s)
+    WALL_SEND_TS = 38        # wall-clock unix timestamp (float) when trainer calls channel.send() (right after compute) — used to measure real client task-train duration
     WALL_RECV_TS = 39        # wall-clock unix timestamp (float) when trainer's channel.recv() returns (weights received from agg)
-    ROUND_COMPUTE_S = 40     # modeled round compute duration in seconds: max(real_gpu_time, training_delay_s); stamped by trainer unconditionally (real and sim)
+    CLIENT_TASK_TRAIN_COMPUTE_S = 40     # modeled compute duration in seconds: max(real_gpu_time, training_delay_s); stamped by trainer unconditionally (real and sim)
     WEIGHTS_BYTES = 41       # pre-serialized weights (raw cloudpickle bytes) for lazy sync-barrier deserialization in sim mode

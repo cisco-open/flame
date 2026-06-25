@@ -40,6 +40,7 @@ from flame.config import Config
 from flame.datasamplers import datasampler_provider
 from flame.mode.composer import Composer
 from flame.mode.message import MessageType
+from flame.mode.horizontal.client_duration import real_client_task_train_duration
 from flame.mode.role import Role
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizer.train_result import TrainResult
@@ -49,7 +50,7 @@ from flame.registries import registry_provider
 from flame.monitor.runtime import timer_decorator, FwdLLMStage
 from flame.selector.properties import (
     PROP_LOCAL_ACCURACY,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_ROUND_END_TIME,
     PROP_ROUND_START_TIME,
     PROP_STAT_UTILITY,
@@ -223,6 +224,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
             "staleness",
             "stat_utility",
             "trainer_speed",
+            "update_visibility_lag_s",
         ]
         self._round_update_values = {key: [] for key in self._round_update_stat_keys}
         # TODO Add "wt_contrib_stats" as a key later but cannot
@@ -349,7 +351,7 @@ class TopAggregator(Role, metaclass=ABCMeta):
         sim_completion_ts (the k that would physically finish first in real),
         independent of arrival jitter, and advance the virtual clock to the
         k-th smallest. Returns an ascending-sct list of (msg, metadata); also
-        stamps each committed end's PROP_ROUND_DURATION from SIM_ROUND_DURATION
+        stamps each committed end's PROP_CLIENT_TASK_TRAIN_DURATION from SIM_CLIENT_TASK_TRAIN_DURATION_S
         so OORT/REFL see the correct simulated speed.
 
         Sync aggregation is order-independent (weighted average), so parity only
@@ -395,12 +397,12 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 )
             self._advance_sim_clock(sct)
             _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
-            _srd = msg.get(MessageType.SIM_ROUND_DURATION)
+            _srd = msg.get(MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S)
             if _srd is not None:
-                channel.set_end_property(end, PROP_ROUND_DURATION,
+                channel.set_end_property(end, PROP_CLIENT_TASK_TRAIN_DURATION,
                                          timedelta(seconds=float(_srd)))
             elif _sst is not None:
-                channel.set_end_property(end, PROP_ROUND_DURATION,
+                channel.set_end_property(end, PROP_CLIENT_TASK_TRAIN_DURATION,
                                          timedelta(seconds=max(0.0, sct - float(_sst))))
             logger.info(
                 f"[SYNC_SIM_RECV] committed {end[-4:]} sct={sct:.1f} "
@@ -408,6 +410,46 @@ class TopAggregator(Role, metaclass=ABCMeta):
             )
             committed.append((msg, md))
         return committed
+
+    @staticmethod
+    def _barrier_anchored_lags(durs):
+        """Real U6 visibility lag per update for a strict SYNC BARRIER:
+        ``lag_i = max_completion - completion_i`` over the round, where completion =
+        ``WALL_SEND_TS - dispatch`` (the trainer's finish on a dispatch-relative
+        axis, matching sim's ``sct``). The barrier is the round's latest completion;
+        an early finisher's update waits that gap for the cohort before the single
+        post-loop aggregation applies all K. ``None``-safe (missing WALL_SEND_TS)."""
+        present = [d for d in durs if d is not None]
+        barrier = max(present) if present else None
+        return [
+            (barrier - d) if (d is not None and barrier is not None) else None
+            for d in durs
+        ]
+
+    def _update_visibility_lag(self, ready_sct, arrival_wall):
+        """(ready_ts, committed_ts, lag_s) for one update, in the aggregator's
+        OWN clock. READY = when the update became available to aggregate;
+        COMMITTED = now (the aggregation point). Sim measures virtual seconds
+        (vclock - sct); real measures wall seconds (now - MQTT arrival).
+
+        Per-message and valid for a STREAMING aggregator (oort), which commits each
+        update near its own completion so `now - arrival` ~ 0 = correct. NOT valid
+        for a strict SYNC BARRIER (feddance/fedavg base): there all K apply at one
+        post-loop instant, and `now - arrival` measured per-message tracks arrival
+        (collapses to ~0), blind to the within-round barrier wait. That path anchors
+        on the single barrier post-loop instead (see `_real_round_durs` in
+        `_aggregate_weights`); sim is unaffected (vclock is already the barrier)."""
+        if self.simulated:
+            committed = float(self._vclock.now)
+            if ready_sct is None:
+                return None, committed, None
+            ready = float(ready_sct)
+            return ready, committed, committed - ready
+        committed_dt = datetime.now()
+        ready_dt = arrival_wall if isinstance(arrival_wall, datetime) else None
+        if ready_dt is None:
+            return None, committed_dt.timestamp(), None
+        return ready_dt.timestamp(), committed_dt.timestamp(), (committed_dt - ready_dt).total_seconds()
 
     def _aggregate_weights(self, tag: str) -> None:
         logger.debug("Agg weights inside top_aggregator syncfl")
@@ -445,9 +487,14 @@ class TopAggregator(Role, metaclass=ABCMeta):
             updates = channel.recv_fifo(ends, first_k=first_k)
 
         # receive local model parameters from trainers
+        # [U6 real barrier-anchor] Real applies all K updates at ONE post-loop
+        # aggregation instant, so each update's true visibility lag is measured
+        # against that single barrier — collected here, finalized after the loop.
+        _real_round_durs: list = []
         for msg, metadata in updates:
             end, timestamp = metadata
             _t_msg_start = datetime.now()  # start of per-message processing (vii)
+            _real_task_dur = None  # WALL_SEND_TS - dispatch (real); set below
             if not msg:
                 logger.debug(f"No data from {end}; skipping it")
                 continue
@@ -467,19 +514,28 @@ class TopAggregator(Role, metaclass=ABCMeta):
                     f"[SEND_RECV_LAG] end={end} version={self._round} "
                     f"wall_lag_s={wall_lag_s:.3f}"
                 )
-                # Base syncfl stack (fedavg/feddance) doesn't set PROP_ROUND_DURATION
-                # — only the oort overlay does. Fill it from wall_lag_s so
-                # trainer_speed_s telemetry is populated for all sync baselines.
-                if not self.simulated and channel.get_end_property(end, PROP_ROUND_DURATION) is None:
-                    channel.set_end_property(
-                        end, PROP_ROUND_DURATION, timedelta(seconds=wall_lag_s)
-                    )
+                # Base syncfl stack (fedavg/feddance) doesn't set PROP_CLIENT_TASK_TRAIN_DURATION
+                # — only the oort overlay does. Fill it with the client's INTRINSIC duration
+                # (WALL_SEND - WALL_RECV, §S.dur), NOT wall_lag_s (recv - dispatch) which folds in
+                # server waits. (U6 barrier lag below uses _real_task_dur = WALL_SEND - dispatch,
+                # a separate anchor.)
+                if not self.simulated and channel.get_end_property(end, PROP_CLIENT_TASK_TRAIN_DURATION) is None:
+                    _ctd = real_client_task_train_duration(msg, _sent_ts, recv_ts)
+                    if _ctd is None:
+                        _ctd = timedelta(seconds=wall_lag_s)
+                    channel.set_end_property(end, PROP_CLIENT_TASK_TRAIN_DURATION, _ctd)
                 # Full per-message lag decomposition into 6 components.
                 _wst = msg.get(MessageType.WALL_SEND_TS)   # trainer send (float unix)
                 _wrt = msg.get(MessageType.WALL_RECV_TS)   # trainer recv of agg weights (float unix)
-                _rcs = msg.get(MessageType.ROUND_COMPUTE_S) # modeled compute duration (float s)
+                _rcs = msg.get(MessageType.CLIENT_TASK_TRAIN_COMPUTE_S) # modeled compute duration (float s)
                 _agg_sent_unix = _sent_ts.timestamp() if hasattr(_sent_ts, "timestamp") else None
                 _agg_recv_unix = recv_ts.timestamp() if hasattr(recv_ts, "timestamp") else None
+                # Real client task-train duration (WALL_SEND_TS - dispatch): the
+                # trainer's finish on a dispatch-relative axis, matching sim's sct.
+                # This is the apples-to-apples "ready" anchor for U6 (excludes MQTT
+                # re-selection wait + transit, which sim folds into the modeled sct).
+                if _wst is not None and _agg_sent_unix is not None:
+                    _real_task_dur = float(_wst) - _agg_sent_unix
                 _agg_to_trainer = f"{float(_wrt) - _agg_sent_unix:.3f}" if (_wrt and _agg_sent_unix) else "-"
                 _compute = f"{float(_rcs):.3f}" if _rcs is not None else "-"
                 _post_wait = f"{float(_wst) - float(_wrt) - float(_rcs):.3f}" if (_wst and _wrt and _rcs is not None) else "-"
@@ -588,19 +644,41 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 # Populate round statistics vars
                 self._round_update_values["staleness"].append(update_staleness_val)
                 self._round_update_values["stat_utility"].append(stat_utility)
-                # PROP_ROUND_DURATION is only populated by the Oort stack; on the
+                # commit-timeliness: ready->committed lag. Sim's vclock is already at the round
+                # barrier (max sct), so per-message `vclock - sct` is the within-round wait. Real
+                # applies all K at one post-loop instant, so it anchors on that single barrier
+                # (deferred to `_real_round_durs`); a per-message `now() - arrival` here would
+                # track arrival and collapse to ~0, blind to the barrier wait.
+                if self.simulated:
+                    _vis_ready, _vis_committed, _vis_lag = self._update_visibility_lag(
+                        msg.get(MessageType.SIM_COMPLETION_TS),
+                        timestamp if isinstance(timestamp, datetime) else None,
+                    )
+                    self._round_update_values["update_visibility_lag_s"].append(_vis_lag)
+                else:
+                    _real_round_durs.append(_real_task_dur)
+                # PROP_CLIENT_TASK_TRAIN_DURATION is only populated by the Oort stack; on the
                 # base (fedavg / feddance) flow it's unset -> guard against None.
-                _rd = channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION)
+                _rd = channel.get_end_property(end_id=end, key=PROP_CLIENT_TASK_TRAIN_DURATION)
                 self._round_update_values["trainer_speed"].append(
                     _rd.total_seconds() if _rd is not None else 0.0
                 )
 
         logger.debug(f"received {len(self.cache)} trainer updates in cache")
 
+        # [U6 real barrier-anchor] Finalize real visibility lag against the single round barrier:
+        # lag_i = max_completion - completion_i over this round's updates (completion = WALL_SEND
+        # - dispatch). Matches sim's vclock - sct (the barrier is the latest completion): an early
+        # finisher waits this long for the cohort before the one post-loop aggregation applies it.
+        if not self.simulated and _real_round_durs:
+            self._round_update_values["update_visibility_lag_s"] = (
+                self._barrier_anchored_lags(_real_round_durs)
+            )
+
         if telemetry.is_enabled():
             agg_obs = {}
             for eid in list(self.cache):
-                _rd = channel.get_end_property(end_id=eid, key=PROP_ROUND_DURATION)
+                _rd = channel.get_end_property(end_id=eid, key=PROP_CLIENT_TASK_TRAIN_DURATION)
                 if _rd is not None:
                     agg_obs[eid] = _rd.total_seconds() if hasattr(_rd, "total_seconds") else _rd
             ev, fields = build_agg_round(
@@ -613,7 +691,12 @@ class TopAggregator(Role, metaclass=ABCMeta):
                 ),
                 contributing_trainers=list(self.cache),  # diskcache iterates keys
                 agg_observed_s=agg_obs or None,
-                extra={"vclock_now": self._vclock.now if self.simulated else None},
+                extra={
+                    "vclock_now": self._vclock.now if self.simulated else None,
+                    "update_visibility_lag_s": list(
+                        self._round_update_values.get("update_visibility_lag_s", [])
+                    ),
+                },
             )
             telemetry.emit(ev, **fields)
 

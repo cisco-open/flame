@@ -31,8 +31,11 @@ from flame.selector.properties import (
     PROP_DATASET_SIZE,
     PROP_END_ID,
     PROP_LAST_EVAL_ROUND,
-    PROP_LAST_SELECTED_ROUND,
-    PROP_ROUND_DURATION,
+    PROP_LAST_RETURNED_ROUND,
+    # Re-exported for asyncfl/fwdllm aggregators; OortSelector's temporal term reads
+    # PROP_LAST_RETURNED_ROUND instead.
+    PROP_LAST_SELECTED_ROUND,  # noqa: F401
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_ROUND_START_TIME,
     PROP_SELECTED_COUNT,
     PROP_STAT_UTILITY,
@@ -63,7 +66,7 @@ class OortSelector(AbstractSelector):
 
         if self.aggr_num < 0:
             self.aggr_num = 1
-        self.round = 0
+        self._last_selection_round = 0
 
         # With Oort, we select 1.3 * k ends and wait until k ends to
         # complete at a round
@@ -89,12 +92,18 @@ class OortSelector(AbstractSelector):
 
         self.alpha = kwargs.get("round_penalty", _d["round_penalty"])  # system_util exponent
 
-        # Reference Oort normalizes+clips the reward into ~[0,1] (get_norm) before
-        # adding the temporal term; the raw reward (~70) had made it inert.
+        # Reference Oort normalizes+clips the reward into ~[0,1] (get_norm) before adding
+        # the temporal term, so the additive term isn't swamped by the raw reward (~70).
         self.normalize_reward = kwargs.get("normalize_reward", True)
         self.clip_bound = kwargs.get("clip_bound", _d["clip_bound"])
-        # cut_off_util: exploitation-pool breadth factor; was hardcoded 0.95.
+        # cut_off_util: exploitation-pool breadth factor.
         self.cut_off_util = kwargs.get("cut_off_util", _d["cut_off_util"])
+
+        # UCB temporal-uncertainty term. Like reference Oort/REFL, divide by the agg round
+        # of the end's LAST RECEIVED update (PROP_LAST_RETURNED_ROUND, registration-init) so
+        # the bonus is defined for every client and up-weights under-selected/slower-returning
+        # ones. Default ON = faithful; False = ablation (dead temporal, the pre-fix refl path).
+        self.enable_temporal = kwargs.get("enable_temporal", True)
 
         # Track sliding window statistics for the selector
         self._selector_stats = {}
@@ -181,10 +190,10 @@ class OortSelector(AbstractSelector):
         # full candidate pool, captured before any filtering for telemetry
         all_ends = dict(ends)
 
-        if round <= self.round and len(self.selected_ends) != 0:
+        if round <= self._last_selection_round and len(self.selected_ends) != 0:
             return {key: None for key in self.selected_ends}
 
-        self.pacer()
+        self.pacer(round)
 
         eligible_ends = {
             end_id: end
@@ -232,7 +241,7 @@ class OortSelector(AbstractSelector):
         # This indicates the first round, where no end's utility has
         # been measured; Then, perform random selection
         if len(utility_list) == 0 and len(self.selected_ends) == 0:
-            self.round = round
+            self._last_selection_round = round
             result = self.select_random(ends, num_of_ends)
             self.emit_selection(
                 round, task_to_perform, all_ends, ends.keys(),
@@ -251,7 +260,7 @@ class OortSelector(AbstractSelector):
         )
 
         if len(utility_list) == 0:
-            self.round = round
+            self._last_selection_round = round
             result = self.select_random(ends, num_of_ends)
             self.emit_selection(
                 round, task_to_perform, all_ends, ends.keys(),
@@ -278,7 +287,7 @@ class OortSelector(AbstractSelector):
         self.increment_selected_count_on_selected_ends(ends)
 
         logger.info(f"selected ends: {self.selected_ends}")
-        self.round = round
+        self._last_selection_round = round
 
         self._select_run_counter += 1
         for selected_end_id in self.selected_ends:
@@ -286,8 +295,8 @@ class OortSelector(AbstractSelector):
             if selected_end_id not in ends:
                 continue
             end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
-            end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
-            end_last_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
+            end_speed = ends[selected_end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
+            end_last_eval_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
             for window in [50, 100, 200]:
                 if end_stat_util is not None:
                     self._selector_stats[task_to_perform]["data"][
@@ -297,10 +306,10 @@ class OortSelector(AbstractSelector):
                     self._selector_stats[task_to_perform]["data"][
                         f"speed_last_{window}"
                     ].append(end_speed.total_seconds())
-                if end_last_round is not None:
+                if end_last_eval_round is not None:
                     self._selector_stats[task_to_perform]["data"][
                         f"round_last_{window}"
-                    ].append(end_last_round)
+                    ].append(end_last_eval_round)
 
         if self._select_run_counter % 5 == 0:
             self.compute_trainer_stat_summary()
@@ -312,9 +321,8 @@ class OortSelector(AbstractSelector):
             )
             self._select_run_counter = 0
 
-        # system_util = (pref/round_duration)^alpha depends on the dynamic
-        # round_preferred_duration (a per-round percentile of candidate durations);
-        # emit it so a divergence can be traced to the target vs the duration input.
+        # Emit round_preferred_duration (the per-round percentile that drives the
+        # system_util speed penalty) so a divergence localizes to target vs input.
         _pref = getattr(self, "round_preferred_duration", None)
         self.emit_selection(
             round, task_to_perform, all_ends, eligible_ends.keys(),
@@ -326,6 +334,8 @@ class OortSelector(AbstractSelector):
                 "exploit_ids": list(exploit_end_ids),
                 "round_preferred_duration_s": _pref.total_seconds()
                 if hasattr(_pref, "total_seconds") else _pref,
+                # pacer state: the percentile that sets pref (read pref divergence directly).
+                "round_threshold": getattr(self, "round_threshold", None),
                 "alpha": getattr(self, "alpha", None),
                 # per-round speed-penalty summary over selected (see _system_util_summary)
                 **self._system_util_summary(),
@@ -338,12 +348,11 @@ class OortSelector(AbstractSelector):
         sorted_utility_list: list[tuple[str, float]],
         num_of_ends: int,
     ) -> float:
-        """Cutoff utility = cut_off_util * the (exploitLen-th HIGHEST) score.
+        """Cutoff = cut_off_util * the (exploitLen-th HIGHEST) score.
 
-        Reference Oort thresholds at the exploitation boundary's score then samples
-        above it (oort.py:329). `sorted_utility_list` is ASCENDING, so the
-        exploitLen-th highest is at index ``len-1-exploitLen``. The prior port
-        indexed near the bottom, making the factor inert.
+        Reference Oort thresholds at the exploitation boundary's score then samples above
+        it. `sorted_utility_list` is ASCENDING, so the exploitLen-th highest is at index
+        ``len-1-exploitLen``.
         """
         if not sorted_utility_list:
             logger.debug("Got empty utility_list, returning 999999.0")
@@ -410,26 +419,35 @@ class OortSelector(AbstractSelector):
             )
         ]
 
-    def pacer(self) -> None:
-        """
-        Controls round preferred duration based on the exploited
-        statistical utility.
-        """
+    def pacer(self, round: int) -> None:
+        """Adapt `round_threshold` (the speed-penalty percentile) from the exploited-utility
+        trend — faithful port of reference Oort (oort.py:184-199), keyed on the current round.
 
-        if (
-            len(self.exploitation_util_history) >= 2 * self.pacer_step
-            and self.round % self.pacer_step == 0
+        Two symmetric moves on the 0.1 / 5x bands over the last two `pacer_step` windows of
+        mean exploited utility:
+          * FLAT plateau (`|Δ| <= 0.1·last`) → RELAX: `round_threshold += delta`.
+          * SHARP change (`|Δ| >= 5·last`) → TIGHTEN: `round_threshold -= delta` (floor delta).
+        Both branches matter: a raise-only ratchet drifts monotonically to 100 and is
+        noise-sensitive, diverging sim/real (PARITY.md §S.pacer).
+        """
+        if not (
+            self.pacer_step > 0
+            and round >= 2 * self.pacer_step
+            and round % self.pacer_step == 0
+            and len(self.exploitation_util_history) >= 2 * self.pacer_step
         ):
-            last_pacer_step_util = sum(
-                self.exploitation_util_history[-2 * self.pacer_step : -self.pacer_step]
+            return
+        last_util = sum(
+            self.exploitation_util_history[-2 * self.pacer_step : -self.pacer_step]
+        )
+        curr_util = sum(self.exploitation_util_history[-self.pacer_step :])
+        delta = abs(curr_util - last_util)
+        if delta <= last_util * 0.1:
+            self.round_threshold = min(100.0, self.round_threshold + self.pacer_delta)
+        elif delta >= last_util * 5.0:
+            self.round_threshold = max(
+                self.pacer_delta, self.round_threshold - self.pacer_delta
             )
-            curr_pacer_step_util = sum(
-                self.exploitation_util_history[-self.pacer_step :]
-            )
-            if last_pacer_step_util > curr_pacer_step_util:
-                self.round_threshold = min(
-                    100.0, self.round_threshold + self.pacer_delta
-                )
 
     def find_blocklists(self, ends: dict[str, End]) -> list[str]:
         """Make a filter of blocklist ends."""
@@ -483,7 +501,7 @@ class OortSelector(AbstractSelector):
         if self.round_threshold < 100.0:
             sorted_round_duration = []
             for end_id in ends.keys():
-                end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
+                end_round_duration = ends[end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
                 if end_round_duration is not None:
                     sorted_round_duration.append(end_round_duration)
                 else:
@@ -530,16 +548,19 @@ class OortSelector(AbstractSelector):
     def calculate_temporal_uncertainty_of_trainer(
         self, ends: dict[str, End], end_id: str, round: int
     ) -> float:
-        """
-        Calculate temproal uncertainty term based on the end's last
-        selected round.
-        """
-
-        # NOTE: reference Oort keys this on the round the util was last UPDATED (on
-        # completion), not last SELECTED — would need a new aggregator-stamped
-        # property across real+sim. Subtle effect; deferred.
-        end_last_selected_round = ends[end_id].get_property(PROP_LAST_SELECTED_ROUND)
-        return scoring.oort_temporal_uncertainty(round, end_last_selected_round)
+        """UCB temporal-uncertainty term = sqrt(0.1*log(round)/time_stamp), reference
+        Oort/REFL. `time_stamp` = the agg round of the end's last RECEIVED update
+        (PROP_LAST_RETURNED_ROUND, stamped at receipt), registration-initialized to the
+        current round. `enable_temporal=False` forces 0 (ablation only)."""
+        if not self.enable_temporal:
+            return 0.0
+        time_stamp = ends[end_id].get_property(PROP_LAST_RETURNED_ROUND)
+        if not time_stamp:
+            # Reference registers a new arm with time_stamp = current round so the bonus is
+            # defined for a never-returned client; mirror that lazily and persist it.
+            time_stamp = round
+            ends[end_id].set_property(PROP_LAST_RETURNED_ROUND, round)
+        return scoring.oort_temporal_uncertainty(round, time_stamp)
 
     def calculate_global_system_utility_of_trainer(
         self, ends: dict[str, End], end_id: str
@@ -549,7 +570,7 @@ class OortSelector(AbstractSelector):
         duration.
         """
 
-        end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
+        end_round_duration = ends[end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
 
         if end_round_duration is None:
             return 1
@@ -633,14 +654,16 @@ class OortSelector(AbstractSelector):
             system_util = self.calculate_global_system_utility_of_trainer(
                 ends, curr_end_id
             )
+            combined = scoring.oort_combine_score(stat_util, temporal, system_util)
             self._audit_components[curr_end_id] = {
                 "believed_I": stat_util,
                 "temporal": temporal,
                 "system_util": system_util,
+                # Combined score fed to the exploit draw; the divergent term lives in the
+                # selection PROBABILITY, stamped at the draw site (refl_oort/sample_by_util).
+                "score": combined,
             }
-            utility_list[utility_idx][PROP_UTILITY] = scoring.oort_combine_score(
-                stat_util, temporal, system_util
-            )
+            utility_list[utility_idx][PROP_UTILITY] = combined
 
         utility_list = sorted(utility_list, key=lambda x: x[PROP_UTILITY])
 

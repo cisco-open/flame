@@ -31,7 +31,7 @@ from ..end import End
 from ..telemetry.events import build_selection
 from .properties import (
     PROP_AVL_STATE,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_STAT_UTILITY,
 )
 
@@ -135,7 +135,7 @@ class AbstractSelector(ABC):
                     avail_composition.get(state_name, 0) + 1
                 )
                 util = end.get_property(PROP_STAT_UTILITY)
-                speed = end.get_property(PROP_ROUND_DURATION)
+                speed = end.get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
                 entry = {
                     "utility": util,
                     "speed_s": speed.total_seconds()

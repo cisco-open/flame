@@ -17,6 +17,7 @@
 
 import logging
 import time
+from collections import deque
 from datetime import datetime, timedelta
 
 import numpy as np
@@ -36,17 +37,18 @@ from flame.mode.horizontal.syncfl.top_aggregator import (
 )
 from flame.mode.horizontal.syncfl.top_aggregator import TopAggregator as SyncTopAgg
 from flame.mode.message import MessageType
+from flame.mode.horizontal.client_duration import real_client_task_train_duration
 from flame.mode.tasklet import Loop, Tasklet
 from flame.optimizer.train_result import TrainResult
 from flame import telemetry
-from flame.telemetry.events import build_agg_round, build_utility_belief
+from flame.telemetry.events import build_agg_round, build_dispatch, build_utility_belief
 from flame.sim import SimReorderBuffer
 from flame.selector.properties import PROP_SIM_SEND_TS, PROP_SIM_COMPLETION_TS
 from flame.selector.oort import (
     PROP_DATASET_SIZE,
     PROP_LAST_SELECTED_ROUND,
     PROP_LAST_EVAL_ROUND,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_ROUND_START_TIME,
     PROP_STAT_UTILITY,
     PROP_UPDATE_COUNT,
@@ -101,33 +103,72 @@ class TopAggregator(SyncTopAgg):
         self._sim_committed: set = set()
         self._sim_pending_commit: set = set()
         self._sim_enqueue_round = {}  # end -> round it entered the reorder buffer
-        # Virtual-completion gate: the aggregator's own record of each
-        # in-flight trainer's EXPECTED completion = dispatch vclock + its MODELED
-        # budget. Lets _sim_recv_min hold the clock at the earliest expected
-        # completion so it can't race past an update that has virtually completed
-        # but whose message hasn't been drained yet (the straggler source).
-        #
-        # the predictor learns each trainer's budget from the stable,
-        # contention-free TRAINING_BUDGET_S (= modeled training_delay_s), NOT from
-        # SIM_ROUND_DURATION (= max(gpu, budget), inflated by GPU contention). The
-        # modeled budget is a true LOWER BOUND on the real sct (sct = send_ts +
-        # max(gpu, budget) >= send_ts + budget), so clamping the clock to it can
-        # never overshoot a true completion. The old SIM_ROUND_DURATION predictor
-        # over-estimated under contention -> expected pushed into the future ->
-        # gate never fired -> the clock lapped in-flight stragglers -> past-dated
-        # commits inflated version-vs-clock and drifted staleness.
+        # Virtual-completion gate: the aggregator's record of each in-flight trainer's
+        # EXPECTED completion = dispatch vclock + its MODELED budget. Lets _sim_recv_min hold
+        # the clock at the earliest expected completion so it can't race past an update that
+        # virtually completed but whose message isn't drained yet. The budget is learned from
+        # the contention-free TRAINING_BUDGET_S (not SIM_CLIENT_TASK_TRAIN_DURATION_S, which
+        # GPU contention inflates): it's a true LOWER BOUND on sct, so clamping never overshoots.
         self._sim_inflight_expected: dict = {}   # end -> expected sim_completion_ts
         self._sim_trainer_budget: dict = {}      # end -> last observed TRAINING_BUDGET_S
-        self._sim_budget_running_mean: float = 12.0  # default budget for unseen trainers
+        # Unseen-trainer floor for the gate's expected completion: a running MINIMUM,
+        # so expected stays a true lower bound on sct and the clock never laps a
+        # not-yet-seen (often fast) trainer (the past-dating seed). Mean would overshoot.
+        self._sim_budget_min: float = 12.0
+        self._sim_budget_running_mean: float = 12.0
         self._sim_budget_n: int = 0
 
-        # post-commit re-dispatch gap: end -> vclock before which it stays out
-        # of selection (= its last commit sct + sim_redispatch_gap_s). Models the
-        # real finish->re-dispatch latency so it does NOT count toward staleness
-        # (which is set by the pre-commit holding) yet still spaces completions.
+        # Past-dating source attribution: which seed produced each past-dated commit
+        # (sct < vclock by > slack), so a pacing fix can target the dominant one. Sources:
+        #   fresh      — dispatched <=1 round ago, lapped before its update landed
+        #   redispatch — re-dispatched with a new sct already below the advanced clock
+        #   straggler  — first commit, dispatched >1 round ago (genuinely slow in-flight)
+        #   round1     — startup transient (current round <= 1)
+        self._sim_pastdated_by_source: dict = {}  # source -> [count, gap_cum]
+        self._sim_commit_count: dict = {}          # end -> times committed (re-dispatch tell)
+
+        # post-commit re-dispatch gap: end -> vclock before which it stays out of selection
+        # (last commit sct + sim_redispatch_gap_s). Models finish->re-dispatch latency, which
+        # spaces completions but does NOT count toward staleness (set by the pre-commit hold).
         self._sim_cooldown_until: dict = {}
         _gap = getattr(self.config.hyperparameters, "sim_redispatch_gap_s", 0.0)
         self._sim_redispatch_gap_s: float = float(_gap) if _gap is not None else 0.0
+
+        # Clock-jump clamp. The arrival gate above is inert in sim (real-GPU compute ~0.4s
+        # wall, so every in-flight trainer is already buffered → gate_holds=0); a forced commit
+        # of a far-future straggler then jumps vclock past the fresh fast cohort, past-dating
+        # them. The clamp caps each commit's advance at the earliest MODELED completion of any
+        # still-in-flight FUTURE (exp > vclock) trainer, so the clock creeps with that cohort.
+        # Excludes exp <= vclock (due/abandoned) so a lost entry can't pin the clock.
+        _clamp = getattr(self.config.hyperparameters, "sim_clock_jump_clamp", True)
+        self._sim_clock_jump_clamp: bool = bool(_clamp) if _clamp is not None else True
+
+        # Event-driven re-dispatch (async only; FALSIFIED, kept off — PARITY.md §3.evt).
+        # Re-stamps each freed slot's refill at the vclock it FREED (not the shared round-start
+        # frontier) to regain the per-trainer completion stagger the round boundary collapses.
+        # Backdating bounded by one round's advance (~4s) << min compute (~12s), so no commit
+        # past-dates at dispatch; MODEL_VERSION stays self._round. Default off ⇒ byte-identical.
+        _stag = getattr(self.config.hyperparameters, "sim_staggered_redispatch", False)
+        self._sim_staggered_redispatch: bool = bool(_stag) if _stag is not None else False
+
+        # sct-ordered ingestion (async only; §3.drain). When on, _sim_recv_min fills the reorder
+        # buffer by draining each in-flight end's rx queue directly (channel.drain_ready) instead
+        # of via the recv_fifo streamer, whose background task + shared queue could strand a
+        # delivered update out of the buffer's view and let the clock lap it (past-dating). A
+        # COMPLETE buffer lets the min-sct gate commit in true completion order. Default off ⇒
+        # recv_fifo path. Supersedes staggered re-dispatch, so the two aren't enabled together.
+        _drain = getattr(self.config.hyperparameters, "sim_sct_ordered_drain", False)
+        self._sim_sct_ordered_drain: bool = bool(_drain) if _drain is not None else False
+        # One-in-flight-per-trainer invariant (§3.resid, felix async). A trainer with an update
+        # still outstanding must NOT be re-selected — real keeps it out of VAL_CH_STATE_SEND
+        # until its update returns and is aggregated. Default off ⇒ unchanged selection.
+        _resid = getattr(self.config.hyperparameters, "sim_inflight_residence", False)
+        self._sim_inflight_residence: bool = bool(_resid) if _resid is not None else False
+        # FIFO of vclocks at which a train-commit freed a slot; popped oldest-first to stamp
+        # the trainer that refills that slot. Bounded (≈ concurrency in steady state; trimmed
+        # so a transient imbalance can't make a stamp arbitrarily stale).
+        self._sim_free_slot_ts: deque = deque(maxlen=128)
+        self._sim_last_commit_sct: dict = {}  # end -> its last commit sct (held_s telem)
 
         # Real-mode settle sleep before selection (0 = compute-bound).
         _settle = getattr(self.config.hyperparameters, "real_distribute_settle_s", 0.1)
@@ -256,6 +297,9 @@ class TopAggregator(SyncTopAgg):
             self._sim_trainer_budget = {}
             self._sim_budget_running_mean = 12.0
             self._sim_budget_n = 0
+            self._sim_budget_min = 12.0
+            self._sim_pastdated_by_source = {}
+            self._sim_commit_count = {}
         barrier_t0 = time.time()
         deadline = barrier_t0 + RECV_TIMEOUT_WAIT_S
         drained_all = True
@@ -266,70 +310,85 @@ class TopAggregator(SyncTopAgg):
         # in-flight trainer whose update is still stuck in the rxq is EXPECTED to
         # complete earlier than the buffered minimum — so the clock can't race past
         # a virtually-completed-but-undelivered update (the straggler source).
+        def _ingest(msg, metadata):
+            # Buffer one received update into the sct-ordered reorder buffer,
+            # keyed by its actual sender + sct.
+            actual_end = metadata[0]
+            sct = msg.get(MessageType.SIM_COMPLETION_TS)
+            if sct is None:
+                sct = self._vclock.now
+            # Tripwire (#3): a trainer should be in-flight (hence buffered)
+            # at most once; re-adding overwrites a prior update of its.
+            if self._sim_buffer.has(actual_end):
+                self._sim_dupadd = getattr(self, "_sim_dupadd", 0) + 1
+            self._sim_buffer.add(actual_end, float(sct), (msg, metadata))
+            if not hasattr(self, "_sim_enqueue_round"):
+                self._sim_enqueue_round = {}
+            self._sim_enqueue_round.setdefault(actual_end, getattr(self, "_round", 0))
+
         for _pass in range(_SIM_GATE_MAX_PASSES):
-            # Probe set = the recv_ends snapshot (taken once at the top of the
-            # cycle in _aggregate_weights) PLUS any LIVE in-flight trainer whose
-            # MODELED completion is at/before the current buffered minimum.
-            #
-            # the gate (below) holds the clock for the earliest-expected
-            # straggler taken from the live _sim_inflight_expected set, but
-            # to_probe was built ONLY from the stale recv_ends snapshot — so that
-            # straggler was frequently NOT in to_probe, recv_fifo never waited for
-            # it (barrier_wait~0), the gate spun to the pass cap, and the clock
-            # committed past it (the past-dated commit that drifts staleness).
-            #
-            # draining must be gated by PHYSICAL readiness, not predicted
-            # completion. A SLOW trainer (budget 38-56s) has a far-future modeled
-            # `exp`, so the `exp <= _probe_ceiling` bound excluded it — yet its
-            # message had already physically arrived (wall_lag ~0.1s). It therefore
-            # sat undrained in the rxq while the clock advanced past its `sct`, and
-            # was finally drained ~45 vclock-s LATE → committed past-dated →
-            # staleness inflated 2-3.5x (33 vs real ~9 for the same budget). The
-            # tell: those commits have residence~0 (NOT buffer-resident) but gap~45.
-            # Fix: drain any in-flight end with a READY message (non-empty rxq)
-            # regardless of `exp`, so slow trainers buffer as proper FUTURES and
-            # commit in `sct` order. Keep the ceiling as a secondary admit so the
-            # gate can still wait (recv_fifo grace) for an expected-soon straggler
-            # whose fragments are mid-reassembly. recv_fifo on a ready end returns
-            # immediately, so this adds NO blocking.
-            _bmin = self._sim_buffer.peek_min_ts()
-            _probe_ceiling = (
-                _bmin + _SIM_ORDER_SLACK_S if _bmin is not None else float("inf")
-            )
-            to_probe = [
-                e for e in recv_ends
-                if not self._sim_buffer.has(e) and e not in self._sim_committed
-            ]
-            _seen = set(to_probe)
-            to_probe += [
-                e for e, exp in self._sim_inflight_expected.items()
-                if e not in _seen and channel.has(e)
+            # Ingest arrived in-flight updates into the sct-ordered buffer. The
+            # probe set is the recv_ends snapshot (taken once upstream in
+            # _aggregate_weights) UNION the LIVE in-flight set — a stale snapshot
+            # alone misses ends that entered RECV after it, which is what let the
+            # gate spin on an earliest-expected straggler it never probed and then
+            # commit past it (past-dated, staleness drift).
+            grace = self._sim_recv_grace_s()
+            live_inflight = [
+                e for e in set(recv_ends) | set(self._sim_inflight_expected)
+                if channel.has(e)
                 and not self._sim_buffer.has(e) and e not in self._sim_committed
-                and (self._sim_end_has_ready_msg(channel, e) or exp <= _probe_ceiling)
             ]
-            if to_probe:
-                probed = max(probed, len(to_probe))
-                grace = self._sim_recv_grace_s()
-                for msg, metadata in channel.recv_fifo(
-                    to_probe, first_k=len(to_probe), timeout=grace
-                ):
-                    if msg is None:  # no more ready (grace expired or set drained)
-                        break
-                    # metadata[0] is the actual sender; may differ from probed end
-                    # if a stale recv task delivered a different end's message first.
-                    actual_end = metadata[0]
-                    sct = msg.get(MessageType.SIM_COMPLETION_TS)
-                    if sct is None:
-                        sct = self._vclock.now
-                    # Tripwire (#3): a trainer should be in-flight (hence buffered)
-                    # at most once; re-adding overwrites a prior update of its.
-                    if self._sim_buffer.has(actual_end):
-                        self._sim_dupadd = getattr(self, "_sim_dupadd", 0) + 1
-                    self._sim_buffer.add(actual_end, float(sct), (msg, metadata))
-                    if not hasattr(self, "_sim_enqueue_round"):
-                        self._sim_enqueue_round = {}
-                    self._sim_enqueue_round.setdefault(actual_end, getattr(self, "_round", 0))
-                drained_all = all(self._sim_buffer.has(e) for e in to_probe)
+            # ends still pending ingestion this pass — drives the "nothing left to
+            # commit and nothing in flight" loop-exit below (per ingestion path).
+            _pending_ends = live_inflight
+            if getattr(self, "_sim_sct_ordered_drain", False):
+                # sct-faithful ingestion: drain each live in-flight end's rx queue
+                # DIRECTLY (no recv_fifo streamer), so the buffer is a COMPLETE
+                # snapshot of every arrived in-flight update — the streamer could
+                # strand a delivered update out of the buffer's view and let the
+                # clock lap it (commit past-dated). Already-buffered/committed ends
+                # are excluded above, so a HOLD pass waits (drain_ready's poll)
+                # only on the genuinely-not-yet-arrived earlier-sct straggler.
+                if live_inflight:
+                    probed = max(probed, len(live_inflight))
+                    for msg, metadata in channel.drain_ready(live_inflight, timeout=grace):
+                        _ingest(msg, metadata)
+                    drained_all = all(
+                        self._sim_buffer.has(e) or e in self._sim_committed
+                        for e in live_inflight
+                    )
+            else:
+                # Legacy recv_fifo ingestion (default). An in-flight end is probed
+                # if it is physically READY (non-empty rxq) — drain it regardless of
+                # `exp` so a slow trainer whose message already arrived buffers as a
+                # FUTURE instead of being drained-in late and committed past-dated —
+                # OR its modeled `exp` is at/before the buffered minimum (+slack), so
+                # the gate can still wait (recv_fifo grace) for an expected-soon
+                # straggler whose fragments are mid-reassembly.
+                _bmin = self._sim_buffer.peek_min_ts()
+                _probe_ceiling = (
+                    _bmin + _SIM_ORDER_SLACK_S if _bmin is not None else float("inf")
+                )
+                to_probe = [e for e in recv_ends
+                            if not self._sim_buffer.has(e) and e not in self._sim_committed]
+                _seen = set(to_probe)
+                to_probe += [
+                    e for e, exp in self._sim_inflight_expected.items()
+                    if e not in _seen and channel.has(e)
+                    and not self._sim_buffer.has(e) and e not in self._sim_committed
+                    and (self._sim_end_has_ready_msg(channel, e) or exp <= _probe_ceiling)
+                ]
+                _pending_ends = to_probe
+                if to_probe:
+                    probed = max(probed, len(to_probe))
+                    for msg, metadata in channel.recv_fifo(
+                        to_probe, first_k=len(to_probe), timeout=grace
+                    ):
+                        if msg is None:  # no more ready (grace expired or set drained)
+                            break
+                        _ingest(msg, metadata)
+                    drained_all = all(self._sim_buffer.has(e) for e in to_probe)
             # Gate: earliest expected completion among un-drained in-flight trainers.
             buffered_min = self._sim_buffer.peek_min_ts()
             _stuck_end, min_stuck = None, None
@@ -340,7 +399,7 @@ class TopAggregator(SyncTopAgg):
                     min_stuck, _stuck_end = exp, e
             earlier_stuck = (buffered_min is not None and min_stuck is not None
                              and min_stuck + _SIM_ORDER_SLACK_S < buffered_min)
-            if buffered_min is None and not to_probe:
+            if buffered_min is None and not _pending_ends:
                 break  # nothing to commit and nothing in flight
             if not earlier_stuck:
                 break  # the buffered minimum is the true next completion
@@ -364,7 +423,29 @@ class TopAggregator(SyncTopAgg):
         if popped is None:
             return None, ("", datetime.now())
         _end, sct, (m, md) = popped
-        self._advance_sim_clock(sct)
+        # Clamp the clock-jump to the earliest in-flight FUTURE modeled completion
+        # so a far-future straggler commit can't lap the fresh fast cohort. Only
+        # exp > vclock counts (an already-due/abandoned end never pins the clock);
+        # never advance backwards. Committing a straggler "early" (vclock < sct) is
+        # the intended in-flight residence, not a past-dating.
+        _advance_to = sct
+        if getattr(self, "_sim_clock_jump_clamp", True):
+            _now = self._vclock.now
+            _min_future_exp = None
+            for e, exp in self._sim_inflight_expected.items():
+                if e == _end or e in self._sim_committed:
+                    continue
+                if exp > _now and (_min_future_exp is None or exp < _min_future_exp):
+                    _min_future_exp = exp
+            if _min_future_exp is not None:
+                _advance_to = max(_now, min(sct, _min_future_exp + _SIM_ORDER_SLACK_S))
+        self._advance_sim_clock(_advance_to)
+        # Re-dispatch tell: captured BEFORE the add, since _sim_committed already
+        # holds _end on a second commit. Drives the past-dating source breakdown.
+        _was_recommit = _end in self._sim_committed
+        if not hasattr(self, "_sim_commit_count"):
+            self._sim_commit_count = {}
+        self._sim_commit_count[_end] = self._sim_commit_count.get(_end, 0) + 1
         self._sim_committed.add(_end)
         # start this end's post-commit re-dispatch cooldown. Held out of
         # selection (in _distribute_weights) until vclock >= sct + gap, so it
@@ -375,20 +456,37 @@ class TopAggregator(SyncTopAgg):
             if not hasattr(self, "_sim_cooldown_until"):
                 self._sim_cooldown_until = {}
             self._sim_cooldown_until[_end] = sct + _gap
+        # Event-driven re-dispatch bookkeeping: record this commit's sct (held_s
+        # telemetry) and, for a TRAIN commit, push the just-advanced vclock as the
+        # freed-slot stamp. The trainer that refills this slot rides this vclock
+        # (popped FIFO in _distribute_weights) instead of the round-start frontier,
+        # so train dispatches ≈ train commits keep the FIFO balanced and fresh.
+        if not hasattr(self, "_sim_last_commit_sct"):
+            self._sim_last_commit_sct = {}
+        self._sim_last_commit_sct[_end] = sct
+        if getattr(self, "_sim_staggered_redispatch", False):
+            _is_train = isinstance(m, dict) and (
+                MessageType.WEIGHTS in m or MessageType.WEIGHTS_BYTES in m
+            )
+            if _is_train:
+                if not hasattr(self, "_sim_free_slot_ts"):
+                    self._sim_free_slot_ts = deque(maxlen=128)
+                self._sim_free_slot_ts.append(self._vclock.now)
         # Gate bookkeeping: this trainer is no longer in flight; learn its MODELED
         # budget (running mean refines the default for trainers not yet observed).
         # learn from TRAINING_BUDGET_S (contention-free modeled delay), NOT
-        # SIM_ROUND_DURATION (= max(gpu, budget), contention-inflated). The modeled
+        # SIM_CLIENT_TASK_TRAIN_DURATION_S (= max(gpu, budget), contention-inflated). The modeled
         # budget is the stable lower bound the gate needs so it fires on genuine
         # stragglers instead of being pushed into the future by a GPU spike.
         self._sim_inflight_expected.pop(_end, None)
         _budget = m.get(MessageType.TRAINING_BUDGET_S) if isinstance(m, dict) else None
         if _budget is None and isinstance(m, dict):  # fallback for older messages
-            _budget = m.get(MessageType.SIM_ROUND_DURATION)
+            _budget = m.get(MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S)
         if _budget is not None:
             self._sim_trainer_budget[_end] = float(_budget)
             self._sim_budget_n += 1
             self._sim_budget_running_mean += (float(_budget) - self._sim_budget_running_mean) / self._sim_budget_n
+            self._sim_budget_min = min(self._sim_budget_min, float(_budget))
         _commit_gap = self._vclock.now - sct
         # a "past-dated" commit is one the clock already lapped
         # (sct < vclock by more than the gate slack) — exactly what inflates
@@ -398,6 +496,24 @@ class TopAggregator(SyncTopAgg):
             self._sim_pastdated_commits = getattr(self, "_sim_pastdated_commits", 0) + 1
             self._sim_pastdated_gap_cum = getattr(self, "_sim_pastdated_gap_cum", 0.0) + _commit_gap
             self._sim_pastdated_gap_max = max(getattr(self, "_sim_pastdated_gap_max", 0.0), _commit_gap)
+            # Attribute the past-dating to its seed so the pacing fix can target the
+            # dominant one (see _sim_pastdated_by_source init). round_lag = how many
+            # rounds ago this update was trained (current round - its MODEL_VERSION).
+            _mv = m.get(MessageType.MODEL_VERSION) if isinstance(m, dict) else None
+            _round_lag = (self._round - int(_mv)) if _mv is not None else None
+            if self._round <= 1:
+                _src = "round1"
+            elif _was_recommit:
+                _src = "redispatch"
+            elif _round_lag is not None and _round_lag <= 1:
+                _src = "fresh"
+            else:
+                _src = "straggler"
+            if not hasattr(self, "_sim_pastdated_by_source"):
+                self._sim_pastdated_by_source = {}
+            _agg = self._sim_pastdated_by_source.setdefault(_src, [0, 0.0])
+            _agg[0] += 1
+            _agg[1] += _commit_gap
         logger.info(  # [SIM_BARRIER]: barrier_wait_s should track wall_lag
             f"[SIM_BARRIER] round={getattr(self, '_round', -1)} end={_end[-4:]} "
             f"barrier_wait_s={barrier_wait:.3f} probed={probed} "
@@ -417,6 +533,10 @@ class TopAggregator(SyncTopAgg):
             _past = sum(1 for s in _scts if s <= _now)
             _bmin = self._sim_buffer.peek_min_ts()
             _lead = (_now - _bmin) if _bmin is not None else 0.0
+            _pd_src = " ".join(
+                f"{k}={v[0]}/{v[1]:.0f}s"
+                for k, v in sorted(getattr(self, "_sim_pastdated_by_source", {}).items())
+            ) or "none"
             logger.info(
                 f"[SIM_CLOCK_DIAG] commits={self._sim_diag_n} "
                 f"round={getattr(self, '_round', -1)} vclock={_now:.0f} "
@@ -431,6 +551,7 @@ class TopAggregator(SyncTopAgg):
                 f"pastdated_commits={getattr(self, '_sim_pastdated_commits', 0)} "
                 f"pastdated_gap_cum={getattr(self, '_sim_pastdated_gap_cum', 0.0):.0f} "
                 f"pastdated_gap_max={getattr(self, '_sim_pastdated_gap_max', 0.0):.0f} "
+                f"pastdated_by_source=[{_pd_src}] "
                 f"budget_mean={getattr(self, '_sim_budget_running_mean', 0.0):.1f} "
                 f"dup_buffer_adds={getattr(self, '_sim_dupadd', 0)}"
             )
@@ -569,6 +690,39 @@ class TopAggregator(SyncTopAgg):
             channel._selector.remove_from_selected_ends(channel._ends, end)
             channel._selector._cleanup_removed_ends(end)
 
+            # Eval-commit timeliness telemetry (mirror of the train branch below):
+            # an eval task must commit at its OWN modeled completion, not a stale
+            # one. Emitting commit_gap_s/update_visibility_lag_s tagged task=eval
+            # lets the analyzer/checker catch eval past-dating (the stale-sct bug)
+            # separately from train. sim-only fields are None in real mode.
+            if telemetry.is_enabled():
+                _sct_eval = msg.get(MessageType.SIM_COMPLETION_TS)
+                _ts_eval = metadata[1] if len(metadata) > 1 else None
+                _commit_gap_eval = (
+                    (self._vclock.now - float(_sct_eval))
+                    if (self.simulated and _sct_eval is not None) else None
+                )
+                _ready_e, _committed_e, _vis_lag_e = self._update_visibility_lag(
+                    _sct_eval, _ts_eval
+                )
+                _mv_eval = msg.get(MessageType.MODEL_VERSION)
+                _stale_eval = (self._round - int(_mv_eval)) if _mv_eval is not None else None
+                ev, fields = build_agg_round(
+                    round_num=self._round,
+                    staleness=[_stale_eval] if _stale_eval is not None else None,
+                    contributing_trainers=[end],
+                    extra={
+                        "task_to_perform": "eval",
+                        "sim_completion_ts_recv": float(_sct_eval) if _sct_eval is not None else None,
+                        "vclock_now": self._vclock.now if self.simulated else None,
+                        "commit_gap_s": _commit_gap_eval,
+                        "update_ready_ts": _ready_e,
+                        "update_committed_ts": _committed_e,
+                        "update_visibility_lag_s": [_vis_lag_e] if _vis_lag_e is not None else [],
+                    },
+                )
+                telemetry.emit(ev, **fields)
+
             return
 
         # Else, throw an error and return
@@ -653,7 +807,7 @@ class TopAggregator(SyncTopAgg):
                 # Full per-message lag decomposition into 6 components.
                 _wst = msg.get(MessageType.WALL_SEND_TS)   # trainer send (float unix)
                 _wrt = msg.get(MessageType.WALL_RECV_TS)   # trainer recv of agg weights (float unix)
-                _rcs = msg.get(MessageType.ROUND_COMPUTE_S) # modeled compute duration (float s)
+                _rcs = msg.get(MessageType.CLIENT_TASK_TRAIN_COMPUTE_S) # modeled compute duration (float s)
                 _agg_sent_unix = sent_wts_ts.timestamp() if hasattr(sent_wts_ts, "timestamp") else None
                 _agg_recv_unix = recv_wts_ts.timestamp() if hasattr(recv_wts_ts, "timestamp") else None
                 _agg_to_trainer = f"{float(_wrt) - _agg_sent_unix:.3f}" if (_wrt and _agg_sent_unix) else "-"
@@ -677,10 +831,10 @@ class TopAggregator(SyncTopAgg):
                 if _budget_s > 0:
                     if self.simulated:
                         # sim overrun: modeled compute exceeded budget (GPU contention).
-                        # Use SIM_ROUND_DURATION (= max(gpu, D), pure compute) — NOT
+                        # Use SIM_CLIENT_TASK_TRAIN_DURATION_S (= max(gpu, D), pure compute) — NOT
                         # SIM_COMPLETION_TS - SIM_SEND_TS, which now also includes the
                         # post-compute completion leg and is not an overrun signal.
-                        _virt_elapsed = float(msg.get(MessageType.SIM_ROUND_DURATION, 0.0))
+                        _virt_elapsed = float(msg.get(MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S, 0.0))
                         if _virt_elapsed > 0.0:
                             if _virt_elapsed > _budget_s:
                                 logger.warning(
@@ -758,13 +912,20 @@ class TopAggregator(SyncTopAgg):
                 curr_cumulative_training_s = self._track_trainer_version_duration_s[
                     end
                 ]["total_training_time_s"]
-                # Both modes: round_duration = max(gpu, D); mirrors recv_ts-sent_ts for OORT utility.
+                # Both modes: the client's INTRINSIC task-train duration = max(gpu, D),
+                # excluding server-side waits (§S.dur). Real anchors on the two CLIENT stamps
+                # (WALL_SEND - WALL_RECV); an agg-anchored span (recv - dispatch) folds in
+                # read-wait + delivery lag and inflates slow-trainer trainer_speed telemetry.
                 if self.simulated:
                     round_duration_td = timedelta(
-                        seconds=float(msg.get(MessageType.SIM_ROUND_DURATION, 0.0))
+                        seconds=float(msg.get(MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S, 0.0))
                     )
                 else:
-                    round_duration_td = recv_wts_ts - sent_wts_ts
+                    round_duration_td = real_client_task_train_duration(
+                        msg, sent_wts_ts, recv_wts_ts
+                    )
+                    if round_duration_td is None:  # no client stamps -> prior behavior
+                        round_duration_td = recv_wts_ts - sent_wts_ts
                 curr_round_time_s = round_duration_td.total_seconds()
                 new_cumulative_training_s = (
                     curr_cumulative_training_s + curr_round_time_s
@@ -784,11 +945,11 @@ class TopAggregator(SyncTopAgg):
                 # be calculated based on send and recv time for that
                 # version to that trainer.
                 logger.debug(
-                    f"Setting channel property {PROP_ROUND_DURATION} for "
+                    f"Setting channel property {PROP_CLIENT_TASK_TRAIN_DURATION} for "
                     f"end {end} with duration {round_duration_td}"
                 )
                 channel.set_end_property(
-                    end, PROP_ROUND_DURATION, round_duration_td
+                    end, PROP_CLIENT_TASK_TRAIN_DURATION, round_duration_td
                 )
 
         channel._selector.ordered_updates_recv_ends.append(end)
@@ -857,7 +1018,7 @@ class TopAggregator(SyncTopAgg):
             # Populate round statistics vars
             self._round_update_values["staleness"].append(update_staleness_val)
             self._round_update_values["stat_utility"].append(stat_utility)
-            _round_dur = channel.get_end_property(end_id=end, key=PROP_ROUND_DURATION)
+            _round_dur = channel.get_end_property(end_id=end, key=PROP_CLIENT_TASK_TRAIN_DURATION)
             _trainer_speed_s = _round_dur.total_seconds() if _round_dur is not None else 0.0
             self._round_update_values["trainer_speed"].append(_trainer_speed_s)
 
@@ -869,6 +1030,16 @@ class TopAggregator(SyncTopAgg):
                 # sat buffered. inflight = concurrent in-flight (both modes).
                 _enq_round = self._sim_enqueue_round.pop(end, self._round) if self.simulated else None
                 _commit_gap_s = (self._vclock.now - float(_sct_recv)) if (self.simulated and _sct_recv is not None) else None
+                # update_visibility_lag_s: aggregator-clock delay between when an
+                # update became READY to aggregate and when it was COMMITTED into
+                # the global model — same metric, mode-appropriate clock. Real:
+                # wall(commit) - wall(MQTT arrival); should be ~0 (timely by
+                # construction). Sim: vclock(commit) - sct(ready) = how far the
+                # virtual clock ran past this update's modeled completion (the
+                # past-dating signature). Fidelity = sim dist matches real dist.
+                _ready_ts, _committed_ts, _vis_lag_s = self._update_visibility_lag(
+                    _sct_recv, timestamp
+                )
                 ev, fields = build_agg_round(
                     round_num=self._round,
                     agg_goal=self._agg_goal,
@@ -880,9 +1051,13 @@ class TopAggregator(SyncTopAgg):
                     contributing_trainers=[end],
                     agg_observed_s={end: _trainer_speed_s},
                     extra={
+                        "task_to_perform": "train",
                         "sim_completion_ts_recv": float(_sct_recv) if _sct_recv is not None else None,
                         "vclock_now": self._vclock.now if self.simulated else None,
                         "commit_gap_s": _commit_gap_s,
+                        "update_ready_ts": _ready_ts,
+                        "update_committed_ts": _committed_ts,
+                        "update_visibility_lag_s": [_vis_lag_s] if _vis_lag_s is not None else [],
                         "buf_depth": len(self._sim_buffer) if self.simulated else None,
                         "residence_rounds": (self._round - _enq_round) if _enq_round is not None else None,
                         "inflight": self._updates_in_queue,
@@ -1046,39 +1221,7 @@ class TopAggregator(SyncTopAgg):
         channel.cleanup_recvd_ends()
 
         if self.simulated:
-            sel = channel._selector
-            requester = sel.requester
-            pending_in_buffer = set(self._sim_buffer.pending_ends())
-
-            # Release all_selected trainers with no buffer entry yet (GPU still
-            # running — rare). They'll be probed next round's fill pass.
-            for end_id in [e for e in list(sel.all_selected.keys()) if e not in pending_in_buffer]:
-                del sel.all_selected[end_id]
-                if channel.has(end_id):
-                    channel._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_NONE)
-                if requester in sel.selected_ends and end_id in sel.selected_ends[requester]:
-                    sel.selected_ends[requester].discard(end_id)
-
-            # Block every trainer with a pending buffer entry from re-selection.
-            # cleanup_recvd_ends may have freed them early; re-block here so the
-            # real-mode invariant holds: one in-flight update per trainer at a time.
-            # Crucially, KEEP them in selected_ends: concurrency is budgeted as
-            # extra = c - len(selected_ends), so a buffered-but-uncommitted update
-            # must hold its slot until it actually commits — exactly like real
-            # mode. Dropping it here frees a phantom slot the selector refills
-            # with a NEW trainer, so in-flight grows toward N each round (the
-            # over-selection bug). The slot is released on commit in _sim_recv_min.
-            for end_id in pending_in_buffer:
-                self._sim_pending_commit.add(end_id)
-                if end_id not in sel.all_selected:
-                    sel.all_selected[end_id] = time.time()
-                if requester in sel.selected_ends:
-                    sel.selected_ends[requester].add(end_id)
-            if pending_in_buffer:
-                logger.debug(
-                    f"[SIM_PENDING] round={self._round} blocked {len(pending_in_buffer)} "
-                    f"trainer(s) pending buffer commit: {[e[-4:] for e in pending_in_buffer]}"
-                )
+            self._sim_hold_busy_slots(channel)
 
     def oracular_trainer_avail_check(self, end: str) -> bool:
         logger.debug("In oracular_trainer_avail_check")
@@ -1200,6 +1343,67 @@ class TopAggregator(SyncTopAgg):
 
         return picked_trainer_is_available
 
+    def _pop_free_slot_ts(self, round_now):
+        """Oldest freed-slot vclock (FIFO) to stamp a re-dispatch, else round_now.
+
+        A stamp is the vclock at which a prior train commit freed a slot; it is
+        always <= the live vclock (monotone), clamped defensively. Empty queue =
+        cold start (round 1) or a transient with no held slot ⇒ the live frontier."""
+        q = getattr(self, "_sim_free_slot_ts", None)
+        if not q:
+            return round_now
+        ts = float(q.popleft())
+        return min(ts, float(round_now)) if round_now is not None else ts
+
+    def _sim_hold_busy_slots(self, channel) -> None:
+        """Hold BUSY trainers (a compute task still outstanding) in their
+        concurrency slot until their update commits.
+
+        Sim analog of real, where the channel keeps a dispatched trainer out of
+        VAL_CH_STATE_SEND until its update returns AND is aggregated (one in-flight
+        update per trainer). Busy != UN_AVL: a busy trainer is AVL_TRAIN/AVL_EVAL but
+        temporarily occupied, so it holds a slot in the selector's selected_ends
+        (concurrency is budgeted as extra = c - len(selected_ends)) — it does NOT go
+        on the unavailable list, which is for trainers that cannot participate at all.
+        cleanup_recvd_ends frees a trainer the instant its message arrives (instant in
+        sim); this re-blocks it so the slot is released only on commit (_sim_recv_min).
+        Dropping a busy slot frees a phantom the selector refills with a NEW trainer,
+        so in-flight grows toward N each round (the over-selection bug).
+
+        Default holds the already-buffered set; with sim_inflight_residence on it holds
+        the FULL dispatched-but-not-committed set (_sim_inflight_expected, train+eval),
+        so a trainer whose update has not yet drained into the buffer also can't be
+        re-selected mid-flight — closing the overlap tail."""
+        sel = channel._selector
+        requester = sel.requester
+        pending_in_buffer = set(self._sim_buffer.pending_ends())
+        held = pending_in_buffer
+        if self._sim_inflight_residence:
+            held = pending_in_buffer | set(self._sim_inflight_expected)
+
+        # Release trainers no longer busy (committed, or — residence off — dispatched
+        # with no buffer entry yet); they refill next round's fill pass.
+        for end_id in [e for e in list(sel.all_selected.keys()) if e not in held]:
+            del sel.all_selected[end_id]
+            if channel.has(end_id):
+                channel._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_NONE)
+            if requester in sel.selected_ends and end_id in sel.selected_ends[requester]:
+                sel.selected_ends[requester].discard(end_id)
+
+        # Block every busy trainer from re-selection, KEEPING its slot.
+        for end_id in held:
+            self._sim_pending_commit.add(end_id)
+            if end_id not in sel.all_selected:
+                sel.all_selected[end_id] = time.time()
+            if requester in sel.selected_ends:
+                sel.selected_ends[requester].add(end_id)
+        if held:
+            logger.debug(
+                f"[SIM_PENDING] round={self._round} held {len(held)} busy "
+                f"trainer(s) (buffered={len(pending_in_buffer)}): "
+                f"{[e[-4:] for e in held]}"
+            )
+
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
         """Distribute a global model in asynchronous FL fashion."""
         channel = self.cm.get_by_tag(tag)
@@ -1244,6 +1448,11 @@ class TopAggregator(SyncTopAgg):
             # expose cooling count so the selector holds those slots (no refill).
             channel.properties["sim_cooling_count"] = len(_cooling)
 
+        # One-in-flight-per-trainer is enforced by _sim_hold_busy_slots (commit-side):
+        # a busy trainer holds its concurrency slot in selected_ends until its update
+        # commits, NOT the unavailable list (which is for UN_AVL trainers that can't
+        # participate at all). Marking busy trainers unavailable here frees their slot
+        # and over-selects toward N — see _sim_hold_busy_slots.
         channel.set_curr_unavailable_trainers(
             trainer_unavail_list=curr_unavail_trainer_list
         )
@@ -1261,20 +1470,9 @@ class TopAggregator(SyncTopAgg):
             logger.debug(f"No trainers found for tag {tag}")
             return
 
-        ends_list = list(ends)
-        # Same model goes to every recipient this round; build + serialize once.
-        _sim_send_ts = self._vclock.now if self.simulated else None
-        msg = {
-            MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
-            MessageType.ROUND: self._round,
-            MessageType.MODEL_VERSION: self._round,
-            MessageType.TASK_TO_PERFORM: task_to_perform,
-        }
-        if self.simulated:
-            msg[MessageType.SIM_SEND_TS] = _sim_send_ts
-        _payload = channel.dumps(msg)
-        _send_t0 = time.time()  # [DISTRIBUTE_TIMING]
-        for end in ends_list:
+        # Filter to ends we actually dispatch to (skip already-sent-this-round).
+        _send_ends = []
+        for end in list(ends):
             if end in self._track_trainer_version_duration_s:
                 sent_versions = self._track_trainer_version_duration_s[end]["sent_wts_version_ts"]
                 recv_versions = self._track_trainer_version_duration_s[end]["recv_wts_version_ts"]
@@ -1289,7 +1487,43 @@ class TopAggregator(SyncTopAgg):
                     logger.warning(
                         f"[SELECTION_CHECK] {end} has {len(unreturned)} unreturned versions: {unreturned}"
                     )
+            _send_ends.append(end)
 
+        _round_now = self._vclock.now if self.simulated else None
+        # Event-driven re-dispatch: stagger each TRAIN dispatch by the vclock at
+        # which its slot freed (a prior commit), so the round-boundary cohort no
+        # longer collapses to one frozen frontier. Off / eval / real ⇒ one shared
+        # round_now stamp and a single serialized payload (byte-identical to before).
+        _staggered = (
+            self.simulated
+            and getattr(self, "_sim_staggered_redispatch", False)
+            and task_to_perform == "train"
+        )
+        # Per-end sim_send_ts: popped freed-slot stamp (staggered) else round_now.
+        _end_send_ts = {}
+        for end in _send_ends:
+            _end_send_ts[end] = (
+                self._pop_free_slot_ts(_round_now) if _staggered else _round_now
+            )
+        _cohort_min = min(_end_send_ts.values()) if (_staggered and _end_send_ts) else None
+
+        # Same model goes to every recipient; serialize once unless staggered (each
+        # carries its own SIM_SEND_TS so the payload must be rebuilt per end — sim
+        # weights are small and dwarfed by the real GPU compute these runs do).
+        base_msg = {
+            MessageType.WEIGHTS: weights_to_device(self.weights, DeviceType.CPU),
+            MessageType.ROUND: self._round,
+            MessageType.MODEL_VERSION: self._round,
+            MessageType.TASK_TO_PERFORM: task_to_perform,
+        }
+        _shared_payload = None
+        if not _staggered:
+            if self.simulated:
+                base_msg[MessageType.SIM_SEND_TS] = _round_now
+            _shared_payload = channel.dumps(base_msg)
+
+        _send_t0 = time.time()  # [DISTRIBUTE_TIMING]
+        for end in _send_ends:
             logger.debug(
                 f"sending weights to {end} model_version={self._round} task={task_to_perform}"
             )
@@ -1297,15 +1531,32 @@ class TopAggregator(SyncTopAgg):
                 end, PROP_ROUND_START_TIME, (self._round, datetime.now())
             )
             if self.simulated:
-                channel.set_end_property(end, PROP_SIM_SEND_TS, _sim_send_ts)
-                # Record this trainer's expected completion for the gate: dispatch
-                # vclock + its last-observed MODELED budget (running-mean default if
-                # unseen). the modeled budget is a lower bound on the true sct,
-                # so the gate holds the clock until this trainer can plausibly have
-                # completed, never lapping it.
-                _budget = self._sim_trainer_budget.get(end, self._sim_budget_running_mean)
-                self._sim_inflight_expected[end] = _sim_send_ts + _budget
-            channel.send_payload(end, _payload)
+                _sst = _end_send_ts[end]
+                channel.set_end_property(end, PROP_SIM_SEND_TS, _sst)
+                # Expected completion = dispatch vclock + a lower-bound budget (own
+                # observed, else the running min), so the gate never laps this trainer.
+                _budget = self._sim_trainer_budget.get(end, self._sim_budget_min)
+                self._sim_inflight_expected[end] = _sst + _budget
+                if _staggered:
+                    _m = dict(base_msg)
+                    _m[MessageType.SIM_SEND_TS] = _sst
+                    payload = channel.dumps(_m)
+                else:
+                    payload = _shared_payload
+                if telemetry.is_enabled():
+                    _prior = self._sim_last_commit_sct.get(end)
+                    ev, f = build_dispatch(
+                        round_num=self._round, end_id=end, task=task_to_perform,
+                        time_mode="sim", sim_send_ts=float(_sst),
+                        redispatch_stagger_s=(float(_sst - _cohort_min)
+                                              if _cohort_min is not None else 0.0),
+                        held_s=(float(_round_now - _prior) if _prior is not None else None),
+                        staggered=_staggered,
+                    )
+                    telemetry.emit(ev, **f)
+            else:
+                payload = _shared_payload
+            channel.send_payload(end, payload)
 
             if end not in self._track_trainer_version_duration_s:
                 self._track_trainer_version_duration_s[end] = {
@@ -1319,9 +1570,10 @@ class TopAggregator(SyncTopAgg):
                 self._round
             ] = datetime.now()
 
-        if ends_list:
+        if _send_ends:
             logger.info(
-                f"[DISTRIBUTE_TIMING] round={self._round} n_sends={len(ends_list)} "
+                f"[DISTRIBUTE_TIMING] round={self._round} n_sends={len(_send_ends)} "
+                f"staggered={_staggered} "
                 f"send_wall_s={time.time() - _send_t0:.3f}"
             )
 

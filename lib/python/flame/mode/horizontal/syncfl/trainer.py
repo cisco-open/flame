@@ -418,17 +418,14 @@ class Trainer(Role, metaclass=ABCMeta):
         _sim_completion = getattr(self, "_sim_completion_ts", None)
         if getattr(self, "simulated", False) and _sim_completion is not None:
             msg[MessageType.SIM_COMPLETION_TS] = _sim_completion
-            msg[MessageType.SIM_ROUND_DURATION] = getattr(
+            msg[MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S] = getattr(
                 self, "_sim_round_duration", 0.0
             )
 
-        # Lazy-deserialize (BOTH real and sim): ship the weight update as raw
-        # pre-serialized bytes so the aggregator reconstructs the tensor only for
-        # the updates it commits, not the surplus/stale ones it discards. The
-        # channel's recv otherwise eagerly cloudpickle.loads every received tensor
-        # (channel.py), even ones thrown away to overcommitment / a sync barrier
-        # that only needs the K fastest. The aggregator side restores the tensor
-        # via common.util.materialize_weights at its read site.
+        # Lazy-deserialize (real and sim): ship the weight update as raw pre-serialized bytes so
+        # the aggregator reconstructs the tensor only for updates it commits, not the surplus/
+        # stale ones it discards (the channel otherwise cloudpickle.loads every received tensor).
+        # The aggregator restores it via common.util.materialize_weights at its read site.
         if MessageType.WEIGHTS in msg:
             msg[MessageType.WEIGHTS_BYTES] = cloudpickle.dumps(
                 msg.pop(MessageType.WEIGHTS)
@@ -443,7 +440,7 @@ class Trainer(Role, metaclass=ABCMeta):
         # trainer-side lag into delivery + compute + post-wait in both modes.
         _compute_s = getattr(self, "_sim_round_duration", None)
         if _compute_s is not None:
-            msg[MessageType.ROUND_COMPUTE_S] = float(_compute_s)
+            msg[MessageType.CLIENT_TASK_TRAIN_COMPUTE_S] = float(_compute_s)
 
         # Trainer recv timestamp: when channel.recv() returned the distributed
         # weights. Used by the aggregator for the agg→trainer delivery leg (i).

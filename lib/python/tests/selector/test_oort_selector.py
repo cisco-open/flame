@@ -8,7 +8,7 @@ import pytest
 
 from flame.selector.oort import OortSelector
 from flame.selector.async_oort import AsyncOortSelector
-from flame.selector.properties import PROP_ROUND_DURATION
+from flame.selector.properties import PROP_CLIENT_TASK_TRAIN_DURATION
 
 
 @pytest.fixture
@@ -77,6 +77,38 @@ class TestOortIdempotentWithinRound:
         assert set(r1.keys()) == set(r2.keys())
 
 
+class TestTemporalUncertaintyFidelity:
+    """UCB temporal term keys on the agg round of the end's last RECEIVED update
+    (PROP_LAST_RETURNED_ROUND, stamped at receipt by the aggregator), reference
+    Oort/REFL — registration-initialized so the bonus is defined for every client.
+    Supersedes the D5 last-selected stamping (see PARITY D7)."""
+
+    def test_registration_init_fires(self, oort, make_ends):
+        from flame.selector.properties import PROP_LAST_RETURNED_ROUND
+
+        ends = make_ends(count=4, prefix="t", stat_utility=1.0)
+        bonus = oort.calculate_temporal_uncertainty_of_trainer(ends, "t0", 50)
+        assert bonus > 0
+        assert ends["t0"].get_property(PROP_LAST_RETURNED_ROUND) == 50
+
+    def test_older_receipt_gets_larger_bonus(self, oort, make_ends):
+        from flame.selector.properties import PROP_LAST_RETURNED_ROUND
+
+        ends = make_ends(count=2, prefix="t", stat_utility=1.0)
+        ends["t0"].set_property(PROP_LAST_RETURNED_ROUND, 5)
+        ends["t1"].set_property(PROP_LAST_RETURNED_ROUND, 95)
+        old = oort.calculate_temporal_uncertainty_of_trainer(ends, "t0", 100)
+        recent = oort.calculate_temporal_uncertainty_of_trainer(ends, "t1", 100)
+        assert old > recent > 0
+
+    def test_disabled_zeroes_term(self, make_ends):
+        from flame.selector.oort import OortSelector
+
+        sel = OortSelector(aggr_num=3, enable_temporal=False)
+        ends = make_ends(count=2, prefix="t", stat_utility=1.0)
+        assert sel.calculate_temporal_uncertainty_of_trainer(ends, "t0", 100) == 0.0
+
+
 class TestRoundPreferredDuration:
     """Guards the Jun-15 parity fix: pref must be the round_threshold-th
     PERCENTILE of candidate durations (reference Oort sorts the list before
@@ -87,7 +119,7 @@ class TestRoundPreferredDuration:
         # Insert in the GIVEN (unsorted) order so a missing sort is detectable.
         ends = make_ends([f"e{i}" for i in range(len(durations_s))])
         for (eid, e), d in zip(ends.items(), durations_s):
-            e.set_property(PROP_ROUND_DURATION, timedelta(seconds=d))
+            e.set_property(PROP_CLIENT_TASK_TRAIN_DURATION, timedelta(seconds=d))
         return ends
 
     def test_round_preferred_duration_is_sorted_percentile(self, oort, make_ends):
@@ -126,7 +158,7 @@ class TestAsyncRoundPreferredDuration:
     def _ends_with_durations(self, make_ends, durations_s):
         ends = make_ends([f"e{i}" for i in range(len(durations_s))])
         for (eid, e), d in zip(ends.items(), durations_s):
-            e.set_property(PROP_ROUND_DURATION, timedelta(seconds=d))
+            e.set_property(PROP_CLIENT_TASK_TRAIN_DURATION, timedelta(seconds=d))
         return ends
 
     def test_round_preferred_duration_is_sorted_percentile(
@@ -191,7 +223,7 @@ class TestRewardNormalization:
         raws = [66.0, 68.0, 70.0, 72.0, 74.0]
         for (eid, e), r in zip(ends.items(), raws):
             e.set_property(PROP_STAT_UTILITY, r)
-            e.set_property(PROP_ROUND_DURATION, timedelta(seconds=10))
+            e.set_property(PROP_CLIENT_TASK_TRAIN_DURATION, timedelta(seconds=10))
         util_list = [{PROP_END_ID: eid, PROP_UTILITY: r} for eid, r in zip(ids, raws)]
         assert oort.normalize_reward is True
         oort.calculate_total_utility(util_list, ends, round=5)
@@ -199,12 +231,12 @@ class TestRewardNormalization:
             assert 0.0 <= comp["believed_I"] <= 1.0, comp
 
     def test_normalization_can_be_disabled(self, make_ends):
-        from flame.selector.properties import PROP_END_ID, PROP_UTILITY, PROP_ROUND_DURATION
+        from flame.selector.properties import PROP_END_ID, PROP_UTILITY, PROP_CLIENT_TASK_TRAIN_DURATION
         sel = OortSelector(aggr_num=3, normalize_reward=False)
         ids = [f"e{i}" for i in range(3)]
         ends = make_ends(ids)
         for eid, e in ends.items():
-            e.set_property(PROP_ROUND_DURATION, timedelta(seconds=10))
+            e.set_property(PROP_CLIENT_TASK_TRAIN_DURATION, timedelta(seconds=10))
         raws = [66.0, 70.0, 74.0]
         util_list = [{PROP_END_ID: eid, PROP_UTILITY: r} for eid, r in zip(ids, raws)]
         sel.calculate_total_utility(util_list, ends, round=5)
@@ -254,6 +286,68 @@ class TestAlgorithmHyperparams:
         cut2 = oort.cutoff_util(ul, n)
         assert cut2 == 0.5 * utils[n - 1 - exploit_len]
         assert cut2 > cut  # boundary moved up toward higher utilities
+
+
+class TestPacerFidelity:
+    """Guards §S.pacer: pacer() must faithfully port reference Oort
+    (third_party/Oort/oort/oort.py:184-199) — a FLAT plateau relaxes
+    round_threshold, a SHARP change tightens it, keyed on the current round.
+    The earlier port raised on any dip and never lowered (monotonic ratchet)."""
+
+    def _seed_history(self, oort, last_vals, curr_vals):
+        # two pacer_step windows of mean exploited utility
+        oort.exploitation_util_history = list(last_vals) + list(curr_vals)
+
+    def test_flat_plateau_relaxes(self, oort):
+        oort.pacer_step, oort.pacer_delta, oort.round_threshold = 2, 5.0, 10.0
+        # last sum 20, curr sum 21 -> |Δ|=1 <= 0.1*20=2 -> RELAX
+        self._seed_history(oort, [10.0, 10.0], [10.0, 11.0])
+        oort.pacer(round=4)            # 4 >= 2*step and 4 % step == 0
+        assert oort.round_threshold == 15.0
+
+    def test_sharp_change_tightens(self, oort):
+        oort.pacer_step, oort.pacer_delta, oort.round_threshold = 2, 5.0, 30.0
+        # last sum 20, curr sum 200 -> |Δ|=180 >= 5*20=100 -> TIGHTEN
+        self._seed_history(oort, [10.0, 10.0], [100.0, 100.0])
+        oort.pacer(round=4)
+        assert oort.round_threshold == 25.0
+
+    def test_moderate_change_no_move(self, oort):
+        oort.pacer_step, oort.pacer_delta, oort.round_threshold = 2, 5.0, 30.0
+        # last 20, curr 30 -> |Δ|=10, between 0.1*20=2 and 5*20=100 -> NO MOVE
+        self._seed_history(oort, [10.0, 10.0], [15.0, 15.0])
+        oort.pacer(round=4)
+        assert oort.round_threshold == 30.0
+
+    def test_tighten_floored_at_pacer_delta(self, oort):
+        oort.pacer_step, oort.pacer_delta, oort.round_threshold = 2, 5.0, 5.0
+        self._seed_history(oort, [10.0, 10.0], [100.0, 100.0])
+        oort.pacer(round=4)
+        assert oort.round_threshold == 5.0  # max(delta, thr-delta) floors here
+
+    def test_no_move_off_cadence_or_warmup(self, oort):
+        oort.pacer_step, oort.pacer_delta, oort.round_threshold = 2, 5.0, 10.0
+        self._seed_history(oort, [10.0, 10.0], [10.0, 11.0])
+        oort.pacer(round=3)            # 3 % 2 != 0 -> no move
+        assert oort.round_threshold == 10.0
+        oort.pacer(round=2)            # 2 < 2*step(4) warmup -> no move
+        assert oort.round_threshold == 10.0
+
+    def test_async_oort_pacer_faithful(self, async_oort):
+        # felix's separate AsyncOortSelector.pacer must use the same two-branch
+        # reference logic, keyed on self.round.
+        async_oort.pacer_step, async_oort.pacer_delta = 2, 5.0
+        async_oort.exploitation_util_history = [10.0, 10.0, 10.0, 11.0]
+        async_oort.round_threshold, async_oort.round = 10.0, 4
+        async_oort.pacer()                       # FLAT |Δ|=1 <= 2 -> relax
+        assert async_oort.round_threshold == 15.0
+        async_oort.exploitation_util_history = [10.0, 10.0, 100.0, 100.0]
+        async_oort.round_threshold, async_oort.round = 30.0, 4
+        async_oort.pacer()                       # SHARP |Δ|=180 >= 100 -> tighten
+        assert async_oort.round_threshold == 25.0
+        async_oort.round_threshold, async_oort.round = 30.0, 3  # off-cadence
+        async_oort.pacer()
+        assert async_oort.round_threshold == 30.0
 
 
 class TestOortCleanup:

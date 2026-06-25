@@ -42,7 +42,7 @@ from flame.selector.properties import (
     PROP_END_ID,
     PROP_LAST_EVAL_ROUND,
     PROP_LAST_SELECTED_ROUND,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_ROUND_START_TIME,
     PROP_SELECTED_COUNT,
     PROP_STAT_UTILITY,
@@ -368,7 +368,7 @@ class AsyncOortSelector(AbstractSelector):
 
             for selected_end_id in results.keys():
                 end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
-                end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
+                end_speed = ends[selected_end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
                 end_last_round = ends[selected_end_id].get_property(
                     PROP_LAST_EVAL_ROUND
                 )
@@ -525,28 +525,40 @@ class AsyncOortSelector(AbstractSelector):
         return self._rng.choice(unexplored_end_ids, size=num_of_ends, replace=False)
 
     def pacer(self) -> None:
-        """
-        Controls round preferred duration based on the exploited
-        statistical utility.
-        """
+        """Adapt `round_threshold` from the exploited-utility trend — faithful to
+        the Oort pacer (third_party/Oort/oort/oort.py:184-199, byte-identical in
+        the third_party/REFL fork). TWO symmetric moves on the reference's 0.1 / 5×
+        bands over the last two `pacer_step` windows: a FLAT plateau
+        (`|Δ| <= 0.1·last`) RELAXES (`round_threshold += pacer_delta`); a SHARP
+        change (`|Δ| >= 5·last`) TIGHTENS (floored at `pacer_delta`). Keyed on the
+        current `self.round` (= reference `training_round`); caller train-gates it.
 
-        if (
-            len(self.exploitation_util_history) >= 2 * self.pacer_step
+        The async selector has no async-Oort reference, but the pacer's adaptation
+        is the SAME concept — so it must match the reference's two-branch logic.
+        The prior async port (like the old sync base) raised on ANY dip
+        (`last > curr`) and never lowered → a monotonic ratchet to 100 that turned
+        the speed penalty off; this only "passed" because felix's penalty was thus
+        rendered largely inert (PARITY.md §S.pacer). felix is a SEPARATE class
+        (AbstractSelector), so this in-place fix keeps it self-contained.
+        """
+        if not (
+            self.pacer_step > 0
+            and self.round >= 2 * self.pacer_step
             and self.round % self.pacer_step == 0
+            and len(self.exploitation_util_history) >= 2 * self.pacer_step
         ):
-            last_pacer_step_util = sum(
-                self.exploitation_util_history[-2 * self.pacer_step : -self.pacer_step]
+            return
+        last_util = sum(
+            self.exploitation_util_history[-2 * self.pacer_step : -self.pacer_step]
+        )
+        curr_util = sum(self.exploitation_util_history[-self.pacer_step :])
+        delta = abs(curr_util - last_util)
+        if delta <= last_util * 0.1:
+            self.round_threshold = min(100.0, self.round_threshold + self.pacer_delta)
+        elif delta >= last_util * 5.0:
+            self.round_threshold = max(
+                self.pacer_delta, self.round_threshold - self.pacer_delta
             )
-            curr_pacer_step_util = sum(
-                self.exploitation_util_history[-self.pacer_step :]
-            )
-
-            # increases round threshold when recently exploited
-            # statistical utility decreases
-            if last_pacer_step_util > curr_pacer_step_util:
-                self.round_threshold = min(
-                    100.0, self.round_threshold + self.pacer_delta
-                )
 
     def find_blocklists(self, ends: dict[str, End]) -> list[str]:
         """Make a filter of blocklist ends."""
@@ -618,7 +630,7 @@ class AsyncOortSelector(AbstractSelector):
         if self.round_threshold < 100.0:
             sorted_round_duration = []
             for end_id in ends.keys():
-                end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
+                end_round_duration = ends[end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
                 logger.debug(
                     f"end_id: {end_id}, end_round_duration: {end_round_duration}"
                 )
@@ -710,7 +722,7 @@ class AsyncOortSelector(AbstractSelector):
         duration.
         """
 
-        end_round_duration = ends[end_id].get_property(PROP_ROUND_DURATION)
+        end_round_duration = ends[end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
 
         # In normal training, the util of trainer is 1 if it is faster
         # than preferred round duration. This is a multiplier to the
@@ -1234,11 +1246,11 @@ class AsyncOortSelector(AbstractSelector):
         # get the end properties
         end_id_to_round_durations = {}
         for key, val in ends.items():
-            # if the PROP_ROUND_DURATION is None, it means the trainer
+            # if the PROP_CLIENT_TASK_TRAIN_DURATION is None, it means the trainer
             # hasnt trained even once till now. So we set it to
             # 00:00:00.000000 (upto microseconds) to prioritize it to
             # get picked up atleast once.
-            round_duration = val.get_property(PROP_ROUND_DURATION)
+            round_duration = val.get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
             if round_duration is None:
                 round_duration = timedelta(
                     hours=0, minutes=0, seconds=0, microseconds=0
@@ -1520,11 +1532,13 @@ class AsyncOortSelector(AbstractSelector):
                     if end in self.all_selected.keys():
                         del self.all_selected[end]
 
-        # Run pacer that controls round_threshold TODO: (DG) This
-        # might need to be changed since round is not complete.
-        # Another value can be set from the top_aggregator and be used
-        # by OORT_ASYNC selector
-        self.pacer()
+        # Run pacer that controls round_threshold. TRAIN-ONLY: the reference
+        # Oort pacer is the *training* selector's (it reads exploited train
+        # utility, advances once per training round). felix's eval hand leaves
+        # self.round / exploitation_util_history unchanged, so firing it on an
+        # eval call would re-adjust round_threshold off a stale round (§S.pacer).
+        if task_to_perform == "train":
+            self.pacer()
 
         # TODO: (DG) Add code to allow only those ends (not in
         # all_selected) to be passed. filtered_ends consists of ends

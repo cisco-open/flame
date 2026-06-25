@@ -35,7 +35,7 @@ from flame.selector import AbstractSelector, SelectorReturnType
 
 from flame.selector.properties import (
     PROP_LAST_EVAL_ROUND,
-    PROP_ROUND_DURATION,
+    PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_STAT_UTILITY,
 )
 
@@ -586,7 +586,7 @@ class FedBuffSelector(AbstractSelector):
         for selected_end_id in candidates:
             task_to_perform = "train"
             end_stat_util = ends[selected_end_id].get_property(PROP_STAT_UTILITY)
-            end_speed = ends[selected_end_id].get_property(PROP_ROUND_DURATION)
+            end_speed = ends[selected_end_id].get_property(PROP_CLIENT_TASK_TRAIN_DURATION)
             end_last_round = ends[selected_end_id].get_property(PROP_LAST_EVAL_ROUND)
             # Insert to queues tracking stat_util, speed, round data
             for window in [50, 100, 200]:

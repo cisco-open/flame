@@ -29,6 +29,7 @@ class TrainResult(object):
         round_duration=None,
         staleness=0,
         end_id=None,
+        update_visibility_lag_s=None,
     ):
         """
         Initialize TrainResult.
@@ -54,3 +55,6 @@ class TrainResult(object):
         self.round_duration = round_duration
         self.staleness = staleness
         self.end_id = end_id
+        # ready->committed lag in the aggregator's own clock (sim: vclock-sct;
+        # real: wall commit - wall arrival). High fidelity => sim dist == real.
+        self.update_visibility_lag_s = update_visibility_lag_s

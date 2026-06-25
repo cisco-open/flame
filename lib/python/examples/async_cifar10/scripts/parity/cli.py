@@ -94,8 +94,11 @@ def _run_pair(real_dir: str, sim_dir: str,
 
     if json_out:
         from parity.report import write_json as _wj
-        _wj(results, json_out, extra={"real_dir": real_dir, "sim_dir": sim_dir,
-                                       "agg_goal": agg_goal})
+        from parity.checks import verdict_summary
+        _wj(results, json_out, extra={
+            "real_dir": real_dir, "sim_dir": sim_dir, "agg_goal": agg_goal,
+            "summary": verdict_summary(results, strict=strict, lenient=lenient),
+        })
     if plot_out:
         write_plot(results, plot_out, real_label=real_label, sim_label=sim_label)
 

@@ -46,6 +46,48 @@ experiments:
         min_trainers_join_timeout_s: 600
         aggGoal: 10
         evalEveryNRounds: 50
+        # PARITY K2/K3b/K4/U6/U3 fix (Jun 20): EVENT-DRIVEN RE-DISPATCH. The round
+        # boundary re-dispatched the whole freed cohort at one frozen round-start
+        # vclock, collapsing the per-trainer completion stagger real keeps (median
+        # sct-ordered DIRECT drain (the Jun-20 commit-side root). Trace of the
+        # prior run: in-flight updates arrive ~instantly (trainers don't sleep in
+        # sim) but were ingested through the recv_fifo streamer, which stranded
+        # delivered updates out of the reorder buffer (queue_wait mean 26s, 90.6%
+        # of commits > 5s; wall_lag only 0.29s). The clock then advanced off the
+        # incomplete buffer and lapped the stranded lower-sct updates → past-dated
+        # (52% of commits, staleness 15 vs real 2.8; only ~1.6 of 10 commits/round
+        # advanced the clock → 1.4 s/round vs 3.85 → 2.8x rounds). This drains each
+        # in-flight end's rx queue directly so the buffer is COMPLETE and the
+        # min-sct gate commits in true completion order (commit_gap≈0). SIM only;
+        # default off ⇒ recv_fifo path, byte-identical. Re-read K2/K3b/K4/U6/U3.
+        simSctOrderedDrain: true
+        # The dispatch-side staggered re-dispatch is SUPERSEDED: once ingestion +
+        # clock are sct-faithful the completion spread is recovered from the sct's
+        # themselves. Falsified by the prior run (advance 1.93→1.38, WORSE, the
+        # injected stagger was bounded by the collapsed clock it sourced from), so
+        # it is OFF; the two are not enabled together.
+        simStaggeredRedispatch: false
+        # Post-commit re-dispatch gap scalar: measured no-op (Jun 16), kept zeroed.
+        simRedispatchGapSeconds: 0.0
+        # PARITY U6/K3b (Jun 19 evidence): the 2.5h run showed gate_holds=0 (inert
+        # arrival-gate) with 72% of commits past-dated (fresh source avg ~807s gap),
+        # U6 commit-visibility sim 14.8s vs real 0.017s. The clamp caps each commit's
+        # clock advance at the earliest in-flight FUTURE modeled completion (+slack)
+        # so a far-future straggler can't lap the fresh fast cohort. SIM only (default
+        # True; pinned here for the parity run). Re-read U6/K3b/K2/U3 after.
+        simClockJumpClamp: true
+        # PARITY K3b/U3/U6 residual (Jun 21): one-in-flight-per-trainer invariant.
+        # Post-drain the bulk past-dating closed (commit_gap median 0) but a ~14%
+        # tail still committed up to 119s past-dated (staleness 34). Root: felix
+        # async re-dispatched a fast trainer (freed instantly in sim) while a prior
+        # update was still in flight — REAL never does this (0% overlapping in-flight
+        # vs sim 13.9%), the channel holds an in-flight trainer out of selection until
+        # its update returns AND is processed. The per-end _sim_inflight_expected entry
+        # was overwritten by the re-dispatch, so the earlier update was invisible to
+        # the sct gate (gate_holds=0) and got lapped → past-dated. This excludes every
+        # outstanding (dispatched-not-committed) trainer from selection, enforcing the
+        # invariant. SIM only. Re-read K3b/K2/U3/U6/K8/U2.
+        simInflightResidence: true
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -53,6 +95,18 @@ experiments:
         kwargs:
           c: 30
           aggGoal: 10
+          # Async-relaxed (NOT the sync Oort paper). The system-utility speed
+          # penalty exists to protect a SYNC barrier (round = max-of-K, a
+          # straggler blocks everyone). Async/fedbuff has no barrier — a straggler
+          # just commits stale later — so the penalty is largely inert:
+          # round_threshold 70 keeps a broad speed mix (the pacer only raises it
+          # toward 100 anyway). exploration_decay is PER ROUND and async runs
+          # ~2-3x more rounds than sync, so a sync-tuned decay collapses
+          # exploration almost immediately; 0.999 decays slowly enough to still
+          # reach an exploitation phase across the run. No async Oort reference
+          # exists; these are not from the paper. (Paper sync defaults: 10/0.95.)
+          round_threshold: 70
+          exploration_decay: 0.999
   execution:
     num_gpus: 8
     sleep_between_spawns: 1.0
@@ -114,6 +168,18 @@ experiments:
         kwargs:
           c: 30
           aggGoal: 10
+          # Async-relaxed (NOT the sync Oort paper). The system-utility speed
+          # penalty exists to protect a SYNC barrier (round = max-of-K, a
+          # straggler blocks everyone). Async/fedbuff has no barrier — a straggler
+          # just commits stale later — so the penalty is largely inert:
+          # round_threshold 70 keeps a broad speed mix (the pacer only raises it
+          # toward 100 anyway). exploration_decay is PER ROUND and async runs
+          # ~2-3x more rounds than sync, so a sync-tuned decay collapses
+          # exploration almost immediately; 0.999 decays slowly enough to still
+          # reach an exploitation phase across the run. No async Oort reference
+          # exists; these are not from the paper. (Paper sync defaults: 10/0.95.)
+          round_threshold: 70
+          exploration_decay: 0.999
   execution:
     num_gpus: 8
     sleep_between_spawns: 1.0
@@ -311,6 +377,14 @@ experiments:
         # all-green; hold ~52/67 in-flight). Keeps sim's eligible pool from carrying
         # the still-computing tail. SIM block only; no-op/omit in the real block.
         simInflightResidence: true
+        # PARITY K3b (Jun 16 HYPOTHESIS): per-commit overhead. The 3h run had K3b
+        # per-round residual 0.077 (real advance 1.47 vs sim 1.36 s/round) that
+        # compounds over 7937 rounds into a K2 throughput FAIL (rel .075 > .05).
+        # Add the missing per-commit MQTT/dispatch overhead so sim advances ~0.11 s
+        # more per round: residual 0.11/round / aggGoal 10 = 0.011 s/commit. Applied
+        # in _advance_sim_clock (max(vclock,sct)+overhead, drift-instrumented), NOT a
+        # clock ramp. Refine the value from the next run's K3b residual if over/under.
+        simCommitOverheadSeconds: 0.011
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50

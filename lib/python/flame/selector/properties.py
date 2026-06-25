@@ -7,13 +7,17 @@ PROP_END_ID = "end_id"
 PROP_SELECTED_COUNT = "selected_count"
 PROP_UPDATE_COUNT = "update_count"
 PROP_LAST_SELECTED_ROUND = "last_selected_round"
+# Aggregator round at which this end's update was last RECEIVED. This is the
+# reference Oort/REFL `time_stamp` (set to `self.epoch` at result-processing,
+# initialized at registration) that the UCB temporal-uncertainty term divides by.
+PROP_LAST_RETURNED_ROUND = "last_returned_round"
 PROP_LAST_EVAL_ROUND = "last_eval_round"
 PROP_LAST_ENGAGED_ROUND = "last_engaged_round"
 
 # Round timing
 PROP_ROUND_START_TIME = "round_start_time"
 PROP_ROUND_END_TIME = "round_end_time"
-PROP_ROUND_DURATION = "round_duration"
+PROP_CLIENT_TASK_TRAIN_DURATION = "client_task_train_duration_s"
 
 # Simulated time (time_mode="simulated"): trainer-reported virtual completion
 # time, used to order updates by a virtual clock and to source round duration.

@@ -522,45 +522,122 @@ class Channel(object):
             (end_id, payload) = result
             logger.debug(f"get payload for {end_id}")
 
-            if self.has(end_id):
-                logger.debug(f"channel got a msg for {end_id}")
-                # set a property to indicate that a message was
-                # received for the end
-                self._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_RECVD)
-            else:
-                logger.debug(f"channel {self._name} has no end id {end_id} for msg")
-
-            msg, timestamp = (
-                (cloudpickle.loads(payload[0]), payload[1])
-                if payload and status
-                else (None, None)
-            )
-            metadata = (end_id, timestamp)
-
-            if msg is not None:
-                if MessageType.MODEL_VERSION in msg:
-                    model_version = msg[MessageType.MODEL_VERSION]
-                    logger.debug(
-                        f"msg of type MODEL_VERSION recvd for end {end_id}, model_version={model_version}"
-                    )
-                elif MessageType.HEARTBEAT in msg:
-                    logger.debug(f"msg of type HEARTBEAT recvd for end {end_id}")
-                    # TODO: (DG) Check if it helps here- can reset
-                    # ends state to VAL_END_STATE_HEARTBEAT
-                else:
-                    logger.debug(f"msg of type UNKNOWN recvd for end {end_id}")
-            else:
-                # TODO: (DG) It comes here even for channel leave
-                # notifications. Need a cleaner processing for it
-                # later
-                logger.warning(
-                    f"Tried to populate None message (maybe leave notification) from end_id {end_id}. Will not yield msg and metadata until it gets a valid MODEL_VERSION msg"
-                )
-
-            # set cleanup ready event
-            self._backend.set_cleanup_ready(end_id)
+            msg, metadata = self._apply_recv_payload(end_id, payload)
 
             yield msg, metadata
+
+    def _apply_recv_payload(
+        self, end_id: str, payload
+    ) -> tuple[Any, tuple[str, Any]]:
+        """Decode one delivered payload and apply the per-message receive
+        bookkeeping shared by every receive path: mark the end ``RECVD`` and
+        signal the backend that it can be cleaned up. Returns ``(msg, metadata)``,
+        with ``msg=None`` for an empty / leave-notification payload.
+
+        Both the streamer-based ``recv_fifo`` and the streamer-free
+        ``drain_ready`` route deliveries through here so a received message
+        mutates end state identically regardless of which path pulled it — any
+        divergence there silently corrupts the selector's in-flight slot
+        accounting (an end left out of ``RECVD`` is treated as still computing).
+        """
+        if self.has(end_id):
+            logger.debug(f"channel got a msg for {end_id}")
+            # mark that a message was received for this end
+            self._ends[end_id].set_property(KEY_END_STATE, VAL_END_STATE_RECVD)
+        else:
+            logger.debug(f"channel {self._name} has no end id {end_id} for msg")
+
+        msg, timestamp = (
+            (cloudpickle.loads(payload[0]), payload[1]) if payload else (None, None)
+        )
+        metadata = (end_id, timestamp)
+
+        if msg is not None:
+            if MessageType.MODEL_VERSION in msg:
+                logger.debug(
+                    f"msg of type MODEL_VERSION recvd for end {end_id}, "
+                    f"model_version={msg[MessageType.MODEL_VERSION]}"
+                )
+            elif MessageType.HEARTBEAT in msg:
+                logger.debug(f"msg of type HEARTBEAT recvd for end {end_id}")
+            else:
+                logger.debug(f"msg of type UNKNOWN recvd for end {end_id}")
+        else:
+            # Reached for channel leave notifications too; the caller skips a
+            # None msg and the end is not committed.
+            logger.warning(
+                f"Empty/None payload from end_id {end_id} (maybe a leave "
+                f"notification); yielding a None msg for the caller to skip."
+            )
+
+        # set cleanup ready event
+        self._backend.set_cleanup_ready(end_id)
+
+        return msg, metadata
+
+    def drain_ready(
+        self, end_ids: list[str], timeout: float = None
+    ) -> list[tuple[Any, tuple[str, Any]]]:
+        """Synchronously ingest every message currently sitting in ``end_ids``'
+        rx queues, returning a list of ``(msg, metadata)`` in the order pulled.
+
+        This is the streamer-free counterpart to ``recv_fifo`` used by the
+        simulated-mode sct-ordered drain. ``recv_fifo`` fans messages through a
+        fire-and-forget background streamer task (``_streamer_for_recv_fifo``)
+        into a single shared ``_rx_queue``, with per-end active-task dedup and a
+        grace timeout. Under async load that machinery can strand a delivered
+        message: a streamer task that grace-timed-out later consumes its end's
+        message into ``_rx_queue`` after the generator that wanted it already
+        returned, so the message is out of the End's own queue (``is_rxq_empty``
+        reports "nothing ready") yet not in any consumer's hands. The sim clock
+        then advances past that update's modeled completion and commits it
+        past-dated — the async staleness blow-up.
+
+        ``drain_ready`` removes the hazard for the sim ingestion path: it pulls
+        directly from each End's queue on the backend loop (no background task,
+        no shared queue, no dedup), so the simulator — which already knows every
+        in-flight end and its sct — reliably gets every arrived update in hand
+        before deciding what to commit. If nothing is ready yet and ``timeout``
+        is given, it polls briefly (sim arrivals are near-instant) up to that
+        budget; ``timeout`` None/0 returns whatever is ready immediately.
+        """
+
+        async def _pull_raw():
+            # Runs on the backend loop: pull every ready RAW (end_id, payload)
+            # with non-blocking queue ops only. Deserialization is deliberately
+            # NOT done here — cloudpickle.loads of multi-MB weights would block
+            # the backend's message pump; it happens off-loop below (as recv_fifo
+            # does on its consuming thread).
+            out = []
+            live = [e for e in end_ids if self.has(e)]
+
+            def _sweep():
+                pulled = []
+                for end_id in live:
+                    while True:
+                        payload = self._ends[end_id].get_ready_nowait()
+                        if payload is None:
+                            break
+                        pulled.append((end_id, payload))
+                return pulled
+
+            out.extend(_sweep())
+            if not out and timeout and live:
+                # Poll (rather than await End.get(), whose cancellation could
+                # drop a just-delivered item) until the first arrival or budget.
+                loop = asyncio.get_running_loop()
+                deadline = loop.time() + float(timeout)
+                while not out and loop.time() < deadline:
+                    await asyncio.sleep(0.002)
+                    out.extend(_sweep())
+            return out
+
+        raw, ok = run_async(_pull_raw(), self._backend.loop())
+        if not (ok and raw):
+            return []
+        # Decode + per-message bookkeeping off the loop (same threading as the
+        # recv_fifo consumer): heavy loads must not stall the backend.
+        return [self._apply_recv_payload(end_id, payload) for end_id, payload in raw]
 
     async def _streamer_for_recv_fifo(self, end_ids: list[str], timeout=None):
         """Read messages in a FIFO fashion.
