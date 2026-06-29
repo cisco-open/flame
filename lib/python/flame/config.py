@@ -257,7 +257,9 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     inc_model_version_per_data_id: t.Optional[bool] = Field(
         alias="incModelVersionPerDataId", default=False
     )
-
+    # Expected keys: enabled (bool), period_s (float), amplitude_fraction (float)
+    # Defaults: enabled=False, period_s=120, amplitude_fraction=0.2
+    training_delay_variation: t.Optional[dict] = None
 
 class Groups(FlameSchema):
     param_channel: str

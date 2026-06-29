@@ -173,6 +173,15 @@ class PyTorchCifar10Trainer(Trainer):
         self.time_mode = str(time_mode)
         self.simulated = self.time_mode == "simulated"
         self._sim_send_ts = None  # set by aggregator stamp on each task (sim mode)
+        
+        # Read the delay variation
+        _var = config.hyperparameters.training_delay_variation or {}
+        self.delay_variation_enabled   = str(_var.get("enabled", "False")).lower() == "true"
+        self.delay_variation_period_s  = float(_var.get("period_s", 120))
+        self.delay_variation_amplitude = float(_var.get("amplitude_fraction", 0.2)) * self.training_delay_s
+        
+        #record Start time
+        self._experiment_start_time = time.time()
 
         # Use the battery_threshold to determine the
         # avl_events_3_state config. Default to 50 if not provided
@@ -653,6 +662,14 @@ class PyTorchCifar10Trainer(Trainer):
             telemetry.emit(ev, **fields)
         except Exception as e:  # telemetry must never break training
             logger.debug(f"util disparity emit failed: {e}")
+    
+    def _effective_delay_s(self) -> float:
+        if not self.delay_variation_enabled:
+            return self.training_delay_s
+        
+        t = time.time() - self._experiment_start_time
+        raw = self.training_delay_s + self.delay_variation_amplitude * math.sin(2 * math.pi * t / self.delay_variation_period_s)
+        return max(0.5, raw)
 
     def train(self) -> None:
         logger.info(f"Entered train method for {self.trainer_id}")
@@ -794,10 +811,15 @@ class PyTorchCifar10Trainer(Trainer):
         # Log memory after training round (no-op unless profiling enabled)
         self.memory_profiler.log_memory_after_round()
 
-        _modeled_delay_s = self.training_delay_s if self.training_delay_enabled else 0.0
+        #simulate trainer delay
+        _modeled_delay_s = self._effective_delay_s() if self.training_delay_enabled else 0.0
         _remaining_time = max(0.0, _modeled_delay_s - _real_gpu_time_s)
         _overran = self.training_delay_enabled and _real_gpu_time_s > _modeled_delay_s
         self._training_budget_s = _modeled_delay_s
+
+        logger.info(
+            f"[MODEL DELAY] Trainer {self.trainer_id} _modeled_delay_s {_modeled_delay_s:.2f}s training_delay_enabled {self.training_delay_enabled}"
+        )
 
         if _overran:
             logger.warning(
@@ -884,6 +906,7 @@ class PyTorchCifar10Trainer(Trainer):
                     "gpu_compute_s": _real_gpu_time_s,
                     "sleep_s": _remaining_time,
                     "post_train_s": _post_train_s,
+                    "effective_delay_s":_modeled_delay_s,
                     **getattr(self, "_phase_times", {}),
                 },
             )

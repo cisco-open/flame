@@ -14,6 +14,7 @@ experiments:
     trainer:
       num_trainers: 10
       start_id: 1
+      time_mode: real
       dataset:
         name: cifar10
         dirichlet_alpha: 100.0
@@ -23,6 +24,10 @@ experiments:
       hyperparameters:
         batchSize: 32
         learningRate: 0.001
+        training_delay_variation:
+          enabled: true
+          period_s: 120
+          amplitude_fraction: 0.2
       config_overrides:
         hyperparameters:
           client_notify:
