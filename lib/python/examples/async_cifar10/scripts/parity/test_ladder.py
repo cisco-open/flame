@@ -214,6 +214,63 @@ def test_avail_timebase_detects_trajectory_shift():
     assert not results["avail_timebase"]["ok"], "A3 should catch the shift"
 
 
+def test_avail_timebase_passes_aligned():
+    """A3 passes when sim eligible-count trajectory matches real within tolerance."""
+    real_agg, real_tr = _build_mode(40, advance=10.0, with_vclock=False)
+    sim_agg, sim_tr = _build_mode(40, advance=10.0, with_vclock=True)
+    # Identical num_eligible (already set to 10 by _build_mode) — must pass.
+    results, _ = _verdict(real_agg, sim_agg, real_tr, sim_tr)
+    assert results["avail_timebase"]["ok"], "aligned trajectory should pass A3"
+
+
+def test_avail_timebase_skips_without_eligible_data():
+    """A3 skips when selection events carry no num_eligible field."""
+    from parity.checks import avail_timebase_parity
+    real_agg = {"selection_train": [{"event": "selection", "round": r} for r in range(1, 21)]}
+    sim_agg = {"selection_train": [{"event": "selection", "round": r} for r in range(1, 21)]}
+    res = avail_timebase_parity(real_agg, sim_agg)
+    assert res.get("status") == "SKIP" or res["ok"], "no num_eligible → A3 must skip or pass"
+
+
+def test_duty_cycle_skips_without_avail_change_telemetry():
+    """A4 skips when no avail_change telemetry is present (default for syn_0 runs)."""
+    from parity.checks import duty_cycle_parity
+    real_tr, sim_tr = {}, {}
+    for tid in TRAINERS:
+        real_tr[tid] = {"task_recv": [], "trainer_round": []}
+        sim_tr[tid] = {"task_recv": [], "trainer_round": []}
+    res = duty_cycle_parity(real_tr, sim_tr)
+    assert res["ok"] and res.get("status") == "SKIP", "no telemetry → A4 must skip"
+
+
+def test_duty_cycle_passes_matched_fractions():
+    """A4 passes when sim and real duty-cycles match.
+
+    avail_change telemetry carries {old_state, new_state} (build_avail_change),
+    so "available" = new_state startswith AVL_*.
+    """
+    from parity.checks import duty_cycle_parity
+    # 3 transitions per trainer: →AVL_TRAIN / →UN_AVL / →AVL_TRAIN → on_frac = 2/3
+    evs = [{"new_state": "AVL_TRAIN"}, {"new_state": "UN_AVL"},
+           {"new_state": "AVL_TRAIN"}]
+    real_tr = {tid: {"avail_change": evs} for tid in TRAINERS}
+    sim_tr = {tid: {"avail_change": evs} for tid in TRAINERS}
+    res = duty_cycle_parity(real_tr, sim_tr)
+    assert res["ok"], f"matched duty-cycles must pass A4: {res}"
+
+
+def test_duty_cycle_fails_mismatch():
+    """A4 fails when sim duty-cycle diverges from real by more than tolerance."""
+    from parity.checks import duty_cycle_parity
+    # Real: mostly available (on_frac=0.8); sim: mostly unavailable (on_frac=0.2).
+    real_evs = [{"new_state": "AVL_TRAIN"}] * 8 + [{"new_state": "UN_AVL"}] * 2
+    sim_evs = [{"new_state": "AVL_TRAIN"}] * 2 + [{"new_state": "UN_AVL"}] * 8
+    real_tr = {tid: {"avail_change": real_evs} for tid in TRAINERS}
+    sim_tr = {tid: {"avail_change": sim_evs} for tid in TRAINERS}
+    res = duty_cycle_parity(real_tr, sim_tr)
+    assert not res["ok"], f"duty-cycle mismatch (0.8 vs 0.2) must fail A4: {res}"
+
+
 def test_eligibility_pointmass_passes_on_mean():
     """A2: real num_eligible is a constant point-mass (300), sim 298.9 ± tiny.
     KS saturates to ~1 but the means match — must PASS on the mean (PARITY.md §3i),

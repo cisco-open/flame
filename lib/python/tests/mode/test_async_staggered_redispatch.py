@@ -13,6 +13,7 @@ sync stays batched by construction.
 """
 
 import inspect
+import time
 import types
 from collections import deque
 
@@ -98,7 +99,7 @@ class _DistChannel:
     def await_join(self):
         pass
 
-    def ends(self, state, task=None):
+    def ends(self, state, task=None, agg_version_state=None, trainer_version_states=None):
         return list(self._send_ends)
 
     def dumps(self, msg):
@@ -120,6 +121,7 @@ class _DistChannel:
 def _make_dist_agg(channel, *, staggered, simulated=True, free_slots=()):
     agg = _ConcreteAgg.__new__(_ConcreteAgg)
     agg.simulated = simulated
+    agg.agg_start_time_ts = time.time()
     agg._round = 5
     agg._vclock = VirtualClock()
     agg._vclock.advance(100.0)

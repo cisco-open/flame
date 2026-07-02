@@ -596,6 +596,42 @@ def stacked_bar(categories, segments, y_label, title, out_dir, file_name, stamp=
     return _save(fig, out_dir, file_name, stamp)
 
 
+_TRACE_STATE_COLORS = {"AVL_TRAIN": "#2196F3", "AVL_EVAL": "#4CAF50", "UN_AVL": "#F44336"}
+
+
+def state_band_timeline(rows, x_max, title, out_dir, file_name, stamp=None):
+    """Per-trainer ground-truth-vs-observed availability state overlay
+    (Batch 3 T3.2 / A6 trainer_trace_fidelity).
+
+    ``rows``: [(trainer_label, gt_segments, obs_segments), ...], already
+    ordered/truncated by the caller (e.g. worst-fidelity-first, capped to a
+    legible row count). Each ``*_segments`` is [(t_start, t_end, state), ...].
+    Two horizontal bands per trainer — ground truth above, observed below —
+    colored by state, so a fidelity gap is visible as a color mismatch between
+    the two bands at the same x position rather than a number in a table.
+    """
+    if not rows:
+        return no_data_plot(title, out_dir, file_name, stamp)
+    fig, ax = plt.subplots(figsize=(7.5, max(1.5, 0.55 * len(rows) + 0.8)))
+    for i, (label, gt_segs, obs_segs) in enumerate(rows):
+        y0 = i * 1.1
+        for segs, y in ((gt_segs, y0 + 0.5), (obs_segs, y0)):
+            bars = [(a, b - a) for a, b, _ in segs if b > a]
+            colors = [_TRACE_STATE_COLORS.get(s, "0.6") for a, b, s in segs if b > a]
+            if bars:
+                ax.broken_barh(bars, (y, 0.42), facecolors=colors)
+    ax.set_yticks([i * 1.1 + 0.5 for i in range(len(rows))])
+    ax.set_yticklabels([lab for lab, _, _ in rows], fontsize=8)
+    ax.set_ylim(-0.15, len(rows) * 1.1)
+    ax.set_xlim(0, x_max)
+    ax.set_xlabel("trace time (s) — top band=ground truth, bottom band=observed")
+    ax.set_title(title)
+    handles = [plt.Rectangle((0, 0), 1, 1, color=c) for c in _TRACE_STATE_COLORS.values()]
+    ax.legend(handles, list(_TRACE_STATE_COLORS.keys()), loc="upper right",
+             fontsize=8, ncol=3)
+    return _save(fig, out_dir, file_name, stamp)
+
+
 def bar_plot(categories, values, y_label, title, out_dir, file_name, stamp=None):
     if len(categories) == 0:
         return None

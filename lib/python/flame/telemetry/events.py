@@ -26,6 +26,9 @@ EVENT_TASK_SEND = "task_send"        # trainer finished & sent the update back
 EVENT_INFLIGHT_RESIDENCE = "inflight_residence"  # per-round in-flight drain accounting (oort sync)
 EVENT_UTILITY_BELIEF = "utility_belief"  # believed (at selection) vs actual (at return) client utility
 EVENT_DISPATCH = "dispatch"          # per-dispatch re-dispatch-stagger validation (felix)
+EVENT_WITHHELD_DELIVERY = "withheld_delivery"  # late stale delivery of a send-gated update
+EVENT_ABANDON_TIMEOUT = "abandon_timeout"      # 90s vclock slot-free of a stalled trainer
+EVENT_AGG_BELIEF_CHANGE = "agg_belief_change"   # aggregator's belief about a trainer's avail state
 
 KNOWN_EVENTS = frozenset(
     {
@@ -40,6 +43,10 @@ KNOWN_EVENTS = frozenset(
         EVENT_TASK_SEND,
         EVENT_INFLIGHT_RESIDENCE,
         EVENT_UTILITY_BELIEF,
+        EVENT_DISPATCH,
+        EVENT_WITHHELD_DELIVERY,
+        EVENT_ABANDON_TIMEOUT,
+        EVENT_AGG_BELIEF_CHANGE,
     }
 )
 
@@ -216,13 +223,28 @@ def build_util_disparity(
 
 
 def build_avail_change(
-    *, round_num: Optional[int], old_state: str, new_state: str
+    *,
+    round_num: Optional[int],
+    old_state: str,
+    new_state: str,
+    sim_now: Optional[float] = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Trainer availability state transition."""
+    """Trainer availability state transition.
+
+    sim_now: the trainer's own trace-time-basis clock (``_sim_now()``) at the
+    moment the transition was applied — sim: virtual-clock seconds; real:
+    wall-elapsed since the shared AGG_START_TS origin (Batch 3 T3.0). Distinct
+    from the record's own wall ``ts`` (always epoch time.time(), meaningless
+    against a trace indexed in trace-seconds). Needed for A6
+    (trainer_trace_fidelity, Batch 3 T3.2) to compare *when* a trainer applied
+    a transition against ground truth, not just *that* it eventually did.
+    Optional/back-compat: None for telemetry recorded before this field existed.
+    """
     return EVENT_AVAIL_CHANGE, {
         "round": round_num,
         "old_state": old_state,
         "new_state": new_state,
+        "sim_now": sim_now,
     }
 
 
@@ -258,6 +280,8 @@ def build_task_send(
     wall_recv_ts: Optional[float],
     wall_send_ts: float,
     time_mode: str,
+    send_gate_wait_s: Optional[float] = None,
+    send_gate_sct: Optional[float] = None,
 ) -> tuple[str, dict[str, Any]]:
     """Trainer finished a task and sent the update back to the aggregator.
 
@@ -266,6 +290,16 @@ def build_task_send(
     ``[wall_recv_ts, wall_send_ts]`` brackets the trainer's true busy/in-flight
     window in real mode.  That interval is the sound basis for real concurrency
     in validate_real: trainer_round's own ts cannot bracket it.
+
+    send_gate_wait_s / send_gate_sct (Batch 3 T3.4, real mode only): the
+    [SEND_GATE] wait loop also runs strictly after trainer_round is emitted
+    (train() -> put()/_send_weights, per the tasklet composition), so — like
+    wall_send_ts above — task_send, not trainer_round, is the event that can
+    actually carry it. send_gate_sct is the trainer's own _sim_now() sampled
+    right before the gate check (same trace-time-basis clock T3.2's
+    avail_change.sim_now uses); send_gate_wait_s is the wall-time actually
+    spent blocked in the loop (0.0 when the gate never engaged). Always None
+    in sim mode (the gate is a real-mode-only mechanism).
     """
     return EVENT_TASK_SEND, {
         "round": round_num,
@@ -274,6 +308,8 @@ def build_task_send(
         "wall_recv_ts": wall_recv_ts,
         "wall_send_ts": wall_send_ts,
         "time_mode": time_mode,
+        "send_gate_wait_s": send_gate_wait_s,
+        "send_gate_sct": send_gate_sct,
     }
 
 
@@ -404,3 +440,112 @@ def build_utility_belief(
     if extra:
         fields.update(extra)
     return EVENT_UTILITY_BELIEF, fields
+
+
+def build_withheld_delivery(
+    *,
+    round_num: int,
+    end_id: str,
+    sct: float,
+    delivery_ts: float,
+    staleness: Optional[int] = None,
+    accepted: Optional[bool] = None,
+    time_mode: str = "sim",
+    actual_commit_ts: Optional[float] = None,
+) -> tuple[str, dict[str, Any]]:
+    """A send-gated update committing late (stale) at its ``delivery_ts``.
+
+    ``delivery_ts − sct`` is the down-window delay the completed update waited
+    while its trainer was ``UN_AVL`` (the compute-completes / gate-the-send /
+    deliver-late model). ``staleness`` = the current round minus the update's
+    ``MODEL_VERSION``; ``accepted`` records the staleness-gate outcome (async
+    fedbuff always accepts; sync feddance may reject over tolerance — Stage E).
+    Backs the ``withheld_delivery`` parity rung.
+
+    actual_commit_ts (Batch 3 T3.5, K11): the aggregator's own clock
+    (``_avail_now()`` — vclock in sim, wall-elapsed in real) sampled at the
+    instant this update actually commits, i.e. AFTER the caller's
+    ``_advance_sim_clock``/equivalent for this specific update, not before —
+    the whole point is to catch reinjection-polling lag between ``delivery_ts``
+    (the earliest legal commit time — already exactly what ``delivery_ts`` is,
+    no separate ``earliest_legally_committable_time`` bookkeeping needed for
+    this single-gate-type v1) and when the update actually lands.
+    ``commit_slack_s = actual_commit_ts - delivery_ts`` is derived by the
+    caller-facing K11 check, not stored here, to keep this builder a thin
+    field-carrier like its siblings.
+    """
+    fields: dict[str, Any] = {
+        "round": round_num,
+        "end_id": end_id,
+        "sct": sct,
+        "delivery_ts": delivery_ts,
+        "delay_s": float(delivery_ts) - float(sct),
+        "time_mode": time_mode,
+    }
+    if staleness is not None:
+        fields["staleness"] = staleness
+    if accepted is not None:
+        fields["accepted"] = accepted
+    if actual_commit_ts is not None:
+        fields["actual_commit_ts"] = float(actual_commit_ts)
+    return EVENT_WITHHELD_DELIVERY, fields
+
+
+def build_abandon_timeout(
+    *,
+    round_num: int,
+    end_id: str,
+    sim_send_ts: float,
+    vclock_now: float,
+    time_mode: str = "sim",
+    reason: str = "abandon_90s_vclock",
+) -> tuple[str, dict[str, Any]]:
+    """A stalled in-flight trainer freed by a slot-free trigger.
+
+    ``reason`` distinguishes C.3 90s-vclock abandons from D.1 aware boundary
+    evictions. ``vclock_now − sim_send_ts`` is the in-flight age at trigger.
+    Backs the ``abandon_timeout`` parity rung, which fails loudly if the
+    deadline is measured on the wall instead of the vclock.
+    """
+    return EVENT_ABANDON_TIMEOUT, {
+        "round": round_num,
+        "end_id": end_id,
+        "sim_send_ts": sim_send_ts,
+        "vclock_now": vclock_now,
+        "age_s": float(vclock_now) - float(sim_send_ts),
+        "time_mode": time_mode,
+        "reason": reason,
+    }
+
+
+def build_agg_belief_change(
+    *,
+    round_num: int,
+    end_id: str,
+    state: str,
+    observed_at: float,
+    checkpoint: str,
+    source: str = "trace_read",
+) -> tuple[str, dict[str, Any]]:
+    """The aggregator's belief about `end_id`'s availability state (Batch 3 T3.3).
+
+    ``checkpoint`` distinguishes WHERE the aggregator's view was read:
+    ``"selection"`` (pre-round eligibility read) or ``"commit"`` (state at an
+    update's completion time, whether or not the mechanism actually gates on
+    it — real mode never gates here, sim's send-gate does; recording both
+    lets A7 compare the aggregator's belief against ground truth regardless).
+    ``source`` is the knowledge MECHANISM the belief came from — ``trace_read``
+    (v1, live) today, ``client_notify``/``predictive`` later (Stage H) — kept
+    mechanism-agnostic so a future populator just passes a different source
+    without any telemetry/checker/plot change. ``observed_at`` is the
+    trace-time-basis clock (vclock seconds / wall-elapsed since the shared
+    origin) at which the belief was read, NOT the record's own wall ``ts``.
+    """
+    return EVENT_AGG_BELIEF_CHANGE, {
+        "round": round_num,
+        "end_id": end_id,
+        "state": state,
+        "observed_at": observed_at,
+        "checkpoint": checkpoint,
+        "source": source,
+    }

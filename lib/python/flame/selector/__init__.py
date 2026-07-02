@@ -142,6 +142,7 @@ class AbstractSelector(ABC):
                     if hasattr(speed, "total_seconds")
                     else speed,
                     "selected": end_id in chosen_set,
+                    "avl_state": state_name,
                 }
                 if per_trainer_extra and end_id in per_trainer_extra:
                     entry.update(per_trainer_extra[end_id])

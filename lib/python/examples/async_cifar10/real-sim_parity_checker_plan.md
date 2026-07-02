@@ -7,7 +7,7 @@
 - real = `experiments/run_20260606_182638_dbg_felix_n300_alpha0.1_syn0_stream_real`
 
 Both: Felix (`async_oort` + `fedbuff`), n=300, α=0.1, syn_0, agg_goal=10,
-`max_runtime_s = sim_wall_ceiling_s = 10800s (3h)`, `min_trainers_to_start=290`.
+`max_experiment_runtime_s = sim_wall_ceiling_s = 10800s (3h)`, `min_trainers_to_start=290`.
 
 ---
 
@@ -107,7 +107,7 @@ Four findings:
    `rounds` cap, not the wall/vclock budget. **Fixed**: `rounds: 1000 → 20000` in
    `expt_scripts_2026/felix_oort_refl_feddance_alpha0.1_OVERNIGHT_node{1,2}.yaml`
    (canonical source, covers overnight + debug) plus an explicit `h["rounds"]=20000`
-   guard in `scripts/debug_run.sh` (non-smoke branch, alongside the `max_runtime_s`
+   guard in `scripts/debug_run.sh` (non-smoke branch, alongside the `max_experiment_runtime_s`
    override). New checker check **K9** below makes truncation-by-cap an explicit WARN
    so it can never silently distort a comparison again.
 
@@ -277,7 +277,7 @@ gating; surface Jaccard as signal.
 | K6 | INV | sim mode: `task_recv.sim_send_ts` non-null & increasing after round 1; real mode: null | trainer task_recv | no violations |
 | K7 | INV | sim_rate (`vclock/wall`) in sane range [0.01, 100] | agg_round (sim) | in range |
 | K8 | DIST | **terminal-state parity**: at matched virtual budget V, both reached comparable FL-round count, total commits, total unique trainers used | agg_round | rounds within 10%, trainers within 5% |
-| K9 | INV | **stopped-by-budget, not by cap**: neither run hit the `rounds` cap before `max_runtime_s` — else the comparison is truncated and downstream metrics are biased | agg_round + config | WARN if `max_round == rounds_cap` and wall/vclock < budget |
+| K9 | INV | **stopped-by-budget, not by cap**: neither run hit the `rounds` cap before `max_experiment_runtime_s` — else the comparison is truncated and downstream metrics are biased | agg_round + config | WARN if `max_round == rounds_cap` and wall/vclock < budget |
 | K10 | INV | **vclock telemetry present**: a sim run's agg_round events must carry `vclock_now` (sync path currently omits it). FAIL-LOUD rather than silently SKIP K1–K3/K7 | agg_round (sim) | FAIL if sim run has zero `vclock_now` stamps |
 
 > **K2/K3/K4 are the checks that would have caught the 410-vs-673 regression on

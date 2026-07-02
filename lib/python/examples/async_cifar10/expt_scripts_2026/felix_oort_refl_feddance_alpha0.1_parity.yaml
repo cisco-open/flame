@@ -41,7 +41,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
@@ -91,6 +91,18 @@ experiments:
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
+        # Stage C/D gate plumbing (§7): sim_unavailability activates the oracular
+        # delivery-ledger substrate for felix via the asyncfl commit loop. With
+        # syn_0 (100% avail) the mechanism fires but sees no UN_AVL → byte-identical
+        # behavior. client_notify.trace is overridden by debug_run.sh --trace;
+        # enabled stays False (Stage H).
+        # Two-axis flag split (T1): felix is the only baseline with both flags ON.
+        sim_unavailability: 'True'
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'True'
+        client_notify:
+          enabled: 'False'
+          trace: syn_0
       selector:
         kwargs:
           c: 30
@@ -156,7 +168,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
         evalEveryNRounds: 50
         checkpoint:
@@ -164,6 +176,12 @@ experiments:
           every_n_rounds: 50
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
+        sim_unavailability: 'True'
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'True'
+        client_notify:
+          enabled: 'False'
+          trace: syn_0
       selector:
         kwargs:
           c: 30
@@ -233,7 +251,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
@@ -242,6 +260,10 @@ experiments:
         # arrival, so sim in_flight (~3 carry) matches real. Sim-only; validated
         # by this run (Sr residence rung). See PARITY.md Jun-17c.
         simInflightCarryover: true
+        # oort is unaware at selection (avail_select_filter=False); the trace is
+        # used for starvation-advance vclock tracking only, not selection filtering.
+        avail_select_filter: 'False'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -303,8 +325,12 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
+        # oort is unaware at selection (avail_select_filter=False); the trace is
+        # used for starvation-advance vclock tracking only, not selection filtering.
+        avail_select_filter: 'False'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -368,7 +394,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
@@ -385,6 +411,9 @@ experiments:
         # in _advance_sim_clock (max(vclock,sct)+overhead, drift-instrumented), NOT a
         # clock ramp. Refine the value from the next run's K3b residual if over/under.
         simCommitOverheadSeconds: 0.011
+        # refl is aware at selection but not proactive-evict (reactive-90s).
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -453,8 +482,11 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
+        # refl is aware at selection but not proactive-evict (reactive-90s).
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -524,11 +556,14 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
         evalEveryNRounds: 50
+        # feddance is aware at selection but not proactive-evict (reactive-90s).
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -588,9 +623,12 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 20000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
         evalEveryNRounds: 50
+        # feddance is aware at selection but not proactive-evict (reactive-90s).
+        avail_select_filter: 'True'
+        proactive_inflight_evict: 'False'
         checkpoint:
           enabled: 'True'
           every_n_rounds: 50
@@ -599,6 +637,300 @@ experiments:
       selector:
         kwargs:
           aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+
+# ── oort_star ─────────────────────────────────────────────────────────────────
+# oort-sync base + avail_select_filter=True (T3 scaffold).
+# Aware at selection (filters UN_AVL), reactive-90s in-flight (no proactive evict).
+- name: oort_star_n300_alpha0.1_syn0_stream_sim
+  description: oort_star (oort sync + aware selection, no proactive evict) sim.
+  baseline: oort_star
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: "True"
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: "True"
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: oort_star_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_experiment_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        simInflightCarryover: true
+        avail_select_filter: "True"
+        proactive_inflight_evict: "False"
+        checkpoint:
+          enabled: "True"
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: oort_star_n300_alpha0.1_syn0_stream_real
+  description: oort_star (oort sync + aware selection, no proactive evict) real.
+  baseline: oort_star
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: "True"
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: "True"
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: oort
+    tracking_mode: oracular
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: oort_star_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_experiment_runtime_s: 12600
+        aggGoal: 10
+        avail_select_filter: "True"
+        proactive_inflight_evict: "False"
+        checkpoint:
+          enabled: "True"
+          every_n_rounds: 50
+        trackTrainerAvail:
+          trace: syn_0
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          aggr_num: 10
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+# ── fedbuff ───────────────────────────────────────────────────────────────────
+# asyncfl base + FedBuffSelector + both flags OFF (unaware, T3 scaffold).
+- name: fedbuff_n300_alpha0.1_syn0_stream_sim
+  description: fedbuff (asyncfl + fedbuff selector, both flags OFF) sim.
+  baseline: fedbuff
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: simulated
+    hyperparameters:
+      # LR schedule matches felix and all other async cifar10 runs.
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: "True"
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: "True"
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: fedbuff
+    tracking_mode: default
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: fedbuff_n300_alpha0.1_syn0_stream_sim
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_experiment_runtime_s: 12600
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        simSctOrderedDrain: true
+        simClockJumpClamp: true
+        simInflightResidence: true
+        avail_select_filter: "False"
+        proactive_inflight_evict: "False"
+        sim_unavailability: "True"
+        availability_trace: syn_0
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+        checkpoint:
+          enabled: "True"
+          every_n_rounds: 50
+      selector:
+        kwargs:
+          c: 30
+          aggGoal: 10
+          round_threshold: 70
+          exploration_decay: 0.999
+  execution:
+    num_gpus: 8
+    sleep_between_spawns: 1.0
+    aggregator_warmup_time: 60
+    monitoring:
+      enabled: true
+      check_interval_seconds: 30
+      ram_warning_percent: 80.0
+      ram_critical_percent: 90.0
+      gpu_warning_percent: 80.0
+      gpu_critical_percent: 90.0
+- name: fedbuff_n300_alpha0.1_syn0_stream_real
+  description: fedbuff (asyncfl + fedbuff selector, both flags OFF) real.
+  baseline: fedbuff
+  trainer:
+    num_trainers: 300
+    start_id: 1
+    dataset:
+      name: cifar10
+      dirichlet_alpha: 0.1
+    availability:
+      mode: syn_0
+    enable_training_delays: true
+    time_mode: real
+    hyperparameters:
+      # LR schedule matches felix and all other async cifar10 runs.
+      batchSize: 10
+      learningRate: 0.01
+      lrDecayEnabled: true
+      lrDecayFactor: 0.98
+      lrDecayEpoch: 10
+      minLearningRate: 0.0001
+    config_overrides:
+      hyperparameters:
+        data_streaming:
+          enabled: "True"
+          full_data_available_after_s: 10800
+        util_counterfactual:
+          enabled: "True"
+          every_n_rounds: 50
+          sample_size: 256
+  aggregator:
+    config_template: ../_metadata/aggregator_base.json
+    selector: fedbuff
+    tracking_mode: default
+    agg_goal: 10
+    log_to_wandb: false
+    config_overrides:
+      job:
+        id: fedbuff_n300_alpha0.1_syn0_stream_real
+      hyperparameters:
+        batchSize: 10
+        learningRate: 0.01
+        rounds: 20000
+        max_experiment_runtime_s: 12600
+        aggGoal: 10
+        evalEveryNRounds: 50
+        avail_select_filter: "False"
+        proactive_inflight_evict: "False"
+        sim_unavailability: "True"
+        availability_trace: syn_0
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+        checkpoint:
+          enabled: "True"
+          every_n_rounds: 50
+        min_trainers_to_start: 290
+        min_trainers_join_timeout_s: 600
+      selector:
+        kwargs:
+          c: 30
+          aggGoal: 10
+          round_threshold: 70
+          exploration_decay: 0.999
   execution:
     num_gpus: 8
     sleep_between_spawns: 1.0

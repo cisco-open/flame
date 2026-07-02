@@ -22,14 +22,12 @@ https://pytorch.org/tutorials/beginner/blitz/cifar10_tutorial.html.
 
 import logging
 import time
-from pathlib import Path
 
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
 import torchvision.transforms as transforms
-import yaml
 
 # wandb setup
 import wandb
@@ -41,15 +39,6 @@ from torchvision.datasets import CIFAR10
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
 from oracle_utility import OracleInjectMixin  # noqa: E402
-from sortedcontainers import SortedDict
-
-
-_METADATA_DIR = (Path(__file__).resolve().parents[3] / "_metadata")
-_TRACE_KEY_TO_MOBIPERF_SUB = {
-    "mobiperf_2st": "states_2st",
-    "mobiperf_3st_50": "states_3st_50",
-    "mobiperf_3st_75": "states_3st_75",
-}
 
 
 def initialize_wandb(run_name=None):
@@ -130,26 +119,6 @@ class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
         self.learning_rate = self.config.hyperparameters.learning_rate
         self.batch_size = self.config.hyperparameters.batch_size or 16
 
-        self.track_trainer_avail = (
-            self.config.hyperparameters.track_trainer_avail or None
-        )
-        self.trainer_event_dict = None
-        if (
-            self.track_trainer_avail["enabled"]
-            and self.track_trainer_avail["type"] == "ORACULAR"
-        ):
-            self.trainer_event_dict = self.read_trainer_unavailability(
-                self.track_trainer_avail["trace"]
-            )
-        else:
-            print(
-                "Did not read oracular trainer jsons. "
-                f"enabled={self.track_trainer_avail.get('enabled')}, "
-                f"type={self.track_trainer_avail.get('type')}, "
-                f"trace={self.track_trainer_avail.get('trace', '<unset>')}"
-            )
-        print("self.trainer_event_dict: ", self.trainer_event_dict)
-
         self.loss_list = []
 
         # Use wandb logging if enabled
@@ -165,63 +134,6 @@ class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
         self._init_oracle_util(
             _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
                           "..", "..", "data"))
-
-        # Initialize aggregator start time for oracular availability tracking
-        self.agg_start_time_ts = time.time()
-        logger.info(f"Aggregator initialized at timestamp: {self.agg_start_time_ts}")
-
-    def read_trainer_unavailability(self, trace=None) -> dict:
-        """Build trainer_id -> SortedDict(timestamp -> state) for `trace`.
-
-        Reads from the shared examples/_metadata/ bundle (registry + traces),
-        not from legacy per-trainer JSON files.
-        """
-        logger.info(f"Reading trainer unavailability for trace: {trace}")
-
-        registry_path = _METADATA_DIR / "trainer_registry.yaml"
-        with open(registry_path) as f:
-            registry = yaml.safe_load(f)["trainers"]
-
-        if trace in _TRACE_KEY_TO_MOBIPERF_SUB:
-            sub = _TRACE_KEY_TO_MOBIPERF_SUB[trace]
-            with open(_METADATA_DIR / "availability_traces/mobiperf_traces.yaml") as f:
-                traces = yaml.safe_load(f)["traces"]
-
-            def lookup(tk: str, trainer_id: int) -> list:
-                return traces[f"device_{trainer_id:03d}"][sub]
-
-        elif trace and trace.startswith("syn_"):
-            with open(_METADATA_DIR / "availability_traces/synthetic_traces.yaml") as f:
-                syn = yaml.safe_load(f)["traces"]
-            if trace not in syn:
-                logger.warning(f"trace {trace!r} not found in synthetic_traces.yaml")
-                return None
-            entry = syn[trace]
-            per_trainer = entry.get("per_trainer", {}).get("n300", {})
-            pattern = entry.get("pattern", [])
-
-            def lookup(tk: str, trainer_id: int) -> list:
-                return per_trainer.get(tk) or pattern
-
-        else:
-            logger.warning(f"unsupported trace name: {trace!r}")
-            return None
-
-        trainer_events_dict = {}
-        for tk, meta in registry.items():
-            trainer_id = meta["trainer_id"]
-            task_id = meta["task_id"]
-            events = lookup(tk, trainer_id)
-            state_dict = SortedDict()
-            for timestamp, state in events:
-                state_dict[timestamp] = state
-            trainer_events_dict[task_id] = state_dict
-
-        logger.info(
-            f"Loaded availability traces for {len(trainer_events_dict)} trainers "
-            f"(trace={trace})"
-        )
-        return trainer_events_dict
 
     def load_data(self) -> None:
         """Load a test dataset."""
@@ -294,41 +206,6 @@ class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
 
         import threading
         threading.Thread(target=_job, daemon=True).start()
-
-    def get_curr_unavail_trainers(self) -> list:
-        """Return trainer IDs currently in UN_AVL state based on oracular traces."""
-        curr_unavail_trainer_list = []
-
-        if self.trainer_event_dict is None:
-            return curr_unavail_trainer_list
-
-        agg_time_since_start_s = time.time() - self.agg_start_time_ts
-
-        for trainer_id, event_dict in list(self.trainer_event_dict.items()):
-            if not event_dict:
-                continue
-
-            idx = event_dict.bisect_right(agg_time_since_start_s) - 1
-            if idx >= 0:
-                most_recent_event = event_dict.peekitem(idx)
-                most_recent_event_ts = most_recent_event[0]
-                most_recent_event_state = most_recent_event[1]
-
-                if most_recent_event_state == "UN_AVL":
-                    curr_unavail_trainer_list.append(trainer_id)
-                elif most_recent_event_state == "AVL_TRAIN":
-                    pass
-                else:
-                    logger.warning(
-                        f"Trainer {trainer_id} has unknown state: {most_recent_event_state}"
-                    )
-        
-        logger.info(
-            f"[ORACULAR] Current unavailable trainers: {len(curr_unavail_trainer_list)} "
-            f"out of {len(self.trainer_event_dict)} total @ time={agg_time_since_start_s:.1f}s"
-        )
-        
-        return curr_unavail_trainer_list
 
     def check_and_sleep(self) -> None:
         """Induce transient unavailability"""

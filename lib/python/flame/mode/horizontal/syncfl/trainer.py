@@ -256,6 +256,14 @@ class Trainer(Role, metaclass=ABCMeta):
         if MessageType.SIM_SEND_TS in msg:
             self._sim_send_ts = msg[MessageType.SIM_SEND_TS]
 
+        # Cache the aggregator's trace-read origin (real mode only) so this
+        # trainer's own wall-clock availability lookups share the exact
+        # origin the aggregator uses, instead of deriving one from its own
+        # process-start time. Re-cached every dispatch (cheap, idempotent,
+        # self-healing if an early message was missed).
+        if MessageType.AGG_START_TS in msg:
+            self._agg_start_origin = msg[MessageType.AGG_START_TS]
+
         if telemetry.is_enabled():
             _sim_send_ts_val = getattr(self, "_sim_send_ts", None)
             _time_mode = getattr(self, "time_mode", "real")
@@ -271,6 +279,13 @@ class Trainer(Role, metaclass=ABCMeta):
 
         if MessageType.EOT in msg:
             self._work_done = msg[MessageType.EOT]
+            # Give a sim-mode trainer that hasn't been dispatched in a while
+            # one last chance to catch its avl_state/telemetry up to the
+            # trace, using the SIM_SEND_TS this EOT broadcast may carry
+            # (captured above). hasattr-guarded: example-specific hook, not
+            # every Trainer subclass defines it.
+            if hasattr(self, "_refresh_avl_state"):
+                self._refresh_avl_state()
 
         if MessageType.DATASAMPLER_METADATA in msg:
             self.datasampler.handle_metadata_from_aggregator(
@@ -344,20 +359,34 @@ class Trainer(Role, metaclass=ABCMeta):
             f"### SEND WEIGHTS for tag: {tag} "
             f"and trainer_id: {self.trainer_id}, model_version: {self._round}, and avl_state = {self.avl_state}"
         )
-        # if switch to do three_state_avl is on and the trainer is
-        # unavailable - check the wait_to_become_avl switch depending
-        # on the switch we decide whether to wait for availability or
-        # exit
+        # [SEND_GATE] real-mode send-time gate: hold the upload (already-
+        # completed result) until the trainer is AVL_* again. Decoupled from
+        # client_notify["enabled"] (v1 keeps it OFF -- the aggregator learns
+        # oracularly, not via this push). Sim-only is a no-op here since sim
+        # time can't advance while blocked on time.sleep -- sim availability
+        # is instead enforced agg-side by ClientAvailability's send-time
+        # withhold, keyed on the trainer-reported completion time.
+        #
+        # Sample send_gate_sct (trainer's own trace-time clock) right before
+        # the gate check regardless of whether it engages, so A8 can confirm
+        # the no-wait case too. Real mode only; hasattr-guarded since
+        # _sim_now() is example-specific, not on this generic base class.
+        _send_gate_sct = (
+            self._sim_now()
+            if not getattr(self, "simulated", False) and hasattr(self, "_sim_now")
+            else None
+        )
         if (
-            self.client_notify["enabled"] == "True"
+            not getattr(self, "simulated", False)
             and self.avl_state == TrainerAvailState.UN_AVL
         ):
             if self.wait_until_next_avl == "True":
                 logger.warning(
                     f"Trainer id {self.trainer_id} is unavailable to send weights. Waiting for it to be available again"
                 )
-                while self.avl_state == TrainerAvailState.UN_AVL:
-                    time.sleep(1)
+                with self._phase("send_gate_wait_s"):
+                    while self.avl_state == TrainerAvailState.UN_AVL:
+                        time.sleep(1)
             else:
                 logger.warning(
                     f"Trainer id {self.trainer_id} is unavailable to send weights since wait_until_next_avl = {self.wait_until_next_avl}. Exiting sending weights."
@@ -467,6 +496,12 @@ class Trainer(Role, metaclass=ABCMeta):
                 wall_recv_ts=getattr(self, "_wall_recv_ts", None),
                 wall_send_ts=_wall_send_ts,
                 time_mode=getattr(self, "time_mode", "real"),
+                send_gate_wait_s=(
+                    float(self._phase_times.get("send_gate_wait_s", 0.0))
+                    if not getattr(self, "simulated", False)
+                    else None
+                ),
+                send_gate_sct=_send_gate_sct,
             )
             telemetry.emit(ev, **fields)
 

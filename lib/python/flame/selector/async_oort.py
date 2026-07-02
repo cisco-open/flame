@@ -361,6 +361,7 @@ class AsyncOortSelector(AbstractSelector):
                 task_to_perform=task_to_perform,
                 agg_version_state=agg_version_state,
                 trainer_version_states=trainer_version_states,
+                connected_ends=ends,  # Challenge 13: full pool for cleanup
             )
 
             if len(results) is not 0:
@@ -1400,6 +1401,7 @@ class AsyncOortSelector(AbstractSelector):
         task_to_perform: str = "train",
         agg_version_state=None,  # (model_version, data_id, iteration_id)
         trainer_version_states: dict[str, tuple[int, int, int]] = None,
+        connected_ends: dict[str, End] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
         logger.debug(
@@ -1481,9 +1483,16 @@ class AsyncOortSelector(AbstractSelector):
                         del self.all_selected[end]
                     selected_ends.discard(end)
 
+        # Challenge 13: cleanup must check CONNECTED membership, not availability-
+        # eligibility — an in-flight trainer that merely went UN_AVL (or is the
+        # wrong task-type) is absent from the filtered `ends` but still connected;
+        # removing it makes the aggregator forget it is waiting. An empty eligible
+        # pool would otherwise wipe ALL shared selected_ends → hang. Use the full
+        # connected pool when provided; fall back to `ends` for backward compat.
+        _connected = connected_ends if connected_ends is not None else ends
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
-            if end_id not in ends:
+            if end_id not in _connected:
                 # something happened to end of end_id (e.g.,
                 # connection loss) let's remove it from selected_ends
                 # so that you can fill that spot with another trainer

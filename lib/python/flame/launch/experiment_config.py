@@ -37,6 +37,14 @@ class TrainerConfig:
 
     num_trainers: int = 300
     start_id: int = 1
+    # Which <name>_alpha<a>_n<N>.yaml split file to read, i.e. the N the
+    # dataset was partitioned for. Defaults to num_trainers. Set it larger
+    # than num_trainers to spawn a subset cohort (the first num_trainers
+    # trainers) against an existing wider partition -- e.g. num_trainers=10
+    # + split_num_trainers=300 runs a 10-trainer smoke off the n300 split
+    # without needing a dedicated n10 split file. See spawn_all's docstring:
+    # this N is a property of the partition, not of how many are spawned.
+    split_num_trainers: Optional[int] = None
     dataset: DatasetConfig = field(default_factory=DatasetConfig)
     availability: AvailabilityConfig = field(default_factory=AvailabilityConfig)
     battery_threshold: int = 50  # For 3-state modes
@@ -216,6 +224,7 @@ class ExperimentBatch:
                 trainer=TrainerConfig(
                     num_trainers=trainer_data.get("num_trainers", 300),
                     start_id=trainer_data.get("start_id", 1),
+                    split_num_trainers=trainer_data.get("split_num_trainers"),
                     dataset=(
                         DatasetConfig(**dataset_data)
                         if dataset_data

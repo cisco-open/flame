@@ -59,9 +59,24 @@ class MetadataLoader:
         trainer_key = f"trainer_{trainer_id:03d}"
         return self.dataset_splits[split_key]["trainer_data_splits"][trainer_key]
 
-    def get_synthetic_trace(self, trace_name: str) -> List:
-        """Get synthetic availability trace."""
-        return self.synthetic_traces["traces"][trace_name]["pattern"]
+    def get_synthetic_trace(
+        self, trace_name: str, trainer_id: Optional[int] = None
+    ) -> List:
+        """Get synthetic availability trace.
+
+        trainer_id=None returns the shared `pattern` entry. Pass trainer_id to
+        resolve that trainer's own `per_trainer` entry via the same resolver
+        (flame.availability.trace.load_trace) the aggregator already uses.
+        """
+        if trainer_id is None:
+            return self.synthetic_traces["traces"][trace_name]["pattern"]
+        from flame.availability.trace import load_trace
+
+        trainer_key = f"trainer_{trainer_id:03d}"
+        trace_dict = load_trace(
+            trace_name, trainer_key, base_dir=str(self.metadata_dir / "availability_traces")
+        )
+        return [[ts, state] for ts, state in trace_dict.items()]
 
     def get_mobiperf_trace(self, trainer_id: int, variant: str = "2st") -> List:
         """Get mobiperf trace for a trainer."""
@@ -150,13 +165,13 @@ class ConfigGenerator:
         elif availability_mode.startswith("syn_"):
             trace_name = availability_mode
             config["hyperparameters"][f"avl_events_{trace_name}"] = (
-                self.metadata.get_synthetic_trace(trace_name)
+                self.metadata.get_synthetic_trace(trace_name, trainer_id)
             )
 
         # Add all synthetic traces (for flexibility)
         for trace_name in ["syn_0", "syn_20", "syn_50"]:
             config["hyperparameters"][f"avl_events_{trace_name}"] = (
-                self.metadata.get_synthetic_trace(trace_name)
+                self.metadata.get_synthetic_trace(trace_name, trainer_id)
             )
 
         # Add all mobiperf traces
@@ -416,40 +431,49 @@ class TrainerSpawner:
     def wait_all(self, timeout_per_trainer: float = 30.0):
         """Wait for all trainer processes to complete.
 
-        All trainers share one ``timeout_per_trainer``-second window after the
-        aggregator exits to process the EOT broadcast and self-terminate.
-        Trainers that are blocked in ``await_join`` (waiting for the next task
+        All trainers share a single ``timeout_per_trainer`` second window
+        after the aggregator exits to process the EOT broadcast and
+        self-terminate, polled concurrently — not one process at a time, or
+        N stragglers would serialize the shutdown into N * timeout_per_trainer
+        (e.g. 5 stuck trainers at 30s each adds 2.5 minutes of pure idle
+        wait). Trainers blocked in ``await_join`` (waiting for the next task
         from an aggregator that has already left) will never self-exit, so we
-        force-terminate whichever ones are still alive once the shared window
-        elapses. This polls all processes concurrently rather than waiting on
-        them one at a time -- a sequential per-trainer wait would cost up to
-        ``timeout_per_trainer * len(self.processes)`` when every trainer
-        misses the EOT broadcast, turning a single 30s window into minutes of
-        dead time before the next sequential experiment can start.
+        force-terminate whatever is left after the window, then kill anything
+        still alive after a short grace period. Without this the runner hangs
+        indefinitely and the next sequential experiment never starts.
         """
-        procs = [proc_info["process"] for proc_info in self.processes]
+        deadline = time.time() + timeout_per_trainer
+        pending = [p["process"] for p in self.processes]
 
-        deadline = time.monotonic() + timeout_per_trainer
-        while time.monotonic() < deadline:
-            if all(proc.poll() is not None for proc in procs):
-                break
-            time.sleep(0.5)
+        while pending and time.time() < deadline:
+            pending = [p for p in pending if p.poll() is None]
+            if pending:
+                time.sleep(0.5)
 
-        for proc in procs:
-            if proc.poll() is not None:
-                continue
-            print(
-                f"  (trainer PID {proc.pid} did not exit within "
-                f"{timeout_per_trainer}s; terminating)"
-            )
+        if not pending:
+            return
+
+        print(
+            f"  ({len(pending)} trainer(s) did not exit within "
+            f"{timeout_per_trainer:.0f}s; terminating)"
+        )
+        for proc in pending:
             try:
                 proc.terminate()
-                proc.wait(timeout=5)
             except Exception:
-                try:
-                    proc.kill()
-                except Exception:
-                    pass
+                pass
+
+        kill_deadline = time.time() + 5
+        while pending and time.time() < kill_deadline:
+            pending = [p for p in pending if p.poll() is None]
+            if pending:
+                time.sleep(0.5)
+
+        for proc in pending:
+            try:
+                proc.kill()
+            except Exception:
+                pass
 
     def terminate_all(self):
         """Terminate all trainer processes."""

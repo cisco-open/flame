@@ -55,7 +55,7 @@ class PluginManager(object):
                 cls_name, package, ptype = self.parse_plugin(filepath)
                 self.register_plugin(cls_name, package, ptype)
         except FileNotFoundError as e:
-            logger.warn(f"{e.filename} not found; stop plugin registration.")
+            logger.warning(f"{e.filename} not found; stop plugin registration.")
             return
 
     def parse_plugin(self, filepath: str) -> Tuple[str, str, PluginType]:

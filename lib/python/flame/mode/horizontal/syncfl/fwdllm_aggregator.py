@@ -1577,7 +1577,7 @@ class TopAggregator(AsyncTopAgg):
         if self.track_trainer_avail["enabled"] == "False":
             return True
         elif self.track_trainer_avail["type"] == "ORACULAR":
-            picked_trainer_is_available = self.oracular_trainer_avail_check(end)
+            picked_trainer_is_available = self._trace_read_avail_check(end)
         elif self.track_trainer_avail["type"] == "HEARTBEAT":
             picked_trainer_is_available = self.hearbeat_trainer_avail_check(end)
 

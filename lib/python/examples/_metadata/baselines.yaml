@@ -212,6 +212,29 @@ baselines:
       hyperparameters:
         use_oort_loss_fn: "True"
 
+  oort_star:
+    description: >-
+      oort_star = oort sync + FedAvg + aware-at-selection (avail_select_filter=True),
+      no proactive in-flight eviction (reactive-90s). Differs from oort only in
+      avail_select_filter; the experiment config_overrides set avail_select_filter=True
+      (oort sets it False there). Uses same oracular tracking path.
+    example:
+      aggregator_main: aggregator/pytorch/main_oort_sync_agg.py
+    aggregator:
+      selector:
+        sort: oort
+        kwargs: {}
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "True"
+          type: ORACULAR
+    trainer:
+      hyperparameters:
+        use_oort_loss_fn: "True"
+
   fedbuff:
     description: FedBuff = fedbuff selector (uniform async) + fedbuff optimizer. Async stack.
     example:

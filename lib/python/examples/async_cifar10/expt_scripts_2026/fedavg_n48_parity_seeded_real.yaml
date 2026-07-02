@@ -40,7 +40,7 @@ experiments:
           aggGoal: 5
           seed: 1234
           min_trainers_to_start: 48
-          max_runtime_s: 1200
+          max_experiment_runtime_s: 1200
         selector:
           kwargs:
             k: 8

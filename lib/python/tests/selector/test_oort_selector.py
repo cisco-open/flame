@@ -357,3 +357,50 @@ class TestOortCleanup:
         oort._cleanup_recvd_ends(make_ends(["a", "b", "c"]))
         assert oort.selected_ends == {"c"}
         assert oort.ordered_updates_recv_ends == []
+
+
+class TestChallenge13SendStateCleanup:
+    """The 'invalid prior selection' cleanup in _handle_send_state must key off
+    CONNECTED membership, not availability-eligibility (Challenge 13). An
+    in-flight trainer that merely went UN_AVL / wrong-task-type is absent from
+    the filtered eligible pool but still connected & computing — it must stay in
+    selected_ends. Only a genuinely disconnected end (gone from the channel) is
+    removed. Concurrency is sized so extra==0 and the method returns right after
+    cleanup, isolating the membership check."""
+
+    def test_unavailable_inflight_retained_when_connected_pool_passed(
+        self, async_oort, make_ends
+    ):
+        async_oort.requester = "agg"
+        async_oort.selected_ends = {"agg": {"t1", "t2"}}
+        connected = make_ends(["t1", "t2", "t3"])   # all still connected
+        eligible = {}                               # all currently unavailable
+        out = async_oort._handle_send_state(
+            ends=eligible, concurrency=2, channel_props={},
+            connected_ends=connected,
+        )
+        assert out == {}
+        # t1/t2 unavailable but connected → in-flight tracking preserved.
+        assert async_oort.selected_ends["agg"] == {"t1", "t2"}
+
+    def test_disconnected_inflight_removed(self, async_oort, make_ends):
+        async_oort.requester = "agg"
+        async_oort.selected_ends = {"agg": {"t1", "t2"}}
+        connected = make_ends(["t1"])               # t2 genuinely gone
+        async_oort._handle_send_state(
+            ends={}, concurrency=1, channel_props={},
+            connected_ends=connected,
+        )
+        assert async_oort.selected_ends["agg"] == {"t1"}
+
+    def test_fallback_to_eligible_when_no_connected_pool(
+        self, async_oort, make_ends
+    ):
+        # Backward-compat: with connected_ends omitted the check falls back to
+        # `ends` — the pre-fix behavior. Guards the default-arg contract.
+        async_oort.requester = "agg"
+        async_oort.selected_ends = {"agg": {"t1"}}
+        async_oort._handle_send_state(
+            ends=make_ends(["t1"]), concurrency=1, channel_props={},
+        )
+        assert async_oort.selected_ends["agg"] == {"t1"}

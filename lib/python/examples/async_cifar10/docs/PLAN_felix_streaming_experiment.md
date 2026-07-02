@@ -123,7 +123,7 @@ figures (see Verification below), `dg_flame` conda env.
 - **Config** — `lib/python/flame/config.py`: add hyperparameters
   `target_accuracy` (alias `targetAccuracy`, float, default `None` = disabled),
   `stable_evals_above_target` (alias, int, default 20). Reuse the existing `rounds` and
-  `max_runtime_s` as the safety cap (already honored in sim via the virtual clock).
+  `max_experiment_runtime_s` as the safety cap (already honored in sim via the virtual clock).
 - **Aggregator** — the eval result funnels through `_eval_emit(round, loss, acc)` in
   `lib/python/flame/mode/horizontal/syncfl/top_aggregator.py`
   (shared by sync + async stacks). Add a `_check_target_stop(acc)` called from `_eval_emit`:
@@ -193,7 +193,7 @@ figures (see Verification below), `dg_flame` conda env.
   `data_streaming.enabled: 'True'` (+ `stagger` block for the staggered variant),
   `util_counterfactual.enabled: 'True'`, `checkpoint.enabled: 'True'` + `every_n_rounds`
   (required for offline oracle), `aggGoal/aggr_num: 10`, `targetAccuracy: 0.60`,
-  `stableEvalsAboveTarget: 20`, `evalEveryNRounds: 10`, `rounds`/`max_runtime_s` cap. felix
+  `stableEvalsAboveTarget: 20`, `evalEveryNRounds: 10`, `rounds`/`max_experiment_runtime_s` cap. felix
   `selector.kwargs.c: 10`; oracle arm `c: 50`.
 
 ### E. Analysis + claim figures

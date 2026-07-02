@@ -24,6 +24,7 @@ from flame.mode.horizontal.syncfl.fwdllm_aggregator import (
     TopAggregator,
 )
 from flame.mode.message import MessageType
+from flame.selector.properties import PROP_CLIENT_TASK_TRAIN_DURATION
 
 
 class _FakeChannel:
@@ -34,9 +35,9 @@ class _FakeChannel:
         self.round_prop = None
 
     def get_end_property(self, end, key):
-        if key == "round_duration":
+        if key == PROP_CLIENT_TASK_TRAIN_DURATION:
             return self._durations.get(end)
-        if key == "stat_utility":
+        if key == PROP_STAT_UTILITY:
             return self._utilities.get(end)
         return None
 

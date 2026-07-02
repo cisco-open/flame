@@ -23,7 +23,7 @@ from flame.selector.properties import (
     PROP_CLIENT_TASK_TRAIN_DURATION,
     PROP_STAT_UTILITY,
 )
-from flame.sim import VirtualClock
+from flame.sim import VirtualClock, SimReorderBuffer
 
 
 class FakeSyncChannel:
@@ -89,6 +89,14 @@ def _make_agg():
     agg = _ConcreteSyncAgg.__new__(_ConcreteSyncAgg)
     agg._vclock = VirtualClock()
     agg.simulated = True
+    # Gate-off availability state. Production sets _sim_buffer in __init__ and the
+    # ledgers in _init_availability; __new__ bypasses both, so set them here.
+    # _sync_sim_recv_first_k references self._sim_buffer directly; trainer_event_dict
+    # =None + empty pending_withheld keep the ClientAvailability helpers no-op, so the
+    # sim-ordering logic is exercised in isolation (byte-identical to gate OFF).
+    agg._sim_buffer = SimReorderBuffer()
+    agg.trainer_event_dict = None
+    agg.pending_withheld = {}
     return agg
 
 
@@ -483,8 +491,17 @@ class TestStaleRejectRecordsPropsIntegration:
         class _SelCfg:
             kwargs = {"aggr_num": 10}
 
+        class _HP:
+            # Real-recv timeout block reads these (getattr-with-default in prod);
+            # max_experiment_runtime_s=None ⇒ recv timeout falls back to the stall
+            # default, no budget cap. (Was missing → AttributeError after the
+            # oort/syncfl real-recv timeout landed.)
+            trainer_recv_wall_timeout_s = 90.0
+            max_experiment_runtime_s = None
+
         class _Config:
             selector = _SelCfg()
+            hyperparameters = _HP()
 
         class _ConcreteOortAgg(OortTopAggregator):
             def check_and_sleep(self): pass

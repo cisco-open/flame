@@ -114,7 +114,7 @@ each round). Two readings:
 | Streaming | **uniform (phase 1)** | one `full_after_s=10800`. Staggered (per-client onset≤5400 s, ±50% span) = phase 2 |
 | Time mode | **simulated** | virtual-clock time-to-accuracy, deterministic, fast |
 | Target accuracy | **60%** | |
-| Stop rule | **20 consecutive evals ≥ 60%** | resets on any dip; `rounds`/`max_runtime_s` safety cap |
+| Stop rule | **20 consecutive evals ≥ 60%** | resets on any dip; `rounds`/`max_experiment_runtime_s` safety cap |
 | Eval cadence | every **10** rounds | 20 evals ≈ 200 sustained rounds |
 
 **Arms (8).** `{felix, oort, refl, feddance} × {B, B_oracle}`. Each `B_oracle` uses
@@ -193,7 +193,7 @@ oracle runs are suffixed `_node<i>`).
   artifact of a single global unlock clock: staggering (clients' data arriving in
   different windows) should *amplify* the top-K churn and the baselines' disparity.
 - **"20 consecutive evals ≥ 60%"** yields a stable time-to-accuracy (not a lucky
-  spike); the `rounds`/`max_runtime_s` cap guarantees non-converging arms still
+  spike); the `rounds`/`max_experiment_runtime_s` cap guarantees non-converging arms still
   terminate.
 - **Simulated mode** gives a clean virtual-clock time axis, determinism, and speed.
 

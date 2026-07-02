@@ -161,6 +161,9 @@ class ExperimentRunner:
             os.environ["FLAME_TELEMETRY_DIR"] = str(self.telemetry_dir)
             # UTF-8 child stdio so status glyphs don't crash on latin-1 locales.
             os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+            # Fault handler: on SIGSEGV/SIGFPE/etc. Python prints a C-level traceback
+            # to stderr (merged into _aggregator.log) before the process dies.
+            os.environ.setdefault("PYTHONFAULTHANDLER", "1")
 
             # CPU partition: reserve a few cores for the single, message-processing
             # -bound aggregator so the 300 pinned trainers don't time-slice it
@@ -284,24 +287,30 @@ class ExperimentRunner:
                 trainer_main_path=paths["trainer_main"],
                 skip_index_splits=exp.trainer.dataset.path_style,
                 dataset_name=exp.trainer.dataset.name,
-                num_trainers=exp.trainer.num_trainers,
+                # Split-file selector is independent of the spawn cohort size:
+                # split_num_trainers (the N the partition was built for) falls
+                # back to num_trainers when unset. trainer_ids above still
+                # spawns exactly num_trainers trainers.
+                num_trainers=exp.trainer.split_num_trainers or exp.trainer.num_trainers,
                 per_trainer_overrides=per_trainer_overrides,
                 **config_overrides,
             )
 
             print(f"\nexperiment running. logs: {agg_log}, {trainers_log}")
             # Wait for the aggregator to finish all rounds first, then give
-            # trainers a short grace window to process the EOT broadcast and
-            # exit cleanly. Without this, wait_all()'s per-trainer timeout fires
-            # immediately after spawn and kills trainers every 30s regardless of
+            # trainers a short grace window (shared across the whole cohort,
+            # not serialized per-process) to process the EOT broadcast and
+            # exit cleanly. Without this, wait_all()'s timeout fires
+            # immediately after spawn and kills trainers regardless of
             # whether training is still in progress.
-            # Watchdog: the aggregator self-stops at max_runtime_s (real) / sim_wall_ceiling_s
-            # (sim). If it instead DEADLOCKS (MQTT/barrier) it would block this wait forever and
-            # hang the batch. Bound the wait at the run's budget + a generous grace and hard-kill
-            # on timeout so the batch proceeds to _cleanup/_sweep_stragglers instead of hanging.
+            # Watchdog: the aggregator self-stops at max_experiment_runtime_s (real) /
+            # sim_wall_ceiling_s (sim). If it instead DEADLOCKS (MQTT/barrier) it would
+            # block this wait forever and hang the batch. Bound the wait at the run's
+            # budget + a generous grace and hard-kill on timeout so the batch proceeds
+            # to _cleanup/_sweep_stragglers instead of hanging.
             hp = agg_cfg.get("hyperparameters", {}) or {}
             try:
-                budget_s = max(float(hp.get("max_runtime_s") or 0.0),
+                budget_s = max(float(hp.get("max_experiment_runtime_s") or 0.0),
                                float(hp.get("sim_wall_ceiling_s") or 0.0))
             except (TypeError, ValueError):
                 budget_s = 0.0
@@ -312,7 +321,9 @@ class ExperimentRunner:
                 print(f"  ⚠ aggregator still running after watchdog {wd_msg} — "
                       f"assuming deadlock; killing it (run budget was {budget_s:.0f}s)")
                 self.aggregator_spawner.terminate()
-            print("  aggregator done, waiting for trainers to exit...")
+            agg_rc = getattr(self.aggregator_spawner.process, "returncode", None)
+            rc_msg = f"exit={agg_rc}" if agg_rc == 0 else f"exit={agg_rc} ⚠"
+            print(f"  aggregator done ({rc_msg}), waiting for trainers to exit...")
             self.trainer_spawner.wait_all(timeout_per_trainer=30.0)
             print("\nexperiment completed.")
 

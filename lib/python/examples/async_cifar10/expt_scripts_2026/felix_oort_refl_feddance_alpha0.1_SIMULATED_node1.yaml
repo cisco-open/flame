@@ -38,7 +38,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 1000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
@@ -103,7 +103,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 1000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         min_trainers_to_start: 290
         min_trainers_join_timeout_s: 600
         aggGoal: 10
