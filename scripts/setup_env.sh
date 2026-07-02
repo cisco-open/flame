@@ -31,6 +31,13 @@ conda activate "$ENV_NAME"
 pip install --upgrade pip
 pip install -e "$REPO_ROOT/lib/python[examples,dev]"
 
+# CUDA 12.6 wheels are required for driver >= 12.9 compatibility.
+# The default PyPI torch wheel is built against an older CUDA runtime and will
+# silently misdetect or error on CUDA driver 12.9+.  Force-reinstall from the
+# cu126 index to get the matching runtime wheel.
+pip install --force-reinstall torch==2.12.0 torchvision==0.27.0 \
+  --index-url https://download.pytorch.org/whl/cu126
+
 # Optional: warn if mosquitto broker isn't around.
 if ! command -v mosquitto &> /dev/null; then
   echo "warning: mosquitto MQTT broker not installed. examples will need one running on localhost:1883."

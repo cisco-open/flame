@@ -261,9 +261,42 @@ class RandomSelector(AbstractSelector):
             self.all_selected.update({key: None for key in self.selected_ends})
             for candidate in selected_candidates:
                 self.time_sent[candidate] = time.time()
-            
+
             if round > self.round:
                 self.round = round
+
+            # RandomSelector never called this before -- the only "selection"
+            # telemetry that existed for fwdllm/fwdllm_plus (both use this
+            # selector) came from the trainer's own trivial 1-candidate
+            # channel selector (a channel-implementation artifact -- see
+            # examples/MIGRATING_TO_LAUNCHER.md's telemetry gotchas), not
+            # the real aggregator-side FL-selection decision made here.
+            # This is that decision.
+            _extra = {
+                "concurrency": self.c,
+                "requester": channel_props.get(KEY_CH_SELECT_REQUESTER),
+            }
+            # fwdllm-family aggregators thread (model_version, data_id,
+            # iteration_id) through channel.ends(agg_version_state=...) ->
+            # select()'s kwargs (see fwdllm_aggregator.py). Attaching data_id/
+            # iteration_per_data_id here lets analyze_run.py's progress_key()
+            # place this event on the same fine-grained axis as trainer_round/
+            # agg_round/agg_eval, instead of collapsing onto fwdllm's
+            # coarse `round` (which can stay at 1 for an entire run). No-op
+            # (absent from extra) for callers that don't pass agg_version_state
+            # -- e.g. async_cifar10's fedavg baseline also uses this selector.
+            _avs = kwargs.get("agg_version_state")
+            if isinstance(_avs, (tuple, list)) and len(_avs) == 3:
+                _extra["data_id"] = _avs[1]
+                _extra["iteration_per_data_id"] = _avs[2]
+            self.emit_selection(
+                round,
+                task_to_perform,
+                ends,
+                avl_candidates,
+                selected_candidates,
+                extra=_extra,
+            )
 
             logger.info("select in send state")
             return {key: None for key in selected_candidates}

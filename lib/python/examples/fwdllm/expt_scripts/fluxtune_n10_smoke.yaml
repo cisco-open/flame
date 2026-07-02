@@ -1,0 +1,96 @@
+# FedFwd smoke test: 10 trainers, agnews H5 partitions (client_idx 0-9 of the
+# 100 available niid_label_clients=100_alpha=1 partitions), real time_mode
+# (FedFwd has no simulated-clock support yet).
+#
+# Uses the `fluxtune` baseline (async, async_oort selector, fedbuff with an
+# explicit learning_rate, 3-tier client_notify, fixed K/C i.e.
+# selector.kwargs.dynamic_kc.enabled left at the baseline default of false).
+# Sibling of fwdllm_n10_smoke.yaml/fwdllm_plus_n10_smoke.yaml; run all three
+# for full real/sim parity coverage across the taxonomy.
+#
+# Run:
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/fwdllm/expt_scripts/fluxtune_n10_smoke.yaml
+
+experiments:
+  - name: fluxtune_n10_smoke
+    description: "FedFwd smoke (10 trainers, fluxtune baseline: async async_oort+fedbuff+JVP+3-tier). Validates the launcher port before a full-scale run."
+
+    baseline: fluxtune
+
+    example:
+      # fwdllm's trainer entrypoint has no pytorch/ subdirectory, unlike the
+      # ExampleConfig default (trainer/pytorch/main.py).
+      trainer_main: trainer/main.py
+
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: agnews
+        # H5 path-style dataset -- no _metadata/dataset_splits/ index-list
+        # file exists (or ever will) for agnews; skips that lookup entirely.
+        path_style: true
+      availability:
+        # Cosmetic here -- fluxtune's 3-tier signal comes from
+        # trainer.client_notify (set in the baseline), not this mode. Kept
+        # consistent with the baseline's mobiperf_3st_50 trace.
+        mode: mobiperf_3st_50
+      # FedFwd has no simulated-clock support; always real.
+      time_mode: real
+      # Skip the registry's 4-18s artificial delay for a fast smoke run.
+      enable_training_delays: false
+      # client_idx = (trainer_id - 1) % 100 -- wraps 10 trainers onto a
+      # distinct, non-colliding subset (0-9) of the 100 H5 partitions.
+      client_idx_modulo: 100
+      config_overrides:
+        hyperparameters:
+          data_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5
+          partition_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5
+          # Uniform/IID partition for smoke tests -- avoids the niid_label
+          # baseline default's data-skew confound while validating mechanics.
+          partition_method: uniform
+
+    aggregator:
+      config_template: configs/aggregator_base.json
+      selector: async_oort
+      tracking_mode: client_notify
+      agg_goal: 3
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: fluxtune_n10_smoke
+        hyperparameters:
+          rounds: 50  # short smoke run, not the full 300
+          # Smoke-test stop bar: whichever of these fires first ends the run
+          # (`rounds` alone is much too coarse, since one round is 150
+          # data-id completions).
+          max_data_id_progress: 10  # stop once data_id reaches 10
+          max_runtime_s: 1800  # ...or after 30 minutes wall time
+          data_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5
+          partition_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5
+          partition_method: uniform
+        selector:
+          kwargs:
+            # Scaled down from the baseline's n=150-ish defaults
+            # (c=15, aggGoal=5, minInitialTrainers=15) to fit 10 trainers.
+            # minInitialTrainers=10 = wait for all 10 smoke trainers to join.
+            # aggGoal is set once via the top-level `agg_goal: 3` above --
+            # the runner fans it into both this kwarg and
+            # hyperparameters.aggGoal so they can't drift apart; don't
+            # duplicate it here.
+            c: 8
+            minInitialTrainers: 10
+
+    execution:
+      # 8, not 1, even though this YAML's own default is 10 trainers --
+      # run_sequential.sh's --num-trainers commonly scales this up to 100+
+      # without a matching GPU bump (it has no num_gpus override of its
+      # own), and cramming 100 trainer processes onto 1 GPU OOMs almost
+      # immediately (see fluxtune_n10_smoke run 20260629_221116). Spreading
+      # across 8 GPUs even at the 10-trainer default is harmless headroom.
+      num_gpus: 8
+      sleep_between_spawns: 2.0
+      aggregator_warmup_time: 20
+      monitoring:
+        enabled: false

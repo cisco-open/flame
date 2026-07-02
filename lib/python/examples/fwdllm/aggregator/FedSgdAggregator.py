@@ -98,6 +98,14 @@ class FedSGDAggregator(TopAggregator):
         self.reject_stale_updates = (
             self.config.hyperparameters.reject_stale_updates or False
         )
+        # See Hyperparameters.staleness_policy (flame/config.py) for the
+        # three modes. Falls back to the older reject_stale_updates boolean
+        # ("round_data_id" if set, else "none") when unset, so examples that
+        # predate this knob keep their existing behavior.
+        self.staleness_policy = getattr(
+            self.config.hyperparameters, "staleness_policy", None
+        ) or ("round_data_id" if self.reject_stale_updates else "none")
+        logger.info(f"[StalenessPolicy] using policy={self.staleness_policy}")
         self.trainer_event_dict = None
         if (
             self.track_trainer_avail["enabled"]

@@ -349,6 +349,88 @@ class TestCoolingHoldsConcurrency:
             self._call(sel, concurrency=2, cooling_count=0)
 
 
+class TestSendTimeoutReclaimsConcurrencySlot:
+    """Regression: a selected end that never returns an update within
+    SEND_TIMEOUT_WAIT_S must be reclaimed from BOTH ``all_selected`` and
+    ``selected_ends``, and that reclaim must happen before the extra==0
+    short-circuit. Previously the reclaim ran *after* the short-circuit and
+    only cleared all_selected (never selected_ends, which is what `extra`'s
+    concurrency accounting counts) -- so one non-responding trainer
+    permanently pinned `extra` at 0 and no further selection ever happened
+    again for the rest of the run. See
+    examples/MIGRATING_TO_LAUNCHER.md's aggregator gotchas (fwdllm example)
+    for the full-stall this caused in fluxtune at n30 scale.
+    """
+
+    STALE_END = "t_stuck"
+
+    @classmethod
+    def _stub_selector(cls, stale: bool):
+        import time
+
+        from flame.selector.async_oort import SEND_TIMEOUT_WAIT_S, AsyncOortSelector
+
+        sel = AsyncOortSelector.__new__(AsyncOortSelector)
+        sel.requester = "agg"
+        sel.selected_ends = {"agg": {cls.STALE_END}}
+        send_ts = time.time() - (SEND_TIMEOUT_WAIT_S + 1 if stale else 0)
+        sel.all_selected = {cls.STALE_END: send_ts}
+        sel.ordered_updates_recv_ends = []
+        sel.track_trainer_timeouts = {}
+        return sel
+
+    def _call(self, sel, concurrency=1):
+        # STALE_END must be a currently-known end (present in `ends`) so the
+        # pre-existing "invalid selection" cleanup a few lines below (which
+        # drops any selected_ends entry absent from `ends`, e.g. on
+        # disconnect) doesn't confound this test -- only the
+        # SEND_TIMEOUT_WAIT_S reclaim under test should decide its fate here.
+        ends = {f"t{i}": _FakeEnd() for i in range(5)}
+        ends[self.STALE_END] = _FakeEnd()
+        return sel._handle_send_state(
+            ends=ends,
+            concurrency=concurrency,
+            channel_props={"round": 1},
+            trainer_unavail_list=[],
+            task_to_perform="train",
+            agg_version_state=(1, 0, 0),
+            trainer_version_states={},
+        )
+
+    def test_stale_end_freed_from_both_dicts_and_unblocks_selection(self):
+        sel = self._stub_selector(stale=True)
+
+        class _Tripwire(Exception):
+            pass
+
+        def _boom():
+            raise _Tripwire()
+
+        sel.pacer = _boom
+        # Reaching the tripwire proves extra != 0, i.e. the reclaim ran
+        # before the extra==0 short-circuit and actually freed the slot.
+        with pytest.raises(_Tripwire):
+            self._call(sel, concurrency=1)
+
+        assert self.STALE_END not in sel.all_selected
+        assert self.STALE_END not in sel.selected_ends["agg"]
+
+    def test_fresh_end_not_reclaimed_still_short_circuits(self):
+        # Control: an end selected moments ago (not past SEND_TIMEOUT_WAIT_S)
+        # must NOT be reclaimed -- concurrency stays saturated and extra==0
+        # still short-circuits before pacer() ever runs.
+        sel = self._stub_selector(stale=False)
+        pacer_called = []
+        sel.pacer = lambda: pacer_called.append(True)
+
+        result = self._call(sel, concurrency=1)
+
+        assert result == {}
+        assert not pacer_called
+        assert self.STALE_END in sel.all_selected
+        assert self.STALE_END in sel.selected_ends["agg"]
+
+
 class TestGateProbesLiveInflight:
     """§3g: the gate must probe the LIVE in-flight set (_sim_inflight_expected),
     not just the recv_ends snapshot taken once per cycle. Otherwise it holds the

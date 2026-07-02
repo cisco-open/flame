@@ -39,12 +39,32 @@ setup(
         "zstandard",
     ],
     extras_require={
-        # Runtime deps for examples/<x>/ workloads (torch + utilities).
+        # Runtime deps for examples/<x>/ workloads. Installing this one extra
+        # is enough to run the smoke tests for BOTH the vision examples
+        # (async_cifar10, ...) and the NLP forward-mode examples (fwdllm).
         "examples": [
+            # --- Shared (vision + speech + NLP) ---
+            # On CUDA driver >= 12.9 use setup_env.sh (force-reinstalls torch
+            # from the cu126 index) instead of a bare `pip install -e .[examples]`.
             "torch",
             "torchvision",
+            "torchaudio",  # async_google_speech (audio feature extraction)
             "sortedcontainers",
             "wandb",
+            # --- fwdllm: DistilBERT forward-mode FL on agnews ---
+            # Modern mainline `transformers` + the standalone `adapters` add-on
+            # (the maintained successor to the un-buildable `adapter-transformers`
+            # fork; both ship prebuilt wheels, so no Rust/tokenizers compile).
+            # `adapters` pins `transformers` in lockstep (1.3.x requires
+            # transformers ~=4.57.6), so they are versioned together here.
+            # Verified set: transformers 4.57.6 / adapters 1.3.0 / tokenizers
+            # 0.22.2 / h5py 3.16.0 on torch 2.x + numpy 2.x + py3.11.
+            "transformers>=4.57,<4.58",
+            "adapters>=1.3,<1.4",
+            "h5py>=3",
+            "pandas>=2",
+            "scikit-learn>=1.3",
+            "setproctitle",
         ],
         "dev": [
             "pytest",

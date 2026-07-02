@@ -47,6 +47,7 @@ def create_execution_config(
     aggregator_config_path: Path,
     spawn_commands: Optional[Dict[str, List[str]]] = None,
     execution_timestamp: Optional[datetime] = None,
+    agg_cfg: Optional[Dict] = None,
 ) -> Dict:
     """
     Generate compact execution config with metadata keys.
@@ -56,6 +57,9 @@ def create_execution_config(
         aggregator_config_path: Path to aggregator JSON config
         spawn_commands: Actual spawn commands used (optional)
         execution_timestamp: Timestamp of execution (default: now)
+        agg_cfg: The real, merged aggregator config (if available) -- used to
+            record the effective `agg_goal` instead of the possibly-unset
+            `exp_config.aggregator.agg_goal` typed field.
 
     Returns:
         Dictionary with compact execution config
@@ -66,9 +70,15 @@ def create_execution_config(
     # Get git state
     git_info = get_git_info()
 
-    # Build metadata keys
+    # Build metadata keys. Must match the real lookup key computed in
+    # flame/launch/spawner.py:ConfigGenerator.get_dataset_split() -- this is
+    # a record of what was actually loaded, not an independent guess, so it
+    # has to use the same (dataset_name, alpha, num_trainers) inputs the
+    # runner passes to spawn_all() (see runner.py:run_experiment).
     alpha = exp_config.trainer.dataset.dirichlet_alpha
-    dataset_split_key = f"cifar10_alpha{alpha}_n{exp_config.trainer.num_trainers}"
+    dataset_split_key = (
+        f"{exp_config.trainer.dataset.name}_alpha{alpha}_n{exp_config.trainer.num_trainers}"
+    )
     availability_trace_key = exp_config.trainer.availability.mode
 
     # Build compact config
@@ -92,7 +102,11 @@ def create_execution_config(
                 if exp_config.aggregator
                 else "default"
             ),
-            "agg_goal": exp_config.aggregator.agg_goal if exp_config.aggregator else 10,
+            "agg_goal": (
+                (agg_cfg or {}).get("hyperparameters", {}).get("aggGoal")
+                if agg_cfg is not None
+                else (exp_config.aggregator.agg_goal if exp_config.aggregator else None)
+            ),
         },
         # Experiment parameters (what changes between runs)
         "experiment": {

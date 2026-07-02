@@ -36,12 +36,12 @@ experiments:
           batchSize: 32
           learningRate: 0.001
           rounds: 200
-          aggGoal: 5
           trackTrainerAvail:
             trace: syn_0
-        selector:
-          kwargs:
-            aggr_num: 5
+        # aggr_num (oort's name for the selection/aggregation count) is set
+        # once via the top-level `agg_goal: 5` above -- the runner fans it
+        # into hyperparameters.aggGoal and selector.kwargs.aggr_num
+        # together, so don't duplicate it here.
 
     execution:
       num_gpus: 2

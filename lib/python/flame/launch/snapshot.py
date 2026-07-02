@@ -33,6 +33,7 @@ class ExperimentSnapshot:
         aggregator_config_path: Path,
         trainer_spawn_command: List[str],
         aggregator_spawn_command: List[str],
+        agg_cfg: Dict = None,
     ):
         """
         Create complete experiment snapshot.
@@ -43,12 +44,15 @@ class ExperimentSnapshot:
             aggregator_config_path: Path to aggregator JSON config
             trainer_spawn_command: Command used to spawn trainers
             aggregator_spawn_command: Command used to spawn aggregator
+            agg_cfg: The real, merged aggregator config (if available) -- used
+                to record the effective `agg_goal` instead of the
+                possibly-unset `exp_config.aggregator.agg_goal` typed field.
         """
         snapshot_data = {
             "snapshot_version": "1.0",
             "timestamp": datetime.now().isoformat(),
             "hostname": subprocess.check_output(["hostname"]).decode().strip(),
-            "experiment": self._serialize_experiment_config(exp_config),
+            "experiment": self._serialize_experiment_config(exp_config, agg_cfg),
             "spawn_commands": {
                 "aggregator": aggregator_spawn_command,
                 "trainers": trainer_spawn_command,
@@ -73,8 +77,15 @@ class ExperimentSnapshot:
         print(f"  ✓ Snapshot saved: {self.snapshot_file}")
         print(f"  ✓ Metadata location recorded: {metadata_dir}")
 
-    def _serialize_experiment_config(self, exp_config: ExperimentConfig) -> Dict:
+    def _serialize_experiment_config(
+        self, exp_config: ExperimentConfig, agg_cfg: Dict = None
+    ) -> Dict:
         """Serialize experiment config to dict."""
+        effective_agg_goal = (
+            (agg_cfg or {}).get("hyperparameters", {}).get("aggGoal")
+            if agg_cfg is not None
+            else (exp_config.aggregator.agg_goal if exp_config.aggregator else None)
+        )
         return {
             "name": exp_config.name,
             "description": exp_config.description,
@@ -96,7 +107,7 @@ class ExperimentSnapshot:
                     "config_template": exp_config.aggregator.config_template,
                     "selector": exp_config.aggregator.selector,
                     "tracking_mode": exp_config.aggregator.tracking_mode,
-                    "agg_goal": exp_config.aggregator.agg_goal,
+                    "agg_goal": effective_agg_goal,
                 }
                 if exp_config.aggregator
                 else None

@@ -1,0 +1,88 @@
+# FedFwd smoke test: 10 trainers, agnews H5 partitions (client_idx 0-9 of the
+# 100 available niid_label_clients=100_alpha=1 partitions), real time_mode
+# (FedFwd has no simulated-clock support yet).
+#
+# Uses the `fwdllm` baseline (sync, random selector, fedavg, unaware
+# availability, per-round reselection) -- cheapest baseline, and it
+# exercises the sync path.
+#
+# Run:
+#   python -m flame.launch.run_experiment \
+#       lib/python/examples/fwdllm/expt_scripts/fwdllm_n10_smoke.yaml
+
+experiments:
+  - name: fwdllm_n10_smoke
+    description: "FedFwd smoke (10 trainers, fwdllm baseline: sync random+fedavg). Validates the launcher port before a full-scale run."
+
+    baseline: fwdllm
+
+    example:
+      # fwdllm's trainer entrypoint has no pytorch/ subdirectory, unlike the
+      # ExampleConfig default (trainer/pytorch/main.py).
+      trainer_main: trainer/main.py
+
+    trainer:
+      num_trainers: 10
+      start_id: 1
+      dataset:
+        name: agnews
+        # H5 path-style dataset -- no _metadata/dataset_splits/ index-list
+        # file exists (or ever will) for agnews; skips that lookup entirely.
+        path_style: true
+      availability:
+        mode: syn_0
+      # FedFwd has no simulated-clock support; always real.
+      time_mode: real
+      # Skip the registry's 4-18s artificial delay for a fast smoke run.
+      enable_training_delays: false
+      # client_idx = (trainer_id - 1) % 100 -- wraps 10 trainers onto a
+      # distinct, non-colliding subset (0-9) of the 100 H5 partitions.
+      client_idx_modulo: 100
+      config_overrides:
+        hyperparameters:
+          data_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5
+          partition_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5
+          # Uniform/IID partition for smoke tests -- the niid_label baseline
+          # default adds a data-skew confound we don't want while validating
+          # the launcher mechanics.
+          partition_method: uniform
+          client_notify:
+            trace: syn_0
+
+    aggregator:
+      config_template: configs/aggregator_base.json
+      selector: random
+      tracking_mode: default
+      # Matches selector.kwargs.c below -- every selected trainer is required.
+      agg_goal: 10
+      log_to_wandb: false
+      config_overrides:
+        job:
+          id: fwdllm_n10_smoke
+        hyperparameters:
+          rounds: 50  # short smoke run, not the full 300
+          # Smoke-test stop bar: whichever of these fires first ends the run
+          # (`rounds` alone is much too coarse, since one round is 150
+          # data-id completions).
+          max_data_id_progress: 10  # stop once data_id reaches 10
+          max_runtime_s: 1800  # ...or after 30 minutes wall time
+          data_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/data_files/agnews_data.h5
+          partition_file_path: /coc/scratch/dgarg/fl_datasets/fwdllm/fednlp_data/partition_files/agnews_partition.h5
+          partition_method: uniform
+        selector:
+          kwargs:
+            # Scaled down from the baseline's n=150-ish defaults (k=5, c=15)
+            # to fit 10 trainers.
+            k: 5
+            c: 10
+            minInitialTrainers: 10
+
+    execution:
+      # 8, not 1 -- see fluxtune_n10_smoke.yaml's execution.num_gpus comment;
+      # run_sequential.sh's --num-trainers scales trainer count without a
+      # matching GPU bump, and 100 trainers on 1 GPU OOMs almost immediately.
+      num_gpus: 8
+      sleep_between_spawns: 2.0
+      aggregator_warmup_time: 20
+      monitoring:
+        enabled: false

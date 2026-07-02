@@ -1408,6 +1408,79 @@ class AsyncOortSelector(AbstractSelector):
         logger.debug(
             f"Inside handle send state: trainer version states {trainer_version_states}"
         )
+
+        # Invalidate previous all_selected entry if you don't get an
+        # update in SEND_TIMEOUT_WAIT_S. The client might have dropped
+        # the message with transient unavailability. Must run before
+        # extra (below) is computed and before the extra==0 early
+        # return -- a reclaim gated behind the very slot-exhaustion
+        # check it's supposed to relieve can never fire once
+        # concurrency saturates. Must also free selected_ends, not just
+        # all_selected: extra is computed from len(selected_ends), so a
+        # reclaim that only touches all_selected leaves the concurrency
+        # slot stuck occupied forever (see
+        # examples/MIGRATING_TO_LAUNCHER.md's aggregator gotchas for the
+        # deadlock this caused).
+        curr_all_selected_ends = list(self.all_selected.keys())
+        for end in curr_all_selected_ends:
+            current_time_s = time.time()
+            if end in self.all_selected.keys():
+                # Check again to avoid possible case of race condition
+                # when all_selected has been updated from another
+                # thread
+                trainer_weight_send_timestamp_s = self.all_selected[end]
+                if (
+                    trainer_weight_send_timestamp_s
+                    < (current_time_s - SEND_TIMEOUT_WAIT_S)
+                ) and (end not in self.ordered_updates_recv_ends):
+                    # trainer hasn't returned with an update in
+                    # SEND_TIMEOUT_WAIT_S delete it from
+                    # self.all_selected so that it is eligible to be
+                    # sampled again
+                    logger.info(
+                        f"Removing end {end} from self.all_selected "
+                        f"since havent "
+                        f"got its update in {SEND_TIMEOUT_WAIT_S}. "
+                        f"Last weight send timestamp was: {trainer_weight_send_timestamp_s}"
+                    )
+
+                    # Tracking timeouts and time spend waiting TODO:
+                    # (DG) Check if it is okay to have it triggered
+                    # for oracular too? TODO: (DG) pass
+                    # timeout_duration as a flag from config, also
+                    # pass enable/disable it?
+                    if end in self.track_trainer_timeouts:
+                        self.track_trainer_timeouts[end] += 1
+                    else:
+                        self.track_trainer_timeouts[end] = 1
+
+                    # Capture total time spent in timeouts
+                    num_of_timeouts_occured = 0
+                    for k, v in self.track_trainer_timeouts.items():
+                        num_of_timeouts_occured += v
+
+                    total_time_spent_timeouts_s = (
+                        num_of_timeouts_occured * SEND_TIMEOUT_WAIT_S
+                    )
+
+                    logger.debug(
+                        f"Timeout for trainer: {end} with count "
+                        f"{self.track_trainer_timeouts[end]}. "
+                        f"num_of_timeouts_occured : "
+                        f"{num_of_timeouts_occured}, "
+                        f"total_time_spent_timeouts_s: "
+                        f"{total_time_spent_timeouts_s}, "
+                        f"Timeout frequency: {self.track_trainer_timeouts}"
+                    )
+
+                    # delete the end from self.all_selected AND from
+                    # selected_ends -- the latter is what extra's
+                    # concurrency accounting actually counts, so this is
+                    # the fix that lets a timed-out slot actually reopen.
+                    if end in self.all_selected.keys():
+                        del self.all_selected[end]
+                    selected_ends.discard(end)
+
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
             if end_id not in ends:
@@ -1469,68 +1542,6 @@ class AsyncOortSelector(AbstractSelector):
                 )
 
         # NOTE: (DG) Assuming that shuffled_end_ids is not needed
-
-        # Invalidate previous all_selected entry if you don't get an
-        # update in UPDATE_TIMEOUT_WAIT_S. The client might have
-        # dropped the message with transient unavailability.
-
-        # TODO: (DG) Check if it is still needed after
-        # cleanup_remove_end() method
-        curr_all_selected_ends = list(self.all_selected.keys())
-        for end in curr_all_selected_ends:
-            current_time_s = time.time()
-            if end in self.all_selected.keys():
-                # Check again to avoid possible case of race condition
-                # when all_selected has been updated from another
-                # thread
-                trainer_weight_send_timestamp_s = self.all_selected[end]
-                if (
-                    trainer_weight_send_timestamp_s
-                    < (current_time_s - SEND_TIMEOUT_WAIT_S)
-                ) and (end not in self.ordered_updates_recv_ends):
-                    # trainer hasn't returned with an update in
-                    # SEND_TIMEOUT_WAIT_S delete it from
-                    # self.all_selected so that it is eligible to be
-                    # sampled again
-                    logger.info(
-                        f"Removing end {end} from self.all_selected "
-                        f"since havent "
-                        f"got its update in {SEND_TIMEOUT_WAIT_S}. "
-                        f"Last weight send timestamp was: {trainer_weight_send_timestamp_s}"
-                    )
-
-                    # Tracking timeouts and time spend waiting TODO:
-                    # (DG) Check if it is okay to have it triggered
-                    # for oracular too? TODO: (DG) pass
-                    # timeout_duration as a flag from config, also
-                    # pass enable/disable it?
-                    if end in self.track_trainer_timeouts:
-                        self.track_trainer_timeouts[end] += 1
-                    else:
-                        self.track_trainer_timeouts[end] = 1
-
-                    # Capture total time spent in timeouts
-                    num_of_timeouts_occured = 0
-                    for k, v in self.track_trainer_timeouts.items():
-                        num_of_timeouts_occured += v
-
-                    total_time_spent_timeouts_s = (
-                        num_of_timeouts_occured * SEND_TIMEOUT_WAIT_S
-                    )
-
-                    logger.debug(
-                        f"Timeout for trainer: {end} with count "
-                        f"{self.track_trainer_timeouts[end]}. "
-                        f"num_of_timeouts_occured : "
-                        f"{num_of_timeouts_occured}, "
-                        f"total_time_spent_timeouts_s: "
-                        f"{total_time_spent_timeouts_s}, "
-                        f"Timeout frequency: {self.track_trainer_timeouts}"
-                    )
-
-                    # delete the end from self.all_selected
-                    if end in self.all_selected.keys():
-                        del self.all_selected[end]
 
         # Run pacer that controls round_threshold. TRAIN-ONLY: the reference
         # Oort pacer is the *training* selector's (it reads exploited train

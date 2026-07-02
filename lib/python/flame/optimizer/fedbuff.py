@@ -72,6 +72,13 @@ class FedBuff(AbstractOptimizer):
         except KeyError:
             raise KeyError("Dataset name not specified in the config")
 
+        # Explicit learning rate, independent of dataset_name. When set,
+        # this wins over the dataset_name lookup table below -- lets each
+        # baseline declare its own rate instead of relying on fedbuff's
+        # hardcoded cifar-10/google-speech table (which has no entry for
+        # other examples, e.g. fwdllm/fluxtune).
+        self.learning_rate = kwargs.get("learning_rate", None)
+
         # Set aggregation rate type between old (just staleness) and
         # new (tradeoff staleness and stat utility) Current options:
         # {"old", "new"}
@@ -230,7 +237,9 @@ class FedBuff(AbstractOptimizer):
             # argument later TODO: (DG) Hyper-parameters for AsyncOORT
             # need tuning? Which all hyper-parameters apart from LR
             # need to be tuned?
-            if self.use_oort_lr == "False":
+            if self.learning_rate is not None:
+                learning_rate = self.learning_rate
+            elif self.use_oort_lr == "False":
                 # for fedbuff asyncfl
                 if self.dataset_name == "cifar-10":
                     learning_rate = 40.9  # Used with CIFAR-10
@@ -272,8 +281,9 @@ class FedBuff(AbstractOptimizer):
     def _scale_add_agg_weights_tensorflow(
         self, base_weights: ModelWeights, agg_goal_weights: ModelWeights, agg_goal: int
     ) -> ModelWeights:
+        learning_rate = self.learning_rate if self.learning_rate is not None else 1.0
         for idx in range(len(base_weights)):
-            base_weights[idx] += agg_goal_weights[idx] / agg_goal
+            base_weights[idx] += learning_rate * (agg_goal_weights[idx] / agg_goal)
         return base_weights
 
     def _aggregate_pytorch(self, tres, rate):

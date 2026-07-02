@@ -1,0 +1,140 @@
+# Base trainer configuration template for FedFwd (fwdllm).
+# Common properties shared across all trainers; trainer-specific values are
+# injected at runtime by flame.launch (see ../../MIGRATING_TO_LAUNCHER.md §9).
+#
+# Transcribed from expts/run_tc_expts/json_scripts/trainer_1.json and
+# aggregator.json (the existing production defaults), not redesigned.
+
+backend: mqtt
+
+brokers:
+  - host: localhost
+    sort: mqtt
+  - host: localhost:10104
+    sort: p2p
+
+groupAssociation:
+  param-channel: default
+
+channels:
+  - description: Model update is sent from trainer to aggregator and vice-versa
+    groupBy:
+      type: tag
+      value:
+        - default
+    name: param-channel
+    pair:
+      - trainer
+      - aggregator
+    funcTags:
+      aggregator:
+        - distribute
+        - aggregate
+        - heartbeat_recv
+      trainer:
+        - fetch
+        - upload
+        - heartbeat_send
+
+hyperparameters:
+  # --- Dataset (H5 path-style; fwdllm is path-style, NOT index-list, so
+  # these live here as placeholders rather than in _metadata/dataset_splits/
+  # -- see MIGRATING_TO_LAUNCHER.md §9. Inject real values via
+  # experiment.trainer.config_overrides.hyperparameters). ---
+  dataset: agnews
+  data_file_path: PLACEHOLDER  # inject via config_overrides.hyperparameters
+  partition_file_path: PLACEHOLDER  # inject via config_overrides.hyperparameters
+  partition_method: "niid_label_clients=100_alpha=1"
+  # client_idx: injected per-trainer at runtime as
+  # (trainer_id - 1) % client_idx_modulo -- see experiment YAML's
+  # trainer.client_idx_modulo field. NOT a trainer_indices_list lookup --
+  # this dataset has no _metadata/dataset_splits/ file
+  # (trainer.dataset.path_style: true skips that lookup entirely).
+  client_idx: 0
+  client_num_in_total: 0
+  gpu_mapping_file: gpu_mapping.yaml
+  gpu_mapping_key: mapping_myMap
+  data_loader_num_workers: 5
+
+  # --- Model ---
+  model_type: distilbert
+  model_name: distilbert-base-uncased
+  max_seq_length: 192
+  do_lower_case: true
+  peft_method: adapter
+  use_adapter: false
+  freeze_layers: ""
+  fp16: true
+
+  # --- FL / training ---
+  fl_algorithm: FedFwd
+  comm_round: 3000
+  epochs: 1
+  worker_num: "1"
+  learning_rate: 0.01
+  lr: "0.01"
+  server_lr: "0.1"
+  train_batch_size: 8
+  eval_batch_size: 8
+  gradient_accumulation_steps: 1
+  forward_mode: true
+  var_control: true
+  perturbation_sampling: true
+  select_perturbation_using_jvp: false
+  evaluate_during_training_steps: 100
+  frequency_of_the_test: 1
+  is_debug_mode: 0
+  fedprox_mu: 1
+  manual_seed: 42
+  output_dir: /tmp/
+  warmup_ratio: 1
+  ci: 0
+
+  # --- Per-trainer fields injected by the spawner ---
+  # training_delay_s: injected at runtime from trainer registry
+  training_delay_enabled: "False"
+  training_delay_factor: "10"
+
+  # --- Availability ---
+  # syn_0/syn_20/syn_50 and mobiperf_2st/3st_50/3st_75 are injected by the spawner.
+  # The three syn_train_* traces below now also exist in
+  # _metadata/availability_traces/synthetic_traces.yaml, but the spawner doesn't
+  # inject them yet -- these placeholders are read unconditionally by
+  # FedSgdTrainer.__init__ until that injection is wired up.
+  avl_events_syn_train_100_eval_0_unavail_0: [[0, "AVL_TRAIN"]]
+  avl_events_syn_train_90_eval_10_unavail_0: [[0, "AVL_TRAIN"]]
+  avl_events_syn_train_50_eval_30_unavail_20: [[0, "AVL_TRAIN"]]
+  client_notify:
+    enabled: "False"
+    trace: syn_0
+  wait_until_next_avl: "True"
+
+baseModel:
+  name: ""
+  version: 1
+
+job:
+  id: "622a358619ab59012eabeefb"
+  name: fwdllm
+
+registry:
+  sort: dummy
+  uri: ""
+
+# selector/optimizer below are placeholders -- real values come from the
+# baseline (_metadata/baselines.yaml: fwdllm / fwdllm_plus / fluxtune /
+# fluxtune_dynkc), deep-merged in by the launcher before these defaults.
+selector:
+  sort: fedbuff
+  kwargs:
+    c: 5
+    aggGoal: 1
+
+optimizer:
+  sort: fedavg
+  kwargs: {}
+
+maxRunTime: 300
+
+realm: default/us/west
+role: trainer

@@ -15,6 +15,10 @@
 
 baselines:
 
+  # === CNN/speech family (async_cifar10, google-speech, etc.) ===
+  # Selectors/optimizers below are shared, generic library code -- example
+  # specificity lives only in each example's aggregator_main/trainer config,
+  # not in these classes.
   felix:
     description: >-
       Felix = async_oort selector (evalGoalFactor=1) + fedbuff optimizer
@@ -253,3 +257,288 @@ baselines:
         client_notify:
           enabled: "False"
           trace: syn_0
+
+  # === LLM forward-mode family (fwdllm: FedFwd text-classification, agnews/DistilBERT) ===
+  # FedFwd's aggregator (flame.mode.horizontal.syncfl.fwdllm_aggregator.TopAggregator)
+  # is a single, FedFwd-specific implementation (gradient-variance-gated commits,
+  # JVP/forward-mode, dynamic_kc controller) -- not the generic asyncfl/syncfl/oort
+  # hierarchy the baselines above swap between. All four baselines below
+  # therefore point at the same single aggregator entrypoint
+  # (aggregator/main_fedfwd_agg.py); there is no per-stack split here. They
+  # still share the same selector/optimizer library code as the CNN/speech
+  # family above (no forking) -- only this catalog's parameters differ.
+  #
+  # Taxonomy (see examples/MIGRATING_TO_LAUNCHER.md §9 "Baseline taxonomy"):
+  # fwdllm/fwdllm_plus are sync, fluxtune/fluxtune_dynkc are async.
+
+  fwdllm:
+    description: >-
+      FedFwd's syncfl baseline (owner's "fwdllm" spec): random selector,
+      sync (is_async=false) + fedavg optimizer (plain federated averaging)
+      + unaware trainer availability (no trackTrainerAvail, no
+      client_notify) + random-candidate perturbation (perturbation_sampling
+      on, JVP scoring off -- both are trainer_base.yaml defaults, not
+      overridden here). Selection is per-round
+      (reselect_each_iteration=false): one selection persists across all
+      databins/iterations of a round, re-sampled only when the round
+      advances. This is the smoke-test baseline (cheapest, exercises the
+      sync path).
+    example:
+      aggregator_main: aggregator/main_fedfwd_agg.py
+    aggregator:
+      selector:
+        sort: random
+        kwargs:
+          is_async: false
+          k: 5  # override per experiment to scale with num_trainers
+          c: 15  # override per experiment to scale with num_trainers
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NONE"
+        # rejectStaleUpdates (the older boolean gate) is superseded by
+        # stalenessPolicy below for FedFwd baselines -- see
+        # Hyperparameters.staleness_policy (flame/config.py). "exact" is the
+        # strictest mode, matching fwdllm's strict-sync design. TODO(verify):
+        # confirm this doesn't starve progress under the oracular/mobiperf
+        # availability traces at full (300+) trainer scale, where round-trip
+        # latency variance is much higher than the n=10 smoke default.
+        stalenessPolicy: exact
+        inc_model_version_per_data_id: true
+        max_iterations_per_data_id: 15
+        var_threshold: 0.3
+        reselect_each_iteration: false
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+
+  fwdllm_plus:
+    description: >-
+      FedFwd's syncfl+ baseline (owner's "fwdllm+" spec): same sync
+      random+fedavg stack as fwdllm, but with ORACULAR trainer-availability
+      tracking -- read from _metadata/trainer_registry.yaml +
+      _metadata/availability_traces/*.yaml (no more json_scripts/
+      dependency) -- and per-iteration reselection
+      (reselect_each_iteration=true, i.e. today's default selector-call
+      behavior: a fresh selection on every iteration) instead of fwdllm's
+      per-round caching.
+    example:
+      aggregator_main: aggregator/main_fedfwd_agg.py
+    aggregator:
+      selector:
+        sort: random
+        kwargs:
+          is_async: false
+          k: 5  # override per experiment to scale with num_trainers
+          c: 15  # override per experiment to scale with num_trainers
+      optimizer:
+        sort: fedavg
+        kwargs: {}
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "True"
+          type: ORACULAR
+          trace: mobiperf_2st
+        # rejectStaleUpdates (the older boolean gate) is superseded by
+        # stalenessPolicy below -- see Hyperparameters.staleness_policy
+        # (flame/config.py). Looser than fwdllm's "exact" since
+        # reselect_each_iteration=true below already re-picks trainers every
+        # iteration, making per-iteration staleness not meaningful here.
+        # TODO(verify): confirm this is still the intended FedFwd+ semantics
+        # at full trainer scale; an unbounded version mismatch here is what
+        # let the 21:30 smoke-test crash (a model_version-45 update accepted
+        # into a model_version-53 cycle) happen in the first place.
+        stalenessPolicy: round_data_id
+        inc_model_version_per_data_id: true
+        max_iterations_per_data_id: 15
+        var_threshold: 0.3
+        reselect_each_iteration: true
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"
+          trace: syn_0
+
+  fluxtune:
+    description: >-
+      FedFwd's asyncfl baseline (owner's "fluxtune" spec, for LLM
+      fine-tuning -- as opposed to felix, which is for the CNN/speech
+      family): async_oort selector (selection axis intentionally
+      parameterized the same as felix's, per the owner's "should be
+      separated out from felix implementation" note -- no fork, just this
+      baseline's own kwargs) + fedbuff optimizer with an explicit
+      learning_rate instead of fedbuff's cifar-10/google-speech dataset_name
+      lookup table + greedy JVP-based
+      perturbation (select_perturbation_using_jvp=true) + 3-tier
+      client_notify availability (trainer self-reports
+      AVL_TRAIN/AVL_EVAL/UN_AVL via a *_3st_* trace; trackTrainerAvail
+      stays disabled -- client_notify is the only availability signal here,
+      not layered with ORACULAR/HEARTBEAT). Unlike felix (always fixed
+      K/C), fluxtune's K/C policy is itself config-driven: dynamic_kc
+      defaults to disabled (fixed K=k, C=c, same as felix's mode) but can
+      be flipped to adaptive K/C per experiment via
+      selector.kwargs.dynamic_kc.enabled + .policy -- DynamicKCController
+      is selector-agnostic (it pushes channel_props["dynamic_c"], which
+      async_oort.py already reads, falling back to static self.c when
+      absent), so no code fork is needed for either mode.
+    example:
+      aggregator_main: aggregator/main_fedfwd_agg.py
+    aggregator:
+      selector:
+        sort: async_oort
+        kwargs:
+          c: 15  # override per experiment to scale with num_trainers
+          aggGoal: 5  # override per experiment to scale with num_trainers
+          evalGoalFactor: 0
+          selectType: default
+          roundNudgeType: last_train
+          minInitialTrainers: 15  # override per experiment to scale with num_trainers
+          k: 5
+          is_async: true
+          task_eligible_states:
+            train: [AVL_TRAIN, AVL_EVAL]
+            eval: [AVL_EVAL, AVL_TRAIN]
+          # Disabled by default -- fluxtune runs fixed K/C (k/c above) just
+          # like felix. Flip enabled: true per experiment (via
+          # config_overrides) to switch to adaptive K/C; policy/policy_kwargs
+          # are pre-populated so enabling it doesn't require specifying the
+          # adaptive-tracking shape from scratch. K/C bounds default to the
+          # fixed k/c above when not separately overridden.
+          dynamic_kc:
+            enabled: false
+            policy: adaptive_k_var_tracking
+            policy_kwargs:
+              target_iter_per_data_id: 15
+              k_step: 2
+              window: 6
+            k_min: 5
+            k_max: 15
+            c_min: 15
+            c_max: 15
+            update_every_n_aggs: 1
+            history_window: 20
+      optimizer:
+        sort: fedbuff
+        kwargs:
+          use_oort_lr: "True"
+          dataset_name: agnews
+          # Explicit rate -- wins over the dataset_name table above, which
+          # has no fwdllm/agnews entry. Starting point; retune against
+          # fluxtune's live smoke test.
+          learning_rate: 0.075
+          agg_rate_conf:
+            type: new
+            scale: 0.4
+            a_exp: 0.25
+            b_exp: 0.1
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NA"
+        # rejectStaleUpdates (the older boolean gate) is superseded by
+        # stalenessPolicy below for FedFwd baselines -- see
+        # Hyperparameters.staleness_policy (flame/config.py). Async by
+        # design: fluxtune's fedbuff optimizer intentionally aggregates
+        # whatever's in flight, weighting by staleness (agg_rate_conf above)
+        # rather than rejecting it. Explicit "none" here so the gate's
+        # absence is a documented choice, not a default.
+        stalenessPolicy: none
+        inc_model_version_per_data_id: true
+        var_threshold: 0.3
+    trainer:
+      hyperparameters:
+        select_perturbation_using_jvp: true
+        client_notify:
+          enabled: "True"
+          trace: mobiperf_3st_50
+
+  fluxtune_dynkc:
+    description: >-
+      Research variant: async_random + adaptive dynamic_kc controller +
+      fedbuff, preserving fedfwd_async_random_dynkc (the prior production
+      default, transcribed faithfully from the legacy
+      fwdllm/expts/run_tc_expts/json_scripts/aggregator.json) under the new
+      naming scheme rather than deleting it outright -- this adaptive
+      async+K research config maps to none of fwdllm/fwdllm_plus/fluxtune.
+      Selector/optimizer/hyperparameters kept identical to the ported
+      production default -- deliberately NOT updated to use fedbuff's new
+      explicit learning_rate kwarg or the agnews-correct dataset_name,
+      including its known
+      dataset_name: google-speech copy-paste artifact -- so it stays a
+      valid parity baseline. (Trainer-side forward_mode/var_control/
+      perturbation_sampling/fl_algorithm overrides were dropped since they
+      only restated trainer_base.yaml's defaults; the resolved values are
+      unchanged.)
+    example:
+      aggregator_main: aggregator/main_fedfwd_agg.py
+    aggregator:
+      selector:
+        sort: async_random
+        kwargs:
+          c: 15  # concurrency level; override per experiment to scale with num_trainers
+          aggGoal: 5  # override per experiment to match num_trainers
+          evalGoalFactor: 0
+          selectType: default
+          roundNudgeType: last_train
+          minInitialTrainers: 15  # override per experiment to scale with num_trainers
+          k: 5
+          is_async: true
+          # Maps task names to eligible avl_state values. Classic FL: only
+          # AVL_TRAIN. FedFwd: both AVL_TRAIN and AVL_EVAL can train.
+          task_eligible_states:
+            train: [AVL_TRAIN, AVL_EVAL]
+            eval: [AVL_EVAL, AVL_TRAIN]
+          # K adapts to track variance against target_iter_per_data_id; C is
+          # held fixed (c_min == c_max == c). Override k_min/k_max/c_min/c_max
+          # per experiment to scale with num_trainers.
+          dynamic_kc:
+            enabled: true
+            policy: adaptive_k_var_tracking
+            policy_kwargs:
+              target_iter_per_data_id: 15
+              k_step: 2
+              window: 6
+            k_min: 5
+            k_max: 15
+            c_min: 15
+            c_max: 15
+            update_every_n_aggs: 1
+            history_window: 20
+      optimizer:
+        sort: fedbuff
+        kwargs:
+          use_oort_lr: "True"
+          # NOTE: dataset_name is "google-speech" in the legacy aggregator.json
+          # this baseline was transcribed from, even though fwdllm runs agnews.
+          # Ported as-is per "transcribed faithfully, not redesigned" -- looks
+          # like a copy-paste artifact from another example's config, left
+          # unfixed here (deliberately, for parity -- see description above).
+          dataset_name: google-speech
+          agg_rate_conf:
+            type: old
+            scale: 1.0
+            a_exp: 0.2
+            b_exp: 0.25
+      hyperparameters:
+        trackTrainerAvail:
+          enabled: "False"
+          type: "NONE"
+        rejectStaleUpdates: false
+        inc_model_version_per_data_id: true
+        # Soft-cap fallback. With adaptive_k_var_tracking, aggregations should
+        # converge near target without needing the cap, but it remains as a
+        # safety net.
+        max_iterations_per_data_id: 15
+        # FedSGD variance check threshold. Raised from the distilbert default
+        # (0.1) for heterogeneous NIID partitions where gradient variance is
+        # naturally higher.
+        var_threshold: 0.3
+    trainer:
+      hyperparameters:
+        client_notify:
+          enabled: "False"

@@ -377,6 +377,7 @@ def build_utility_belief(
     actual: Optional[float],
     staleness: Optional[int] = None,
     time_mode: Optional[str] = None,
+    extra: Optional[dict[str, Any]] = None,
 ) -> tuple[str, dict[str, Any]]:
     """Believed-vs-actual client statistical utility, per returning trainer.
 
@@ -400,4 +401,6 @@ def build_utility_belief(
         fields["staleness"] = staleness
     if time_mode is not None:
         fields["time_mode"] = time_mode
+    if extra:
+        fields.update(extra)
     return EVENT_UTILITY_BELIEF, fields

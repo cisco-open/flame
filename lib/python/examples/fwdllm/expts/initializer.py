@@ -32,7 +32,12 @@ from transformers import (
 # from FedML.fedml_api.distributed.fedopt.FedOptAPI import FedML_FedOpt_distributed
 # from FedML.fedml_api.distributed.fedprox.FedProxAPI import FedML_FedProx_distributed
 # from FedML.fedml_api.distributed.fedsgd.FedSgdAPI import FedML_FedSgd_distributed
-from transformers.adapters import LoRAConfig
+# `adapter-transformers` (the old fork that monkeypatched `transformers.adapters`)
+# is replaced by the standalone `adapters` add-on, which works on top of mainline
+# `transformers`. Call `adapters.init(model)` once before `add_adapter`/
+# `train_adapter`, and build bottleneck adapters via `BnConfig`.
+import adapters
+from adapters import BnConfig, LoRAConfig
 
 import logging
 
@@ -114,6 +119,7 @@ def create_model(args, formulation="classification"):
     # print(model)
     logging.info(f"peft_method: {args.peft_method}")
     if args.peft_method == "adapter":
+        adapters.init(model)
         adapter_config = {
             "original_ln_before": True,
             "original_ln_after": True,
@@ -130,9 +136,10 @@ def create_model(args, formulation="classification"):
             "cross_adapter": False,
             "leave_out": [],
         }
-        model.add_adapter("rotten tomato", config=adapter_config)
+        model.add_adapter("rotten tomato", config=BnConfig(**adapter_config))
         model.train_adapter("rotten tomato")
     elif args.peft_method == "lora":
+        adapters.init(model)
         config = LoRAConfig(r=8, alpha=16)
         model.add_adapter("lora_adapter", config=config)
         model.train_adapter("lora_adapter")

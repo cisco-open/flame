@@ -13,10 +13,11 @@ from torch import nn
 from examples.fwdllm.trainer.utils.text_classification_utils import *
 from examples.fwdllm.trainer.forward_training.fwdgrad_utils import *
 from torch.nn import CrossEntropyLoss
-from transformers import (
-    AdamW,
-    get_linear_schedule_with_warmup,
-)
+# AdamW was removed from the transformers top-level namespace in v4.x; it now
+# lives in torch.optim. (Imported for API compatibility; the forward-mode path
+# does not actually step an optimizer.)
+from torch.optim import AdamW  # noqa: F401
+from transformers import get_linear_schedule_with_warmup
 from functools import partial
 import functorch as fc
 import gc

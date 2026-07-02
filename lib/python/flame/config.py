@@ -176,6 +176,20 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     reject_stale_updates: t.Optional[bool] = Field(
         alias="rejectStaleUpdates", default=False
     )
+    # FedFwd (fwdllm/fwdllm_plus/fluxtune) staleness gate on incoming trainer
+    # updates, checked in fwdllm_aggregator._process_single_trainer_message:
+    #   "exact"         -- reject unless the update matches the aggregator's
+    #                      current (round, data_id, iteration_per_data_id)
+    #                      exactly. Strict-sync baseline (fwdllm).
+    #   "round_data_id" -- reject unless (round, data_id) match; any
+    #                      iteration_per_data_id within that data_id is
+    #                      accepted. fwdllm_plus.
+    #   "none"          -- no staleness gate (any version accepted); FedFwd's
+    #                      async baseline (fluxtune) relies on stale/
+    #                      in-flight updates by design.
+    # None (unset) falls back to reject_stale_updates above, for examples
+    # that only know that older boolean knob.
+    staleness_policy: t.Optional[str] = Field(alias="stalenessPolicy", default=None)
     heartbeats: t.Optional[dict] = Field(alias="heartbeats", default={})
     client_notify: t.Optional[dict] = Field(
         alias="clientAvailAwareNotify", default=None

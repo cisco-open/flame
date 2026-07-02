@@ -41,11 +41,12 @@ experiments:
           batchSize: 32
           learningRate: 0.001
           rounds: 200
-          aggGoal: 5
         selector:
           kwargs:
             c: 8
-            aggGoal: 5
+            # aggGoal is set once via the top-level `agg_goal: 5` above --
+            # the runner fans it into hyperparameters.aggGoal and this kwarg
+            # together, so don't duplicate it here.
 
     execution:
       num_gpus: 2

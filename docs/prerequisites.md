@@ -20,7 +20,10 @@ conda activate flame
 
 This creates a Python 3.11 conda env named `flame` and installs the flame
 library plus the `[examples]` and `[dev]` extras (torch, torchvision,
-sortedcontainers, wandb, pytest, ...).
+sortedcontainers, wandb, pytest, ...). The `[examples]` extra also includes
+the NLP forward-mode stack (transformers, adapters, h5py, ...), so a single
+env can run the smoke tests for both the vision examples (async_cifar10) and
+fwdllm.
 
 ### Manual conda
 

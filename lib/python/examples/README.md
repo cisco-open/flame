@@ -2,6 +2,10 @@
 
 This directory contains examples demonstrating various federated learning scenarios, algorithms, and topologies using the Flame framework.
 
+> **New here?** For environment setup and copy-paste commands to run
+> async_cifar10 / async_google_speech / fwdllm, start with
+> [`lib/python/README.md`](../README.md).
+
 ## Running experiments via the YAML launcher
 
 Most examples can be driven by `flame.launch`, which reads a single experiment

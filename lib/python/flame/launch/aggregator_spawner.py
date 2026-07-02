@@ -1,5 +1,5 @@
 """
-Aggregator spawner for Phase 3.
+Aggregator spawner.
 
 Spawns aggregator process with log capture.
 """

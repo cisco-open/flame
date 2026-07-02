@@ -97,6 +97,7 @@ class ConfigGenerator:
         availability_mode: str = "mobiperf_2st",
         dataset_name: str = "cifar10",
         num_trainers: int = 300,
+        skip_index_splits: bool = False,
         **overrides,
     ) -> Dict:
         """Build a full trainer config dict from base + metadata + overrides.
@@ -106,6 +107,12 @@ class ConfigGenerator:
           2. baseline_overrides (set via set_baseline_overrides, deep-merged)
           3. per-trainer values from shared metadata (taskid, indices, traces)
           4. **overrides dotted-key kwargs (job.id, hyperparameters.X)
+
+        skip_index_splits: True for path-style datasets (e.g. H5 file paths)
+        that have no _metadata/dataset_splits/<name>_alpha<a>_n<N>.yaml
+        index-list file -- skips the get_dataset_split() lookup and the
+        trainer_indices_list injection entirely, instead of KeyError-ing on a
+        split file that will never exist for this dataset.
         """
         from copy import deepcopy
 
@@ -118,15 +125,16 @@ class ConfigGenerator:
         trainer_meta = self.metadata.get_trainer_metadata(trainer_id)
         config["taskid"] = trainer_meta["task_id"]
 
-        dataset_indices = self.metadata.get_dataset_split(
-            alpha, trainer_id, dataset_name, num_trainers
-        )
-
         # Update hyperparameters
         if "hyperparameters" not in config:
             config["hyperparameters"] = {}
 
-        config["hyperparameters"]["trainer_indices_list"] = dataset_indices
+        if not skip_index_splits:
+            dataset_indices = self.metadata.get_dataset_split(
+                alpha, trainer_id, dataset_name, num_trainers
+            )
+            config["hyperparameters"]["trainer_indices_list"] = dataset_indices
+
         config["hyperparameters"]["training_delay_s"] = trainer_meta["training_delay_s"]
         
         # Set training_delay_enabled from overrides (default True)
@@ -232,6 +240,9 @@ class TrainerSpawner:
         alpha: float,
         availability_mode: str,
         trainer_main_path: Path,
+        skip_index_splits: bool = False,
+        dataset_name: str = "cifar10",
+        num_trainers: int = 300,
         **config_overrides,
     ) -> subprocess.Popen:
         """
@@ -242,6 +253,24 @@ class TrainerSpawner:
             alpha: Dirichlet alpha
             availability_mode: Availability trace mode
             trainer_main_path: Path to trainer main.py
+            skip_index_splits: True for path-style datasets with no
+                _metadata/dataset_splits/ index-list file (see
+                ConfigGenerator.generate_trainer_config).
+            dataset_name: Forwarded to generate_trainer_config()'s dataset
+                split lookup. Caller MUST pass the experiment's real
+                trainer.dataset.name -- the "cifar10" default here exists
+                only so direct/manual callers don't need to specify it for
+                the common case, not as a silent fallback for the launcher.
+            num_trainers: Forwarded to generate_trainer_config()'s dataset
+                split lookup (selects which <dataset>_alpha<a>_n<N>.yaml
+                split file to read). Caller MUST pass the experiment's real
+                trainer.num_trainers -- the 300 default here is the same
+                "don't require it for manual calls" exception as
+                dataset_name, not a safe fallback. Passing the wrong value
+                silently loads a *different*, structurally valid split file
+                (e.g. n=300's instead of n=48's) rather than erroring, which
+                is exactly the bug this parameter was added to close (no
+                caller threaded it through before).
             **config_overrides: Additional config overrides
 
         Returns:
@@ -249,7 +278,9 @@ class TrainerSpawner:
         """
         # Generate config
         config = self.config_gen.generate_trainer_config(
-            trainer_id, alpha, availability_mode, **config_overrides
+            trainer_id, alpha, availability_mode,
+            dataset_name=dataset_name, num_trainers=num_trainers,
+            skip_index_splits=skip_index_splits, **config_overrides
         )
 
         # Serialize config to JSON string
@@ -317,6 +348,10 @@ class TrainerSpawner:
         alpha: float,
         availability_mode: str,
         trainer_main_path: Path,
+        skip_index_splits: bool = False,
+        dataset_name: str = "cifar10",
+        num_trainers: int = 300,
+        per_trainer_overrides: Optional[Dict[int, Dict]] = None,
         **config_overrides,
     ):
         """
@@ -327,7 +362,26 @@ class TrainerSpawner:
             alpha: Dirichlet alpha
             availability_mode: Availability trace mode
             trainer_main_path: Path to trainer main.py
-            **config_overrides: Additional config overrides
+            skip_index_splits: True for path-style datasets with no
+                _metadata/dataset_splits/ index-list file.
+            dataset_name: The experiment's real trainer.dataset.name --
+                selects which <dataset>_alpha<a>_n<N>.yaml split file to
+                read (see spawn_trainer's docstring for why the "cifar10"
+                default here must not be relied on by the launcher).
+            num_trainers: The experiment's real trainer.num_trainers --
+                selects which <dataset>_alpha<a>_n<N>.yaml split file to
+                read. Pass it explicitly rather than inferring
+                len(trainer_ids); the split file's <N> means "this dataset
+                was partitioned for N trainers total," a property of the
+                experiment, not of whichever id range happens to be passed
+                here.
+            per_trainer_overrides: Optional {trainer_id: {dotted.key: value}}
+                dict of overrides that vary per trainer (e.g. a computed
+                hyperparameters.client_idx), merged on top of the shared
+                **config_overrides for that specific trainer_id. Unlike
+                **config_overrides (identical for every trainer),
+                per_trainer_overrides lets each trainer's config differ.
+            **config_overrides: Additional config overrides shared by all trainers
         """
         print(f"\nSpawning {len(trainer_ids)} trainers...")
         print(f"  Alpha: {alpha}")
@@ -336,12 +390,18 @@ class TrainerSpawner:
         print()
 
         for trainer_id in trainer_ids:
+            trainer_overrides = dict(config_overrides)
+            if per_trainer_overrides and trainer_id in per_trainer_overrides:
+                trainer_overrides.update(per_trainer_overrides[trainer_id])
             self.spawn_trainer(
                 trainer_id,
                 alpha,
                 availability_mode,
                 trainer_main_path,
-                **config_overrides,
+                skip_index_splits=skip_index_splits,
+                dataset_name=dataset_name,
+                num_trainers=num_trainers,
+                **trainer_overrides,
             )
             time.sleep(self.sleep_between_spawns)
 
@@ -356,34 +416,40 @@ class TrainerSpawner:
     def wait_all(self, timeout_per_trainer: float = 30.0):
         """Wait for all trainer processes to complete.
 
-        Each trainer gets ``timeout_per_trainer`` seconds after the aggregator
-        exits to process the EOT broadcast and self-terminate. Trainers that
-        are blocked in ``await_join`` (waiting for the next task from an
-        aggregator that has already left) will never self-exit, so we force-
-        terminate them after the window. Without this the runner hangs
-        indefinitely and the next sequential experiment never starts.
+        All trainers share one ``timeout_per_trainer``-second window after the
+        aggregator exits to process the EOT broadcast and self-terminate.
+        Trainers that are blocked in ``await_join`` (waiting for the next task
+        from an aggregator that has already left) will never self-exit, so we
+        force-terminate whichever ones are still alive once the shared window
+        elapses. This polls all processes concurrently rather than waiting on
+        them one at a time -- a sequential per-trainer wait would cost up to
+        ``timeout_per_trainer * len(self.processes)`` when every trainer
+        misses the EOT broadcast, turning a single 30s window into minutes of
+        dead time before the next sequential experiment can start.
         """
-        import signal as _signal
+        procs = [proc_info["process"] for proc_info in self.processes]
 
-        deadline_per = timeout_per_trainer
-        for proc_info in self.processes:
-            proc = proc_info["process"]
+        deadline = time.monotonic() + timeout_per_trainer
+        while time.monotonic() < deadline:
+            if all(proc.poll() is not None for proc in procs):
+                break
+            time.sleep(0.5)
+
+        for proc in procs:
+            if proc.poll() is not None:
+                continue
+            print(
+                f"  (trainer PID {proc.pid} did not exit within "
+                f"{timeout_per_trainer}s; terminating)"
+            )
             try:
-                proc.wait(timeout=deadline_per)
+                proc.terminate()
+                proc.wait(timeout=5)
             except Exception:
-                # Timeout or other error — gracefully terminate then kill.
-                print(
-                    f"  (trainer PID {proc.pid} did not exit within "
-                    f"{deadline_per}s; terminating)"
-                )
                 try:
-                    proc.terminate()
-                    proc.wait(timeout=5)
+                    proc.kill()
                 except Exception:
-                    try:
-                        proc.kill()
-                    except Exception:
-                        pass
+                    pass
 
     def terminate_all(self):
         """Terminate all trainer processes."""

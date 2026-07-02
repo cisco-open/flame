@@ -130,9 +130,21 @@ def calculate_jvp_before_actual_update(func, params):
 #     return avg_loss, jvp
 
 
-# Does not work for n == 1
 def calculate_var(fwdgrad_list):
     n = len(fwdgrad_list)
+
+    # Need at least 2 updates to split into two halves; with fewer (e.g. a
+    # stale trainer update straggling in right after the grad-check list
+    # was cleared for a new data_id) torch.stack on an empty slice crashes
+    # the aggregator. Treat as "not enough signal yet" by returning a
+    # sentinel above any var_threshold, so the caller's var <= threshold
+    # check fails and retries instead of crashing/force-passing.
+    if n < 2:
+        logger.warning(
+            f"calculate_var called with only {n} gradient(s); not enough "
+            "to compute split-half variance, returning inf to force a retry."
+        )
+        return torch.tensor(float("inf"))
 
     # 计算前一半tensor的平均值
     first_half_mean = torch.mean(torch.stack(fwdgrad_list[: n // 2]), dim=0)
@@ -145,9 +157,13 @@ def calculate_var(fwdgrad_list):
 
     return var
 
-# Does not work for n == 1
 def calculate_real_var(fwdgrad_list):
     n = len(fwdgrad_list)
+
+    # Same n < 2 guard as calculate_var above; this value is only used for
+    # logging (var_jvp), so 0.0 is a safe neutral default.
+    if n < 2:
+        return torch.tensor(0.0)
 
     # 计算两个平均值之间的方差
     var = torch.var(torch.stack(fwdgrad_list), dim=0).mean()

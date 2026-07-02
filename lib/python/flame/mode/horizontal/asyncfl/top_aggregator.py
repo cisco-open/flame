@@ -88,6 +88,16 @@ class TopAggregator(SyncTopAgg):
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
         self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
+        # An end may only contribute once per aggregation cycle (reset
+        # alongside _agg_goal_cnt in _reset_agg_goal_variables). Guards
+        # against a duplicate/late message from an end that was reclaimed
+        # (selector SEND_TIMEOUT_WAIT_S) and reselected while its original
+        # response was still in flight -- mirrors
+        # fwdllm_aggregator._process_single_trainer_message's
+        # _per_agg_trainer_list guard, which the generic asyncfl path
+        # otherwise lacks. See examples/MIGRATING_TO_LAUNCHER.md's
+        # aggregator gotchas (§2).
+        self._agg_cycle_contributed_ends: set = set()
 
         self._updates_in_queue = 0
         self._updates_recevied = {}
@@ -197,6 +207,9 @@ class TopAggregator(SyncTopAgg):
         logger.debug("##### reset agg goal variables")
         # reset agg goal count
         self._agg_goal_cnt = 0
+
+        # reset the per-cycle duplicate-contribution guard (see internal_init)
+        self._agg_cycle_contributed_ends = set()
 
         # reset agg goal weights
         self._agg_goal_weights = None
@@ -633,6 +646,15 @@ class TopAggregator(SyncTopAgg):
                 f"agg_current_version={self._round}"
             )
 
+            if end in self._agg_cycle_contributed_ends:
+                logger.info(
+                    f"Duplicate contribution from {end} for agg cycle "
+                    f"round={self._round} (agg_goal_cnt={self._agg_goal_cnt}); "
+                    f"ignoring."
+                )
+                channel.cleanup_provided_ends(end)
+                return
+
             channel.set_end_property(
                 end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
             )
@@ -1008,6 +1030,7 @@ class TopAggregator(SyncTopAgg):
             tres = TrainResult(weights, count, version, stat_utility)
             _cs0 = time.time()
             self.cache[end] = tres   # in-memory (MemCache)
+            self._agg_cycle_contributed_ends.add(end)
             self._agg_cache_store_s = time.time() - _cs0
             logger.debug(f"received {len(self.cache)} trainer updates in cache")
             update_staleness_val = self._round - tres.version
