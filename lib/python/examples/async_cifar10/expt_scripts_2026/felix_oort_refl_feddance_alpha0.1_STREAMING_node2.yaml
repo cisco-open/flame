@@ -42,7 +42,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 1000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
         checkpoint:
           enabled: 'True'
@@ -105,7 +105,7 @@ experiments:
         batchSize: 10
         learningRate: 0.01
         rounds: 1000
-        max_runtime_s: 12600
+        max_experiment_runtime_s: 12600
         aggGoal: 10
         evalEveryNRounds: 10
         checkpoint:

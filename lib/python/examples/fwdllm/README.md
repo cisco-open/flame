@@ -1,3 +1,24 @@
+# Environment setup
+
+fwdllm shares the **single** flame dev env with the other examples — no
+separate environment is needed. The NLP forward-mode stack (modern
+`transformers` + the standalone `adapters` add-on, `h5py`, `pandas`,
+`scikit-learn`, `setproctitle`) is part of the `[examples]` extra in
+`lib/python/setup.py`, so the standard install covers it:
+
+```bash
+pip install -e lib/python[examples,dev]   # runs both async_cifar10 and fwdllm
+```
+
+Notes:
+- Do **not** use `req.txt` (a stale `pip freeze` snapshot). In particular its
+  `adapter-transformers==3.1.0` / `tokenizers==0.12.1` pins are *not* required
+  and don't build on modern toolchains — the standalone `adapters` package
+  replaces them. `setup.py` is the source of truth.
+- fwdllm uses `peft_method: adapter` on DistilBERT (parameter-efficient
+  adapters keep the forward-gradient trainable set small). See
+  `../MIGRATING_TO_LAUNCHER.md` §9 "NLP dependencies" for the full rationale.
+
 # Data
 The system by default caches the data on each run and builds a key based on max sequence length and partition type. 
 If you change the partition itself keeping the partition ID same, you need to refresh the cache. 

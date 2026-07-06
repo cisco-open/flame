@@ -15,7 +15,15 @@ from flame.monitor.runtime import FwdLLMStage, timer_decorator
 import flame.monitor.runtime
 import math
 
+from flame import telemetry
+from flame.telemetry.events import build_trainer_round
+
 logger = logging.getLogger(__name__)
+
+
+def _parse_avl_events(val):
+    # YAML delivers already-parsed lists; legacy JSON delivered string-encoded lists.
+    return val if isinstance(val, list) else ast.literal_eval(val)
 
 
 class NumpyEncoder(json.JSONEncoder):
@@ -176,37 +184,37 @@ class FedSGDTrainer(Trainer):
         self.trainer_start_ts = time.time()
         # TODO (ARM): Fix this to read traces better!
         # Storing synthetic avail traces
-        self.avl_events_syn_0 = ast.literal_eval(
+        self.avl_events_syn_0 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_0
         )
 
-        self.avl_events_syn_20 = ast.literal_eval(
+        self.avl_events_syn_20 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_20
         )
 
-        self.avl_events_syn_50 = ast.literal_eval(
+        self.avl_events_syn_50 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_50
         )
 
-        self.avl_events_syn_train_100_eval_0_unavail_0 = ast.literal_eval(
+        self.avl_events_syn_train_100_eval_0_unavail_0 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_train_100_eval_0_unavail_0
         )
 
-        self.avl_events_syn_train_90_eval_10_unavail_0 = ast.literal_eval(
+        self.avl_events_syn_train_90_eval_10_unavail_0 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_train_90_eval_10_unavail_0
         )
 
-        self.avl_events_syn_train_50_eval_30_unavail_20 = ast.literal_eval(
+        self.avl_events_syn_train_50_eval_30_unavail_20 = _parse_avl_events(
             self.config.hyperparameters.avl_events_syn_train_50_eval_30_unavail_20
         )
 
-        self.avl_events_mobiperf_2st = ast.literal_eval(
+        self.avl_events_mobiperf_2st = _parse_avl_events(
             self.config.hyperparameters.avl_events_mobiperf_2st
         )
-        self.avl_events_mobiperf_3st_75 = ast.literal_eval(
+        self.avl_events_mobiperf_3st_75 = _parse_avl_events(
             self.config.hyperparameters.avl_events_mobiperf_3st_75
         )
-        self.avl_events_mobiperf_3st_50 = ast.literal_eval(
+        self.avl_events_mobiperf_3st_50 = _parse_avl_events(
             self.config.hyperparameters.avl_events_mobiperf_3st_50
         )
 
@@ -239,13 +247,27 @@ class FedSGDTrainer(Trainer):
             logger.info(
                 f"Set avl_events_syn_train_50_eval_30_unavail_20 for trainer id {self.trainer_id}."
             )
-        elif self.client_notify["trace"] == "avl_events_mobiperf_2st":
+        # Accept both the long form ("avl_events_mobiperf_2st", this trainer's
+        # own historical convention) and the short form ("mobiperf_2st", the
+        # flame.launch spawner's availability_mode/client_notify.trace
+        # convention mirrored from async_cifar10) -- the launcher's
+        # _metadata/ injects the short form.
+        elif self.client_notify["trace"] in (
+            "avl_events_mobiperf_2st",
+            "mobiperf_2st",
+        ):
             self.state_avl_event_ts = self.avl_events_mobiperf_2st
             logger.info(f"Set avl_events_mobiperf_2st for trainer id {self.trainer_id}.")
-        elif self.client_notify["trace"] == "avl_events_mobiperf_3st_75":
+        elif self.client_notify["trace"] in (
+            "avl_events_mobiperf_3st_75",
+            "mobiperf_3st_75",
+        ):
             self.state_avl_event_ts = self.avl_events_mobiperf_3st_75
             logger.info(f"Set avl_events_mobiperf_3st_75 for trainer id {self.trainer_id}.")
-        elif self.client_notify["trace"] == "avl_events_mobiperf_3st_50":
+        elif self.client_notify["trace"] in (
+            "avl_events_mobiperf_3st_50",
+            "mobiperf_3st_50",
+        ):
             self.state_avl_event_ts = self.avl_events_mobiperf_3st_50
             logger.info(f"Set avl_events_mobiperf_3st_50 for trainer id {self.trainer_id}.")
         else:
@@ -265,7 +287,7 @@ class FedSGDTrainer(Trainer):
         """Write all training data for a client to a JSON file"""
         try:
             # Create output directory if it doesn't exist
-            output_dir = "../../../../../../../client_data_files"
+            output_dir = os.path.join(self.args.output_dir, "client_data_files")
             os.makedirs(output_dir, exist_ok=True)
 
             # Include round information in filename if provided
@@ -457,15 +479,24 @@ class FedSGDTrainer(Trainer):
 
     @timer_decorator
     def _emulate_training_delay(self):
+        """Returns the seconds actually slept (0.0 if delay emulation is
+        disabled) -- unlike cifar10's trainer, this is a flat additive sleep
+        on top of GPU time, not a budget-minus-actual "sleep to fill" model,
+        so there is no meaningful overrun/remaining_time_s/training_budget_s
+        concept here (see ../../../MIGRATING_TO_LAUNCHER.md §9). The
+        caller adds this to real_gpu_time_s to report sim_round_duration_s."""
         if self.training_delay_enabled == "True":
             # Eval is 3X faster than training on CPU
             # Eval on NPUs is 10-50X is faster than training on CPUs. We could take 20X if we wanted to consider an all-NPU client cohort for Eval (NPUs don't support training)
             eval_delay = self.training_delay_s / self.training_delay_factor
-            time.sleep(eval_delay / self.speedup_factor)
+            _sleep_s = eval_delay / self.speedup_factor
+            time.sleep(_sleep_s)
             logger.info(
                 f"Delayed eval time for trainer "
-                f"{self.trainer_id} by {eval_delay}s. Sleeping for {eval_delay / self.speedup_factor}s."
+                f"{self.trainer_id} by {eval_delay}s. Sleeping for {_sleep_s}s."
             )
+            return _sleep_s
+        return 0.0
 
     @timer_decorator
     def train_with_data_id(self):
@@ -483,15 +514,45 @@ class FedSGDTrainer(Trainer):
         if not self._check_availability():
             return
 
+        _round_start_ts = time.time()
         self._perform_training()
+        _real_gpu_time_s = time.time() - _round_start_ts
 
         # emulate delays in training (due to compute resource and/or
         # dataset size and/or network latency)
-        self._emulate_training_delay()
+        _delay_s = self._emulate_training_delay()
 
         logger.info(
             f"completed training for trainer id: {self.trainer_id}, data_id = {self.data_id}"
         )
+
+        # self._stat_utility (inherited from the base Trainer class) is
+        # accumulated from per-batch loss during _perform_training() --
+        # the same value the aggregator's variance/utility checks use, so
+        # this is the natural point to report it via telemetry.
+        if telemetry.is_enabled():
+            try:
+                _stat_utility = float(self._stat_utility)
+            except (TypeError, ValueError):
+                _stat_utility = None
+            ev, fields = build_trainer_round(
+                round_num=int(self._round),
+                real_gpu_time_s=_real_gpu_time_s,
+                # real GPU compute + the emulated delay (0 if disabled) --
+                # NOT a budget-vs-actual quantity (fwdllm has no sleep-to-
+                # fill-budget model, unlike async_cifar10's trainer); this is
+                # simply the total wall time this round actually took.
+                sim_round_duration_s=_real_gpu_time_s + _delay_s,
+                avail_state=self.avl_state.value,
+                dataset_size=self.dataset_size,
+                stat_utility=_stat_utility,
+                extra={
+                    "data_id": self.data_id,
+                    "iteration_per_data_id": self.iteration_per_data_id,
+                    "model_version": self._model_version,
+                },
+            )
+            telemetry.emit(ev, **fields)
 
     def test(self):
         # train data

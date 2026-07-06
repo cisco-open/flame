@@ -85,7 +85,7 @@ Follow‑ups at the bottom.
 **Config** (`config.py`, `Hyperparameters`): added
 `target_accuracy` (`targetAccuracy`, float, default `None` = disabled) and
 `stable_evals_above_target` (`stableEvalsAboveTarget`, int, default 20). The
-existing `rounds` and `max_runtime_s` remain the safety cap (the latter is already
+existing `rounds` and `max_experiment_runtime_s` remain the safety cap (the latter is already
 honored against the **virtual** clock in sim mode at `increment_round`).
 
 **Aggregator** (`syncfl/top_aggregator.py`, shared by sync + async stacks):
@@ -105,7 +105,7 @@ rounds rather than tens of thousands.
 
 **Acceptance**: smoke run with `targetAccuracy=0.2, stableEvalsAboveTarget=2`
 terminates shortly after two consecutive evals ≥ 0.2; a high target falls through
-to the `rounds`/`max_runtime_s` cap.
+to the `rounds`/`max_experiment_runtime_s` cap.
 
 ## B. Staggered per-client streaming
 
@@ -194,7 +194,7 @@ blocks on the aggregator config. Each arm: `num_trainers=50`,
 `data_streaming` (uniform `full_after_s=10800`; staggered adds the `stagger`
 block), `util_counterfactual` on, `checkpoint` on (offline oracle needs it),
 `aggGoal/aggr_num=10`, `targetAccuracy=0.60`, `stableEvalsAboveTarget=20`,
-`evalEveryNRounds=10`, `rounds=20000`/`max_runtime_s=12600` cap. felix `c=10`;
+`evalEveryNRounds=10`, `rounds=20000`/`max_experiment_runtime_s=12600` cap. felix `c=10`;
 `B_oracle` keeps B's own selector kwargs. Structure mirrors the working
 `felix_oort_refl_feddance_alpha0.1.yaml`.
 

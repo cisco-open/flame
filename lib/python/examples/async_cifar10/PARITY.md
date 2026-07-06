@@ -1,8 +1,15 @@
 # Real / Sim Parity — Methodical Causal Ladder
 
-Living doc for the async_cifar10 parity checker. Kept in sync with
+Living doc for the parity checker. Kept in sync with
 `scripts/parity/checks.py` (checks), `scripts/parity/report.py` (stage grouping +
 verdict), and the pytest suite. **ONE `## Status` section, updated in place.**
+
+**Scope: this is the shared parity methodology, not one example's.** The ladder (§1), roles/
+tiers/dependency-gating, workflow policy, run-length budget, and mechanism reference (§3) are
+**example-agnostic**. The async_cifar10 rung catalog (§2) is the reference instance; a second
+example appends its own rung catalog rather than forking the method. **fwdllm** (forward-gradient,
+variance-gated dynamic-K FL) is catalogued in **§F** — its build plan lives in
+`examples/fwdllm/simulate_fwdllm.md`, which references §F for rung definitions.
 
 **Comparator — give two run dirs, get a report JSON:**
 ```bash
@@ -702,3 +709,103 @@ refl overriding.
 | S | refl exploitation | FIXED: was deterministic top-k; now fork's cut_off_util-weighted `np.random.choice` |
 | D7 | UCB temporal-uncertainty `time_stamp` | **FIXED (Jun 23, §S.temporal).** Reference Oort+REFL: `sc += sqrt(0.1·log(round)/time_stamp)`, `time_stamp=self.epoch` (agg round of last RECEIPT), init at registration → never None, always contributes, up-weights under-selected/slower-returning clients. flame bug: refl's term was DEAD (0/7513) — `refl_oort.select()` let it divide by a None `time_stamp`; oort used last-SELECTED (dispatch round) with a None→0 guard. **Fix:** `PROP_LAST_RETURNED_ROUND` stamped at every receipt (fresh+stale) in oort/top_aggregator = agg round; selector reads it, registration-init lazy to current round; both oort+refl. `enable_temporal` kwarg (default True; False = ablation only). The legacy last-SELECTED machinery (`_record_last_selected_round`, D5) is REMOVED from OortSelector (no baseline used it); D5's MODEL_VERSION value was for staleness, not this UCB term. felix AsyncOortSelector is a separate class — untouched. |
 | D8 | `pacer()` round_threshold adaptation | **FIXED (Jun 24, §S.pacer).** Reference (`oort.py:184-199`) makes TWO symmetric moves on the exploited-utility trend: FLAT `|Δ|≤0.1·last` → `round_threshold += pacer_delta`, SHARP `|Δ|≥5·last` → `round_threshold = max(pacer_delta, −pacer_delta)`, keyed on `training_round`. flame's base `OortSelector.pacer()` raised on ANY dip (`last > curr`) with NO decrease branch → monotonic ratchet to 100, noise-sensitive → sim/real `round_threshold` diverged & back-half-compounded (the oort §S.pacer root). **Fix:** faithful both-branch port keyed on the current round, `pacer_step>0` guard; `REFLOortSelector.pacer` override (already faithful) REMOVED so oort+refl share the base; `round_threshold` added to selection telemetry. Guard `TestPacerFidelity`. **Cross-checked vs the REFL fork too** (`third_party/REFL/thirdparty/oort/oort.py`:176-201, byte-identical pacer, only round_threshold=30 default differs). **felix `AsyncOortSelector` (separate class) had the SAME bug + fired the pacer on its eval hand off a stale round → ALSO fixed** (faithful two-branch, train-gated; `test_async_oort_pacer_faithful`); changes felix dynamics → re-validate its 46/46 next run. |
+
+---
+
+## §F  FwdLLM extension -- variance-gated dynamic-K (forward-gradient FL)
+
+The method above (§1-§5) is example-agnostic; this is fwdllm's rung catalog. Rungs not
+redefined here are inherited from §2 unchanged. `[NEW]` = to implement. The fwdllm build plan
+(staged implementation, files, exit criteria, design decisions) is
+`examples/fwdllm/simulate_fwdllm.md`; this section is the rung reference it points at.
+
+### §F.1  How FwdLLM differs (drives every new rung)
+- **Aggregates GRADIENTS (JVPs), not weights.** Trainers send forward-gradient estimates; the
+  aggregator accumulates them into `grad_pool` and applies a server-LR SGD step at commit.
+  Gradient **values** depend on real GPU compute (run for real in sim) -> mode-invariant given
+  identical input + perturbation seed. What differs across modes is **which** gradients arrive,
+  **in what order**, against **which model version** = clock + selection + ordering fidelity.
+  This is what makes the §2 ladder applicable to fwdllm at all.
+- **Commit cadence is ENDOGENOUS (variance-gated dynamic-K).** At each `_agg_goal` (=K) boundary,
+  `aggregate()` computes `var`; `var <= var_threshold` -> **commit** (server step, eval,
+  `data_id += 1`, `model_version += 1`, clear `cached_v`); else **roll back**, push grads to
+  `cached_v`, `iteration_per_data_id += 1`, **retry the same data_id**;
+  `max_iterations_per_data_id` force-commits despite a failed variance gate. So
+  updates-per-`model_version` is a **random variable** of the gradient-variance trajectory -- the
+  `model_version` clock is not a fixed function of update count. A round is the outer loop over
+  data bins; `_round += 1` only when `data_id == total_data_bins` (=150).
+- **Dynamic K and C.** `DynamicKCController.step(metrics)` may change K (`_agg_goal`) and C
+  (concurrency) from observed metrics (var-pass ratio, eligible-ends) after each agg-goal cycle.
+- **Eval per variance-pass.** `eval_model()` runs on **every** committed data_id, not a fixed
+  schedule; its modeled delay must be stamped separately (a stale-eval `sct` past-dates the clock).
+- **Progress axis is `data_id`** (committed variance passes), not raw update count -- all
+  throughput/terminal rungs re-key to `data_id`.
+
+> **Crux:** in async_cifar10 clock and commit-count are loosely coupled; in fwdllm the commit
+> (model-version) cadence is a *feedback function of gradient variance over the accumulated pool*.
+> The sim must reproduce not just **when** updates arrive (clock) but the **variance trajectory**
+> gating each commit. Variance is mode-invariant **iff** the contributing set + order +
+> model-version of gradients matches -- reducing fwdllm parity back to clock + selection + ordering
+> parity, **plus** a new variance-cadence verification layer (§F.4).
+
+### §F.2  Baseline matrix (fwdllm)
+Filled from the landed `examples/fwdllm/expt_scripts/*_n10_smoke.yaml`. Maps onto the
+async_cifar10 availability taxonomy (`avail_select_filter` / `proactive_inflight_evict`,
+Unavailability §Baseline matrix).
+
+| baseline | sync/async | selector | agg | tracking_mode / avail | reselection | K (agg_goal) | dynamic_kc |
+|---|---|---|---|---|---|---|---|
+| **fluxtune** | async | `async_oort` | fedbuff (+server LR, JVP) | `client_notify` (3-tier, mobiperf_3st_50) | -- | 3 | disabled (fixed K/C) |
+| **fwdllm** | sync | `random` | fedavg | `default` (unaware) | per-round | 10 (=c; all selected required) | -- |
+| **fwdllm_plus** | sync | `random` | fedavg | `oracular` (`_metadata`, mobiperf_2st) | per-iteration (`reselect_each_iteration=True`) | 2 | -- |
+
+Decides scope: Stage 3 oort rungs (Sx/Sd/S2) run only for **fluxtune** (`async_oort`); the two
+`random`-selector baselines skip them. Stage 5 sync-barrier rungs run for **fwdllm**/**fwdllm_plus**
+(sync); fluxtune streams per-message. `client_notify` (fluxtune) is async_cifar10's deferred Stage-H
+tracking model -- see simulate_fwdllm.md decision D1.
+
+### §F.3  Modified rungs (async_cifar10 meaning -> fwdllm redefinition)
+| ID | async_cifar10 | FwdLLM redefinition |
+|---|---|---|
+| **K3a** | K-th fastest async commit advance | advance of `model_version` **per committed data_id** (clock delta between successive **variance passes**) |
+| **K3b** | overhead residual ~= 0 | same, measured on the **variance-pass** boundary |
+| **K2** | model versions / vsec | **committed data_ids / vsec** (throughput of *successful* variance passes) |
+| **U3** | version gap at commit | gap of each contributing gradient vs `model_version` at the cycle it lands -- spread across **multiple iterations per data_id** |
+| **K8 / U2** | @ matched model_version | @ matched **data_id** (the meaningful progress axis) |
+
+### §F.4  New rungs -- the variance-cadence layer (the fwdllm prize)
+Append-only, deps let the engine localize. Never fix an EMERGENT rung directly (§1): walk down to
+the lowest variance-cadence rung whose inputs are matched.
+
+**Stage 6' -- Variance-gated aggregation cadence** (dep Stage 5 ordering + Stage 1 clock)
+
+| ID | Check | Role/Tier | Isolates | Dep |
+|---|---|---|---|---|
+| **V1** `[NEW]` | iterations-per-data_id dist (realized dynamic K) | MECHANISM/DIST | # accumulation cycles to pass variance => contributing set/order diverged | U5,U4 |
+| **V2** `[NEW]` | per-cycle `var` trajectory (at each agg-goal) | MECHANISM/DIST | variance *signal* diverges with matched inputs => grad-pool composition/order differs | V1 |
+| **V3** `[NEW]` | `cached_v` pool size over time | MECHANISM/DIAG | rollback/cache bookkeeping diverges | V1 |
+| **V4** `[NEW]` | force-commit freq (`max_iterations_per_data_id` bypass rate) | MECHANISM/DIST | cap hit at a different rate => chronic variance divergence | V1 |
+| **V5** `[NEW]` | variance-pass ratio per window | EMERGENT/DIST | rollup feeding DynamicKC | V1,V2 |
+
+**Stage 3' -- Dynamic K/C trajectory** (dep Stage 3 selection + V5)
+
+| ID | Check | Role/Tier | Isolates | Dep |
+|---|---|---|---|---|
+| **DK1** `[NEW]` | K (`_agg_goal`) trajectory | MECHANISM/DIST | DynamicKC sees different metrics => K diverges (feeds back into cadence) | V5 |
+| **DK2** `[NEW]` | C (`dynamic_c`) trajectory | MECHANISM/DIST | concurrency target diverges | V5,S3/4 |
+| **DK3** `[NEW]` | eligible-ends-count metric fed to policy | CONTROL/DIST | the policy *input* differs (fix input, not policy) | A2 |
+
+**Stage 7' -- Forward-gradient quality**
+
+| ID | Check | Role/Tier | Isolates | Dep |
+|---|---|---|---|---|
+| **G1** `[NEW]` | per-update grad/JVP norm or SNR dist | EMERGENT/DIST | grad *quality* diverges (should be ~mode-invariant; FAIL = perturbation seed/order leaked) | S2,T_gpu |
+| **G2** `[NEW]` | grad_pool size at commit (realized contributions) | EMERGENT/DIST | rollup of V1 x K | V1,DK1 |
+
+> **Decomposition:** `K2`(throughput)x but `K3a`(per-pass advance)ok -> clock fine, commit count
+> diverged -> walk to V1/V5. `V1`x + `V2`ok-given-matched-input -> the *inputs* to variance differ
+> -> walk to U5/S2. `V2`x with V1 inputs matched -> a true grad-pool accumulation-order bug.
+> **DynamicKC coupling:** validate DK3 (policy *input*) before DK1/DK2 -- a diverging input means
+> fix the metric, not the policy (CONTROL before MECHANISM). `var_threshold` /
+> `max_iterations_per_data_id` are **baseline-defining config knobs, not parity levers** -- a
+> cadence gap is always an upstream set/order/clock divergence.

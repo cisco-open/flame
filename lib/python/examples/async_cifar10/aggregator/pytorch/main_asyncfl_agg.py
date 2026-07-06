@@ -119,25 +119,9 @@ class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
         self.learning_rate = self.config.hyperparameters.learning_rate
         self.batch_size = self.config.hyperparameters.batch_size or 16
 
-        self.track_trainer_avail = (
-            self.config.hyperparameters.track_trainer_avail or None
-        )
         self.reject_stale_updates = (
             self.config.hyperparameters.reject_stale_updates or False
         )
-        self.trainer_event_dict = None
-        if (
-            self.track_trainer_avail["enabled"]
-            and self.track_trainer_avail["type"] == "ORACULAR"
-        ):
-            self.trainer_event_dict = self.read_trainer_unavailability(
-                self.track_trainer_avail["trace"]
-            )
-        else:
-            print(
-                f"Did not read oracular trainer jsons. Enabled value: {self.track_trainer_avail['enabled']}, type: {self.track_trainer_avail['type']}, trace: {self.track_trainer_avail.get('trace', '<unset>')}"
-            )
-        print("self.trainer_event_dict: ", self.trainer_event_dict)
 
         self.loss_list = []
 
@@ -154,18 +138,6 @@ class PyTorchCifar10Aggregator(OracleInjectMixin, TopAggregator):
         self._init_oracle_util(
             _os.path.join(_os.path.dirname(_os.path.abspath(__file__)),
                           "..", "..", "data"))
-
-    def read_trainer_unavailability(self, trace=None) -> None:
-        """
-        Read availability trace pattern from central trace file.
-
-        Currently returns None to disable oracular pre-loading.
-        The selector can still access traces via availability_trace_file config.
-
-        This allows the aggregator to work with dynamic trainer spawning
-        without hardcoding the number of expected trainers.
-        """
-        return None
 
     def load_data(self) -> None:
         """Load a test dataset."""

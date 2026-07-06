@@ -195,14 +195,17 @@ class FedBuffSelector(AbstractSelector):
 
         results = {}
         if channel_props[KEY_CH_STATE] == VAL_CH_STATE_SEND:
-            results = self._handle_send_state(eligible_ends, concurrency)
+            results = self._handle_send_state(
+                eligible_ends, concurrency, connected_ends=ends
+            )  # Challenge 13: full pool for cleanup
             self.emit_selection(
                 channel_props.get("round", 0),
                 "train",
                 ends,
                 eligible_ends.keys(),
                 list(results.keys()),
-                extra={"concurrency": concurrency, "requester": self.requester},
+                extra={"concurrency": concurrency, "requester": self.requester,
+                       "vclock_now": channel_props.get("vclock_now")},
             )
 
         elif channel_props[KEY_CH_STATE] == VAL_CH_STATE_RECV:
@@ -440,13 +443,21 @@ class FedBuffSelector(AbstractSelector):
                 del self.all_selected[end_id]
 
     def _handle_send_state(
-        self, ends: dict[str, End], concurrency: int
+        self, ends: dict[str, End], concurrency: int,
+        connected_ends: dict[str, End] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
 
+        # Challenge 13: cleanup must check CONNECTED membership, not availability-
+        # eligibility — an in-flight trainer that merely went UN_AVL (or is the
+        # wrong task-type) is absent from the filtered `ends` but still connected;
+        # removing it makes the aggregator forget it is waiting. An empty eligible
+        # pool would otherwise wipe ALL shared selected_ends → hang. Use the full
+        # connected pool when provided; fall back to `ends` for backward compat.
+        _connected = connected_ends if connected_ends is not None else ends
         # Check for invalid selections and remove them
         for end_id in list(selected_ends):
-            if end_id not in ends:
+            if end_id not in _connected:
                 # something happened to end of end_id (e.g.,
                 # connection loss) let's remove it from selected_ends
                 # so that you can fill that spot with another trainer
@@ -539,9 +550,17 @@ class FedBuffSelector(AbstractSelector):
                         f"Timeout frequency: {self.track_trainer_timeouts}"
                     )
 
-                    # delete the end from self.all_selected
+                    # delete the end from self.all_selected AND from
+                    # selected_ends -- extra (computed above) is derived
+                    # from len(selected_ends), so a reclaim that only
+                    # touches all_selected leaves the concurrency slot
+                    # stuck occupied (see async_oort.py's identical fix
+                    # and examples/MIGRATING_TO_LAUNCHER.md's aggregator
+                    # gotchas for the fwdllm deadlock this class of bug
+                    # caused).
                     if end in self.all_selected.keys():
                         del self.all_selected[end]
+                    selected_ends.discard(end)
 
         for end_id in shuffled_end_ids:
             if end_id in self.all_selected.keys():

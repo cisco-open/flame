@@ -211,7 +211,7 @@ class Trainer(Role, metaclass=ABCMeta):
             self._round = msg[MessageType.ROUND]
 
         logger.info(
-            f"Checking DataID: {self.data_id}| MessageType.DATA_ID in msg: {msg[MessageType.DATA_ID]}| IterationPerDataID: {self.iteration_per_data_id}| MessageType.ITERATION_PER_DATA_ID in msg: {msg[MessageType.ITERATION_PER_DATA_ID]}"
+            f"Checking DataID: {self.data_id}| MessageType.DATA_ID in msg: {msg.get(MessageType.DATA_ID)}| IterationPerDataID: {self.iteration_per_data_id}| MessageType.ITERATION_PER_DATA_ID in msg: {msg.get(MessageType.ITERATION_PER_DATA_ID)}"
         )
         logger.info(f"isMessageType.Weights?: {MessageType.WEIGHTS in msg}")
 
@@ -509,6 +509,11 @@ class Trainer(Role, metaclass=ABCMeta):
                 MessageType.JVP_FOR_SNR_CHECK: self.jvp_for_snr_check,
                 MessageType.DATASET_SIZE: self.dataset_size,
                 MessageType.MODEL_VERSION: self._model_version,
+                # Echoes the iteration this update answers, so the aggregator's
+                # staleness_policy="exact" mode (see flame/config.py) can reject
+                # updates answering a since-superseded iteration of the same
+                # data_id, not just a stale model_version/data_id.
+                MessageType.ITERATION_PER_DATA_ID: self.iteration_per_data_id,
                 MessageType.DATASAMPLER_METADATA: self.datasampler.get_metadata(),
                 MessageType.STAT_UTILITY: self._stat_utility,
                 # - rn FedSgdTrainer has no utility

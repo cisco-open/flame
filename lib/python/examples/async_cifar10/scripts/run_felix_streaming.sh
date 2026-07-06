@@ -69,7 +69,7 @@ src, out = sys.argv[1], sys.argv[2]
 d = yaml.safe_load(open(src))
 for e in d["experiments"]:
     h = e["aggregator"]["config_overrides"]["hyperparameters"]
-    h.update(rounds=6, max_runtime_s=180, evalEveryNRounds=2,
+    h.update(rounds=6, max_experiment_runtime_s=180, evalEveryNRounds=2,
              targetAccuracy=0.2, stableEvalsAboveTarget=2,
              min_trainers_to_start=48, min_trainers_join_timeout_s=120)
     h["checkpoint"]["every_n_rounds"] = 2

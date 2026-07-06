@@ -197,6 +197,7 @@ class AsyncRandomSelector(AbstractSelector):
                 task_to_perform=task_to_perform,
                 agg_version_state=agg_version_state,
                 trainer_version_states=trainer_version_states,
+                connected_ends=ends,  # Challenge 13: full pool for cleanup
             )
 
             if len(results) is not 0:
@@ -460,54 +461,26 @@ class AsyncRandomSelector(AbstractSelector):
         task_to_perform: str = "train",
         agg_version_state=None,  # (model_version, data_id, iteration_id)
         trainer_version_states: dict[str, tuple[int, int, int]] = None,
+        connected_ends: dict[str, End] = None,
     ) -> SelectorReturnType:
         selected_ends = self.selected_ends[self.requester]
         logger.debug(f"Inside handle send state: aggregator version state {agg_version_state}")
         logger.debug(
             f"Inside handle send state: trainer version states {trainer_version_states}"
         )
-        # Check for invalid selections and remove them
-        for end_id in list(selected_ends):
-            if end_id not in ends:
-                # something happened to end of end_id (e.g.,
-                # connection loss) let's remove it from selected_ends
-                # so that you can fill that spot with another trainer
-                logger.info(
-                    f"Removing invalid prior selection! "
-                    f"No end id {end_id} in ends, "
-                    f"removing from selected_ends. "
-                    f"NOT from all_selected right now "
-                    f"cause aggregation for that "
-                    f"round hasnt completed yet"
-                )
-                selected_ends.remove(end_id)
-                # NOTE: Not removing end_id from all_selected since it
-                # might have already participated in the same round
-                # (if it is still in all_ends)
-
-        logger.debug(f"Current selected_ends: {selected_ends}")
-
-        extra = max(0, concurrency - len(selected_ends))
-
-        logger.debug(
-            f"c: {concurrency}, "
-            f"len(selected_ends): {len(selected_ends)}, extra: {extra}, selected_ends: {selected_ends},"
-            f"len(ends): {len(ends)}"
-        )
-        candidates = []
-
-        if extra == 0:
-            logger.debug(f"extra: {extra}, nothing to select")
-            return {}
-
-        round = channel_props["round"] if "round" in channel_props else 0
-        logger.debug(f"let's select {extra} ends for round {round}")
-
 
         # Invalidate previous all_selected entry if you don't get an
-        # update in UPDATE_TIMEOUT_WAIT_S. The client might have
-        # dropped the message with transient unavailability.
-
+        # update in SEND_TIMEOUT_WAIT_S. The client might have dropped
+        # the message with transient unavailability. Must run before
+        # extra (below) is computed and before the extra==0 early
+        # return -- a reclaim gated behind the very slot-exhaustion
+        # check it's supposed to relieve can never fire once
+        # concurrency saturates. Must also free selected_ends, not just
+        # all_selected: extra is computed from len(selected_ends), so a
+        # reclaim that only touches all_selected leaves the concurrency
+        # slot stuck occupied forever (see async_oort.py's identical fix
+        # and examples/MIGRATING_TO_LAUNCHER.md's aggregator gotchas for
+        # the deadlock this caused).
         curr_all_selected_ends = list(self.all_selected.keys())
         for end in curr_all_selected_ends:
             current_time_s = time.time()
@@ -555,9 +528,57 @@ class AsyncRandomSelector(AbstractSelector):
                         f"Timeout frequency: {self.track_trainer_timeouts}"
                     )
 
-                    # delete the end from self.all_selected
+                    # delete the end from self.all_selected AND from
+                    # selected_ends -- the latter is what extra's
+                    # concurrency accounting actually counts, so this is
+                    # the fix that lets a timed-out slot actually reopen.
                     if end in self.all_selected.keys():
                         del self.all_selected[end]
+                    selected_ends.discard(end)
+
+        # Challenge 13: cleanup must check CONNECTED membership, not availability-
+        # eligibility — an in-flight trainer that merely went UN_AVL (or is the
+        # wrong task-type) is absent from the filtered `ends` but still connected;
+        # removing it makes the aggregator forget it is waiting. An empty eligible
+        # pool would otherwise wipe ALL shared selected_ends → hang. Use the full
+        # connected pool when provided; fall back to `ends` for backward compat.
+        _connected = connected_ends if connected_ends is not None else ends
+        # Check for invalid selections and remove them
+        for end_id in list(selected_ends):
+            if end_id not in _connected:
+                # something happened to end of end_id (e.g.,
+                # connection loss) let's remove it from selected_ends
+                # so that you can fill that spot with another trainer
+                logger.info(
+                    f"Removing invalid prior selection! "
+                    f"No end id {end_id} in ends, "
+                    f"removing from selected_ends. "
+                    f"NOT from all_selected right now "
+                    f"cause aggregation for that "
+                    f"round hasnt completed yet"
+                )
+                selected_ends.remove(end_id)
+                # NOTE: Not removing end_id from all_selected since it
+                # might have already participated in the same round
+                # (if it is still in all_ends)
+
+        logger.debug(f"Current selected_ends: {selected_ends}")
+
+        extra = max(0, concurrency - len(selected_ends))
+
+        logger.debug(
+            f"c: {concurrency}, "
+            f"len(selected_ends): {len(selected_ends)}, extra: {extra}, selected_ends: {selected_ends},"
+            f"len(ends): {len(ends)}"
+        )
+        candidates = []
+
+        if extra == 0:
+            logger.debug(f"extra: {extra}, nothing to select")
+            return {}
+
+        round = channel_props["round"] if "round" in channel_props else 0
+        logger.debug(f"let's select {extra} ends for round {round}")
 
         # TODO: (DG) Add code to allow only those ends (not in
         # all_selected) to be passed. filtered_ends consists of ends

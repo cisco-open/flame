@@ -1,0 +1,65 @@
+{
+    "taskid": "49d06b7526964db86cf37c70e8e0cdb6bd7aa742",
+    "backend": "mqtt",
+    "brokers": [
+        {"host": "localhost", "sort": "mqtt"},
+        {"host": "localhost:10104", "sort": "p2p"}
+    ],
+    "groupAssociation": {"param-channel": "default"},
+    "channels": [
+        {
+            "description": "Model update is sent from trainer to aggregator and vice-versa",
+            "groupBy": {"type": "tag", "value": ["default"]},
+            "name": "param-channel",
+            "pair": ["trainer", "aggregator"],
+            "funcTags": {
+                "aggregator": ["distribute", "aggregate"],
+                "trainer": ["fetch", "upload"]
+            }
+        }
+    ],
+    "dataset": "unused (ExperimentConfig.dataset is a required generic field; fwdllm reads hyperparameters.dataset instead)",
+    "hyperparameters": {
+        "rounds": 1000,
+        "aggGoal": 10,
+        "model_type": "distilbert",
+        "model_name": "distilbert-base-uncased",
+        "max_seq_length": 192,
+        "do_lower_case": true,
+        "peft_method": "adapter",
+        "use_adapter": false,
+        "freeze_layers": "",
+        "fp16": true,
+        "fl_algorithm": "FedFwd",
+        "comm_round": 3000,
+        "epochs": 1,
+        "learning_rate": 0.01,
+        "train_batch_size": 8,
+        "eval_batch_size": 8,
+        "gradient_accumulation_steps": 1,
+        "var_control": true,
+        "perturbation_sampling": true,
+        "select_perturbation_using_jvp": false,
+        "evaluate_during_training_steps": 100,
+        "is_debug_mode": 0,
+        "fedprox_mu": 1,
+        "manual_seed": 42,
+        "output_dir": "/tmp/",
+        "dataset": "agnews",
+        "partition_method": "niid_label_clients=100_alpha=1",
+        "client_idx": 0,
+        "client_num_in_total": 0,
+        "data_loader_num_workers": 5,
+        "warmup_ratio": 1,
+        "data_file_path": "PLACEHOLDER",
+        "partition_file_path": "PLACEHOLDER"
+    },
+    "baseModel": {"name": "", "version": 2},
+    "job": {"id": "PLACEHOLDER", "name": "fwdllm"},
+    "registry": {"sort": "dummy", "uri": ""},
+    "selector": {"sort": "PLACEHOLDER", "kwargs": {}},
+    "optimizer": {"sort": "PLACEHOLDER", "kwargs": {}},
+    "maxRunTime": 600,
+    "realm": "default",
+    "role": "aggregator"
+}

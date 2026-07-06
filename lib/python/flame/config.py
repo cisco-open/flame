@@ -153,7 +153,7 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     eval_goal_factor: t.Optional[float] = Field(alias="evalGoalFactor", default=None)
     # Target-accuracy stopping: stop once test accuracy stays >= target for
     # `stable_evals_above_target` consecutive evals (resets on any dip). The
-    # existing `rounds` / `max_runtime_s` caps remain as the safety net so a
+    # existing `rounds` / `max_experiment_runtime_s` caps remain as the safety net so a
     # non-converging run still terminates. None disables the rule.
     target_accuracy: t.Optional[float] = Field(alias="targetAccuracy", default=None)
     stable_evals_above_target: t.Optional[int] = Field(
@@ -176,6 +176,20 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     reject_stale_updates: t.Optional[bool] = Field(
         alias="rejectStaleUpdates", default=False
     )
+    # FedFwd (fwdllm/fwdllm_plus/fluxtune) staleness gate on incoming trainer
+    # updates, checked in fwdllm_aggregator._process_single_trainer_message:
+    #   "exact"         -- reject unless the update matches the aggregator's
+    #                      current (round, data_id, iteration_per_data_id)
+    #                      exactly. Strict-sync baseline (fwdllm).
+    #   "round_data_id" -- reject unless (round, data_id) match; any
+    #                      iteration_per_data_id within that data_id is
+    #                      accepted. fwdllm_plus.
+    #   "none"          -- no staleness gate (any version accepted); FedFwd's
+    #                      async baseline (fluxtune) relies on stale/
+    #                      in-flight updates by design.
+    # None (unset) falls back to reject_stale_updates above, for examples
+    # that only know that older boolean knob.
+    staleness_policy: t.Optional[str] = Field(alias="stalenessPolicy", default=None)
     heartbeats: t.Optional[dict] = Field(alias="heartbeats", default={})
     client_notify: t.Optional[dict] = Field(
         alias="clientAvailAwareNotify", default=None
@@ -253,6 +267,30 @@ class Hyperparameters(FlameSchema, extra=Extra.allow):
     use_oort_loss_fn: t.Optional[str] = Field(alias="useOORTLossFn", default="False")
     wait_until_next_avl: t.Optional[bool] = Field(
         alias="waitUntilNextAvail", default=False
+    )
+    # Sim unavailability feature gate (§1 / §8.4). Default False ⇒ byte-identical
+    # to all existing runs. Set True to activate the oracular trace-read path.
+    sim_unavailability: t.Optional[bool] = Field(
+        alias="simUnavailability", default=False
+    )
+    # Per-baseline: aware baselines free stalled slots proactively at the next
+    # selection boundary (Stage D); unaware wait for the 90s vclock abandon.
+    # Kept for backward compat — new code reads proactive_inflight_evict first.
+    availability_aware: t.Optional[bool] = Field(
+        alias="availabilityAware", default=False
+    )
+    # Two-axis flag split (T1): avail_select_filter gates selection filtering;
+    # proactive_inflight_evict gates felix-only boundary eviction.
+    avail_select_filter: t.Optional[bool] = Field(
+        alias="availSelectFilter", default=True
+    )
+    proactive_inflight_evict: t.Optional[bool] = Field(
+        alias="proactiveInflightEvict", default=None
+    )
+    # Override directory for availability trace YAMLs. Defaults to
+    # examples/_metadata/availability_traces/ when None.
+    availability_trace_dir: t.Optional[str] = Field(
+        alias="availabilityTraceDir", default=None
     )
     inc_model_version_per_data_id: t.Optional[bool] = Field(
         alias="incModelVersionPerDataId", default=False

@@ -83,7 +83,7 @@ def make_arm(baseline, staggered, oracle=False, suffix=""):
     name = f"{baseline}{ocl}_n50_alpha0.1_syn0_stream_{cond}_sim{suffix}"
     agg_hp = {
         "batchSize": 10, "learningRate": 0.01,
-        "rounds": ROUNDS_CAP, "max_runtime_s": MAX_RUNTIME_S,
+        "rounds": ROUNDS_CAP, "max_experiment_runtime_s": MAX_RUNTIME_S,
         "aggGoal": 10, "evalEveryNRounds": EVAL_EVERY,
         "targetAccuracy": TARGET_ACC, "stableEvalsAboveTarget": STABLE_EVALS,
         "min_trainers_to_start": N - 2, "min_trainers_join_timeout_s": 600,

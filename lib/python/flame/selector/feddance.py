@@ -161,7 +161,8 @@ class FedDanceSelector(AbstractSelector):
         self.emit_selection(
             round_num, task_to_perform, ends, eligible.keys(), selected,
             per_trainer_extra=ptx,
-            extra={"num_unavail": len(unavail)},
+            extra={"num_unavail": len(unavail),
+                   "vclock_now": channel_props.get("vclock_now")},
         )
         return {key: None for key in selected}
 

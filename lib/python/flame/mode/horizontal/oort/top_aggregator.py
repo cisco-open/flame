@@ -126,16 +126,40 @@ class TopAggregator(BaseTopAggregator):
         # under-fire (in-flight drains to ~0.15 instead of real's ~4.6).
         try:
             while True:
+                # C.2: re-inject any withheld update whose delivery_ts has arrived
+                # (no-op when the gate is off ⇒ pop loop unchanged, byte-identical).
+                self._sim_reinject_ready_withheld()
                 popped = buf.pop_min()
                 if popped is None:
                     break
                 end, sct, (msg, md) = popped
-                if carryover:
+                # A re-injected late stale delivery has already completed and is
+                # exempt from BOTH the carry-over gate (it is not still-computing)
+                # and the send-gate (its trainer is AVL_* at delivery_ts).
+                _is_withheld_delivery = end in getattr(
+                    self, "_sim_withheld_delivering", {}
+                )
+                if carryover and not _is_withheld_delivery:
                     _tr = msg.get(MessageType.MODEL_VERSION, 0)
                     if (self._round - _tr) > 0 and sct > vclock_round_start:
                         held_over.append((end, sct, (msg, md)))
                         continue
+                # C.2 send-gate: a COMPLETED update whose trainer is UN_AVL at sct
+                # is held and delivered stale at delivery_ts. Applied AFTER carry-over
+                # so a still-computing future-sct straggler (which has not reached its
+                # send-gate) stays in-flight (Challenge 7 composition).
+                if not _is_withheld_delivery and self._sim_withhold_if_unavail(
+                    channel, end, sct, (msg, md)
+                ):
+                    continue
+                # Late stale delivery: emit the withheld_delivery rung (best-effort).
+                # Batch 3 T3.5 (K11): advance before emitting, matching asyncfl's
+                # existing order — see _emit_withheld_delivery's docstring for why
+                # this specific advance is provably a no-op here either way.
+                _wd = self._sim_take_withheld_delivering(end)
                 self._advance_sim_clock(sct)
+                if _wd is not None:
+                    self._emit_withheld_delivery(end, msg, _wd[0], _wd[1])
                 _srd = msg.get(MessageType.SIM_CLIENT_TASK_TRAIN_DURATION_S)
                 _sst = channel.get_end_property(end, PROP_SIM_SEND_TS)
                 if _srd is not None:
@@ -226,6 +250,24 @@ class TopAggregator(BaseTopAggregator):
 
         received_end_count = 0
 
+        # Real mode only: bound recv_fifo with a wall-clock timeout (default
+        # trainer_recv_wall_timeout_s=90s, >> the 18s max trainer speed in
+        # async_cifar10) so unavailable trainers can't stall the aggregator
+        # indefinitely; capped at the remaining max_experiment_runtime_s
+        # budget so the process never overshoots it. Sim mode leaves
+        # _recv_timeout=None — the vclock drives termination there instead.
+        _recv_timeout = None
+        if not self.simulated:
+            _stall = float(getattr(
+                self.config.hyperparameters, "trainer_recv_wall_timeout_s", 90.0
+            ))
+            _max_rt = getattr(self.config.hyperparameters, "max_experiment_runtime_s", None)
+            if _max_rt:
+                _remaining = max(1.0, float(_max_rt) - (time.time() - self.agg_start_time_ts))
+                _recv_timeout = min(_stall, _remaining)
+            else:
+                _recv_timeout = _stall
+
         # simulated: commit the aggr_num updates with the smallest
         # sim_completion_ts (the k that would physically finish first in real),
         # reordering away physical arrival jitter and advancing the virtual
@@ -237,7 +279,7 @@ class TopAggregator(BaseTopAggregator):
             self._round_start_vclock = self._vclock.now
             _recv = self._oort_sim_recv(channel, end_ids)
         else:
-            _recv = channel.recv_fifo(end_ids, aggr_num)
+            _recv = channel.recv_fifo(end_ids, aggr_num, timeout=_recv_timeout)
 
         for msg, metadata in _recv:
             end, _ = metadata
@@ -245,6 +287,11 @@ class TopAggregator(BaseTopAggregator):
             if not msg:
                 logger.info(f"[MSG_SKIP] No data from ...{end[-8:]}; skipping it")
                 continue
+
+            # T3.3 commit-checkpoint belief (real mode only — sim's own commit
+            # loop already recorded it inside _sim_withhold_if_unavail).
+            if not self.simulated:
+                self._record_commit_belief(end)
 
             # Calculate staleness
             trainer_round = msg.get(MessageType.MODEL_VERSION, 0)
@@ -348,7 +395,7 @@ class TopAggregator(BaseTopAggregator):
             _recv2 = (
                 self._oort_sim_recv(channel, end_ids)
                 if self.simulated
-                else channel.recv_fifo(end_ids, 1)
+                else channel.recv_fifo(end_ids, 1, timeout=_recv_timeout)
             )
             for msg, metadata in _recv2:
                 end, _ = metadata
@@ -357,6 +404,11 @@ class TopAggregator(BaseTopAggregator):
                     logger.info(f"[MSG_SKIP] (loop2) No data from ...{end[-8:]}; skipping it")
                     continue
                 progressed = True
+
+                # T3.3 commit-checkpoint belief (real mode only — sim's own
+                # commit loop already recorded it inside _sim_withhold_if_unavail).
+                if not self.simulated:
+                    self._record_commit_belief(end)
 
                 # Calculate staleness
                 trainer_round = msg.get(MessageType.MODEL_VERSION, 0)
@@ -608,30 +660,29 @@ class TopAggregator(BaseTopAggregator):
         aggr_num = self.config.selector.kwargs.get("aggr_num", 10)
         overcommitment = getattr(channel._selector, 'overcommitment', 1.3)
         desired_selection = int(aggr_num * overcommitment)
-        
-        # Configuration for wait-retry mechanism
-        max_retries = self.config.selector.kwargs.get('max_selection_retries', 5)
-        retry_wait_seconds = self.config.selector.kwargs.get('selection_retry_wait', 2.0)
-        min_trainers_ratio = self.config.selector.kwargs.get('min_trainers_ratio', 0.5)  # At least 50% of aggr_num
-        
-        # CRITICAL: If min_trainers_ratio >= overcommitment, wait for FULL desired_selection
-        # This prevents sending weights to partial sets that may never respond
-        if min_trainers_ratio >= overcommitment:
-            min_required_trainers = desired_selection  # Wait for all 13 trainers
-            logger.info(
-                f"[DISTRIBUTE] Round {self._round}: Strict mode - will wait for FULL desired_selection={desired_selection} trainers"
-            )
-        else:
-            min_required_trainers = max(1, int(aggr_num * min_trainers_ratio))
-        
+
         logger.info(
-            f"[DISTRIBUTE] Round {self._round}: Desired selection={desired_selection} "
-            f"(aggr_num={aggr_num}, overcommit={overcommitment}), "
-            f"min_required={min_required_trainers}"
+            f"[DISTRIBUTE] Round {self._round}: desired_selection={desired_selection} "
+            f"(aggr_num={aggr_num}, overcommit={overcommitment})"
         )
 
         # before distributing weights, update it from global model
         self._update_weights()
+
+        # C.3: re-clock the 90s abandon to the vclock and free stalled slots so a
+        # replacement is selectable this round (no-op when the gate is off).
+        # Sim-only: real mode already has a native wall-clock abandon in the
+        # selector itself (SEND_TIMEOUT_WAIT_S), so this would be redundant there.
+        if self.simulated:
+            self._sim_abandon_stalled(channel)
+        # D.1: for availability_aware baselines, proactively free any in-flight
+        # slot the trace now shows as UN_AVL -- no 90s wait. Both modes: trace-read
+        # eviction has no real-mode equivalent (unlike the abandon above), so
+        # gating it sim-only left real-mode felix runs with no way to drop a
+        # stalled UN_AVL trainer from recv_ends (see Batch 4 finding 1,
+        # UNAVAILABILITY_DESIGN.md). No-op here (oort's proactive_inflight_evict
+        # is False), kept for symmetry with the other two stacks.
+        self._sim_evict_unavail_inflight(channel)
 
         # Per-baseline online oracle: overwrite candidate stat-utility with true
         # current values before the selector ranks. No-op unless enabled.
@@ -640,7 +691,19 @@ class TopAggregator(BaseTopAggregator):
         # before invoking channel.ends() to select, set the
         # trainer_unavail if it isn't None
         if self.trainer_event_dict is not None:
-            curr_unavail_trainer_list = self.get_curr_unavail_trainers()
+            # D.2: task-aware — also excludes AVL_EVAL from "train" dispatch and
+            # AVL_TRAIN from "eval" dispatch (inert where a baseline never
+            # dispatches eval, e.g. oort, Challenge 8).
+            curr_unavail_trainer_list = self.get_curr_task_ineligible_trainers(
+                task_to_perform
+            )
+            # invariant 2: a trainer with a withheld update stays out of the
+            # eligible pool until its delivery_ts (§4.5 residence, sct→delivery_ts).
+            _held_withheld = self.withheld_held_ends()
+            if _held_withheld:
+                curr_unavail_trainer_list = list(
+                    set(curr_unavail_trainer_list) | _held_withheld
+                )
         else:
             curr_unavail_trainer_list = []
 
@@ -669,97 +732,104 @@ class TopAggregator(BaseTopAggregator):
         channel.set_curr_unavailable_trainers(
             trainer_unavail_list=curr_unavail_trainer_list
         )
+        # Stamp PROP_AVL_STATE on every known end (incl. in-flight ones D.1/C.3
+        # just evicted) so emit_selection's avail_composition/per_trainer reflect
+        # the oracular read instead of staying all-UNKNOWN.
+        self._avail_stamp_end_states(channel)
+
+        # Expose current availability-timeline time to selector so it can attach
+        # it to selection events (C.6.1 — restores per-trainer avl_state identity
+        # at emit time). _avail_now() covers both modes — real used to be
+        # skipped here (see syncfl/top_aggregator.py for the parity fallout).
+        channel.properties["vclock_now"] = self._avail_now()
 
         logger.debug(
             f"Sending weights to trainers with task_to_perform = {task_to_perform}"
         )
-        
-        # CRITICAL FIX: Implement wait-retry mechanism for trainer selection
-        # If insufficient trainers are available, wait and retry instead of proceeding
-        selected_ends = None
-        retry_count = 0
-        
-        while retry_count <= max_retries:
-            # Get currently available trainer ends
-            all_ends = list(channel._ends.keys())
-            
-            # Get unavailable trainers
-            if self.trainer_event_dict is not None:
-                unavail_trainers = set(self.get_curr_unavail_trainers())
-            else:
-                unavail_trainers = set()
-            
-            # Get in-flight trainers (already selected, waiting for updates)
-            in_flight_trainers = getattr(channel._selector, 'selected_ends', set())
-            if not isinstance(in_flight_trainers, set):
-                in_flight_trainers = set(in_flight_trainers) if in_flight_trainers else set()
-            
-            # Calculate eligible trainers
-            eligible_trainers = [
-                end for end in all_ends
-                if end not in unavail_trainers and end not in in_flight_trainers
-            ]
-            
-            num_eligible = len(eligible_trainers)
-            
-            logger.info(
-                f"[DISTRIBUTE] Round {self._round}, Attempt {retry_count + 1}/{max_retries + 1}: "
-                f"total_ends={len(all_ends)}, unavailable={len(unavail_trainers)}, "
-                f"in_flight={len(in_flight_trainers)}, eligible={num_eligible}, "
-                f"required={min_required_trainers}"
-            )
-            
-            # Check if we have enough eligible trainers
-            if num_eligible >= min_required_trainers:
-                logger.info(
-                    f"[DISTRIBUTE] Round {self._round}: Sufficient trainers available "
-                    f"({num_eligible} >= {min_required_trainers}), proceeding with selection. "
-                    f"Will select min({desired_selection}, {num_eligible}) trainers."
-                )
-                break
-            else:
-                # Insufficient trainers - log warning
-                logger.warning(
-                    f"[DISTRIBUTE] Round {self._round}, Attempt {retry_count + 1}: "
-                    f"INSUFFICIENT trainers! eligible={num_eligible} < required={min_required_trainers}. "
-                    f"Breakdown: total={len(all_ends)}, unavail={len(unavail_trainers)}, "
-                    f"in_flight={len(in_flight_trainers)}"
-                )
-                
-                if retry_count < max_retries:
-                    logger.warning(
-                        f"[DISTRIBUTE] Waiting {retry_wait_seconds}s before retry {retry_count + 2}/{max_retries + 1}..."
-                    )
-                    time.sleep(retry_wait_seconds)
-                    retry_count += 1
-                    # Update unavailability list before retry
-                    if self.trainer_event_dict is not None:
-                        curr_unavail_trainer_list = self.get_curr_unavail_trainers()
-                        channel.set_curr_unavailable_trainers(
-                            trainer_unavail_list=curr_unavail_trainer_list
-                        )
-                else:
-                    # Max retries exceeded - proceed with warning
-                    logger.error(
-                        f"[DISTRIBUTE] Round {self._round}: Max retries ({max_retries}) exceeded. "
-                        f"Proceeding with ONLY {num_eligible} trainers (required: {min_required_trainers}, "
-                        f"desired: {desired_selection}). THIS MAY IMPACT TRAINING QUALITY!"
-                    )
-                    break
 
-        # Now perform the actual selection
-        selected_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
-        
-        if not selected_ends or len(selected_ends) == 0:
-            logger.error(
-                f"[DISTRIBUTE] Round {self._round}: No trainers selected! "
-                f"Cannot proceed with weight distribution."
+        # F.2: Pre-selection threshold check — return-early if pool is scarce.
+        # Threshold = desired_selection (full overcommitted batch); unbounded retry,
+        # no max_retries ceiling, no "proceed anyway" fallback for sync FL.
+        _in_flight = getattr(channel._selector, 'selected_ends', set())
+        if not isinstance(_in_flight, set):
+            _in_flight = set(_in_flight) if _in_flight else set()
+        _connected = set(channel._ends.keys())
+        num_eligible = len(_connected - set(curr_unavail_trainer_list) - _in_flight)
+
+        # Cohort-floor guardrail: if desired_selection > connected cohort size
+        # (e.g. n=12 with desired_selection=13), the starvation gate fires
+        # every round and exhausts the budget with zero training (observed
+        # Jun 29, accidental n=12 oort). Clamp + warn once instead of
+        # silently degenerating into an all-starvation run.
+        _starv_threshold = min(desired_selection, len(_connected))
+        if desired_selection > len(_connected) and not getattr(
+            self, "_oort_cohort_floor_warned", False
+        ):
+            logger.warning(
+                f"[COHORT_FLOOR] desired_selection={desired_selection} > connected "
+                f"cohort={len(_connected)}: the overcommitted batch can never be met. "
+                f"Clamping starvation threshold to {len(_connected)}. Increase "
+                f"num_trainers to >= desired_selection for a valid oort starvation run."
             )
+            self._oort_cohort_floor_warned = True
+
+        if num_eligible < _starv_threshold:
+            if self.simulated and self.trainer_event_dict is not None:
+                _nxt = self._next_avail_vclock()
+                _budget = float(
+                    getattr(self.config.hyperparameters, "max_experiment_runtime_s", float("inf"))
+                )
+                if _nxt is not None and _nxt > self._vclock.now and self._vclock.now < _budget:
+                    self._vclock.advance(_nxt)
+                    self._sim_abandon_stalled(channel)
+                    curr_unavail_trainer_list = self.get_curr_task_ineligible_trainers(
+                        task_to_perform
+                    )
+                    _held = self.withheld_held_ends()
+                    if _held:
+                        curr_unavail_trainer_list = list(
+                            set(curr_unavail_trainer_list) | _held
+                        )
+                    channel.set_curr_unavailable_trainers(
+                        trainer_unavail_list=curr_unavail_trainer_list
+                    )
+                    self._avail_stamp_end_states(channel)
+                    channel.properties["vclock_now"] = self._vclock.now
+                    logger.info(
+                        f"[SIM_STARVATION] round={self._round} eligible={num_eligible} "
+                        f"< {_starv_threshold}; vclock→{_nxt}"
+                    )
+                else:
+                    # Trace horizon or budget reached — stop instead of spinning.
+                    self._work_done = True
+                    logger.info(
+                        f"[SIM_STARVATION] trace horizon or budget reached at "
+                        f"vclock={self._vclock.now:.1f}s (nxt={_nxt}, "
+                        f"budget={_budget:.0f}s, round={self._round}); stopping run."
+                    )
+            else:
+                _max_rt = getattr(self.config.hyperparameters, "max_experiment_runtime_s", None)
+                if _max_rt:
+                    _wall_elapsed = time.time() - self.agg_start_time_ts
+                    if _wall_elapsed >= float(_max_rt):
+                        self._work_done = True
+                        logger.info(
+                            f"max_experiment_runtime_s={_max_rt}s reached "
+                            f"(wall_elapsed={_wall_elapsed:.0f}s) at round {self._round}; "
+                            f"stopping run."
+                        )
+                        return
+                time.sleep(0.5)
             return
-        
+
+        # Threshold met — proceed with selection.
+        selected_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
+        if not selected_ends:
+            return
+
         logger.info(
-            f"[DISTRIBUTE] Round {self._round}: Selected {len(selected_ends)} trainers. "
-            f"Will aggregate when {min(aggr_num, len(selected_ends))} updates received."
+            f"[DISTRIBUTE] Round {self._round}: selected {len(selected_ends)} trainers "
+            f"(eligible={num_eligible}, desired={desired_selection})"
         )
 
         # Same model goes to every recipient this round; build + serialize once.
@@ -772,6 +842,10 @@ class TopAggregator(BaseTopAggregator):
         }
         if self.simulated:
             msg[MessageType.SIM_SEND_TS] = _sim_send_ts
+        else:
+            # T3.0: broadcast the trace-read origin so a trainer's own wall-clock
+            # availability lookups anchor to the SAME point the aggregator uses.
+            msg[MessageType.AGG_START_TS] = self.agg_start_time_ts
         _payload = channel.dumps(msg)
         _send_t0 = time.time()
         for end in selected_ends:

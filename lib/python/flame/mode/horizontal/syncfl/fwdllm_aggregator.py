@@ -21,17 +21,18 @@ import logging
 import psutil
 import time
 from datetime import datetime
+from pathlib import Path
+from typing import Optional, Union
 import sklearn
 import numpy as np
-import ast
-import os
-import json
+import yaml
 from sortedcontainers import SortedDict
 import torch.nn.functional as F
 from flame.channel import VAL_CH_STATE_HTBT_RECV, VAL_CH_STATE_RECV, VAL_CH_STATE_SEND
 from flame.common.constants import DeviceType
 from flame.common.util import weights_to_device, weights_to_model_device
-from flame.config import OptimizerType
+from flame.config import OptimizerType, TrainerAvailState
+from flame.end import PROP_END_AVL_STATE
 from flame.mode.composer import CloneComposer
 import pickle
 from flame.mode.horizontal.syncfl.top_aggregator import (
@@ -43,7 +44,10 @@ from sklearn.metrics import (
     confusion_matrix,
     matthews_corrcoef,
 )
-from flame.mode.horizontal.asyncfl.top_aggregator import TopAggregator as AsyncTopAgg
+from flame.mode.horizontal.asyncfl.top_aggregator import (
+    RECV_TIMEOUT_WAIT_S,
+    TopAggregator as AsyncTopAgg,
+)
 from flame.mode.message import MessageType
 from flame.mode.horizontal.client_duration import real_client_task_train_duration
 from flame.mode.tasklet import Loop, Tasklet
@@ -59,12 +63,14 @@ from flame.selector.oort import (
 )
 import functorch as fc
 import torch
-import glob
 
 from torch.nn import CrossEntropyLoss
 import flame.monitor.runtime
 from flame.monitor.runtime import FwdLLMStage, timer_decorator
 import math
+
+from flame import telemetry
+from flame.telemetry.events import build_agg_eval, build_agg_round, build_utility_belief
 
 
 logger = logging.getLogger(__name__)
@@ -72,6 +78,27 @@ logger = logging.getLogger(__name__)
 PROP_ROUND_END_TIME = "round_end_time"
 
 SEND_TIMEOUT_WAIT_S = 90  # 90 seconds timeout
+
+# How long a trainer can sit in the per-round reselection cache
+# (_round_selected_ends, reselect_each_iteration=False) without a real
+# accepted contribution before it's treated as stuck and pruned/backfilled,
+# same as an explicit departure (see _prune_departed_from_round_cache).
+# Deliberately much longer than SEND_TIMEOUT_WAIT_S/RECV_TIMEOUT_WAIT_S
+# (per-message waits) since this measures a full contribution cycle
+# (dispatch -> real training -> accepted response), not one recv call.
+ROUND_CACHE_STUCK_TIMEOUT_S = 300  # 5 minutes
+
+# Default location of the shared examples/_metadata bundle, resolved relative
+# to this library file (lib/python/flame/mode/horizontal/syncfl/ -> lib/python
+# /examples/_metadata) rather than to any specific example's legacy directory
+# -- this is what makes the oracular path example-agnostic, mirroring
+# async_cifar10/aggregator/pytorch/main_oort_sync_agg.py's resolution.
+_METADATA_DIR = Path(__file__).resolve().parents[4] / "examples" / "_metadata"
+_TRACE_KEY_TO_MOBIPERF_SUB = {
+    "mobiperf_2st": "states_2st",
+    "mobiperf_3st_50": "states_3st_50",
+    "mobiperf_3st_75": "states_3st_75",
+}
 
 import hashlib
 
@@ -258,6 +285,26 @@ class TopAggregator(AsyncTopAgg):
         self.var = None
         self.ends_not_selected_yet = False
         self.iteration_per_data_id = 0
+
+        # Selection granularity for the sync path (fwdllm/fwdllm_plus):
+        # True (default, preserves pre-existing behavior) = re-select
+        # trainers on every SEND-state call, i.e. every iteration of every
+        # databin. False = select once per round and reuse that selection
+        # across all databins/iterations until self._round advances. The
+        # async path (fluxtune) is untouched by this flag.
+        self._reselect_each_iteration = bool(
+            getattr(
+                self.config.hyperparameters, "reselect_each_iteration", True
+            )
+        )
+        self._round_selected_ends = None
+        self._round_selected_ends_round = None
+        # end_id -> time.time() of its last real accepted contribution (or
+        # of first entering the cache, if it hasn't contributed yet) -- lets
+        # _prune_departed_from_round_cache also evict a member that's stuck
+        # but not formally departed (see ROUND_CACHE_STUCK_TIMEOUT_S).
+        self._round_cache_activity_ts: dict = {}
+
         self._optimizer_sort_value = self.config.optimizer.sort
         OPTIMIZERS_SUPPORTING_GRAD_AGGREGATION = (OptimizerType.FEDBUFF,)
         self._weighted_aggregation_enabled = (
@@ -322,14 +369,10 @@ class TopAggregator(AsyncTopAgg):
 
         # maintain a set of all trainers that have sent heartbeats previously
         self.all_trainers = set()
-        try:
-            self.minInitialTrainers = self.config.selector.kwargs.get(
-                "minInitialTrainers"
-            )
-            assert self.minInitialTrainers is not None
-        except (KeyError, AssertionError):
+        self.minInitialTrainers = self.config.selector.kwargs.get("minInitialTrainers")
+        if self.is_async and self.minInitialTrainers is None:
             raise KeyError(
-                "minInitialTrainers must be specified in selector config & must not be None for determinism"
+                "minInitialTrainers must be specified in selector config for async fwdllm"
             )
         self.trainer_unavail_durations = None
         self._cached_test_data = None
@@ -478,40 +521,63 @@ class TopAggregator(AsyncTopAgg):
         else:
             logger.warning(f"Got invalid {msg} while processing heartbeat")
 
-    def read_trainer_unavailability(self, trace=None) -> None:
-        logger.info(f"Came to read_trainer_unavailability, trace: {trace}")
+    def read_trainer_unavailability(
+        self, trace=None, metadata_dir: Optional[Union[str, Path]] = None
+    ) -> dict:
+        """Build task_id -> SortedDict(timestamp -> state) for `trace`.
+
+        Reads from the shared examples/_metadata/ bundle (registry +
+        traces), mirroring
+        async_cifar10/aggregator/pytorch/main_oort_sync_agg.py's pattern --
+        not from the legacy per-trainer json_scripts/trainer_*.json files.
+        """
+        logger.info(f"Reading trainer unavailability for trace: {trace}")
+
+        metadata_dir = Path(metadata_dir) if metadata_dir is not None else _METADATA_DIR
+
+        registry_path = metadata_dir / "trainer_registry.yaml"
+        with open(registry_path) as f:
+            registry = yaml.safe_load(f)["trainers"]
+
+        if trace in _TRACE_KEY_TO_MOBIPERF_SUB:
+            sub = _TRACE_KEY_TO_MOBIPERF_SUB[trace]
+            with open(metadata_dir / "availability_traces/mobiperf_traces.yaml") as f:
+                traces = yaml.safe_load(f)["traces"]
+
+            def lookup(tk: str, trainer_id: int) -> list:
+                return traces[f"device_{trainer_id:03d}"][sub]
+
+        elif trace and trace.startswith("syn_"):
+            with open(metadata_dir / "availability_traces/synthetic_traces.yaml") as f:
+                syn = yaml.safe_load(f)["traces"]
+            if trace not in syn:
+                logger.warning(f"trace {trace!r} not found in synthetic_traces.yaml")
+                return None
+            entry = syn[trace]
+            per_trainer = entry.get("per_trainer", {}).get("n300", {})
+            pattern = entry.get("pattern", [])
+
+            def lookup(tk: str, trainer_id: int) -> list:
+                return per_trainer.get(tk) or pattern
+
+        else:
+            logger.warning(f"unsupported trace name: {trace!r}")
+            return None
+
         trainer_events_dict = {}
+        for tk, meta in registry.items():
+            trainer_id = meta["trainer_id"]
+            task_id = meta["task_id"]
+            events = lookup(tk, trainer_id)
+            state_dict = SortedDict()
+            for timestamp, state in events:
+                state_dict[timestamp] = state
+            trainer_events_dict[task_id] = state_dict
 
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        files_path = os.path.join(
-            current_dir, "../../../../examples/fwdllm/expts/run_tc_expts/json_scripts"
+        logger.info(
+            f"Loaded availability traces for {len(trainer_events_dict)} trainers "
+            f"(trace={trace})"
         )
-        search_pattern = os.path.join(files_path, "trainer_*.json")
-        json_files = glob.glob(search_pattern)
-
-        if not json_files:
-            logger.warning(f"No JSON files found matching pattern: {search_pattern}")
-            return {}
-
-        logger.info(f"Found {len(json_files)} JSON files to process.")
-
-        for file_path in json_files:
-            with open(file_path) as f:
-                trainer_json = json.load(f)
-                curr_trainer_id = trainer_json["taskid"]
-                event_list = ast.literal_eval(trainer_json["hyperparameters"][trace])
-
-                # SortedDict for efficient timestamp lookup
-                state_dict = SortedDict()
-
-                # Process the events
-                for timestamp, event_name in event_list:
-                    state_dict[timestamp] = event_name
-
-                trainer_events_dict[curr_trainer_id] = state_dict
-                logger.info(f"Completed file read for {file_path}")
-
-        logger.info("Completed reading all trainer unavailability from files")
         return trainer_events_dict
 
     def aggregate_grads_from_trainers(
@@ -641,7 +707,19 @@ class TopAggregator(AsyncTopAgg):
             return
         # time.sleep(0.1)  # Slight delay to allow messages to arrive
 
-        msg, metadata = next(channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1))
+        # timeout=RECV_TIMEOUT_WAIT_S bounds the block on a quiet in-flight
+        # trainer (default is block forever -- see channel.recv_fifo's
+        # docstring). Without this, if a selected trainer never responds,
+        # this call never returns, the composer loop never cycles back to
+        # _distribute_weights, and _check_early_stop_conditions() (which
+        # enforces max_runtime_s/max_data_id_progress) never gets a chance
+        # to run -- the run hangs past its configured budget until manually
+        # killed. Matches the same pattern asyncfl/top_aggregator.py's
+        # _aggregate_weights already uses for this exact reason.
+        msg, metadata = next(
+            channel.recv_fifo(channel.ends(VAL_CH_STATE_RECV), 1,
+                              timeout=RECV_TIMEOUT_WAIT_S)
+        )
         end, timestamp = metadata
         if not msg:
             logger.debug(f"No data from {end}; skipping it")
@@ -665,23 +743,69 @@ class TopAggregator(AsyncTopAgg):
 
     @timer_decorator
     def _process_single_trainer_message(self, channel, msg, end, timestamp):
+        # An end may only contribute once per (round, data_id,
+        # iteration_per_data_id) collection cycle -- _per_agg_trainer_list is
+        # reset only when that tuple advances (_process_aggregation_goal_met).
+        # The trainer self-enforces this too, but resending WEIGHTS to the
+        # round's frozen trainer set on every distribute loop (per-round
+        # reselect) makes a duplicate/late message possible; guard here too.
+        if end in self._per_agg_trainer_list:
+            logger.info(
+                f"Duplicate contribution from {end} for round={self._round}, "
+                f"data_id={self.data_id}, iteration={self.iteration_per_data_id}; "
+                f"ignoring."
+            )
+            if self.is_async:
+                channel.cleanup_provided_ends(end)
+            else:
+                channel.cleanup_recvd_end(end)
+            return False
+
         if MessageType.MODEL_VERSION in msg:
             version = msg[MessageType.MODEL_VERSION]
             if version != self._model_version:
                 logger.info(
                     f"Received grad with staleness={self._model_version-version}."
                 )
-            if self.reject_stale_updates == True:
+            # Mode semantics: Hyperparameters.staleness_policy (flame/config.py).
+            # Implementation note: model_version alone already identifies
+            # (round, data_id) when inc_model_version_per_data_id is set (it
+            # only advances on a data_id transition), so "round_data_id" needs
+            # no extra fields; "exact" additionally checks iteration_per_data_id.
+            policy = getattr(self, "staleness_policy", "none")
+            stale, stale_reason = False, None
+            if policy == "round_data_id":
                 if version != self._model_version:
-                    logger.info(
-                        f"Rejecting trainer update from {end} of version {version}, "
-                        f"agg self._model_version: {self._model_version}. Will return."
+                    stale, stale_reason = True, (
+                        f"version={version} != agg model_version={self._model_version}"
                     )
-                    if self.is_async:
-                        channel.cleanup_provided_ends(end)
-                    else:
-                        channel.cleanup_recvd_end(end)
-                    return False
+            elif policy == "exact":
+                msg_iter = msg.get(MessageType.ITERATION_PER_DATA_ID)
+                if version != self._model_version:
+                    stale, stale_reason = True, (
+                        f"version={version} != agg model_version={self._model_version}"
+                    )
+                elif msg_iter != self.iteration_per_data_id:
+                    stale, stale_reason = True, (
+                        f"iteration_per_data_id={msg_iter} != "
+                        f"agg iteration_per_data_id={self.iteration_per_data_id}"
+                    )
+            elif policy != "none":
+                logger.warning(
+                    f"Unrecognized staleness_policy={policy!r}; treating as 'none' "
+                    f"(no staleness gate)."
+                )
+
+            if stale:
+                logger.info(
+                    f"Rejecting trainer update from {end} under "
+                    f"staleness_policy={policy} ({stale_reason})."
+                )
+                if self.is_async:
+                    channel.cleanup_provided_ends(end)
+                else:
+                    channel.cleanup_recvd_end(end)
+                return False
 
         if MessageType.GRADIENTS in msg and MessageType.GRADIENTS_FOR_VAR_CHECK in msg:
             logger.info(
@@ -725,6 +849,12 @@ class TopAggregator(AsyncTopAgg):
 
         logger.debug(f"received data from {end}")
         channel.set_end_property(end, PROP_ROUND_END_TIME, (self._round, timestamp))
+        # This end has just made real progress -- restart its round-cache
+        # stuck-timeout clock (see ROUND_CACHE_STUCK_TIMEOUT_S /
+        # _prune_departed_from_round_cache). No-op if reselect_each_iteration
+        # is True (that path never populates this dict) or end isn't
+        # currently cached (dict grows a harmless extra key either way).
+        self._round_cache_activity_ts[end] = time.time()
 
         channel._selector.ordered_updates_recv_ends.append(end)
         self._updates_in_queue += 1
@@ -752,10 +882,14 @@ class TopAggregator(AsyncTopAgg):
             logger.debug(
                 f"Calling aggregate_grads_for_trainers with grad_for_var_check: {_calculate_hash(grad_for_var_check)}"
             )
+            # Use this message's stat_utility, not the channel property --
+            # the property is set below, after this call, so reading it here
+            # was always None on a trainer's first contribution (crashing
+            # fedbuff's weight_factor() on `1 + None`).
             self.aggregate_grads_from_trainers(
                 trainer_gradients,
                 version_for_rate=version_for_rate,
-                stat_utility=channel.get_end_property(end, PROP_STAT_UTILITY),
+                stat_utility=msg[MessageType.STAT_UTILITY],
                 grad_for_var_check=grad_for_var_check,
                 jvp_for_snr_check=jvp_for_snr_check,
             )
@@ -775,6 +909,38 @@ class TopAggregator(AsyncTopAgg):
             channel.set_end_property(end, PROP_DATASET_SIZE, count)
 
         if MessageType.STAT_UTILITY in msg:
+            # Believed (PROP_STAT_UTILITY before this overwrite, i.e. the
+            # value from this end's PREVIOUS contribution) vs actual (this
+            # message's fresh value) -- the staleness of whatever the
+            # selector/aggregator last knew about this end's utility.
+            # fwdllm_aggregator.py previously never emitted this (only
+            # asyncfl/top_aggregator.py did), so selected_utility_believed_
+            # vs_actual*/selected_utility_belief_gap* were structurally
+            # impossible for fwdllm-family baselines regardless of selector.
+            if telemetry.is_enabled():
+                try:
+                    _believed = channel.get_end_property(end, PROP_STAT_UTILITY)
+                    _mv = msg.get(MessageType.MODEL_VERSION)
+                    ev, f = build_utility_belief(
+                        round_num=self._round,
+                        end_id=end,
+                        believed=float(_believed) if _believed is not None else None,
+                        actual=float(msg[MessageType.STAT_UTILITY]),
+                        # fwdllm's round stays coarse (can sit at 1 for an
+                        # entire run); self._model_version advances every
+                        # completed aggregation cycle (same quantity
+                        # agg_round's own staleness list uses), so it's the
+                        # meaningful staleness axis here, not round-based.
+                        staleness=(self._model_version - _mv)
+                        if isinstance(_mv, int) else None,
+                        extra={
+                            "data_id": self.data_id,
+                            "iteration_per_data_id": self.iteration_per_data_id,
+                        },
+                    )
+                    telemetry.emit(ev, **f)
+                except Exception as e:  # telemetry must never break training
+                    logger.debug(f"utility_belief telemetry emit failed: {e}")
             logger.info(
                 f"received stat_utility from {end} "
                 f"msg[MessageType.STAT_UTILITY] {msg[MessageType.STAT_UTILITY]}"
@@ -789,7 +955,15 @@ class TopAggregator(AsyncTopAgg):
         logger.info(
             f"Received grads from {end}. It was trained on model version {version}, with {count} samples"
         )
-        channel.remove_from_selected_ends(end)
+        # Not remove_from_selected_ends(): it never clears the selector's
+        # all_selected set, permanently blocking this trainer from future
+        # reselection. Async selectors only implement the batch
+        # _cleanup_recvd_ends/_cleanup_provided_ends path; cleanup_recvd_end()
+        # is sync-only (random selector).
+        if self.is_async:
+            channel.cleanup_provided_ends(end)
+        else:
+            channel.cleanup_recvd_end(end)
         return True
 
     def _log_and_reset_model_version_stats(self):
@@ -909,6 +1083,22 @@ class TopAggregator(AsyncTopAgg):
             f"Aggregation goal {self._agg_goal} reached. Performing FwdLLM aggregation."
         )
 
+        # Snapshot for this cycle's agg_round telemetry (emitted further down,
+        # after self._per_agg_trainer_list is cleared and self._model_version
+        # may have advanced -- see build_agg_round call below).
+        _cycle_contributors = list(self._per_agg_trainer_list)
+        _cycle_target_version = self._model_version
+        _cycle_speed_s = []
+        _cycle_stat_utility = []
+        _cycle_staleness = []
+        # end_id -> wall seconds between send (PROP_ROUND_START_TIME) and
+        # this contribution being received/processed (set alongside
+        # PROP_ROUND_DURATION in _process_single_trainer_message) -- the
+        # same quantity asyncfl/top_aggregator.py reports as agg_observed_s,
+        # letting analyze_run.py's aggregator-overhead sanity plots
+        # (runtime_agg_vs_trainer/runtime_overhead_*) work for fwdllm too.
+        _cycle_agg_observed_s = {}
+
         # Accumulate model-version-window stats; reset only when variance threshold is breached.
         for trainer_update in self._per_agg_trainer_list:
             self._model_version_unique_trainers.add(trainer_update)
@@ -919,6 +1109,8 @@ class TopAggregator(AsyncTopAgg):
                 self._model_version_trainer_stats["train_duration"].append(
                     train_duration.total_seconds()
                 )
+                _cycle_speed_s.append(train_duration.total_seconds())
+                _cycle_agg_observed_s[trainer_update] = train_duration.total_seconds()
             partial_stat_utility = channel.get_end_property(
                 trainer_update, PROP_STAT_UTILITY
             )
@@ -926,6 +1118,10 @@ class TopAggregator(AsyncTopAgg):
                 self._model_version_trainer_stats["partial_stat_utility"].append(
                     partial_stat_utility
                 )
+                _cycle_stat_utility.append(partial_stat_utility)
+            _trainer_version = self._trainer_last_model_version.get(trainer_update)
+            if _trainer_version is not None:
+                _cycle_staleness.append(_cycle_target_version - _trainer_version)
 
         self.grad_pool.append(self.grad)
         format_hash = lambda d: [_calculate_hash(v) for v in d]
@@ -985,6 +1181,27 @@ class TopAggregator(AsyncTopAgg):
             logger.info(
                 f"Round {self._round}, Data ID {self.data_id} Eval Loss: {result['eval_loss']}"
             )
+            if telemetry.is_enabled():
+                try:
+                    ev, fields = build_agg_eval(
+                        round_num=self._round,
+                        metrics={
+                            "test-loss": result.get("eval_loss"),
+                            "test-accuracy": result.get("acc"),
+                            "mcc": result.get("mcc"),
+                            # fwdllm's round is coarse (advances only once all
+                            # total_data_bins data_ids finish) -- data_id/
+                            # iteration_per_data_id let the analyzer's
+                            # progress_key() (scripts/analysis/analyze_run.py)
+                            # place this eval on a meaningful x-axis instead of
+                            # collapsing every eval in a round onto one point.
+                            "data_id": self.data_id,
+                            "iteration_per_data_id": self.iteration_per_data_id,
+                        },
+                    )
+                    telemetry.emit(ev, **fields)
+                except Exception as e:  # telemetry must never break training
+                    logger.debug(f"agg_eval telemetry emit failed: {e}")
             self.data_id += 1
             self.iteration_per_data_id = 0
             self._is_model_updated = True
@@ -1004,12 +1221,51 @@ class TopAggregator(AsyncTopAgg):
                 self.data_id = 0
                 channel.set_property("round", self._round)
 
+                # fwdllm's TopAggregator extends the asyncfl base (not
+                # syncfl's), which has no rounds-based stop condition of its
+                # own -- self._work_done is otherwise never set here, so the
+                # composer loop (Loop(loop_check_fn=lambda: self._work_done))
+                # never exits and the aggregator process runs forever
+                # regardless of hyperparameters.rounds.
+                self._work_done = self._round > self.config.hyperparameters.rounds
+                if self._work_done:
+                    logger.info(
+                        f"rounds={self.config.hyperparameters.rounds} reached "
+                        f"at round {self._round}; stopping run."
+                    )
+
         else:
             logger.info(
                 f"Variance check FAILED. Retrying on same data_id {self.data_id}."
             )
             self.iteration_per_data_id += 1
             self._is_model_updated = False
+
+        if telemetry.is_enabled():
+            try:
+                ev, fields = build_agg_round(
+                    round_num=self._round,
+                    agg_goal=self._agg_goal,
+                    agg_goal_count=self._agg_goal_cnt,
+                    updates_in_queue=self._updates_in_queue,
+                    staleness=_cycle_staleness,
+                    stat_utility=_cycle_stat_utility,
+                    trainer_speed_s=_cycle_speed_s,
+                    contributing_trainers=_cycle_contributors,
+                    agg_observed_s=_cycle_agg_observed_s,
+                    extra={
+                        "data_id": self.data_id,
+                        "iteration_per_data_id": self.iteration_per_data_id,
+                        "var": self.var,
+                        "var_threshold": getattr(self, "var_threshold", None),
+                        "var_good_enough": self.var_good_enough,
+                        "force_commit_planned": _force_commit_planned,
+                        "is_async": is_async,
+                    },
+                )
+                telemetry.emit(ev, **fields)
+            except Exception as e:  # telemetry must never break training
+                logger.debug(f"agg_round telemetry emit failed: {e}")
 
         self._updates_in_queue -= self._agg_goal
         self._per_agg_trainer_list = []
@@ -1070,7 +1326,15 @@ class TopAggregator(AsyncTopAgg):
             logger.info(f"We are waiting to clear up queue")
             num_min_req = min(num_min_req, 1)
 
-        for msg, metadata in channel.recv_fifo(channel.ends(), num_min_req):
+        # timeout=RECV_TIMEOUT_WAIT_S bounds the block on quiet in-flight
+        # trainers (default is block forever -- see channel.recv_fifo's
+        # docstring). Without this, if a selected trainer never responds,
+        # this call never returns, the composer loop never gets to
+        # re-check _check_early_stop_conditions() (max_runtime_s/
+        # max_data_id_progress), and the run hangs past its configured
+        # budget until manually killed. Same fix as _aggregate_grads_async.
+        for msg, metadata in channel.recv_fifo(channel.ends(), num_min_req,
+                                               timeout=RECV_TIMEOUT_WAIT_S):
             end, timestamp = metadata
             if not msg:
                 logger.info(f"No data from {end}; skipping it")
@@ -1313,7 +1577,7 @@ class TopAggregator(AsyncTopAgg):
         if self.track_trainer_avail["enabled"] == "False":
             return True
         elif self.track_trainer_avail["type"] == "ORACULAR":
-            picked_trainer_is_available = self.oracular_trainer_avail_check(end)
+            picked_trainer_is_available = self._trace_read_avail_check(end)
         elif self.track_trainer_avail["type"] == "HEARTBEAT":
             picked_trainer_is_available = self.hearbeat_trainer_avail_check(end)
 
@@ -1390,6 +1654,125 @@ class TopAggregator(AsyncTopAgg):
             self.jvp_for_snr_check_list = []
             self._is_model_updated = False
 
+    @staticmethod
+    def _rearm_recv_eligibility(channel, ends):
+        """Re-add `ends` to the selector's RECV-eligible set.
+
+        Skipping the SEND-state call below (cache hit) also skips the only
+        thing that normally repopulates `selected_ends`, which backs
+        `channel.ends(VAL_CH_STATE_RECV)`. Each processed contribution
+        removes its end from it via `cleanup_recvd_end(s)`; without this,
+        it permanently empties out after one pass over the cached trainers.
+        """
+        selector = getattr(channel, "_selector", None)
+        if selector is not None and hasattr(selector, "selected_ends"):
+            selector.selected_ends = set(selector.selected_ends) | set(ends)
+
+    def _prune_departed_from_round_cache(self, channel):
+        """Drop ends from `self._round_selected_ends` that have since
+        departed (disconnected, or explicitly reported `UN_AVL`) -- or that
+        have gone `ROUND_CACHE_STUCK_TIMEOUT_S` without a real accepted
+        contribution despite still being formally connected (e.g. a trainer
+        that never finished receiving its initial weights: still shows up
+        as connected/AVL_TRAIN, so neither check below catches it, yet it
+        never actually responds).
+
+        The selector-level reclaim (`_cleanup_removed_ends`, invoked by
+        `channel.remove`/`channel.update_state`) forgets a departed end at
+        the selector's own bookkeeping level, but nothing else prunes it
+        from this aggregator's own per-round cache. Left unpruned, the
+        cache-size check below keeps reporting "full" forever with a
+        member that can never respond, and the round stalls waiting on a
+        contribution that can never arrive. Confirmed exactly this
+        happening on a real n=100 run (see
+        examples/MIGRATING_TO_LAUNCHER.md §9): the aggregator's working set
+        stayed capped at ~30 of 100 trainers for 90 minutes, one cached
+        member sat at `model_version=-1` (never initialized) the entire
+        time, and progress fully stalled for the run's last 47 minutes --
+        none of it caught by the departure checks below, since that
+        trainer never disconnected or reported UN_AVL.
+        """
+        if not self._round_selected_ends:
+            return
+        now = time.time()
+        still_present = []
+        for end in self._round_selected_ends:
+            if not channel.has(end):
+                logger.info(
+                    f"[ReselectGate] pruning departed (removed) end {end} "
+                    f"from per-round cache for round={self._round}"
+                )
+                self._round_cache_activity_ts.pop(end, None)
+                continue
+            if channel.get_end_property(end, PROP_END_AVL_STATE) == TrainerAvailState.UN_AVL:
+                logger.info(
+                    f"[ReselectGate] pruning departed (UN_AVL) end {end} "
+                    f"from per-round cache for round={self._round}"
+                )
+                self._round_cache_activity_ts.pop(end, None)
+                continue
+            last_active = self._round_cache_activity_ts.get(end, now)
+            if now - last_active > ROUND_CACHE_STUCK_TIMEOUT_S:
+                logger.info(
+                    f"[ReselectGate] pruning stuck (no accepted contribution "
+                    f"in {now - last_active:.0f}s > {ROUND_CACHE_STUCK_TIMEOUT_S}s) "
+                    f"end {end} from per-round cache for round={self._round}"
+                )
+                self._round_cache_activity_ts.pop(end, None)
+                continue
+            still_present.append(end)
+        if len(still_present) != len(self._round_selected_ends):
+            self._round_selected_ends = still_present
+
+    def _select_ends_respecting_reselect_gate(self, channel, task_to_perform: str):
+        """Return the SEND-state-selected ends, honoring
+        `self._reselect_each_iteration`.
+
+        True (default): re-invoke the selector every call. False: accumulate
+        selections into a per-round cache, re-invoking the selector each
+        call until the cache reaches `self._agg_goal` (trainers join the
+        channel asynchronously, so one early call may only see a few of
+        them); then reuse the cache until `self._round` advances.
+        """
+        if self._round_selected_ends_round != self._round:
+            self._round_selected_ends = None
+            self._round_selected_ends_round = self._round
+            self._round_cache_activity_ts = {}
+
+        if not self._reselect_each_iteration:
+            self._prune_departed_from_round_cache(channel)
+
+        if not self._reselect_each_iteration and self._round_selected_ends is not None:
+            target = getattr(self, "_agg_goal", len(self._round_selected_ends))
+            if len(self._round_selected_ends) >= target:
+                ends = list(self._round_selected_ends)
+                logger.info(
+                    f"[ReselectGate] reselect_each_iteration=False; reusing "
+                    f"cached per-round selection ends={ends} for round={self._round}"
+                )
+                self._rearm_recv_eligibility(channel, ends)
+                return ends
+
+        new_ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
+        if not self._reselect_each_iteration and new_ends:
+            merged = list(self._round_selected_ends or [])
+            for end in new_ends:
+                if end not in merged:
+                    merged.append(end)
+                    # First time this end enters the cache -- starts its
+                    # stuck-timeout clock (reset again on each real accepted
+                    # contribution, see _process_single_trainer_message).
+                    self._round_cache_activity_ts[end] = time.time()
+            self._round_selected_ends = merged
+            logger.info(
+                f"[ReselectGate] reselect_each_iteration=False; accumulated "
+                f"per-round selection ends={merged} "
+                f"({len(merged)}/{getattr(self, '_agg_goal', '?')}) for round={self._round}"
+            )
+            self._rearm_recv_eligibility(channel, merged)
+            return merged
+        return new_ends
+
     @timer_decorator
     def _distribute_weights_sync(
         self, tag: str, task_to_perform: str = "train"
@@ -1441,7 +1824,7 @@ class TopAggregator(AsyncTopAgg):
             f"Aggregator version state (model_version, data_id, iteration_id): {self._curr_agg_version}"
         )
         
-        ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
+        ends = self._select_ends_respecting_reselect_gate(channel, task_to_perform)
         logger.info(f"ends: {ends}")
         if ends is None or len(ends) >= self._agg_goal:
             self.ends_not_selected_yet = True
@@ -1641,7 +2024,59 @@ class TopAggregator(AsyncTopAgg):
             self.ends_not_selected_yet = False
             logger.info("Distributed to c ends and can wait for k updates")
 
+    def _check_early_stop_conditions(self) -> None:
+        """Optional caps for short/smoke runs, checked independently of
+        whether an aggregation goal is ever met: `max_data_id_progress`
+        (stop once `self.data_id` reaches it) and `max_runtime_s` (stop once
+        this much wall time has elapsed since the aggregator started).
+        Whichever fires first wins. Both are unset (None) by default, so
+        production runs are unaffected. Called from `_distribute_weights`,
+        which runs on every composer tick on both the sync and async paths
+        -- unlike the rounds-based stop in `_process_aggregation_goal_met`,
+        this also fires when aggregation never completes.
+        """
+        if self._work_done:
+            return
+
+        max_data_id = getattr(
+            self.config.hyperparameters, "max_data_id_progress", None
+        )
+        if max_data_id is not None and self.data_id >= max_data_id:
+            logger.info(
+                f"max_data_id_progress={max_data_id} reached "
+                f"(data_id={self.data_id}); stopping run."
+            )
+            self._work_done = True
+            return
+
+        max_runtime_s = getattr(self.config.hyperparameters, "max_runtime_s", None)
+        if max_runtime_s is not None:
+            elapsed = time.time() - self.agg_start_time_ts
+            if elapsed >= float(max_runtime_s):
+                logger.info(
+                    f"max_runtime_s={max_runtime_s}s reached "
+                    f"(elapsed={elapsed:.0f}s); stopping run."
+                )
+                self._work_done = True
+
+    def _async_inner_loop_done(self) -> bool:
+        """Exit condition for the async/hybrid compose path's inner
+        `asyncfl_loop` (see `compose()`).
+
+        Must OR in `self._work_done`, not just check the agg-goal match: the
+        outer `loop` only re-checks `_work_done` once this inner loop's
+        ender (`task_get_weights`) completes, which can block for a long
+        time if contributions trickle in slowly. Without this OR,
+        `_check_early_stop_conditions()` reaching a cap (e.g.
+        `max_data_id_progress`) mid-distribute sets `_work_done`, but the
+        inner loop keeps spinning until an agg-goal happens to complete on
+        its own -- silently swallowing the early-stop until the launcher's
+        external watchdog force-kills the process instead.
+        """
+        return self._agg_goal_cnt == self._agg_goal or self._work_done
+
     def _distribute_weights(self, tag: str, task_to_perform: str = "train") -> None:
+        self._check_early_stop_conditions()
         if self.is_async:
             logger.info("Inside distribute of async")
             self._distribute_weights_async(tag, task_to_perform)
@@ -1694,9 +2129,7 @@ class TopAggregator(AsyncTopAgg):
             loop = Loop(loop_check_fn=lambda: self._work_done)
             # create a loop object for asyncfl to manage concurrency as
             # well as aggregation goal
-            asyncfl_loop = Loop(
-                loop_check_fn=lambda: self._agg_goal_cnt == self._agg_goal
-            )
+            asyncfl_loop = Loop(loop_check_fn=self._async_inner_loop_done)
             logger.info("Hybrid compose")
 
             # chain them again with new tasklets introduced in this class
@@ -1761,6 +2194,7 @@ class TopAggregator(AsyncTopAgg):
                     # >> task_get_heartbeat
                     >> task_aggregate_grads_sync
                 )
+                >> c.tasklet("inform_end_of_training")
                 # >> c.tasklet("load_data") c.tasklet("initialize")
                 # >> task_get_heartbeat task_put_train c.tasklet("heartbeat") loop(
                 # >> task_reset_agg_goal_vars # >> asyncfl_loop(task_put >>

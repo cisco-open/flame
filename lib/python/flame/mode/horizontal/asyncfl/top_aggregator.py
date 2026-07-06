@@ -88,6 +88,16 @@ class TopAggregator(SyncTopAgg):
         self._agg_goal_cnt = 0
         self._agg_goal_weights = None
         self._agg_goal = self.config.hyperparameters.aggregation_goal or 1
+        # An end may only contribute once per aggregation cycle (reset
+        # alongside _agg_goal_cnt in _reset_agg_goal_variables). Guards
+        # against a duplicate/late message from an end that was reclaimed
+        # (selector SEND_TIMEOUT_WAIT_S) and reselected while its original
+        # response was still in flight -- mirrors
+        # fwdllm_aggregator._process_single_trainer_message's
+        # _per_agg_trainer_list guard, which the generic asyncfl path
+        # otherwise lacks. See examples/MIGRATING_TO_LAUNCHER.md's
+        # aggregator gotchas (§2).
+        self._agg_cycle_contributed_ends: set = set()
 
         self._updates_in_queue = 0
         self._updates_recevied = {}
@@ -102,6 +112,16 @@ class TopAggregator(SyncTopAgg):
         self._sim_buffer = SimReorderBuffer()
         self._sim_committed: set = set()
         self._sim_pending_commit: set = set()
+        # C.2 send-time withhold: an in-flight update whose trainer is UN_AVL at
+        # its completion (sct) is HELD here (end -> (sct, (msg, metadata))) and
+        # re-injected into the buffer at its delivery_ts (commits stale). The
+        # delivery_ts itself lives in the ClientAvailability pending_withheld ledger.
+        self._sim_withheld_payload: dict = {}
+        # end -> (orig_sct, delivery_ts) for an update currently re-injected into the
+        # buffer awaiting its late (stale) commit. Lets the commit body recognize a
+        # withheld delivery (vs a fresh/straggler commit) so it tags the "withheld"
+        # past-dating bucket and emits the withheld_delivery rung with the true delay.
+        self._sim_withheld_delivering: dict = {}
         self._sim_enqueue_round = {}  # end -> round it entered the reorder buffer
         # Virtual-completion gate: the aggregator's record of each in-flight trainer's
         # EXPECTED completion = dispatch vclock + its MODELED budget. Lets _sim_recv_min hold
@@ -198,6 +218,9 @@ class TopAggregator(SyncTopAgg):
         # reset agg goal count
         self._agg_goal_cnt = 0
 
+        # reset the per-cycle duplicate-contribution guard (see internal_init)
+        self._agg_cycle_contributed_ends = set()
+
         # reset agg goal weights
         self._agg_goal_weights = None
         logger.debug(
@@ -283,6 +306,11 @@ class TopAggregator(SyncTopAgg):
         except Exception:
             return False
 
+    # C.2 / C.3 commit-loop wiring (_sim_pop_committable, _sim_reinject_ready_withheld,
+    # _sim_abandon_stalled) is shared, library-level in ClientAvailability so the oort
+    # stack rides the identical logic. The asyncfl gate tracker (_sim_inflight_expected)
+    # is reached via the mixin's guarded _avail_drop_inflight hook.
+
     def _sim_recv_min(self, channel, recv_ends):
         """Barrier: drain the in-flight set, then commit the smallest
         sim_completion_ts. The virtual clock advances TO each committed completion
@@ -294,6 +322,8 @@ class TopAggregator(SyncTopAgg):
         verifies the clock is now sct-driven."""
         if not hasattr(self, "_sim_inflight_expected"):  # bare-init guard (tests)
             self._sim_inflight_expected = {}
+            self._sim_withheld_payload = {}
+            self._sim_withheld_delivering = {}
             self._sim_trainer_budget = {}
             self._sim_budget_running_mean = 12.0
             self._sim_budget_n = 0
@@ -418,8 +448,13 @@ class TopAggregator(SyncTopAgg):
         self._note_sim_fill(barrier_wait, drained_all)
 
         # Pop the minimum regardless of recv_ends membership so buffered updates
-        # are not lost when an end is cleaned up before its commit.
-        popped = self._sim_buffer.pop_min()
+        # are not lost when an end is cleaned up before its commit. First re-inject
+        # any withheld update whose delivery_ts has arrived (C.2), then pop the
+        # smallest update that is actually committable — an in-flight trainer that is
+        # UN_AVL at its completion (sct) is send-gated: held now, delivered stale at
+        # delivery_ts. Gate off ⇒ both are no-ops / a single pop (byte-identical).
+        self._sim_reinject_ready_withheld()
+        popped = self._sim_pop_committable(channel)
         if popped is None:
             return None, ("", datetime.now())
         _end, sct, (m, md) = popped
@@ -447,6 +482,17 @@ class TopAggregator(SyncTopAgg):
             self._sim_commit_count = {}
         self._sim_commit_count[_end] = self._sim_commit_count.get(_end, 0) + 1
         self._sim_committed.add(_end)
+        # C.2 withheld delivery: this commit is the late (stale) delivery of an
+        # update that was send-gated while its trainer was UN_AVL. Tag it so the
+        # past-dating attribution uses the "withheld" bucket (intended staleness,
+        # not a pacing bug) and emit the withheld_delivery rung with the true
+        # down-window delay (delivery_ts − original sct) and resulting staleness.
+        # Async (fedbuff weighting) accept-stale ⇒ accepted=True; sync feddance
+        # reject-over-tolerance is wired in Stage E.
+        _withheld_meta = self._sim_take_withheld_delivering(_end)
+        _is_withheld = _withheld_meta is not None
+        if _is_withheld:
+            self._emit_withheld_delivery(_end, m, _withheld_meta[0], _withheld_meta[1])
         # start this end's post-commit re-dispatch cooldown. Held out of
         # selection (in _distribute_weights) until vclock >= sct + gap, so it
         # returns with a fresher model_version -- the gap spaces completions
@@ -501,7 +547,9 @@ class TopAggregator(SyncTopAgg):
             # rounds ago this update was trained (current round - its MODEL_VERSION).
             _mv = m.get(MessageType.MODEL_VERSION) if isinstance(m, dict) else None
             _round_lag = (self._round - int(_mv)) if _mv is not None else None
-            if self._round <= 1:
+            if _is_withheld:
+                _src = "withheld"  # intended late stale delivery, not a pacing bug
+            elif self._round <= 1:
                 _src = "round1"
             elif _was_recommit:
                 _src = "redispatch"
@@ -601,7 +649,40 @@ class TopAggregator(SyncTopAgg):
                 recv_ends = []  # buffer still has entries to drain — don't block
             else:
                 logger.debug(f"[AGG_RECV] no live recv ends (round={self._round}); skipping")
-                time.sleep(0.5)
+                # F.2: in sim, advance vclock to next availability event instead of
+                # wall-sleeping — covers felix and fedbuff asyncfl starvation paths.
+                if self.simulated and self.trainer_event_dict is not None:
+                    _nxt = self._next_avail_vclock()
+                    _budget = float(
+                        getattr(self.config.hyperparameters, "max_experiment_runtime_s", float("inf"))
+                    )
+                    if _nxt is not None and _nxt > self._vclock.now and self._vclock.now < _budget:
+                        self._vclock.advance(_nxt)
+                        logger.info(
+                            f"[SIM_STARVATION] round={self._round} no recv ends; "
+                            f"vclock→{_nxt:.1f}"
+                        )
+                    else:
+                        # Trace horizon or budget reached — stop instead of spinning.
+                        self._work_done = True
+                        logger.info(
+                            f"[SIM_STARVATION] trace horizon or budget reached at "
+                            f"vclock={self._vclock.now:.1f}s (nxt={_nxt}, "
+                            f"budget={_budget:.0f}s, round={self._round}); stopping run."
+                        )
+                else:
+                    _max_rt = getattr(self.config.hyperparameters, "max_experiment_runtime_s", None)
+                    if _max_rt:
+                        _wall_elapsed = time.time() - self.agg_start_time_ts
+                        if _wall_elapsed >= float(_max_rt):
+                            self._work_done = True
+                            logger.info(
+                                f"max_experiment_runtime_s={_max_rt}s reached "
+                                f"(wall_elapsed={_wall_elapsed:.0f}s) at round {self._round}; "
+                                f"stopping run."
+                            )
+                            return
+                    time.sleep(0.5)
                 return
         if self.simulated:
             msg, metadata = self._sim_recv_min(channel, recv_ends)
@@ -613,6 +694,10 @@ class TopAggregator(SyncTopAgg):
         if not msg:
             logger.debug(f"[AGG_RECV] No data from {end}; skipping it, agg_model_version={self._round}")
             return
+        # T3.3 commit-checkpoint belief (real mode only — sim's own commit
+        # loop already recorded it inside _sim_withhold_if_unavail).
+        if not self.simulated:
+            self._record_commit_belief(end)
         _t_msg_start = datetime.now()  # start of per-message processing (vii)
 
         # NOTE: Only 2 types of messages are expected here: (i) model
@@ -632,6 +717,15 @@ class TopAggregator(SyncTopAgg):
                 f"with trainer_model_version={msg[MessageType.MODEL_VERSION]}, "
                 f"agg_current_version={self._round}"
             )
+
+            if end in self._agg_cycle_contributed_ends:
+                logger.info(
+                    f"Duplicate contribution from {end} for agg cycle "
+                    f"round={self._round} (agg_goal_cnt={self._agg_goal_cnt}); "
+                    f"ignoring."
+                )
+                channel.cleanup_provided_ends(end)
+                return
 
             channel.set_end_property(
                 end, PROP_LAST_SELECTED_ROUND, msg[MessageType.MODEL_VERSION]
@@ -1008,6 +1102,7 @@ class TopAggregator(SyncTopAgg):
             tres = TrainResult(weights, count, version, stat_utility)
             _cs0 = time.time()
             self.cache[end] = tres   # in-memory (MemCache)
+            self._agg_cycle_contributed_ends.add(end)
             self._agg_cache_store_s = time.time() - _cs0
             logger.debug(f"received {len(self.cache)} trainer updates in cache")
             update_staleness_val = self._round - tres.version
@@ -1223,8 +1318,8 @@ class TopAggregator(SyncTopAgg):
         if self.simulated:
             self._sim_hold_busy_slots(channel)
 
-    def oracular_trainer_avail_check(self, end: str) -> bool:
-        logger.debug("In oracular_trainer_avail_check")
+    def _trace_read_avail_check(self, end: str) -> bool:
+        logger.debug("In _trace_read_avail_check")
 
         picked_trainer_is_available = True
 
@@ -1337,7 +1432,7 @@ class TopAggregator(SyncTopAgg):
         if self.track_trainer_avail["enabled"] == "False":
             return True
         elif self.track_trainer_avail["type"] == "ORACULAR":
-            picked_trainer_is_available = self.oracular_trainer_avail_check(end)
+            picked_trainer_is_available = self._trace_read_avail_check(end)
         elif self.track_trainer_avail["type"] == "HEARTBEAT":
             picked_trainer_is_available = self.hearbeat_trainer_avail_check(end)
 
@@ -1420,8 +1515,34 @@ class TopAggregator(SyncTopAgg):
             # Settle channel state before selection (real only); 0 removes this brake.
             time.sleep(self._real_distribute_settle_s)
 
+        # C.3: re-clock the 90s abandon to the vclock and free stalled slots so a
+        # replacement is selectable this round (no-op when the gate is off).
+        # Sim-only: real mode already has a native wall-clock abandon in the
+        # selector itself (SEND_TIMEOUT_WAIT_S), so this would be redundant there.
+        if self.simulated:
+            self._sim_abandon_stalled(channel)
+        # D.1: for proactive_inflight_evict baselines (felix only), free any
+        # in-flight slot the trace now shows as UN_AVL -- no 90s wait. Both modes:
+        # trace-read eviction has no real-mode equivalent (unlike the abandon
+        # above), so gating it sim-only left real-mode felix runs with no way to
+        # drop a stalled UN_AVL trainer from recv_ends, hanging forever once
+        # enough trainers went quiet (see Batch 4 finding 1, UNAVAILABILITY_DESIGN.md).
+        self._sim_evict_unavail_inflight(channel)
+
         if self.trainer_event_dict is not None:
-            curr_unavail_trainer_list = self.get_curr_unavail_trainers()
+            # D.2: task-aware — also excludes AVL_EVAL from "train" dispatch and
+            # AVL_TRAIN from "eval" dispatch (inert where a baseline never
+            # dispatches eval, Challenge 8).
+            curr_unavail_trainer_list = self.get_curr_task_ineligible_trainers(
+                task_to_perform
+            )
+            # invariant 2: a trainer with a withheld update stays out of the
+            # eligible pool until its delivery_ts (§4.5 residence, sct→delivery_ts).
+            _held_withheld = self.withheld_held_ends()
+            if _held_withheld:
+                curr_unavail_trainer_list = list(
+                    set(curr_unavail_trainer_list) | _held_withheld
+                )
         else:
             curr_unavail_trainer_list = []
 
@@ -1456,16 +1577,22 @@ class TopAggregator(SyncTopAgg):
         channel.set_curr_unavailable_trainers(
             trainer_unavail_list=curr_unavail_trainer_list
         )
+        # Stamp PROP_AVL_STATE on every known end (incl. in-flight ones D.1/C.3
+        # just evicted) so emit_selection's avail_composition/per_trainer reflect
+        # the oracular read instead of staying all-UNKNOWN.
+        self._avail_stamp_end_states(channel)
 
-        # Expose current vclock to selector so it can attach it to selection events.
-        if self.simulated:
-            channel.properties["vclock_now"] = self._vclock.now
+        # Expose current availability-timeline time to selector so it can attach
+        # it to selection events. _avail_now() covers both modes — real used to
+        # be skipped here (see syncfl/top_aggregator.py for the parity fallout).
+        channel.properties["vclock_now"] = self._avail_now()
 
         # Per-baseline online oracle: refresh candidate stat-utility to true values
         # before selection. No-op unless oracle_utility_injection is enabled.
         self._inject_oracle_utilities(channel, task_to_perform)
 
-        ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform)
+        ends = channel.ends(VAL_CH_STATE_SEND, task_to_perform,
+                            agg_version_state=(self._round, None, None))
         if not ends:
             logger.debug(f"No trainers found for tag {tag}")
             return
@@ -1520,6 +1647,11 @@ class TopAggregator(SyncTopAgg):
         if not _staggered:
             if self.simulated:
                 base_msg[MessageType.SIM_SEND_TS] = _round_now
+            else:
+                # T3.0: broadcast the trace-read origin so a trainer's own
+                # wall-clock availability lookups anchor to the SAME point the
+                # aggregator uses.
+                base_msg[MessageType.AGG_START_TS] = self.agg_start_time_ts
             _shared_payload = channel.dumps(base_msg)
 
         _send_t0 = time.time()  # [DISTRIBUTE_TIMING]

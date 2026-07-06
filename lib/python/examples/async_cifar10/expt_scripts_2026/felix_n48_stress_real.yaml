@@ -45,7 +45,7 @@ experiments:
           rounds: 40
           aggGoal: 8
           seed: 1234
-          max_runtime_s: 1200
+          max_experiment_runtime_s: 1200
         selector:
           kwargs:
             c: 12

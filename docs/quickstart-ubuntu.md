@@ -73,8 +73,10 @@ conda activate flame
 
 That creates a conda env named `flame` (Python 3.11) and installs the flame
 library plus the `[examples]` and `[dev]` extras (torch, torchvision,
-sortedcontainers, wandb, pytest, ...). It uses the dependency spec in
-`lib/python/setup.py` — there is no separate `requirements.txt`.
+sortedcontainers, wandb, pytest, ...). The `[examples]` extra also pulls the
+NLP forward-mode stack (transformers, adapters, h5py, ...), so one env runs
+the smoke tests for both async_cifar10 and fwdllm. It uses the dependency spec
+in `lib/python/setup.py` — there is no separate `requirements.txt`.
 
 ### Running an Example
 

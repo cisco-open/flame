@@ -57,6 +57,7 @@ def _run_pair(real_dir: str, sim_dir: str,
     from parity.checks import (
         load_run_dir, run_all_parity, first_divergence,
     )
+    from parity.ground_truth import load_ground_truth, resolve_trace_name
     from parity.report import print_report, write_json, write_plot
 
     real_label = real_label or os.path.basename(real_dir.rstrip("/"))
@@ -66,6 +67,9 @@ def _run_pair(real_dir: str, sim_dir: str,
     real_agg, real_trainers = load_run_dir(real_dir)
     print(f"[parity] Loading sim:  {sim_label}")
     sim_agg, sim_trainers = load_run_dir(sim_dir)
+
+    real_ground_truth = load_ground_truth(resolve_trace_name(real_dir))
+    sim_ground_truth = load_ground_truth(resolve_trace_name(sim_dir))
 
     print(f"[parity]   real: {len(real_agg['agg_rounds'])} agg_round events, "
           f"{len(real_agg['selection_train'])} selection events, "
@@ -81,6 +85,8 @@ def _run_pair(real_dir: str, sim_dir: str,
         agg_goal=agg_goal,
         rounds_cap=rounds_cap,
         budget_s=budget_s,
+        real_ground_truth=real_ground_truth,
+        sim_ground_truth=sim_ground_truth,
     )
 
     # Add first_divergence as a diagnostic summary entry (always ok — index=0 is expected for async)
@@ -120,7 +126,7 @@ def main() -> None:
     parser.add_argument("--rounds-cap", type=int, default=None,
                         help="rounds cap from config (enables K9 truncation check)")
     parser.add_argument("--budget-s", type=float, default=None,
-                        help="max_runtime_s / sim_wall_ceiling_s (enables K5/K9)")
+                        help="max_experiment_runtime_s / sim_wall_ceiling_s (enables K5/K9)")
     parser.add_argument("--strict", action="store_true",
                         help="Treat WARN as FAIL")
     parser.add_argument("--lenient", action="store_true",

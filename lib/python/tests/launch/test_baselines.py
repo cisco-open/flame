@@ -166,3 +166,76 @@ class TestSharedBaselinesYaml:
         assert "refl" in b
         assert "feddance" in b
         assert "oort" in b
+
+
+class TestFwdllmBaselines:
+    """fwdllm/fwdllm_plus/fluxtune/fluxtune_dynkc replace the retired
+    fedfwd_async_random_dynkc/fedfwd_oracular."""
+
+    @pytest.fixture
+    def baselines(self):
+        shared = Path(__file__).resolve().parents[2] / "examples" / "_metadata"
+        if not (shared / "baselines.yaml").is_file():
+            pytest.skip("shared baselines.yaml not present in this checkout")
+        return load_baselines(shared)
+
+    def test_retired_keys_are_gone(self, baselines):
+        assert "fedfwd_async_random_dynkc" not in baselines
+        assert "fedfwd_oracular" not in baselines
+
+    def test_all_four_present(self, baselines):
+        for name in ("fwdllm", "fwdllm_plus", "fluxtune", "fluxtune_dynkc"):
+            assert name in baselines
+
+    def test_fwdllm_is_sync_random_fedavg_unaware(self, baselines):
+        b = baselines["fwdllm"]["aggregator"]
+        assert b["selector"]["sort"] == "random"
+        assert b["selector"]["kwargs"]["is_async"] is False
+        assert b["optimizer"]["sort"] == "fedavg"
+        assert b["hyperparameters"]["trackTrainerAvail"]["enabled"] == "False"
+        assert b["hyperparameters"]["reselect_each_iteration"] is False
+        assert (
+            baselines["fwdllm"]["trainer"]["hyperparameters"]["client_notify"]["enabled"]
+            == "False"
+        )
+
+    def test_fwdllm_plus_is_sync_random_fedavg_oracular(self, baselines):
+        b = baselines["fwdllm_plus"]["aggregator"]
+        assert b["selector"]["sort"] == "random"
+        assert b["selector"]["kwargs"]["is_async"] is False
+        assert b["optimizer"]["sort"] == "fedavg"
+        assert b["hyperparameters"]["trackTrainerAvail"]["enabled"] == "True"
+        assert b["hyperparameters"]["trackTrainerAvail"]["type"] == "ORACULAR"
+        assert b["hyperparameters"]["reselect_each_iteration"] is True
+
+    def test_fluxtune_is_async_oort_fedbuff_with_explicit_lr(self, baselines):
+        b = baselines["fluxtune"]["aggregator"]
+        assert b["selector"]["sort"] == "async_oort"
+        assert b["selector"]["kwargs"]["is_async"] is True
+        assert b["optimizer"]["sort"] == "fedbuff"
+        assert b["optimizer"]["kwargs"]["learning_rate"] == 0.075
+        assert b["hyperparameters"]["trackTrainerAvail"]["enabled"] == "False"
+        trainer_hp = baselines["fluxtune"]["trainer"]["hyperparameters"]
+        assert trainer_hp["select_perturbation_using_jvp"] is True
+        assert trainer_hp["client_notify"]["enabled"] == "True"
+        assert "3st" in trainer_hp["client_notify"]["trace"]
+
+    def test_fluxtune_dynamic_kc_is_config_driven_and_off_by_default(self, baselines):
+        """Owner clarification: unlike felix (always fixed K/C), fluxtune's
+        K/C policy must be config-driven -- dynamic_kc defaults to disabled
+        (fixed K/C, like felix) but exposes enabled + policy so it can be
+        flipped on per experiment without forking the selector."""
+        dkc = baselines["fluxtune"]["aggregator"]["selector"]["kwargs"]["dynamic_kc"]
+        assert dkc["enabled"] is False
+        assert "policy" in dkc
+
+    def test_fluxtune_dynkc_preserves_legacy_production_default(self, baselines):
+        """Frozen parity artifact: must keep the exact selector/optimizer
+        shape (including the known dataset_name copy-paste bug) of the
+        retired fedfwd_async_random_dynkc, just renamed."""
+        b = baselines["fluxtune_dynkc"]["aggregator"]
+        assert b["selector"]["sort"] == "async_random"
+        assert b["selector"]["kwargs"]["dynamic_kc"]["enabled"] is True
+        assert b["optimizer"]["sort"] == "fedbuff"
+        assert "learning_rate" not in b["optimizer"]["kwargs"]
+        assert b["optimizer"]["kwargs"]["dataset_name"] == "google-speech"

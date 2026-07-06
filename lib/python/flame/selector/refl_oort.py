@@ -232,6 +232,7 @@ class REFLOortSelector(OortSelector):
                 "num_priority": len(priority_ends),
                 "num_blacklist": len(blacklist),
                 "exploration_factor": self.exploration_factor,
+                "vclock_now": channel_props.get("vclock_now"),
             },
         )
         return {key: None for key in newly_selected}

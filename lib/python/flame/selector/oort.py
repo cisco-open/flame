@@ -245,7 +245,9 @@ class OortSelector(AbstractSelector):
             result = self.select_random(ends, num_of_ends)
             self.emit_selection(
                 round, task_to_perform, all_ends, ends.keys(),
-                self.selected_ends, extra={"mode": "random_first_round"},
+                self.selected_ends,
+                extra={"mode": "random_first_round",
+                       "vclock_now": channel_props.get("vclock_now")},
             )
             return result
 
@@ -264,7 +266,9 @@ class OortSelector(AbstractSelector):
             result = self.select_random(ends, num_of_ends)
             self.emit_selection(
                 round, task_to_perform, all_ends, ends.keys(),
-                self.selected_ends, extra={"mode": "random_no_utility"},
+                self.selected_ends,
+                extra={"mode": "random_no_utility",
+                       "vclock_now": channel_props.get("vclock_now")},
             )
             return result
 
@@ -337,6 +341,7 @@ class OortSelector(AbstractSelector):
                 # pacer state: the percentile that sets pref (read pref divergence directly).
                 "round_threshold": getattr(self, "round_threshold", None),
                 "alpha": getattr(self, "alpha", None),
+                "vclock_now": channel_props.get("vclock_now"),
                 # per-round speed-penalty summary over selected (see _system_util_summary)
                 **self._system_util_summary(),
             },

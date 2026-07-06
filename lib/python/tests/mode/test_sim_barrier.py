@@ -90,6 +90,12 @@ def _bare(cls):
     a = c.__new__(c)
     a._vclock = VirtualClock()
     a.simulated = True
+    # Gate-off availability state (production sets these in __init__ /
+    # _init_availability; __new__ bypasses both). The sim recv paths reference
+    # _sim_buffer directly; trainer_event_dict=None keeps the mixin helpers no-op.
+    a._sim_buffer = SimReorderBuffer()
+    a.trainer_event_dict = None
+    a.pending_withheld = {}
     return a
 
 

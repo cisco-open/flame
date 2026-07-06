@@ -1,0 +1,108 @@
+# Per-example telemetry/analysis manifest, read by scripts/analysis/analyze_run.py.
+# See lib/python/examples/MIGRATING_TO_LAUNCHER.md §5 and
+# scripts/analysis/README.md for the design rationale and schema. This is
+# optional: an example with no manifest gets analyze_run.py's
+# async_cifar10-shaped defaults (plain `round`, the hardcoded CNN param
+# count) unchanged.
+
+# Wire size for the comm-cost (MB) axes in comm_breakdown_by_round/
+# cumulative_comm_by_round. fwdllm's FedFwd is gradient/perturbation-based, not
+# full-model-weight FL: only the TRAINABLE subset of the model is ever put on
+# the wire (the rest is frozen). Measured directly from a live run's
+# print_trainable_params_stats() log line ("Trainable params: 450,340 /
+# 66,813,220 (0.67%)", run_20260701_165049_fwdllm_plus_n100_smoke aggregator
+# log) -- NOT the full model's 66.8M params, which would overstate fwdllm's
+# real communication cost by ~150x.
+model_param_count: 450340
+
+# fwdllm's `round` only advances once all `total_data_bins` data_ids finish
+# (fwdllm_aggregator.py's total_data_bins=150), so a run can sit at round==1
+# for hundreds of trainer_round/agg_round/agg_eval events. Declaring the
+# sub-round hierarchy here (instead of hardcoding it into analyze_run.py's
+# progress_key(), as the P5.3 interim stopgap currently does) lets the
+# analyzer fold data_id/iteration_per_data_id into a composite ordinal
+# generically. `round` itself is always the top of the hierarchy and implicit
+# -- every example has it, so it isn't declared here.
+#
+# Iteration-level (not just data_id-level) chosen deliberately (Part 6):
+# empirically checked against a real n=100 run -- iteration_per_data_id
+# varies 0..3 in practice, giving 73 distinct (data_id, iteration) buckets
+# vs. 31 at data_id-only resolution, ~11 events/bucket on average (not too
+# sparse to be useful). Wired into accuracy_by_round/loss_by_round/
+# cumulative_comm_by_round/selection-derived "over_rounds" plots too, not
+# just trainer_round/agg_round/agg_eval (Part 6) -- see analyze_run.py's
+# PROGRESS_AXIS_LABEL, used on every plot bucketed this way so the axis
+# reads as progress, not plain round.
+progress_hierarchy:
+  - field: data_id
+    bound: 150  # matches fwdllm_aggregator.py's total_data_bins
+  - field: iteration_per_data_id
+    bound: 15  # matches the max_iterations_per_data_id default
+
+# Which of analyze_run.py's 8 plot categories fwdllm's telemetry actually
+# populates, and why -- so an empty plots/<category>/ dir is a documented,
+# expected outcome (declared here) rather than a silent gap someone has to
+# rediscover by reading source. Evidence: P5.5 audit against a live run's
+# telemetry (run_20260701_165049_fwdllm_plus_n100_smoke, pre-P5.2/pre-P5.5-fix)
+# plus code tracing for what P5.2 (agg_eval/agg_round) and the P5.5 random.py
+# selector fix add. Status values: populated | partial | not_populated.
+event_categories:
+  performance: populated
+    # agg_eval, emitted from fwdllm_aggregator.py's
+    # _process_aggregation_goal_met (P5.2). Was not_populated before P5.2 --
+    # the aggregator emitted zero telemetry of any kind.
+  sanity: populated
+    # trainer_round, emitted from FedSgdTrainer.py: now includes
+    # sim_round_duration_s (real_gpu_time_s + emulated delay -- Part 6).
+    # utility_belief (Part 6, fwdllm_aggregator.py's STAT_UTILITY receive
+    # path) unlocks selected_utility_believed_vs_actual*/belief_gap*.
+    # agg_observed_s (Part 6, reusing the same PROP_ROUND_DURATION already
+    # read for agg_round's trainer_speed_s) unlocks runtime_agg_vs_trainer/
+    # runtime_overhead_*. Deliberately NOT added (Part 6 design decision):
+    # training_budget_s/overran/remaining_time_s/wait_time_s/pre_train_s/
+    # post_train_s -- fwdllm's delay is a flat additive sleep, not cifar10's
+    # budget-minus-actual sleep-to-fill model, so there is no faithful
+    # "overrun"/budget-slack concept to report; budget_slack_cdf/
+    # trainer_late_fraction_hist/trainer_response_lateness_cdf/
+    # trainer_runtime_expected_vs_actual stay not_populated rather than
+    # reporting a fabricated budget signal.
+  selection: populated
+    # selection, emitted from flame/selector/random.py's select() (P5.5 fix
+    # -- RandomSelector never called emit_selection before this session, so
+    # every "selection" event that existed for fwdllm/fwdllm_plus came
+    # exclusively from the trainer's own trivial 1-candidate channel
+    # selector, not the real aggregator-side FL-selection decision). Now
+    # also carries data_id/iteration_per_data_id (Part 6, threaded from
+    # fwdllm_aggregator.py's agg_version_state through channel.ends() ->
+    # select()'s kwargs), so selection_funnel_over_rounds/
+    # selection_count_consistency/selected_speed*/selected_utility* are no
+    # longer collapsed onto plain round. For fwdllm itself (aggGoal-cached,
+    # reselect_each_iteration=False -- see Part 3) the real selector still
+    # only fires ~once per round, so these stay sparse (1-2 points) even
+    # with granularity fixed; fwdllm_plus (reselect_each_iteration=True)
+    # benefits fully -- this is a structural cadence difference, not a bug.
+  selection/why: partial
+    # populated (selection events exist) but low-signal: RandomSelector's
+    # emit_selection call carries no per_trainer_extra factors (believed_I/
+    # system_util/temporal are oort-family-selector concepts; random
+    # selection has no "why" beyond uniform chance) -- factor_separation.pdf
+    # will only ever show the generic speed_s factor for this baseline.
+  insights: not_populated
+    # needs EVENT_UTIL_DISPARITY (streaming-specific, fwdllm doesn't stream)
+    # and oracle-utility log files (oort-family-selector-specific, fwdllm
+    # uses random/async_oort depending on baseline -- fluxtune's async_oort
+    # DOES populate the oracle-misselection sections; fwdllm/fwdllm_plus's
+    # random selector does not). The "data-unlock effects" sub-section also
+    # needs delta_weight_l2/final_loss/visible_samples/total_samples on
+    # trainer_round, which FedSgdTrainer.py's build_trainer_round call
+    # doesn't pass (streaming-specific, fwdllm doesn't stream).
+  system: populated
+    # trainer_round (time-split plots) + agg_round (queue depth, staleness,
+    # agg_observed_s-driven overhead plots -- P5.2/Part 6).
+  availability: partial
+    # the selection-funnel section (candidates→eligible→chosen) populates
+    # from selection events, now at data_id/iteration granularity (Part 6);
+    # the avail_change-derived section does not -- fwdllm's trainer never
+    # emits EVENT_AVAIL_CHANGE.
+  aggregation: populated
+    # agg_round (P5.2): commit cadence, staleness vs speed.

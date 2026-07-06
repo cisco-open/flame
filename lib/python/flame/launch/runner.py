@@ -11,6 +11,7 @@ Paths are resolved as follows (lowest precedence → highest):
 
 import json
 import os
+import yaml
 import re
 import signal
 import subprocess
@@ -121,6 +122,7 @@ class ExperimentRunner:
             agg_cfg, agg_provenance = self._build_aggregator_config(
                 exp, agg_config_path, baseline_entry
             )
+            self._validate_selector_label(exp, agg_cfg)
             # Propagate the simulation time mode to the aggregator (it needs to
             # know whether to order updates by a virtual clock or by arrival).
             agg_cfg.setdefault("hyperparameters", {})["time_mode"] = exp.trainer.time_mode
@@ -159,6 +161,9 @@ class ExperimentRunner:
             os.environ["FLAME_TELEMETRY_DIR"] = str(self.telemetry_dir)
             # UTF-8 child stdio so status glyphs don't crash on latin-1 locales.
             os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+            # Fault handler: on SIGSEGV/SIGFPE/etc. Python prints a C-level traceback
+            # to stderr (merged into _aggregator.log) before the process dies.
+            os.environ.setdefault("PYTHONFAULTHANDLER", "1")
 
             # CPU partition: reserve a few cores for the single, message-processing
             # -bound aggregator so the 300 pinned trainers don't time-slice it
@@ -225,6 +230,7 @@ class ExperimentRunner:
                     "aggregator": [str(c) for c in agg_spawn_cmd],
                     "trainers": [str(c) for c in trainer_spawn_cmd],
                 },
+                agg_cfg=agg_cfg,
             )
             save_execution_config(exec_config, self.current_exp_dir / "execution_config.yaml")
 
@@ -232,6 +238,7 @@ class ExperimentRunner:
             snapshot.create_snapshot(
                 exp, paths["metadata_dir"], agg_cfg_path_out,
                 trainer_spawn_cmd, agg_spawn_cmd,
+                agg_cfg=agg_cfg,
             )
 
             trainer_ids = list(
@@ -261,27 +268,49 @@ class ExperimentRunner:
                 config_gen.set_baseline_overrides(merged_t)
                 print(format_provenance("trainer", t_prov))
 
+            # client_idx_modulo wraps N trainers onto M data partitions for
+            # path-style datasets (e.g. fwdllm's H5 partitions) -- each
+            # trainer needs a different hyperparameters.client_idx, computed
+            # from its own trainer_id, not a value shared across the batch.
+            per_trainer_overrides = None
+            if exp.trainer.client_idx_modulo:
+                modulo = exp.trainer.client_idx_modulo
+                per_trainer_overrides = {
+                    tid: {"hyperparameters.client_idx": (tid - 1) % modulo}
+                    for tid in trainer_ids
+                }
+
             self.trainer_spawner.spawn_all(
                 trainer_ids,
                 alpha=exp.trainer.dataset.dirichlet_alpha,
                 availability_mode=exp.trainer.availability.mode,
                 trainer_main_path=paths["trainer_main"],
+                skip_index_splits=exp.trainer.dataset.path_style,
+                dataset_name=exp.trainer.dataset.name,
+                # Split-file selector is independent of the spawn cohort size:
+                # split_num_trainers (the N the partition was built for) falls
+                # back to num_trainers when unset. trainer_ids above still
+                # spawns exactly num_trainers trainers.
+                num_trainers=exp.trainer.split_num_trainers or exp.trainer.num_trainers,
+                per_trainer_overrides=per_trainer_overrides,
                 **config_overrides,
             )
 
             print(f"\nexperiment running. logs: {agg_log}, {trainers_log}")
             # Wait for the aggregator to finish all rounds first, then give
-            # trainers a short grace window to process the EOT broadcast and
-            # exit cleanly. Without this, wait_all()'s per-trainer timeout fires
-            # immediately after spawn and kills trainers every 30s regardless of
+            # trainers a short grace window (shared across the whole cohort,
+            # not serialized per-process) to process the EOT broadcast and
+            # exit cleanly. Without this, wait_all()'s timeout fires
+            # immediately after spawn and kills trainers regardless of
             # whether training is still in progress.
-            # Watchdog: the aggregator self-stops at max_runtime_s (real) / sim_wall_ceiling_s
-            # (sim). If it instead DEADLOCKS (MQTT/barrier) it would block this wait forever and
-            # hang the batch. Bound the wait at the run's budget + a generous grace and hard-kill
-            # on timeout so the batch proceeds to _cleanup/_sweep_stragglers instead of hanging.
+            # Watchdog: the aggregator self-stops at max_experiment_runtime_s (real) /
+            # sim_wall_ceiling_s (sim). If it instead DEADLOCKS (MQTT/barrier) it would
+            # block this wait forever and hang the batch. Bound the wait at the run's
+            # budget + a generous grace and hard-kill on timeout so the batch proceeds
+            # to _cleanup/_sweep_stragglers instead of hanging.
             hp = agg_cfg.get("hyperparameters", {}) or {}
             try:
-                budget_s = max(float(hp.get("max_runtime_s") or 0.0),
+                budget_s = max(float(hp.get("max_experiment_runtime_s") or 0.0),
                                float(hp.get("sim_wall_ceiling_s") or 0.0))
             except (TypeError, ValueError):
                 budget_s = 0.0
@@ -292,7 +321,9 @@ class ExperimentRunner:
                 print(f"  ⚠ aggregator still running after watchdog {wd_msg} — "
                       f"assuming deadlock; killing it (run budget was {budget_s:.0f}s)")
                 self.aggregator_spawner.terminate()
-            print("  aggregator done, waiting for trainers to exit...")
+            agg_rc = getattr(self.aggregator_spawner.process, "returncode", None)
+            rc_msg = f"exit={agg_rc}" if agg_rc == 0 else f"exit={agg_rc} ⚠"
+            print(f"  aggregator done ({rc_msg}), waiting for trainers to exit...")
             self.trainer_spawner.wait_all(timeout_per_trainer=30.0)
             print("\nexperiment completed.")
 
@@ -373,23 +404,80 @@ class ExperimentRunner:
         return exp.example.aggregator_main or "aggregator/pytorch/main.py"
 
     # async selectors require the asyncfl stack; everything else is sync.
+    # "fwdllm" is its own stack: FedFwd's TopAggregator
+    # (flame.mode.horizontal.syncfl.fwdllm_aggregator) is a FedFwd-specific
+    # implementation, not the generic syncfl.top_aggregator, so the regex
+    # below can't detect it under the normal top_aggregator match. Unlike
+    # the other stacks, fwdllm supports both sync and async baselines
+    # (fwdllm/fwdllm_plus run sync, fluxtune runs async) gated purely by the
+    # selector's `is_async` kwarg -- so it's deliberately not in
+    # _ASYNC_STACKS; its async-ness is decided in _validate_stack itself.
     _ASYNC_STACKS = {"asyncfl", "coord_asyncfl"}
     _ASYNC_SELECTORS = {"async_oort", "async_random", "fedbuff"}
 
+    # _sweep_stragglers() pkill/pgrep patterns. fwdllm's entrypoints have no
+    # pytorch/ subdirectory, so they need their own patterns alongside the
+    # cifar10-shaped ones -- add one line per new example's entrypoint paths.
+    _STRAGGLER_PATTERNS = (
+        "trainer/pytorch/main.py",
+        "aggregator/pytorch/main_",
+        "fwdllm/trainer/main.py",
+        "fwdllm/aggregator/main_fedfwd_agg.py",
+    )
+    _TRAINER_STRAGGLER_PATTERNS = (
+        "trainer/pytorch/main.py",
+        "fwdllm/trainer/main.py",
+    )
+
     def _validate_stack(self, agg_main_path: Path, agg_cfg: dict) -> None:
         text = Path(agg_main_path).read_text()
-        m = re.search(
-            r"from flame\.mode\.horizontal\.(\w+)\.top_aggregator import", text
-        )
-        stack = m.group(1) if m else "syncfl"
-        selector = (agg_cfg.get("selector") or {}).get("sort", "")
-        is_async_stack = stack in self._ASYNC_STACKS
+        if re.search(
+            r"from flame\.mode\.horizontal\.\w+\.fwdllm_aggregator import", text
+        ):
+            stack = "fwdllm"
+        else:
+            m = re.search(
+                r"from flame\.mode\.horizontal\.(\w+)\.top_aggregator import", text
+            )
+            stack = m.group(1) if m else "syncfl"
+        selector_cfg = agg_cfg.get("selector") or {}
+        selector = selector_cfg.get("sort", "")
         is_async_sel = selector in self._ASYNC_SELECTORS
+        if stack == "fwdllm":
+            # fwdllm's aggregator dispatches sync vs async purely on the
+            # selector's declared `is_async` kwarg (see
+            # fwdllm_aggregator.py), not on stack membership -- so the
+            # invariant to enforce here is internal consistency: an async
+            # selector must declare is_async=true, and a sync selector
+            # (e.g. `random`) must declare is_async=false/unset.
+            is_async_stack = bool((selector_cfg.get("kwargs") or {}).get("is_async", False))
+        else:
+            is_async_stack = stack in self._ASYNC_STACKS
         if is_async_stack != is_async_sel:
             raise ValueError(
                 f"selector/stack mismatch: selector={selector!r} "
                 f"(async={is_async_sel}) cannot run on aggregator stack "
                 f"{stack!r} (async={is_async_stack}). main={agg_main_path}"
+            )
+
+    def _validate_selector_label(self, exp: ExperimentConfig, agg_cfg: dict) -> None:
+        """`aggregator.selector` is a descriptive label (log filename,
+        snapshot/execution_config records) -- it does not configure the
+        real selector, which comes from config_template/baseline/
+        config_overrides (see AggregatorConfig docstring). Catch the label
+        drifting from reality here rather than letting it silently mislabel
+        every record of the run.
+        """
+        if not exp.aggregator or not exp.aggregator.selector:
+            return
+        real_selector = (agg_cfg.get("selector") or {}).get("sort")
+        if real_selector and exp.aggregator.selector != real_selector:
+            raise ValueError(
+                f"aggregator.selector label {exp.aggregator.selector!r} does not "
+                f"match the real merged selector {real_selector!r} (from "
+                f"config_template/baseline/config_overrides). Fix the label "
+                f"under experiment.aggregator.selector, or check why the real "
+                f"selector resolved differently than intended."
             )
 
     def _build_aggregator_config(
@@ -408,7 +496,10 @@ class ExperimentRunner:
             if not template_path.exists():
                 raise FileNotFoundError(f"aggregator config_template not found: {template_path}")
             with open(template_path) as f:
-                tmpl = json.load(f)
+                if template_path.suffix in (".yaml", ".yml"):
+                    tmpl = yaml.safe_load(f)
+                else:
+                    tmpl = json.load(f)
             layers.append((f"config_template:{template_path.name}", tmpl))
 
         if baseline_entry:
@@ -420,6 +511,29 @@ class ExperimentRunner:
             layers.append(
                 ("experiment.aggregator.config_overrides", exp.aggregator.config_overrides)
             )
+
+        # agg_goal is a single source of truth: fan it into every real
+        # runtime consumer as the final, highest-precedence layer so they
+        # can never disagree (see AggregatorConfig.agg_goal docstring).
+        # Selector implementations spell "how many to select/aggregate"
+        # under two different kwarg names depending on family -- aggGoal
+        # (fedbuff/async_random/async_oort/oracle) vs. aggr_num
+        # (oort/refl_oort/feddance) -- so set both; selectors that don't
+        # read a given key simply ignore the extra entry (kwargs is an
+        # unvalidated freeform dict, flame/config.py:Selector).
+        if exp.aggregator and exp.aggregator.agg_goal is not None:
+            layers.append((
+                "experiment.aggregator.agg_goal",
+                {
+                    "hyperparameters": {"aggGoal": exp.aggregator.agg_goal},
+                    "selector": {
+                        "kwargs": {
+                            "aggGoal": exp.aggregator.agg_goal,
+                            "aggr_num": exp.aggregator.agg_goal,
+                        }
+                    },
+                },
+            ))
 
         merged, provenance = merge_with_provenance(layers)
         return merged, provenance
@@ -489,7 +603,7 @@ class ExperimentRunner:
 
         Matches ONLY the example's main scripts — never the batch runner itself
         (``run_experiment``) — so it is safe to call from inside the batch loop."""
-        for pat in ("trainer/pytorch/main.py", "aggregator/pytorch/main_"):
+        for pat in self._STRAGGLER_PATTERNS:
             try:
                 subprocess.run(["pkill", "-9", "-f", pat], check=False,
                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
@@ -499,10 +613,15 @@ class ExperimentRunner:
         deadline = time.time() + gpu_settle_timeout_s
         while time.time() < deadline:
             try:
-                out = subprocess.run(
-                    ["pgrep", "-f", "trainer/pytorch/main.py"],
-                    capture_output=True, text=True, check=False)
-                if not out.stdout.strip():
+                still_running = False
+                for pat in self._TRAINER_STRAGGLER_PATTERNS:
+                    out = subprocess.run(
+                        ["pgrep", "-f", pat],
+                        capture_output=True, text=True, check=False)
+                    if out.stdout.strip():
+                        still_running = True
+                        break
+                if not still_running:
                     break
             except Exception:
                 break
