@@ -1,0 +1,28 @@
+description: Synthetic ground station locations (random uniform-distribution, seed=0)
+seed: 0
+num_stations: 8
+stations:
+  gs_00:
+    lat: 5.0054
+    lon: 49.3062
+  gs_01:
+    lat: 60.4755
+    lon: -82.8768
+  gs_02:
+    lat: 39.1762
+    lon: -165.2495
+  gs_03:
+    lat: -84.0006
+    lon: -174.0501
+  gs_04:
+    lat: 45.6275
+    lon: 112.7773
+  gs_05:
+    lat: -68.8802
+    lon: 148.592
+  gs_06:
+    lat: 27.3426
+    lon: 38.3889
+  gs_07:
+    lat: -40.4428
+    lon: 82.6188
