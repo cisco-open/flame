@@ -52,6 +52,7 @@ from pathlib import Path
 from model import build_model
 from config import load_config
 from fmow_dataset import FMoWDataset
+from satellite_availability import SatelliteAvailability
 
 logger = logging.getLogger(__name__)
 
@@ -85,6 +86,7 @@ class PyTorchFMoWTrainer(Trainer):
     def __init__(self, config: Config, battery_threshold, time_mode="simulated") -> None:
         """Initialize a class instance."""
         self.config = config
+        self.fmow_cfg = load_config(self.config.hyperparameters.fmow_config_path)
         self.dataset_size = 0
         self.model = None
         # Oort requires its loss function to have 'reduction'
@@ -211,7 +213,12 @@ class PyTorchFMoWTrainer(Trainer):
             self.config.hyperparameters.avl_events_syn_50
         )
 
-        if self.client_notify["trace"] == "mobiperf_3st":
+        if self.client_notify["trace"] == "satellite":
+            availability = SatelliteAvailability(self.fmow_cfg.availability.trace_path)
+            self.state_avl_event_ts = availability.events_for_satellite(
+                self.satellite_index
+            )
+        elif self.client_notify["trace"] == "mobiperf_3st":
             self.state_avl_event_ts = self.avl_events_3_state
             logger.info(
                 f"Set avl_events_3_state for trainer id {self.trainer_id} using battery threshold {self.event_battery_threshold}"
@@ -416,7 +423,6 @@ class PyTorchFMoWTrainer(Trainer):
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Load FMoW model
-        self.fmow_cfg = load_config(self.config.hyperparameters.fmow_config_path)
         self.model = build_model(self.fmow_cfg.dataset.num_classes).to(self.device)
         
         # Log model memory usage

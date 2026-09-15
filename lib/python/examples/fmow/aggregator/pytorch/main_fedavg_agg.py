@@ -36,6 +36,7 @@ import torch.utils.data as data_utils
 from model import build_model
 from fmow_dataset import FMoWDataset
 from config import load_config
+from satellite_availability import SatelliteAvailability
 
 def initialize_wandb():
     wandb.init(
@@ -83,6 +84,19 @@ class PyTorchFMoWAggregator(TopAggregator):
         self.log_to_wandb = log_to_wandb
         if self.log_to_wandb:
             initialize_wandb()
+
+    def read_trainer_unavailability(self, trace=None, base_dir=None) -> dict | None:
+        """Load satellite events locally; delegate other traces to Flame."""
+        if trace != "satellite":
+            return super().read_trainer_unavailability(trace, base_dir=base_dir)
+
+        availability = SatelliteAvailability(self.fmow_cfg.availability.trace_path)
+        registry_path = (
+            Path(__file__).resolve().parents[2] / "metadata" / "trainer_registry.yaml"
+        )
+        events = availability.events_by_endpoint(registry_path)
+        logger.info(f"[AVAIL] loaded {len(events)} satellite trainer traces")
+        return events
 
     def initialize(self):
         """Initialize role."""

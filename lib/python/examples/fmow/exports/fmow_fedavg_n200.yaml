@@ -7,7 +7,7 @@
 
 experiments:
   - name: fmow_fedavg_n200
-    description: "FMoW FedAvg sync experiment (200 trainers, syn_0, capture-driven data)."
+    description: "FMoW FedAvg sync experiment (200 trainers, satellite availability, capture-driven data)."
 
     baseline: fedavg
 
@@ -17,7 +17,7 @@ experiments:
       dataset:
         path_style: true
       availability:
-        mode: syn_0
+        mode: satellite
       enable_training_delays: true
       hyperparameters:
         batchSize: 16
@@ -43,7 +43,7 @@ experiments:
             enabled: 'True'
             every_n_rounds: 10
           sim_unavailability: 'True'
-          availability_trace: syn_0
+          availability_trace: satellite
           min_trainers_to_start: 200
           min_trainers_join_timeout_s: 600
           

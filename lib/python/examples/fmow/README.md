@@ -42,7 +42,9 @@ setup/
   download_fmow_dataset.sh   downloads + extracts fMoW-rgb v1.1 (~54GB)
   config.py                  FMoW configuration schema
   captures.py                Builds captures.npz based on geodetic.npz (events + per-satellite offsets)
-  setup_fmow.py              One-time setup for FMoW: download, then schedule captures
+  generate_ground_stations.py       Generates ground_stations.yaml
+  generate_satellite_availability.py Generates satellite visibility events
+  setup_fmow.py              Downloads data, schedules captures, and generates optional availability inputs
 
 trainer/pytorch/main.py               PyTorchFMoWTrainer
 aggregator/pytorch/main_fedavg_agg.py PyTorchFMoWAggregator
@@ -62,6 +64,57 @@ hyperparameter (set once in `trainer_base.yaml` for the trainer, and again
 under the experiment YAML's `aggregator.config_overrides.hyperparameters`,
 since the aggregator's config comes from a completely separate merge chain
 that never reads `trainer_base.yaml`).
+
+### Preparing the inputs
+
+See [Getting started with setup](docs/getting-started.md) for prerequisites and
+commands, and the [FMoW configuration reference](docs/config-reference.md) for
+all fields, defaults, and optional sections.
+
+After preparing inputs, use the [data coverage script](docs/data-coverage.md) to
+estimate unique captured and reachable training images without running training.
+
+From the repository root, run:
+
+```bash
+python lib/python/examples/fmow/setup/setup_fmow.py all \
+  --config lib/python/examples/fmow/configs/fmow_config.yaml
+```
+
+This downloads the dataset if needed, schedules image captures, then generates
+ground stations and availability when `ground_stations` is configured:
+
+```yaml
+ground_stations:
+  num_stations: 8
+  seed: 0  # Optional; defaults to 0.
+  elevation_angle: 10.0
+  min_window: 90.0
+
+# Optional: override the default output path.
+availability:
+  trace_path: lib/python/examples/fmow/metadata/availability_traces/satellite_traces.yaml
+```
+
+Ground stations are written to `satellites.leo_dir/ground_stations.yaml`.
+Availability reads that file and `satellites.leo_dir/ecef.npz`, then writes to
+`availability.trace_path`. Orbital files must already exist; setup does not
+generate satellite orbits. Capture generation also requires `geodetic.npz`.
+
+Omit `ground_stations` to skip both generation steps and preserve existing files.
+Within that section, omitted fields default to eight stations, seed `0`, elevation
+`10.0` degrees, and minimum window `90.0` seconds.
+Omit `availability` or its `trace_path` to use the default
+`lib/python/examples/fmow/metadata/availability_traces/satellite_traces.yaml`.
+That path controls both generation output and runtime input; it does not enable
+generation by itself. Configured generation steps overwrite their outputs.
+Use `download`, `captures`, `ground-stations`, or `availability` instead of `all`
+to run one step. With no command, setup defaults to `all`. The individual
+generator scripts now live under `setup/` and still accept their CLI arguments.
+
+An elevation threshold of `-90` and `min_window: 0` accepts every satellite
+throughout the input samples. The generator still marks satellites unavailable
+at the end of the trace. These settings do not make the trace infinite.
 
 ### How a round works
 

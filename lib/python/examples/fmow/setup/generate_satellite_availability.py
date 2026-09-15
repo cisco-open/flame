@@ -100,24 +100,19 @@ def generate_trace(
     }
     return satellite_events, stats
 
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--gs-file", type=Path, default=LEO_DIR / GS_FILE)
-    parser.add_argument("--elevation-angle", type=float, default=10.0)
-    parser.add_argument("--min-window", type=float, default=90.0)
-    parser.add_argument("--dir", type=Path, default=OUTPUT_DIR)
-    parser.add_argument("--filename", type=Path, default=FILENAME)
-    args = parser.parse_args()
-
-    with open(args.gs_file) as f:
+def write_satellite_availability(
+    gs_file: Path, ecef_path: Path, out_file: Path,
+    elevation_angle: float, min_window: float,
+) -> None:
+    with open(gs_file) as f:
         gs_data = yaml.safe_load(f)
     ground_stations = gs_data["stations"]
 
-    ecef = np.load(LEO_DIR / "ecef.npz")
+    ecef = np.load(ecef_path)
     sat_ecef, _ = ecef["ecef_km"], ecef["time_s"]
 
     satellite_events, stats = generate_trace(
-        ground_stations, sat_ecef, args.elevation_angle, args.min_window
+        ground_stations, sat_ecef, elevation_angle, min_window
     )
 
     print(f"Ground stations: {len(ground_stations)}, satellites: {stats['num_satellites']}")
@@ -133,23 +128,37 @@ def main():
     output = {
         "description": (
             f"Geometric availability trace: {len(ground_stations)} ground stations, "
-            f"min_elevation_deg={args.elevation_angle}, min_window_s={args.min_window}"
+            f"min_elevation_deg={elevation_angle}, min_window_s={min_window}"
         ),
         "generated_from": {
-            # "ground_stations": str(args.gs_file),
-            "min_elevation_angle": args.elevation_angle,
-            "min_window": args.min_window,
+            # "ground_stations": str(gs_file),
+            "min_elevation_angle": elevation_angle,
+            "min_window": min_window,
         },
         "trainers": trainers,
     }
     
-    out_file = args.dir / args.filename
     out_file.parent.mkdir(parents=True, exist_ok=True)
     with open(out_file, "w") as f:
         yaml.safe_dump(output, f, sort_keys=False, default_flow_style=None)
 
     print(f"Wrote geometric availability trace to {out_file}")
         
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--ecef-file", type=Path, default=LEO_DIR / "ecef.npz")
+    parser.add_argument("--gs-file", type=Path, default=LEO_DIR / GS_FILE)
+    parser.add_argument("--elevation-angle", type=float, default=10.0)
+    parser.add_argument("--min-window", type=float, default=90.0)
+    parser.add_argument("--dir", type=Path, default=OUTPUT_DIR)
+    parser.add_argument("--filename", type=Path, default=FILENAME)
+    args = parser.parse_args()
+
+    write_satellite_availability(
+        args.gs_file, args.ecef_file, args.dir / args.filename,
+        args.elevation_angle, args.min_window,
+    )
 
 if __name__ == "__main__":
     main()

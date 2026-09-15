@@ -7,4 +7,9 @@ satellites:
   leo_dir: lib/python/examples/fmow/metadata/leo
 
 capture:
-  radius: 15.0 # Radius in KM for a satellite to capture an image
+  radius: 15
+
+ground_stations:
+  num_stations: 1
+  elevation_angle: 10
+  min_window: 90

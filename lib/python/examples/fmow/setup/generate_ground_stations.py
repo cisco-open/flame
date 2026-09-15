@@ -33,6 +33,14 @@ def generate_ground_stations(num_stations: int, seed: int) -> dict:
         "stations": stations
     }
 
+def write_ground_stations(num_stations: int, seed: int, out_file: Path) -> None:
+    data = generate_ground_stations(num_stations, seed)
+    out_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_file, "w") as f:
+        yaml.safe_dump(data, f, sort_keys=False)
+
+    print(f"Wrote {num_stations} ground stations (seed={seed}) to {out_file}")
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--num-stations", type=int, default=8)
@@ -41,13 +49,7 @@ def main() -> None:
     parser.add_argument("--filename", type=Path, default=FILENAME)
     args = parser.parse_args()
 
-    data = generate_ground_stations(args.num_stations, args.seed)
-
-    args.dir.mkdir(parents=True, exist_ok=True)
-    with open(args.dir / args.filename, "w") as f:
-        yaml.safe_dump(data, f, sort_keys=False)
-
-    print(f"Wrote {args.num_stations} ground stations (seed={args.seed}) to {args.dir / args.filename}")
+    write_ground_stations(args.num_stations, args.seed, args.dir / args.filename)
 
 if __name__ == "__main__":
     main()
